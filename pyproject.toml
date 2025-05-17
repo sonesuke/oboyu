@@ -1,0 +1,63 @@
+[project]
+name = "oboyu"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "sonesuke", email = "iamsonesuke@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.15.0",
+    "pre-commit>=4.2.0",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.1.1",
+    "ruff>=0.11.10",
+]
+
+[tool.mypy]
+files = ["src"]
+strict = true
+disable_error_code = ["import-untyped"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+python_files = ["test_*.py", "*_test.py"]
+
+[tool.coverage.run]
+omit = []
+
+[tool.ruff]
+exclude = [".venv", "tests"]
+select = [
+  "C9",
+  "ANN",
+  "S",
+  "E",
+  "F",
+  "W",
+  "I",
+  "D",
+]
+target-version = "py313"
+include = ["*.py"]
+line-length = 120
+
+[tool.ruff.isort]
+combine-as-imports = true
+known-first-party = ["oboyu"]
+split-on-trailing-comma = true
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ruff.mccabe]
+max-complexity = 20
