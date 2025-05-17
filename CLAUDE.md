@@ -16,12 +16,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Run all tests with coverage: `uv run pytest --cov=src`
 - Run a specific test: `uv run pytest tests/test_file.py::test_function`
 
+### Code Analysis
+- Generate codebase analysis: `repomix`
+- This creates a `repomix-output.xml` file for better AI understanding of the codebase
+
 ## Project Architecture
 
 This is a Python package named "oboyu" with a modern structure:
 
 1. Source code is in `src/oboyu/` with a `py.typed` marker for type checking
 2. Tests are in the `tests/` directory
+3. Documentation in `docs/` directory
+4. Configuration in `repomix.config.json` for codebase analysis
 
 The project uses:
 - Python 3.13
@@ -30,3 +36,4 @@ The project uses:
 - MyPy with strict type checking
 - Pytest for testing with coverage reporting
 - Pre-commit hooks for code quality and conventional commits
+- Repomix for code analysis and AI comprehension
