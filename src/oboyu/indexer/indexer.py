@@ -288,6 +288,18 @@ class Indexer:
         """
         pass
 
+    def clear_index(self) -> None:
+        """Clear all data from the index.
+
+        This method removes all chunks and embeddings from the database
+        while preserving the database schema and structure.
+        """
+        # Clear the database
+        self.database.clear()
+
+        # Reset processed files tracking
+        self._processed_files.clear()
+
     def close(self) -> None:
         """Close the indexer and its resources."""
         if self.database:

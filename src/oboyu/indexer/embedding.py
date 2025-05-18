@@ -18,15 +18,23 @@ from torch import Tensor
 
 from oboyu.indexer.processor import Chunk
 
+# Default embedding directories
+EMBEDDING_CACHE_DIR = Path.home() / ".config" / "oboyu" / "embedding" / "cache"
+EMBEDDING_MODELS_DIR = Path.home() / ".config" / "oboyu" / "embedding" / "models"
+
+# Ensure directories exist
+EMBEDDING_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+EMBEDDING_MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
 
 class EmbeddingCache:
     """Cache for document embeddings to avoid regeneration."""
 
-    def __init__(self, cache_dir: Union[str, Path] = ".embedding_cache") -> None:
+    def __init__(self, cache_dir: Union[str, Path] = EMBEDDING_CACHE_DIR) -> None:
         """Initialize the embedding cache.
 
         Args:
-            cache_dir: Directory to store cached embeddings
+            cache_dir: Directory to store cached embeddings (defaults to XDG config path)
 
         """
         self.cache_dir = Path(cache_dir)
@@ -104,7 +112,8 @@ class EmbeddingGenerator:
         max_seq_length: int = 8192,
         query_prefix: str = "検索クエリ: ",
         use_cache: bool = True,
-        cache_dir: Union[str, Path] = ".embedding_cache",
+        cache_dir: Union[str, Path] = EMBEDDING_CACHE_DIR,
+        model_dir: Union[str, Path] = EMBEDDING_MODELS_DIR,
     ) -> None:
         """Initialize the embedding generator.
 
@@ -115,11 +124,12 @@ class EmbeddingGenerator:
             max_seq_length: Maximum sequence length for the model
             query_prefix: Prefix to add to search queries
             use_cache: Whether to use embedding cache
-            cache_dir: Directory to store cached embeddings
+            cache_dir: Directory to store cached embeddings (defaults to XDG config path)
+            model_dir: Directory to store downloaded models (defaults to XDG config path)
 
         """
-        # Load the model
-        self.model = SentenceTransformer(model_name, device=device)
+        # Load the model (with model_dir as cache directory)
+        self.model = SentenceTransformer(model_name, device=device, cache_folder=str(model_dir))
         self.model.max_seq_length = max_seq_length
 
         self.model_name = model_name

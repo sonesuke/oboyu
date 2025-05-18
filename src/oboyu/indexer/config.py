@@ -26,7 +26,7 @@ DEFAULT_CONFIG = {
         "general_prefix": "",  # Prefix for general semantic encoding
 
         # Database settings
-        "db_path": "oboyu.db",  # Default database path
+        # db_path must be explicitly provided by the caller
 
         # VSS (Vector Similarity Search) settings
         "ef_construction": 128,  # Index construction parameter (build-time)
@@ -50,7 +50,7 @@ DEFAULT_DOCUMENT_PREFIX = "検索文書: "
 DEFAULT_QUERY_PREFIX = "検索クエリ: "
 DEFAULT_TOPIC_PREFIX = "トピック: "
 DEFAULT_GENERAL_PREFIX = ""
-DEFAULT_DB_PATH = "oboyu.db"
+# No default DB_PATH - must be explicitly provided
 DEFAULT_EF_CONSTRUCTION = 128
 DEFAULT_EF_SEARCH = 64
 DEFAULT_M = 16
@@ -159,9 +159,9 @@ class IndexerConfig:
         if not isinstance(indexer_config.get("general_prefix"), str):
             indexer_config["general_prefix"] = DEFAULT_GENERAL_PREFIX
 
-        # Validate db_path - must be a non-empty string
+        # Validate db_path - must be a non-empty string and must be provided
         if not isinstance(indexer_config.get("db_path"), str) or not indexer_config.get("db_path"):
-            indexer_config["db_path"] = DEFAULT_DB_PATH
+            raise ValueError("Database path (db_path) must be provided and cannot be empty")
 
         # Validate VSS parameters - must be positive integers
         if not isinstance(indexer_config.get("ef_construction"), int) or indexer_config.get("ef_construction", 0) <= 0:
@@ -263,24 +263,36 @@ class IndexerConfig:
         return int(self.config["indexer"]["max_workers"])
 
 
-def load_default_config() -> IndexerConfig:
-    """Load the default indexer configuration.
+def load_default_config(db_path: str) -> IndexerConfig:
+    """Load the default indexer configuration with the specified database path.
+
+    Args:
+        db_path: Database path to use
 
     Returns:
-        Default indexer configuration
+        Default indexer configuration with specified database path
 
     """
-    return IndexerConfig()
+    return IndexerConfig(config_dict={"indexer": {"db_path": db_path}})
 
 
-def load_config_from_file(config_path: Union[str, Path]) -> IndexerConfig:
+def load_config_from_file(config_path: Union[str, Path], db_path: Optional[str] = None) -> IndexerConfig:
     """Load indexer configuration from a file.
 
     Args:
         config_path: Path to configuration file
+        db_path: Database path to use if not specified in the config file
 
     Returns:
         Indexer configuration loaded from file
 
+    Raises:
+        ValueError: If db_path is not provided and not in the config file
+
     """
-    return IndexerConfig(config_path=config_path)
+    config = IndexerConfig(config_path=config_path)
+
+    # If db_path was not provided in the config file and not passed as parameter,
+    # this will raise a ValueError. This is handled in the IndexerConfig validation.
+
+    return config

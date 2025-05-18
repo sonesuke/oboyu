@@ -56,6 +56,12 @@ oboyu query "What are the key concepts in the documents?" --mode vector --top-k 
 # Get detailed explanation of search results
 oboyu query "Important design principles" --explain
 
+# Clear the entire index database (requires confirmation unless --force is used)
+oboyu clear
+
+# Clear with a specific database path
+oboyu clear --db-path custom.db --force
+
 # Check the current version
 oboyu version
 ```
@@ -121,6 +127,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Documentation
 
 - [Configuration Options](docs/configuration.md)
+- [CLI Commands](docs/cli.md)
 - [API Reference](docs/api.md)
 - [Japanese Support Details](docs/japanese.md)
 - [Architecture Overview](docs/architecture.md)
