@@ -3,4 +3,4 @@
 .pytest_cache
 __pycache__
 .coverage
-repomix-output.xml
+repomix-output.xml.DS_Store
