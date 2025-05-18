@@ -1,0 +1,179 @@
+"""Main crawler implementation for Oboyu.
+
+This module provides the Crawler class for discovering and processing documents.
+"""
+
+import concurrent.futures
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, List, Optional, Set
+
+from oboyu.crawler.discovery import discover_documents
+from oboyu.crawler.extractor import extract_content
+from oboyu.crawler.japanese import detect_encoding, process_japanese_text
+
+
+@dataclass
+class CrawlerResult:
+    """Result of a document crawl operation."""
+
+    path: Path
+    """Path to the document."""
+
+    title: str
+    """Document title, derived from file name or content."""
+
+    content: str
+    """Normalized document content."""
+
+    language: str
+    """Detected language code."""
+
+    metadata: Dict[str, object]
+    """Additional metadata about the document."""
+
+
+class Crawler:
+    """Document crawler for discovering and extracting content from files."""
+
+    def __init__(
+        self,
+        depth: int = 10,
+        include_patterns: Optional[List[str]] = None,
+        exclude_patterns: Optional[List[str]] = None,
+        max_file_size: int = 10 * 1024 * 1024,  # 10MB
+        follow_symlinks: bool = False,
+        japanese_encodings: Optional[List[str]] = None,
+        max_workers: int = 4,  # Number of worker threads for parallel processing
+    ) -> None:
+        """Initialize the crawler with configuration options.
+
+        Args:
+            depth: Maximum directory traversal depth
+            include_patterns: File patterns to include (e.g., "*.txt", "*.md")
+            exclude_patterns: Patterns to exclude (e.g., "*/node_modules/*")
+            max_file_size: Maximum file size in bytes to process
+            follow_symlinks: Whether to follow symbolic links during traversal
+            japanese_encodings: List of Japanese encodings to detect
+            max_workers: Maximum number of worker threads for parallel processing
+
+        """
+        self.depth = depth
+        self.include_patterns = include_patterns or ["*.txt", "*.md", "*.html", "*.py", "*.java"]
+        self.exclude_patterns = exclude_patterns or ["*/node_modules/*", "*/venv/*"]
+        self.max_file_size = max_file_size
+        self.follow_symlinks = follow_symlinks
+        self.japanese_encodings = japanese_encodings or ["utf-8", "shift-jis", "euc-jp"]
+        self.max_workers = max_workers
+
+        # Keep track of processed files to avoid duplicates
+        self._processed_files: Set[Path] = set()
+
+    def crawl(self, directory: Path) -> List[CrawlerResult]:
+        """Crawl a directory for documents.
+
+        Args:
+            directory: Directory path to crawl
+
+        Returns:
+            List of processed document results
+
+        """
+        # Discover document paths
+        doc_paths = discover_documents(
+            directory=directory,
+            patterns=self.include_patterns,
+            exclude_patterns=self.exclude_patterns,
+            max_depth=self.depth,
+            max_file_size=self.max_file_size,
+            follow_symlinks=self.follow_symlinks,
+        )
+
+        # Filter out already processed files
+        new_docs = []
+        for doc_path, doc_metadata in doc_paths:
+            if doc_path not in self._processed_files:
+                new_docs.append((doc_path, doc_metadata))
+                self._processed_files.add(doc_path)
+
+        # No new documents to process
+        if not new_docs:
+            return []
+
+        # Process documents in parallel using ThreadPoolExecutor
+        results: List[CrawlerResult] = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            # Submit all document processing tasks
+            future_to_doc = {
+                executor.submit(self._process_document, doc_path, doc_metadata): (doc_path, doc_metadata)
+                for doc_path, doc_metadata in new_docs
+            }
+
+            # Collect results as they complete
+            for future in concurrent.futures.as_completed(future_to_doc):
+                doc_path, _ = future_to_doc[future]
+                try:
+                    result = future.result()
+                    if result:
+                        results.append(result)
+                except Exception as e:
+                    # Log the error and continue
+                    print(f"Error processing {doc_path}: {e}")
+
+        return results
+
+    def _process_document(self, doc_path: Path, doc_metadata: Dict[str, object]) -> Optional[CrawlerResult]:
+        """Process a single document.
+
+        Args:
+            doc_path: Path to the document
+            doc_metadata: Metadata for the document
+
+        Returns:
+            CrawlerResult if successful, None otherwise
+
+        """
+        try:
+            # Extract content and detect language
+            content, language = extract_content(doc_path)
+
+            # Apply special processing for Japanese text
+            if language == "ja":
+                encoding = detect_encoding(content, self.japanese_encodings)
+                content = process_japanese_text(content, encoding)
+
+            # Generate a title from the filename or content
+            title = self._generate_title(doc_path, content)
+
+            # Create the result
+            return CrawlerResult(
+                path=doc_path,
+                title=title,
+                content=content,
+                language=language,
+                metadata=doc_metadata,
+            )
+        except Exception:
+            # The exception will be caught and logged in the calling function
+            raise
+
+    def _generate_title(self, path: Path, content: str) -> str:
+        """Generate a title for the document.
+
+        Args:
+            path: Path to the document
+            content: Document content
+
+        Returns:
+            Generated title
+
+        """
+        # Try to extract a title from the first line of content
+        if content and content.strip():
+            first_line = content.strip().splitlines()[0].strip()
+            # If first line looks like a title (not too long, no file extension)
+            if len(first_line) < 100 and "." not in first_line:
+                return first_line
+
+        # Fall back to filename without extension
+        return path.stem
