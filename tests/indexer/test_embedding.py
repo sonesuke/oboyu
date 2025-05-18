@@ -152,12 +152,13 @@ class TestEmbeddingGeneratorMocked:
             
             # Create temporary cache directory
             with tempfile.TemporaryDirectory() as temp_dir:
-                # Initialize generator with cache
+                # Initialize generator with cache and model directory
                 generator = EmbeddingGenerator(
                     model_name="test-model",
                     batch_size=2,
                     use_cache=True,
                     cache_dir=temp_dir,
+                    model_dir=temp_dir,  # Use same temp dir for both
                 )
                 
                 # Create test chunks

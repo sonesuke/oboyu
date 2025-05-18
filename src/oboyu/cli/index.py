@@ -12,11 +12,16 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from typing_extensions import Annotated
 
+from oboyu.cli.paths import DEFAULT_DB_PATH
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.indexer import Indexer
 
 # Create Typer app
-app = typer.Typer(help="Index documents for search")
+app = typer.Typer(help="Index documents for search and manage the index")
+
+# Create manage subcommand app
+manage_app = typer.Typer(help="Manage the index database")
+app.add_typer(manage_app, name="manage", help="Manage the index database")
 
 # Create console for rich output
 console = Console()
@@ -134,6 +139,55 @@ DatabasePathOption = Annotated[
 ]
 
 
+@manage_app.command(name="clear")
+def clear(
+    ctx: typer.Context,
+    db_path: DatabasePathOption = None,
+    force: ForceOption = False,
+) -> None:
+    """Clear all data from the index database.
+
+    This command removes all indexed documents and their embeddings from the database
+    while preserving the database schema and structure.
+    """
+    # Get global options from context
+    config_data = ctx.obj.get("config_data", {}) if ctx.obj else {}
+
+    # Create indexer configuration
+    indexer_config_dict = config_data.get("indexer", {})
+
+    # Handle database path explicitly, with clear precedence
+    if db_path is not None:
+        indexer_config_dict["db_path"] = str(db_path)
+        console.print(f"Using explicitly specified database path: [cyan]{db_path}[/cyan]")
+    elif "db_path" in indexer_config_dict:
+        console.print(f"Using configured database path: [cyan]{indexer_config_dict['db_path']}[/cyan]")
+    else:
+        # Use the default path from central definition
+        indexer_config_dict["db_path"] = str(DEFAULT_DB_PATH)
+        console.print(f"Using default database path: [cyan]{DEFAULT_DB_PATH}[/cyan]")
+
+    # Create configuration object
+    indexer_config = IndexerConfig(config_dict={"indexer": indexer_config_dict})
+
+    # Confirm before clearing if not forced
+    if not force:
+        console.print("[bold yellow]Warning:[/bold yellow] This will remove all indexed documents and search data.")
+        confirm = typer.confirm("Are you sure you want to continue?")
+        if not confirm:
+            console.print("Operation cancelled.")
+            return
+
+    # Create indexer
+    indexer = Indexer(config=indexer_config)
+
+    # Clear the index
+    console.print("Clearing index database...")
+    indexer.clear_index()
+
+    console.print("[bold green]Index database cleared successfully![/bold green]")
+
+
 @app.callback(invoke_without_command=True)
 def index(
     ctx: typer.Context,
@@ -183,8 +237,20 @@ def index(
         indexer_config_dict["chunk_overlap"] = chunk_overlap
     if embedding_model is not None:
         indexer_config_dict["embedding_model"] = embedding_model
+
+    # Handle database path explicitly, with clear precedence:
+    # 1. Command-line option (highest priority)
+    # 2. Config file value
+    # 3. Default from central path definition (lowest priority)
     if db_path is not None:
         indexer_config_dict["db_path"] = str(db_path)
+        console.print(f"Using explicitly specified database path: [cyan]{db_path}[/cyan]")
+    elif "db_path" in indexer_config_dict:
+        console.print(f"Using configured database path: [cyan]{indexer_config_dict['db_path']}[/cyan]")
+    else:
+        # Use the default path from central definition
+        indexer_config_dict["db_path"] = str(DEFAULT_DB_PATH)
+        console.print(f"Using default database path: [cyan]{DEFAULT_DB_PATH}[/cyan]")
 
     # Create configuration objects
     # We don't need to use the crawler_config directly; it's used by the indexer internally

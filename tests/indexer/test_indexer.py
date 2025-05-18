@@ -24,7 +24,7 @@ class TestIndexer:
              patch("oboyu.indexer.indexer.Database") as mock_db:
             
             # Initialize the indexer
-            indexer = Indexer()
+            indexer = Indexer(config=IndexerConfig(config_dict={"indexer": {"db_path": "test.db"}}))
             
             # Verify components were initialized
             assert indexer.config is not None
@@ -64,7 +64,7 @@ class TestIndexer:
         
         # Initialize indexer with mocks
         indexer = Indexer(
-            config=IndexerConfig(),
+            config=IndexerConfig(config_dict={"indexer": {"db_path": "test.db"}}),
             processor=mock_processor,
             embedding_generator=mock_generator,
             database=mock_db
@@ -115,7 +115,7 @@ class TestIndexer:
         
         # Initialize indexer with mocks
         indexer = Indexer(
-            config=IndexerConfig(),
+            config=IndexerConfig(config_dict={"indexer": {"db_path": "test.db"}}),
             processor=mock_processor,
             embedding_generator=mock_generator,
             database=mock_db
@@ -148,7 +148,7 @@ class TestIndexer:
         
         # Initialize indexer with mocks
         indexer = Indexer(
-            config=IndexerConfig(),
+            config=IndexerConfig(config_dict={"indexer": {"db_path": "test.db"}}),
             processor=mock_processor,
             embedding_generator=mock_generator,
             database=mock_db
@@ -165,6 +165,32 @@ class TestIndexer:
         assert deleted_count == 2
         mock_db.delete_chunks_by_path.assert_called_once_with(test_path)
         assert test_path not in indexer._processed_files
+        
+    def test_clear_index(self) -> None:
+        """Test clearing the entire index."""
+        # Create mock components
+        mock_processor = MagicMock()
+        mock_generator = MagicMock()
+        mock_db = MagicMock()
+        
+        # Initialize indexer with mocks, providing a test db_path
+        indexer = Indexer(
+            config=IndexerConfig(config_dict={"indexer": {"db_path": "test.db"}}),
+            processor=mock_processor,
+            embedding_generator=mock_generator,
+            database=mock_db
+        )
+        
+        # Add to processed files set (for testing that it gets cleared)
+        indexer._processed_files.add(Path("/test/doc1.txt"))
+        indexer._processed_files.add(Path("/test/doc2.txt"))
+        
+        # Clear the index
+        indexer.clear_index()
+        
+        # Verify results
+        mock_db.clear.assert_called_once()
+        assert len(indexer._processed_files) == 0  # Processed files should be cleared
 
 
 @pytest.mark.skip(reason="Requires integration with Crawler component")

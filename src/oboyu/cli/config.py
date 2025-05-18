@@ -10,8 +10,7 @@ from typing import Any, Dict, Optional, Union
 import yaml
 from rich.console import Console
 
-# Default configuration path
-DEFAULT_CONFIG_PATH = Path.home() / ".oboyu" / "config.yaml"
+from oboyu.cli.paths import DEFAULT_CONFIG_PATH, DEFAULT_DB_PATH
 
 # Console for output
 console = Console()
@@ -77,6 +76,9 @@ def create_default_config(path: Path) -> Dict[str, Any]:
     config = {}
     config.update(CRAWLER_DEFAULT_CONFIG)
     config.update(INDEXER_DEFAULT_CONFIG)
+
+    # Set default database path (using centralized path definition)
+    config["indexer"]["db_path"] = str(DEFAULT_DB_PATH)
 
     # Add query engine default config
     config.update({
