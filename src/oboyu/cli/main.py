@@ -150,18 +150,42 @@ def clear(
             console.print("Operation cancelled.")
             return
 
-    # Create indexer
-    indexer = Indexer(config=indexer_config)
+    # Import and use progress indicator for better UX
+    from oboyu.cli.formatters import create_indeterminate_progress
 
-    # Clear the index
+    # Show progress during indexer initialization
+    with create_indeterminate_progress("Initializing...") as init_progress:
+        init_task = init_progress.add_task("Loading embedding model and setting up database...", total=None)
+
+        # Create indexer (this loads the model and sets up the database)
+        indexer = Indexer(config=indexer_config)
+
+        # Mark initialization as complete
+        init_progress.update(init_task, description="[green]✓[/green] Initialization complete")
+
+    # Clear the index with progress indicator
     console.print("Clearing index database...")
-    indexer.clear_index()
+    with create_indeterminate_progress("Clearing...") as clear_progress:
+        clear_task = clear_progress.add_task("Removing indexed data...", total=None)
+
+        # Clear the index
+        indexer.clear_index()
+
+        # Mark clearing as complete
+        clear_progress.update(clear_task, description="[green]✓[/green] Database cleared")
 
     console.print("[bold green]Index database cleared successfully![/bold green]")
 
 
 def run() -> None:
     """Run the CLI application."""
+    # Display a welcome banner for better UX
+    console.print("""
+[bold cyan]=====================================[/bold cyan]
+[bold green]  Oboyu - Japanese-Enhanced Search[/bold green]
+[bold cyan]=====================================[/bold cyan]
+""")
+
     # Ensure config directory exists
     ensure_config_dirs()
 

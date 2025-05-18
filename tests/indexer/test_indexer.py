@@ -244,10 +244,11 @@ class TestIndexerIntegration:
             )
             
             # Index a directory
-            chunk_count = indexer.index_directory("/test/directory")
+            chunks_indexed, files_processed = indexer.index_directory("/test/directory")
             
             # Verify results
-            assert chunk_count == 1
+            assert chunks_indexed == 1
+            assert files_processed == 1
             mock_crawler.crawl.assert_called_once_with(Path("/test/directory"))
             mock_processor.return_value.process_document.assert_called_once()
             mock_generator.return_value.generate_embeddings.assert_called_once()
