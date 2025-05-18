@@ -1,13 +1,17 @@
 [project]
 name = "oboyu"
 version = "0.1.0"
-description = "Add your description here"
+description = "A Japanese-enhanced semantic search system for your local documents."
 readme = "README.md"
 authors = [
     { name = "sonesuke", email = "iamsonesuke@gmail.com" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "chardet>=5.2.0",
+    "charset-normalizer>=3.3.2",
+    "langdetect>=1.0.9"
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -37,21 +41,27 @@ omit = []
 
 [tool.ruff]
 exclude = [".venv", "tests"]
-select = [
-  "C9",
-  "ANN",
-  "S",
-  "E",
-  "F",
-  "W",
-  "I",
-  "D",
-]
 target-version = "py313"
 include = ["*.py"]
 line-length = 120
 
-[tool.ruff.isort]
+[tool.ruff.lint]
+select = [
+  "C9",  # McCabe complexity
+  "ANN",  # Type annotations
+  "S",    # Security
+  "E",    # Syntax errors
+  "F",    # Pyflakes
+  "W",    # Warnings
+  "I",    # isort
+  "D",    # Docstrings
+]
+ignore = [
+  "D203",  # one-blank-line-before-class (we're using D211 instead)
+  "D213",  # multi-line-summary-second-line (we're using D212 instead)
+]
+
+[tool.ruff.lint.isort]
 combine-as-imports = true
 known-first-party = ["oboyu"]
 split-on-trailing-comma = true
@@ -59,5 +69,5 @@ split-on-trailing-comma = true
 [tool.ruff.format]
 quote-style = "double"
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 20
