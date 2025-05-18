@@ -6,11 +6,10 @@ VSS (Vector Similarity Search) extension, and HNSW index management.
 
 import json
 import shutil
-import tempfile
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import duckdb
 import numpy as np
@@ -18,6 +17,17 @@ from duckdb import DuckDBPyConnection
 from numpy.typing import NDArray
 
 from oboyu.indexer.processor import Chunk
+
+
+# Custom JSON encoder for datetime objects
+class DateTimeEncoder(json.JSONEncoder):
+    """JSON encoder that handles datetime objects."""
+
+    def default(self, obj: object) -> object:
+        """Convert datetime objects to ISO format strings."""
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
 
 
 class Database:
@@ -55,18 +65,21 @@ class Database:
 
     def setup(self) -> None:
         """Set up the database schema and extensions."""
-        # Create connection
-        # Use in-memory database for temporary file paths to make tests more reliable
-        if str(self.db_path).startswith(tempfile.gettempdir()):
-            self.conn = duckdb.connect(":memory:")
-        else:
-            self.conn = duckdb.connect(str(self.db_path))
+        # Ensure the parent directory exists
+        if not str(self.db_path).startswith(":memory:"):
+            Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
 
-        # Install and load VSS extension
+        # Always use a file-based database to ensure persistence
+        self.conn = duckdb.connect(str(self.db_path))
+
+        # Install and load VSS extension first
         # The VSS extension is a system library that comes with DuckDB
         # See: https://duckdb.org/docs/stable/extensions/vss.html
         self.conn.execute("INSTALL vss")
         self.conn.execute("LOAD vss")
+
+        # Enable experimental persistence for HNSW indexes
+        self.conn.execute("SET hnsw_enable_experimental_persistence=true")
 
         # Create tables if they don't exist
         self._create_schema()
@@ -145,7 +158,7 @@ class Database:
                 chunk.language,
                 chunk.created_at,
                 chunk.modified_at,
-                json.dumps(chunk.metadata),
+                json.dumps(chunk.metadata, cls=DateTimeEncoder),
             ))
 
         # Insert chunks
@@ -206,7 +219,7 @@ class Database:
         query_vector: NDArray[np.float32],
         limit: int = 10,
         language: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Dict[str, object]]:
         """Search for similar documents using vector similarity.
 
         Args:
@@ -289,7 +302,7 @@ class Database:
 
         self.conn.execute("PRAGMA hnsw_compact_index('vector_idx')")
 
-    def get_chunk_by_id(self, chunk_id: str) -> Optional[Dict[str, Any]]:
+    def get_chunk_by_id(self, chunk_id: str) -> Optional[Dict[str, object]]:
         """Retrieve a chunk by its ID.
 
         Args:
@@ -323,7 +336,7 @@ class Database:
             "metadata": json.loads(result[8]) if result[8] else {},
         }
 
-    def get_chunks_by_path(self, path: Union[str, Path]) -> List[Dict[str, Any]]:
+    def get_chunks_by_path(self, path: Union[str, Path]) -> List[Dict[str, object]]:
         """Retrieve chunks by document path.
 
         Args:

@@ -19,10 +19,11 @@ The system provides both command-line interface for direct queries and an MCP se
 
 - **Local Directory Processing**: Index any directory of text-based documents on your local system
 - **Text Format Support**: Process plain text, markdown, code files, configuration files, and more
-- **Japanese Language Excellence**: First-class support for Japanese text with built-in specialized tokenization
-- **Semantic Search**: Retrieve the most relevant documents using vector embeddings
+- **Japanese Language Excellence**: First-class support for Japanese text with built-in specialized tokenization and encoding detection
+- **Semantic Search**: Retrieve the most relevant documents using vector embeddings with the Ruri v3 model
+- **Multiple Search Modes**: Choose between vector, BM25, or hybrid search depending on your needs
 - **Document-Focused Results**: Get top matching documents with URIs, titles, and relevant snippets
-- **MCP Server Mode**: Run as a server with stdio interface for integration with other tools
+- **Rich Command-Line Interface**: Powerful CLI with extensive options and colorized output
 - **Privacy-Focused**: Your documents stay on your machine - no data sent to external services by default
 
 ## Installation
@@ -43,14 +44,20 @@ pip install -e .
 # Index a directory
 oboyu index /path/to/your/documents
 
+# Index with specific file patterns and Japanese encoding detection
+oboyu index /path/to/documents --include-patterns "*.txt,*.md" --japanese-encodings "utf-8,shift-jis,euc-jp"
+
 # Query your documents in Japanese (returns top matching documents with snippets)
 oboyu query "ドキュメント内の重要な概念は何ですか？"
 
-# Query in English is also supported
-oboyu query "What are the key concepts in the documents?"
+# Query in English with specific search mode and number of results
+oboyu query "What are the key concepts in the documents?" --mode vector --top-k 10
 
-# Start the MCP server in stdio mode
-oboyu mcp
+# Get detailed explanation of search results
+oboyu query "Important design principles" --explain
+
+# Check the current version
+oboyu version
 ```
 
 ## Configuration
@@ -58,14 +65,46 @@ oboyu mcp
 Create a configuration file at `~/.oboyu/config.yaml`:
 
 ```yaml
-# Basic configuration
-embedding_model: "intfloat/multilingual-e5-large"
-top_k: 5  # Number of results to return
-  
-# Processing settings
-chunk_size: 512
-chunk_overlap: 50
+# Crawler settings
+crawler:
+  depth: 10
+  include_patterns:
+    - "*.txt"
+    - "*.md"
+    - "*.html"
+    - "*.py"
+    - "*.java"
+  exclude_patterns:
+    - "*/node_modules/*"
+    - "*/venv/*"
+  max_file_size: 10485760  # 10MB
+  follow_symlinks: false
+  japanese_encodings:
+    - "utf-8"
+    - "shift-jis"
+    - "euc-jp"
+  max_workers: 4
+
+# Indexer settings
+indexer:
+  chunk_size: 1024
+  chunk_overlap: 256
+  embedding_model: "cl-nagoya/ruri-v3-30m"
+  embedding_device: "cpu"
+  batch_size: 8
+  db_path: "oboyu.db"
+
+# Query settings
+query:
+  default_mode: "hybrid"
+  vector_weight: 0.7
+  bm25_weight: 0.3
+  top_k: 5
+  snippet_length: 160
+  highlight_matches: true
 ```
+
+Oboyu will create a default configuration file with these settings if none exists. You can override any of these settings via command-line options or by editing the configuration file.
 
 See the [configuration documentation](docs/configuration.md) for more options.
 
