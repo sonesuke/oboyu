@@ -7,6 +7,19 @@ authors = [
     { name = "sonesuke", email = "iamsonesuke@gmail.com" }
 ]
 requires-python = ">=3.13"
+classifiers = [
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: Japanese",
+    "Topic :: Text Processing :: Indexing",
+]
+license = { text = "MIT" }
+keywords = ["semantic-search", "japanese", "text-processing", "vector-search", "document-search"]
+
+# Include the src directory in the package
 dependencies = [
     "chardet>=5.2.0",
     "charset-normalizer>=3.3.2",
@@ -17,11 +30,17 @@ dependencies = [
     "duckdb>=0.9.0",  # Version supporting VSS extension
     "duckdb-engine",
     "protobuf>=4.25.1",  # Required for SentenceTransformer with Ruri model
-    "sentencepiece>=0.2.0"  # Required for Japanese tokenization
+    "sentencepiece>=0.2.0",  # Required for Japanese tokenization
+    "typer>=0.9.0",  # CLI framework
+    "rich>=13.4.2",  # Rich terminal output formatting
+    "pyyaml>=6.0"  # YAML configuration file handling
 ]
 
+[project.scripts]
+oboyu = "oboyu.cli.main:run"
+
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.8.0"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
