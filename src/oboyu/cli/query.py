@@ -9,8 +9,6 @@ from typing import Optional
 
 import typer
 from rich.console import Console
-from rich.markup import escape
-from rich.panel import Panel
 from rich.text import Text
 from typing_extensions import Annotated
 
@@ -102,8 +100,8 @@ DatabasePathOption = Annotated[
 ]
 
 
-def format_search_result(result: SearchResult, query: str, show_explanation: bool = False) -> Panel:
-    """Format a search result for display.
+def format_search_result(result: SearchResult, query: str, show_explanation: bool = False) -> Text:
+    """Format a search result for display using cleaner hierarchical format.
 
     Args:
         result: Search result to format
@@ -111,41 +109,40 @@ def format_search_result(result: SearchResult, query: str, show_explanation: boo
         show_explanation: Whether to show detailed explanation
 
     Returns:
-        Formatted panel for display
+        Formatted text for display
 
     """
-    # Create title
-    title = Text()
-    title.append(f"{result.title}", style="bold cyan")
+    from oboyu.cli.utils import format_snippet
 
-    # Create content
+    # Create content with structured hierarchical format
     content = Text()
 
-    # Add score
-    content.append(f"Score: {result.score:.4f}", style="bold green")
-    content.append("\n\n")
+    # Title with score
+    content.append("• ", style="bold")
+    content.append(f"{result.title}", style="bold cyan")
+    content.append(f" (Score: {result.score:.2f})", style="dim")
+    content.append("\n")
 
-    # Add snippet
-    content.append(escape(result.content[:200] + "..."), style="")
+    # Snippet with better formatting
+    snippet = format_snippet(result.content, query, 200, True)
+    content.append(f"  {snippet}\n", style="")
 
-    # Add metadata
-    content.append("\n\n")
-    content.append("Path: ", style="dim")
+    # Path as source
+    content.append("  Source: ", style="dim")
     content.append(str(result.path), style="blue underline")
 
-    # Add language
-    content.append("\nLanguage: ", style="dim")
-    content.append(result.language, style="")
+    # Language as metadata if available and not empty
+    if result.language and result.language.strip():
+        content.append(f" ({result.language})", style="dim")
 
     # Add explanation if requested
     if show_explanation:
-        content.append("\n\nExplanation:\n", style="dim")
-        content.append(f"Chunk ID: {result.chunk_id}\n", style="")
-        content.append(f"Chunk Index: {result.chunk_index}\n", style="")
+        content.append("\n  [Explanation] ", style="dim")
+        content.append(f"Chunk ID: {result.chunk_id}, ", style="")
+        content.append(f"Index: {result.chunk_index}", style="")
         # Add more explanation here in the future
 
-    # Create panel
-    return Panel(content, title=title, border_style="blue")
+    return content
 
 
 @app.callback(invoke_without_command=True)
@@ -202,12 +199,21 @@ def query(
     # Create indexer configuration object
     indexer_config = IndexerConfig(config_dict={"indexer": indexer_config_dict})
 
+    # Provide immediate feedback
+    console.print(f"Searching for: \"[bold]{query}[/bold]\"")
+    console.print(f"Search mode: [cyan]{mode}[/cyan]")
+
     # Create indexer
     indexer = Indexer(config=indexer_config)
 
-    # Perform search
+    # Import progress indicator
+    from oboyu.cli.formatters import create_indeterminate_progress
+
     start_time = time.time()
-    results = indexer.search(query, limit=top_k)
+    with create_indeterminate_progress("Searching database...") as progress:
+        progress.add_task("Searching...", total=None)
+        results = indexer.search(query, limit=top_k)
+
     elapsed_time = time.time() - start_time
 
     # Display results
@@ -215,11 +221,16 @@ def query(
         console.print("[yellow]No results found.[/yellow]")
         return
 
-    console.print(f"[bold green]Found {len(results)} results in {elapsed_time:.2f} seconds:[/bold green]\n")
+    # Display results header with divider
+    console.print("\nResults for: \"[bold]{query}[/bold]\"")
+    console.print("----------------------------------------")
 
     # Format and display each result
-    for i, result in enumerate(results, start=1):
-        console.print(f"[bold]Result {i}:[/bold]")
-        panel = format_search_result(result, query, show_explanation=explain)
-        console.print(panel)
+    for result in results:
+        formatted_result = format_search_result(result, query, show_explanation=explain)
+        console.print(formatted_result)
         console.print("")  # Add spacing between results
+
+    # Display footer with divider
+    console.print("----------------------------------------")
+    console.print(f"Retrieved {len(results)} documents in {elapsed_time:.2f} seconds")

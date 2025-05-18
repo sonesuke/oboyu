@@ -210,15 +210,51 @@ class Indexer:
         # Convert to SearchResult objects
         search_results = []
         for result in db_results:
+            # Convert result items to appropriate types for SearchResult
+            chunk_id = str(result["chunk_id"])
+            path = str(result["path"])
+            title = str(result["title"])
+            content = str(result["content"])
+            language = str(result["language"])
+
+            # Handle potentially problematic conversions
+            # Handle chunk_index conversion
+            chunk_index_raw = result["chunk_index"]
+            if isinstance(chunk_index_raw, int):
+                chunk_index = chunk_index_raw
+            else:
+                try:
+                    chunk_index = int(str(chunk_index_raw))
+                except (TypeError, ValueError):
+                    chunk_index = 0  # Default value if conversion fails
+
+            # Handle score conversion
+            score_raw = result["score"]
+            if isinstance(score_raw, (float, int)):
+                score = float(score_raw)
+            else:
+                try:
+                    score = float(str(score_raw))
+                except (TypeError, ValueError):
+                    score = 0.0  # Default value if conversion fails
+
+            # Handle metadata which could be any type
+            metadata_raw = result["metadata"]
+            if isinstance(metadata_raw, dict):
+                metadata = metadata_raw  # Already a dict
+            else:
+                # Create an empty dict if metadata is not a dict
+                metadata = {"original": str(metadata_raw)}
+
             search_results.append(SearchResult(
-                chunk_id=result["chunk_id"],
-                path=result["path"],
-                title=result["title"],
-                content=result["content"],
-                chunk_index=result["chunk_index"],
-                language=result["language"],
-                metadata=result["metadata"],
-                score=result["score"],
+                chunk_id=chunk_id,
+                path=path,
+                title=title,
+                content=content,
+                chunk_index=chunk_index,
+                language=language,
+                metadata=metadata,
+                score=score,
             ))
 
         return search_results
@@ -243,7 +279,7 @@ class Indexer:
 
         return deleted_count
 
-    def index_directory(self, directory: Union[str, Path], incremental: bool = True) -> int:
+    def index_directory(self, directory: Union[str, Path], incremental: bool = True) -> tuple[int, int]:
         """Index documents in a directory using the integrated crawler.
 
         Args:
@@ -251,7 +287,7 @@ class Indexer:
             incremental: Whether to only index new files
 
         Returns:
-            Number of chunks indexed
+            Tuple of (number of chunks indexed, number of files processed)
 
         """
         from oboyu.crawler.config import load_default_config
@@ -276,8 +312,13 @@ class Indexer:
         # Crawl directory
         results = crawler.crawl(Path(directory))
 
+        # Count the number of files processed
+        files_processed = len(results)
+
         # Index results
-        return self.index_documents(results)
+        chunks_indexed = self.index_documents(results)
+
+        return chunks_indexed, files_processed
 
     def batch_index(self, batch_size: int = 100) -> None:
         """Index in batches to control memory usage.

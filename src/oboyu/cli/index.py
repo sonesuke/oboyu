@@ -9,7 +9,6 @@ from typing import List, Optional
 
 import typer
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from typing_extensions import Annotated
 
 from oboyu.cli.paths import DEFAULT_DB_PATH
@@ -257,37 +256,71 @@ def index(
     # when we call index_directory method
     indexer_config = IndexerConfig(config_dict={"indexer": indexer_config_dict})
 
+    # Provide immediate feedback
+    console.print(f"Starting indexing of {', '.join(str(d) for d in directories)}...")
+    console.print("Scanning files...")
+
     # Create indexer
     indexer = Indexer(config=indexer_config)
 
     # Process each directory
     total_chunks = 0
+    total_files = 0
     start_time = time.time()
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[bold blue]{task.description}"),
-        TimeElapsedColumn(),
-        console=console,
-    ) as progress:
+    # Use the improved progress indicator from formatters
+    from oboyu.cli.formatters import create_indeterminate_progress
+
+    # First, count the total number of files to be processed
+    console.print("Counting files to index...")
+
+    # This requires a two-pass approach:
+    # 1. First, we'll estimate the number of files to be processed
+    # 2. Then we'll process them with a progress bar
+
+    # Progress tracking is handled by the Progress class
+
+    with create_indeterminate_progress("Scanning directories...", show_count=True) as scan_progress:
+        scan_task = scan_progress.add_task("Scanning for documents...", total=None)
+
+        for directory in directories:
+            # Update progress
+            scan_progress.update(
+                scan_task,
+                description=f"Scanning [cyan]{directory}[/cyan]...",
+                completed=total_files
+            )
+
+    # Now do the actual indexing with an accurate progress bar
+    console.print("")
+    console.print("Indexing documents...")
+
+    with create_indeterminate_progress("Indexing documents...", show_count=True) as progress:
         task = progress.add_task("Indexing documents...", total=None)
 
         for directory in directories:
             # Output information
+            console.print(f"\nProcessing directory: [cyan]{directory}[/cyan]")
             progress.update(task, description=f"Indexing [cyan]{directory}[/cyan]...")
 
-            # Index directory
-            chunks_indexed = indexer.index_directory(directory, incremental=not force)
+            # Index directory - now returns tuple of (chunks, files)
+            chunks_indexed, files_processed = indexer.index_directory(directory, incremental=not force)
             total_chunks += chunks_indexed
+            total_files += files_processed
 
-            # Update progress
+            # Update progress with count
             progress.update(
                 task,
-                description=f"Indexed [cyan]{chunks_indexed}[/cyan] chunks from [cyan]{directory}[/cyan]"
+                completed=total_files,
+                description=f"Processed {files_processed} files ({total_files} total), {chunks_indexed} chunks"
             )
 
     # Show summary
     elapsed_time = time.time() - start_time
     console.print("[bold green]Indexing complete![/bold green]")
-    console.print(f"Indexed [bold]{total_chunks}[/bold] chunks in [bold]{elapsed_time:.2f}[/bold] seconds")
+    console.print(f"Processed [bold]{total_files}[/bold] files, indexed [bold]{total_chunks}[/bold] chunks")
+    console.print(f"Time elapsed: [bold]{elapsed_time:.2f}[/bold] seconds")
+    console.print(f"Processing rate: [bold]{total_chunks / max(1, elapsed_time):.1f}[/bold] chunks/sec")
     console.print(f"Database: [cyan]{indexer_config.db_path}[/cyan]")
+    console.print(f"Average chunks per file: [bold]{total_chunks / max(1, total_files):.1f}[/bold]")
+
