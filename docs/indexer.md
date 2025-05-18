@@ -2,15 +2,15 @@
 
 ## Overview
 
-The Indexer is the core processing component of Oboyu, responsible for analyzing documents, generating search indexes, and managing the database. It implements specialized processing for Japanese text and creates both vector and BM25 indexes for powerful search capabilities.
+The Indexer is the core processing component of Oboyu, responsible for analyzing documents, generating search indexes, and managing the database. It implements specialized processing for Japanese text and creates vector indexes for powerful semantic search capabilities.
 
 ## Design Goals
 
 - Process documents efficiently with language-specific handling
-- Generate high-quality embeddings for semantic search
-- Create effective keyword indexes for BM25 search
-- Maintain a flexible database schema
-- Support incremental updates and multiple embedding models
+- Generate high-quality embeddings for semantic search with Ruri v3 model
+- Maintain a flexible database schema with DuckDB and VSS extension
+- Support incremental updates and embedding caching
+- Optimize for Japanese text processing
 
 ## Component Structure
 
@@ -20,58 +20,76 @@ The Document Processor handles:
 
 - Language-specific text preparation
 - Document chunking with configurable size and overlap
-- Special content handling (code blocks, tables, etc.)
 - Text normalization and cleaning
+- Prefix handling for Ruri v3 embedding model
 
 ```python
-def process_document(document):
-    # Implementation details
+def process_document(path, content, title, language, metadata=None):
+    # Split content into chunks
+    chunks = _chunk_text(content)
+    # Apply prefix to each chunk
+    prefixed_chunks = [f"検索文書: {chunk}" for chunk in chunks]
     # Returns document chunks ready for indexing
+    return chunks_with_metadata
 ```
 
 ### Japanese Processor
 
 The Japanese Processor provides specialized handling for Japanese text:
 
-- Tokenization using MeCab/Sudachi
-- Japanese-specific text normalization
-- Character variation handling
-- Mixed Japanese-English content processing
+- Integration with crawler's Japanese text processing
+- Character normalization (full-width to half-width conversion)
+- Line ending standardization
+- Encoding detection and handling
 
 ```python
-def process_japanese_text(text):
-    # Implementation details
-    # Returns tokenized and normalized Japanese text
+def process_japanese_text(text, encoding="utf-8"):
+    # Normalize Japanese text
+    normalized = _normalize_japanese(text)
+    # Standardize line endings
+    standardized = _standardize_line_endings(normalized)
+    # Returns processed Japanese text
+    return standardized
 ```
 
 ### Embedding Generator
 
 The Embedding Generator creates vector representations:
 
-- Loads and manages embedding models
-- Generates embeddings for document chunks
+- Uses SentenceTransformer with Ruri v3-30m model
+- Generates 256-dimensional embeddings for document chunks
 - Handles batching for efficient processing
-- Manages embedding caching and updates
+- Implements persistent embedding cache
+- Applies specialized prefix scheme for different text types
 
 ```python
-def generate_embeddings(chunks, model_name="default"):
-    # Implementation details
+def generate_embeddings(chunks):
+    # Apply document prefix
+    prefixed_chunks = [f"検索文書: {chunk.content}" for chunk in chunks]
+    # Generate embeddings in batches
+    embeddings = model.encode(prefixed_chunks, batch_size=8)
     # Returns vectors for document chunks
+    return embeddings
 ```
 
 ### Database Manager
 
 The Database Manager handles:
 
-- Database initialization and schema management
-- DuckDB connection and extension loading
+- DuckDB setup with VSS extension
+- Schema creation and management
+- HNSW index for vector similarity search
+- Efficient vector storage and search
 - Transaction management for data consistency
-- Index creation and maintenance
 
 ```python
-def initialize_database():
-    # Implementation details
-    # Sets up DuckDB with required extensions and schema
+def setup():
+    # Install and load VSS extension
+    conn.execute("INSTALL vss; LOAD vss;")
+    # Create database schema
+    _create_schema()
+    # Create HNSW index
+    _create_hnsw_index()
 ```
 
 ## Database Schema
@@ -79,47 +97,37 @@ def initialize_database():
 The Indexer creates and maintains the following schema:
 
 ```sql
--- Documents table stores the original document metadata
-CREATE TABLE documents (
-    id VARCHAR PRIMARY KEY,
-    path VARCHAR,
-    title VARCHAR,
-    content TEXT,
-    language VARCHAR,
-    created_at TIMESTAMP,
-    modified_at TIMESTAMP,
-    metadata JSONB
-);
-
 -- Chunks table stores document segments for granular search
 CREATE TABLE chunks (
     id VARCHAR PRIMARY KEY,
-    doc_id VARCHAR,
-    content TEXT,
-    chunk_index INTEGER,
-    FOREIGN KEY (doc_id) REFERENCES documents (id)
+    path VARCHAR,             -- Path to file
+    title VARCHAR,            -- Chunk title (or original filename)
+    content TEXT,             -- Chunk text content
+    chunk_index INTEGER,      -- Chunk position in original document
+    language VARCHAR,         -- Language code
+    created_at TIMESTAMP,     -- Creation timestamp
+    modified_at TIMESTAMP,    -- Modification timestamp
+    metadata JSONB            -- Additional metadata
 );
 
 -- Embeddings table stores vector representations for semantic search
 CREATE TABLE embeddings (
     id VARCHAR PRIMARY KEY,
-    chunk_id VARCHAR,
-    model VARCHAR,
-    vector ARRAY,
-    created_at TIMESTAMP,
+    chunk_id VARCHAR,         -- Related chunk ID
+    model VARCHAR,            -- Embedding model used
+    vector FLOAT[256],        -- 256-dimensional vector (ruri-v3-30m specific)
+    created_at TIMESTAMP,     -- Embedding generation timestamp
     FOREIGN KEY (chunk_id) REFERENCES chunks (id)
 );
 
 -- Create HNSW index for vector search
 CREATE INDEX vector_idx ON embeddings 
 USING HNSW (vector) 
-WITH (metric = 'cosine');
-
--- Create FTS index for BM25 search
-CREATE VIRTUAL TABLE chunks_fts USING fts5(
-    content,
-    chunk_id UNINDEXED,
-    tokenize='porter unicode61'
+WITH (
+    metric = 'cosine',
+    ef_construction = 128,
+    ef_search = 64,
+    M = 16
 );
 ```
 
@@ -129,47 +137,91 @@ CREATE VIRTUAL TABLE chunks_fts USING fts5(
 
 - Uses DuckDB's VSS extension for vector similarity search
 - Creates Hierarchical Navigable Small Worlds (HNSW) index
-- Supports multiple distance metrics (cosine, L2, inner product)
-- Configurable for accuracy vs. performance tradeoffs
+- Uses cosine similarity as distance metric
+- Configurable parameters for accuracy vs. performance tradeoffs:
+  - `ef_construction`: Controls index build quality (default: 128)
+  - `ef_search`: Controls search quality (default: 64)
+  - `M`: Number of bidirectional links (default: 16)
+  - `M0`: Level-0 connections (default: 2*M)
 
-### BM25 Index
+## Ruri v3-30m Embedding Model
 
-- Uses DuckDB's FTS extension for full-text search
-- Implements BM25 ranking algorithm
-- Enhanced with Japanese-aware tokenization
-- Optimized for keyword-based retrieval
+Oboyu uses the [Ruri v3-30m](https://huggingface.co/cl-nagoya/ruri-v3-30m) embedding model by Cyberagent Nagoya for Japanese and multilingual support.
+
+### Key Features
+
+- **256-dimensional embeddings**: Compact but powerful representations
+- **Multilingual Support**: Optimized for Japanese, English, and other languages
+- **Maximum Sequence Length**: 8192 tokens (much longer than most models)
+- **Symmetric Similarity**: Performance optimized for document-to-query matching
+
+### Prefix Scheme
+
+Ruri v3 uses a 1+3 prefix scheme for different embedding purposes:
+
+- **Document Prefix** (`検索文書: `): Added to document chunks for indexing
+- **Query Prefix** (`検索クエリ: `): Added to search queries
+- **Topic Prefix** (`トピック: `): Used for topic information
+- **General Prefix** (empty string): Used for general semantic encoding
 
 ## Data Flow
 
 1. Receive documents from the Crawler
-2. Process documents into chunks
+2. Process documents into chunks with appropriate prefix
 3. Generate embeddings for each chunk
-4. Store documents, chunks, and embeddings in the database
-5. Create and maintain search indexes
+4. Store chunks and embeddings in the database
+5. Create and maintain HNSW index
+6. Process search queries with matching prefix
 
 ## Configuration Options
 
-The Indexer is configured through the following settings in `config.yaml`:
+The Indexer is configured through the IndexerConfig class:
 
-```yaml
-indexer:
-  chunk_size: 512                 # Size of document chunks
-  chunk_overlap: 50               # Overlap between chunks
-  embedding_model: "intfloat/multilingual-e5-large"
-  japanese_tokenizer: "sudachi"   # Japanese tokenizer to use
-  batch_size: 32                  # Batch size for embedding generation
-  cache_embeddings: true          # Whether to cache embeddings
+```python
+DEFAULT_CONFIG = {
+    "indexer": {
+        # Document processing settings
+        "chunk_size": 1024,  # Default chunk size in characters
+        "chunk_overlap": 256,  # Default overlap between chunks
+        
+        # Embedding settings
+        "embedding_model": "cl-nagoya/ruri-v3-30m",  # Default embedding model
+        "embedding_device": "cpu",  # Default device for embeddings
+        "batch_size": 8,  # Default batch size for embedding generation
+        "max_seq_length": 8192,  # Maximum sequence length
+        
+        # Prefix scheme settings (Ruri v3's 1+3 prefix scheme)
+        "document_prefix": "検索文書: ",  # Prefix for documents
+        "query_prefix": "検索クエリ: ",  # Prefix for search queries
+        "topic_prefix": "トピック: ",  # Prefix for topic information
+        "general_prefix": "",  # Prefix for general semantic encoding
+        
+        # Database settings
+        "db_path": "oboyu.db",  # Default database path
+        
+        # VSS (Vector Similarity Search) settings
+        "ef_construction": 128,  # Index construction parameter
+        "ef_search": 64,  # Search time parameter
+        "m": 16,  # Number of bidirectional links in HNSW graph
+        "m0": None,  # Level-0 connections (None means use 2*M)
+        
+        # Processing settings
+        "max_workers": 4,  # Maximum number of worker threads
+    }
+}
 ```
 
 ## Performance Considerations
 
-- Uses batch processing for efficient embedding generation
-- Implements parallel processing where appropriate
-- Optimizes database operations for large document collections
-- Manages memory usage for embedding models
+- Uses ThreadPoolExecutor for parallel document processing
+- Implements batch processing for efficient embedding generation
+- Persistent embedding cache to avoid regenerating embeddings
+- Periodic HNSW index recompaction for better search performance
+- Intelligent chunk boundary detection at sentence/paragraph level
 
 ## Integration with Other Components
 
-- Receives documents from the Crawler in standardized format
-- Provides indexed data to the Query Engine via the database
-- Maintains clean separation of concerns for system modularity
+- Directly accepts CrawlerResult objects from the Crawler component
+- Provides search functionality via the Indexer.search method
+- Maintains backwards compatibility with the crawler's Japanese text processing
+- Supports incremental updates for new documents

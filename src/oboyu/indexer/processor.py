@@ -1,0 +1,247 @@
+"""Document processing for Oboyu indexer.
+
+This module handles document chunking, text normalization, and preparation
+for embedding generation with special handling for Japanese content.
+"""
+
+import re
+import uuid
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+# Import Japanese text processing from crawler component
+from oboyu.crawler.japanese import process_japanese_text
+
+
+@dataclass
+class Chunk:
+    """Document chunk for indexing."""
+
+    id: str
+    """Unique identifier for the chunk."""
+
+    path: Path
+    """Path to the source document."""
+
+    title: str
+    """Title of the document or chunk."""
+
+    content: str
+    """Chunk text content."""
+
+    chunk_index: int
+    """Position of this chunk in the original document."""
+
+    language: str
+    """Language code of the content."""
+
+    created_at: datetime
+    """Timestamp when the chunk was created."""
+
+    modified_at: datetime
+    """Timestamp when the chunk was last modified."""
+
+    metadata: Dict[str, object]
+    """Additional metadata about the chunk."""
+
+    prefix_content: Optional[str] = None
+    """Content with prefix applied, ready for embedding."""
+
+
+class DocumentProcessor:
+    """Processor for chunking and preparing documents for indexing."""
+
+    def __init__(
+        self,
+        chunk_size: int = 1024,
+        chunk_overlap: int = 256,
+        document_prefix: str = "検索文書: ",
+    ) -> None:
+        """Initialize the document processor.
+
+        Args:
+            chunk_size: Maximum size of each chunk in characters
+            chunk_overlap: Overlap between consecutive chunks in characters
+            document_prefix: Prefix to add to document chunks for embedding
+
+        """
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        self.document_prefix = document_prefix
+
+    def process_document(
+        self,
+        path: Path,
+        content: str,
+        title: str,
+        language: str,
+        metadata: Optional[Dict[str, object]] = None,
+    ) -> List[Chunk]:
+        """Process a document into chunks.
+
+        Args:
+            path: Path to the document
+            content: Document content
+            title: Document title
+            language: Language code
+            metadata: Additional metadata
+
+        Returns:
+            List of document chunks
+
+        """
+        # Apply language-specific processing
+        processed_content = self._preprocess_content(content, language)
+
+        # Split into chunks
+        chunks = self._chunk_text(processed_content)
+
+        # Create chunk objects
+        now = datetime.now()
+        result = []
+
+        for i, chunk_text in enumerate(chunks):
+            # Generate a unique ID for the chunk
+            chunk_id = f"{uuid.uuid4()}"
+
+            # Create chunk object
+            chunk = Chunk(
+                id=chunk_id,
+                path=path,
+                title=f"{title} - Part {i+1}" if len(chunks) > 1 else title,
+                content=chunk_text,
+                chunk_index=i,
+                language=language,
+                created_at=now,
+                modified_at=now,
+                metadata=metadata or {},
+            )
+
+            # Add prefixed content for embedding
+            chunk.prefix_content = self._add_prefix(chunk_text)
+
+            result.append(chunk)
+
+        return result
+
+    def _preprocess_content(self, content: str, language: str) -> str:
+        """Preprocess content based on language.
+
+        Args:
+            content: Original content
+            language: Language code
+
+        Returns:
+            Preprocessed content
+
+        """
+        # Apply special processing for Japanese text
+        if language == "ja":
+            # Use the Japanese text processing from the crawler component
+            content = process_japanese_text(content, "utf-8")
+
+        # For all languages
+        # Remove excessive whitespace
+        content = re.sub(r"\s+", " ", content).strip()
+
+        return content
+
+    def _chunk_text(self, text: str) -> List[str]:
+        """Split text into chunks with overlap.
+
+        Args:
+            text: Text to chunk
+
+        Returns:
+            List of text chunks
+
+        """
+        # If text is shorter than chunk size, return it as a single chunk
+        if len(text) <= self.chunk_size:
+            return [text]
+
+        chunks = []
+        start = 0
+
+        while start < len(text):
+            # Get chunk of specified size
+            end = start + self.chunk_size
+
+            # Adjust chunk boundary to end at a sentence or paragraph if possible
+            if end < len(text):
+                # Try to find paragraph break
+                paragraph_break = text.rfind("\n\n", start, end)
+                if paragraph_break != -1 and paragraph_break > start + self.chunk_size // 2:
+                    end = paragraph_break
+                else:
+                    # Try to find sentence break
+                    sentence_breaks = [
+                        text.rfind(". ", start, end),
+                        text.rfind("。", start, end),
+                        text.rfind("! ", start, end),
+                        text.rfind("？", start, end),
+                        text.rfind("? ", start, end),
+                        text.rfind("！", start, end),
+                        text.rfind("\n", start, end),
+                    ]
+
+                    # Find the latest valid break point
+                    valid_breaks = [b for b in sentence_breaks if b != -1 and b > start + self.chunk_size // 2]
+                    if valid_breaks:
+                        end = max(valid_breaks) + 1  # Include the punctuation
+
+            # Add the chunk
+            chunk = text[start:end].strip()
+            if chunk:  # Only add non-empty chunks
+                chunks.append(chunk)
+
+            # Move start position for next chunk, considering overlap
+            start = end - self.chunk_overlap if end < len(text) else len(text)
+
+        return chunks
+
+    def _add_prefix(self, text: str) -> str:
+        """Add the document prefix to a text for embedding.
+
+        Args:
+            text: Original text
+
+        Returns:
+            Text with prefix
+
+        """
+        return f"{self.document_prefix}{text}"
+
+
+def chunk_documents(
+    documents: List[Tuple[Path, str, str, str, Dict[str, object]]],
+    chunk_size: int = 1024,
+    chunk_overlap: int = 256,
+    document_prefix: str = "検索文書: ",
+) -> List[Chunk]:
+    """Process multiple documents into chunks.
+
+    Args:
+        documents: List of (path, content, title, language, metadata) tuples
+        chunk_size: Maximum size of each chunk in characters
+        chunk_overlap: Overlap between consecutive chunks in characters
+        document_prefix: Prefix to add to document chunks for embedding
+
+    Returns:
+        List of document chunks across all documents
+
+    """
+    processor = DocumentProcessor(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        document_prefix=document_prefix,
+    )
+
+    all_chunks = []
+    for path, content, title, language, metadata in documents:
+        chunks = processor.process_document(path, content, title, language, metadata)
+        all_chunks.extend(chunks)
+
+    return all_chunks
