@@ -4,11 +4,10 @@ This module provides functions for formatting CLI output.
 """
 
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from rich.box import ROUNDED
 from rich.console import Console
-from rich.panel import Panel
 from rich.progress import (
     BarColumn,
     Progress,
@@ -26,11 +25,12 @@ from oboyu.cli.utils import format_snippet
 console = Console()
 
 
-def create_progress_bar(description: str) -> Progress:
+def create_progress_bar(description: str, total: Optional[int] = None) -> Progress:
     """Create a progress bar with a custom format.
 
     Args:
         description: Description of the progress bar
+        total: Total number of items to process
 
     Returns:
         Progress bar
@@ -41,26 +41,36 @@ def create_progress_bar(description: str) -> Progress:
         TextColumn("[bold blue]{task.description}"),
         BarColumn(),
         "[progress.percentage]{task.percentage:>3.0f}%",
+        TextColumn("[dim]({task.completed}/{task.total})[/dim]"),
         TimeRemainingColumn(),
         TimeElapsedColumn(),
         console=console,
     )
 
 
-def create_indeterminate_progress(description: str) -> Progress:
+def create_indeterminate_progress(description: str, show_count: bool = False) -> Progress:
     """Create an indeterminate progress indicator.
 
     Args:
         description: Description of the progress
+        show_count: Whether to show a counter of processed items
 
     Returns:
         Progress indicator
 
     """
-    return Progress(
+    columns = [
         SpinnerColumn(),
-        TextColumn("[bold blue]{task.description}"),
-        TimeElapsedColumn(),
+        TextColumn("[bold blue]{task.description}")
+    ]
+
+    if show_count:
+        columns.append(TextColumn("[dim]({task.completed} items processed)[/dim]"))
+
+    columns.append(TimeElapsedColumn())
+
+    return Progress(
+        *columns,
         console=console,
     )
 
@@ -122,8 +132,12 @@ def format_search_results_text(
         console.print("[yellow]No results found.[/yellow]")
         return
 
+    console.print(f"Results for: \"[bold]{query}[/bold]\"")
+    console.print("----------------------------------------")
+    console.print("")
+
     # Display each result
-    for i, result in enumerate(results, start=1):
+    for result in results:
         title = result.get("title", "Untitled")
         content = result.get("content", "")
         path = result.get("path", "")
@@ -132,16 +146,14 @@ def format_search_results_text(
         # Create snippet
         snippet = format_snippet(content, query, snippet_length, highlight)
 
-        # Create panel
-        panel = Panel(
-            f"{snippet}\n\n[dim]Path:[/dim] [blue underline]{path}[/blue underline]\n[dim]Score:[/dim] {score:.4f}",
-            title=f"[bold cyan]{title}[/bold cyan]",
-            border_style="blue",
-        )
+        # Create structured output
+        console.print(f"• [bold cyan]{title}[/bold cyan] [dim](Score: {score:.2f})[/dim]")
+        console.print(f"  {snippet}")
+        console.print(f"  Source: [blue underline]{path}[/blue underline]")
+        console.print("")
 
-        console.print(f"[bold]Result {i}:[/bold]")
-        console.print(panel)
-        console.print("")  # Add spacing between results
+    console.print("----------------------------------------")
+    console.print(f"Retrieved {len(results)} documents")
 
 
 def format_search_results_json(results: List[Dict[str, Any]]) -> None:
