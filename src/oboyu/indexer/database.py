@@ -35,7 +35,7 @@ class Database:
 
     def __init__(
         self,
-        db_path: Union[str, Path] = "oboyu.db",
+        db_path: Union[str, Path],
         embedding_dimensions: int = 256,
         ef_construction: int = 128,
         ef_search: int = 64,
@@ -45,7 +45,7 @@ class Database:
         """Initialize the database.
 
         Args:
-            db_path: Path to the database file
+            db_path: Path to the database file (required, no default)
             embedding_dimensions: Dimensions of the embedding vectors
             ef_construction: Index construction parameter (build-time)
             ef_search: Search time parameter (quality vs. speed)
@@ -430,6 +430,24 @@ class Database:
 
         # Reconnect
         self.setup()
+
+    def clear(self) -> None:
+        """Clear all data from the database.
+
+        This method removes all chunks and embeddings from the database
+        while preserving the database schema and structure.
+        """
+        if self.conn is None:
+            raise ValueError("Database connection not initialized. Call setup() first.")
+
+        # Delete all data from embeddings first (due to foreign key constraint)
+        self.conn.execute("DELETE FROM embeddings")
+
+        # Delete all data from chunks
+        self.conn.execute("DELETE FROM chunks")
+
+        # Optionally, we could recompact the index here
+        self.recompact_index()
 
     def close(self) -> None:
         """Close the database connection."""

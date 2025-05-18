@@ -11,8 +11,10 @@ class TestIndexerConfig:
     """Test cases for the IndexerConfig class."""
 
     def test_default_config(self) -> None:
-        """Test loading default configuration."""
-        config = load_default_config()
+        """Test loading default configuration with explicit db_path."""
+        # Now we need to provide a db_path explicitly
+        test_db_path = "test.db"
+        config = IndexerConfig(config_dict={"indexer": {"db_path": test_db_path}})
 
         # Check default values
         assert config.chunk_size == 1024
@@ -25,7 +27,8 @@ class TestIndexerConfig:
         assert config.query_prefix == "検索クエリ: "
         assert config.topic_prefix == "トピック: "
         assert config.general_prefix == ""
-        assert config.db_path == "oboyu.db"
+        # Check db_path is properly set
+        assert config.db_path == test_db_path
         assert config.ef_construction == 128
         assert config.ef_search == 64
         assert config.m == 16

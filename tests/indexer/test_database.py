@@ -207,6 +207,64 @@ class TestDatabase:
             
             # Close database connection
             db.close()
+            
+    def test_clear_database(self) -> None:
+        """Test clearing all data from the database."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_file_path = Path(temp_dir) / "test.db"
+            
+            # Initialize database
+            db = Database(db_path=temp_file_path, embedding_dimensions=256)
+            db.setup()
+            
+            # Create and store test chunks
+            now = datetime.now()
+            chunks = [
+                Chunk(
+                    id="test-chunk-1",
+                    path=Path("/test/doc1.txt"),
+                    title="Test Document 1",
+                    content="This is test document one.",
+                    chunk_index=0,
+                    language="en",
+                    created_at=now,
+                    modified_at=now,
+                    metadata={"source": "test"},
+                ),
+                Chunk(
+                    id="test-chunk-2",
+                    path=Path("/test/doc2.txt"),
+                    title="Test Document 2",
+                    content="This is test document two.",
+                    chunk_index=0,
+                    language="en",
+                    created_at=now,
+                    modified_at=now,
+                    metadata={"source": "test"},
+                ),
+            ]
+            db.store_chunks(chunks)
+            
+            # Create and store test embeddings
+            embeddings = [
+                ("test-embedding-1", "test-chunk-1", np.random.rand(256), now),
+                ("test-embedding-2", "test-chunk-2", np.random.rand(256), now),
+            ]
+            db.store_embeddings(embeddings, "test-model")
+            
+            # Verify chunks exist
+            assert db.get_chunk_by_id("test-chunk-1") is not None
+            assert db.get_chunk_by_id("test-chunk-2") is not None
+            
+            # Clear the database
+            db.clear()
+            
+            # Verify all chunks are gone
+            assert db.get_chunk_by_id("test-chunk-1") is None
+            assert db.get_chunk_by_id("test-chunk-2") is None
+            
+            # Close database connection
+            db.close()
 
 
 class TestDatabaseMocked:

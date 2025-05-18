@@ -8,6 +8,7 @@ import pytest
 import yaml
 
 from oboyu.cli.config import create_default_config, load_config
+from oboyu.cli.paths import DEFAULT_DB_PATH
 
 
 def test_load_config_nonexistent() -> None:
@@ -80,3 +81,6 @@ def test_create_default_config() -> None:
         assert "*.txt" in loaded_config["crawler"]["include_patterns"]
         assert loaded_config["indexer"]["chunk_size"] == 1024
         assert loaded_config["query"]["top_k"] == 5
+        
+        # Check for default database path
+        assert loaded_config["indexer"]["db_path"] == str(DEFAULT_DB_PATH)

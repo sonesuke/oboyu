@@ -14,6 +14,7 @@ from rich.panel import Panel
 from rich.text import Text
 from typing_extensions import Annotated
 
+from oboyu.cli.paths import DEFAULT_DB_PATH
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.indexer import Indexer, SearchResult
 
@@ -184,9 +185,19 @@ def query(
     # Create indexer configuration
     indexer_config_dict = config_data.get("indexer", {})
 
-    # Override with command-line options
+    # Handle database path explicitly, with clear precedence:
+    # 1. Command-line option (highest priority)
+    # 2. Config file value
+    # 3. Default from central path definition (lowest priority)
     if db_path is not None:
         indexer_config_dict["db_path"] = str(db_path)
+        console.print(f"Using explicitly specified database path: [cyan]{db_path}[/cyan]")
+    elif "db_path" in indexer_config_dict:
+        console.print(f"Using configured database path: [cyan]{indexer_config_dict['db_path']}[/cyan]")
+    else:
+        # Use the default path from central definition
+        indexer_config_dict["db_path"] = str(DEFAULT_DB_PATH)
+        console.print(f"Using default database path: [cyan]{DEFAULT_DB_PATH}[/cyan]")
 
     # Create indexer configuration object
     indexer_config = IndexerConfig(config_dict={"indexer": indexer_config_dict})

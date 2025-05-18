@@ -81,6 +81,7 @@ The Database Manager handles:
 - HNSW index for vector similarity search
 - Efficient vector storage and search
 - Transaction management for data consistency
+- Index clearing and maintenance
 
 ```python
 def setup():
@@ -90,6 +91,13 @@ def setup():
     _create_schema()
     # Create HNSW index
     _create_hnsw_index()
+
+def clear():
+    # Clear all data from the database
+    conn.execute("DELETE FROM embeddings")
+    conn.execute("DELETE FROM chunks")
+    # Recompact index after clearing
+    recompact_index()
 ```
 
 ## Database Schema

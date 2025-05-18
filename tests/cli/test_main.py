@@ -14,6 +14,14 @@ def test_version_command() -> None:
     assert "Oboyu version:" in result.stdout
 
 
+def test_global_db_path_option() -> None:
+    """Test the global database path option is passed to subcommands."""
+    # We can't fully test command execution since that would require setting up
+    # a real database, but we can check the option is recognized
+    result = runner.invoke(app, ["--db-path", "/path/to/custom.db", "--help"])
+    assert result.exit_code == 0
+
+
 def test_help_command() -> None:
     """Test the help command."""
     result = runner.invoke(app, ["--help"])
@@ -23,6 +31,9 @@ def test_help_command() -> None:
     # Check for index and query subcommands
     assert "index" in result.stdout
     assert "query" in result.stdout
+    
+    # Check for global database path option
+    assert "--db-path" in result.stdout
 
 
 def test_index_help() -> None:
@@ -33,6 +44,9 @@ def test_index_help() -> None:
     
     # Check for recursive option (the exact format might vary)
     assert "recursive" in result.stdout.lower()
+    
+    # Check for db-path option
+    assert "--db-path" in result.stdout
 
 
 def test_query_help() -> None:
@@ -43,3 +57,4 @@ def test_query_help() -> None:
     
     # Check for important option terms (the exact format might vary)
     assert "mode" in result.stdout.lower()
+    assert "--db-path" in result.stdout
