@@ -177,12 +177,33 @@ def clear(
             console.print("Operation cancelled.")
             return
 
-    # Create indexer
-    indexer = Indexer(config=indexer_config)
+    # Import progress indicator if not already imported
+    try:
+        # Check if create_indeterminate_progress is already imported
+        create_indeterminate_progress
+    except NameError:
+        from oboyu.cli.formatters import create_indeterminate_progress
 
-    # Clear the index
+    # Show progress during indexer initialization
+    with create_indeterminate_progress("Initializing...") as init_progress:
+        init_task = init_progress.add_task("Loading embedding model and setting up database...", total=None)
+
+        # Create indexer (this loads the model and sets up the database)
+        indexer = Indexer(config=indexer_config)
+
+        # Mark initialization as complete
+        init_progress.update(init_task, description="[green]✓[/green] Initialization complete")
+
+    # Clear the index with progress indicator
     console.print("Clearing index database...")
-    indexer.clear_index()
+    with create_indeterminate_progress("Clearing...") as clear_progress:
+        clear_task = clear_progress.add_task("Removing indexed data...", total=None)
+
+        # Clear the index
+        indexer.clear_index()
+
+        # Mark clearing as complete
+        clear_progress.update(clear_task, description="[green]✓[/green] Database cleared")
 
     console.print("[bold green]Index database cleared successfully![/bold green]")
 
@@ -258,18 +279,28 @@ def index(
 
     # Provide immediate feedback
     console.print(f"Starting indexing of {', '.join(str(d) for d in directories)}...")
-    console.print("Scanning files...")
 
-    # Create indexer
-    indexer = Indexer(config=indexer_config)
+    # Import progress indicator
+    from oboyu.cli.formatters import create_indeterminate_progress
+
+    # Show progress during indexer initialization (model loading and database setup)
+    with create_indeterminate_progress("Initializing...") as init_progress:
+        init_task = init_progress.add_task("Loading embedding model and setting up database...", total=None)
+
+        # Create indexer (this loads the model and sets up the database)
+        indexer = Indexer(config=indexer_config)
+
+        # Mark initialization as complete
+        init_progress.update(init_task, description="[green]✓[/green] Initialization complete")
+
+    console.print("Scanning files...")
 
     # Process each directory
     total_chunks = 0
     total_files = 0
     start_time = time.time()
 
-    # Use the improved progress indicator from formatters
-    from oboyu.cli.formatters import create_indeterminate_progress
+    # Reuse the progress indicator already imported
 
     # First, count the total number of files to be processed
     console.print("Counting files to index...")

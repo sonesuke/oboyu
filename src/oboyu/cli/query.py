@@ -203,11 +203,18 @@ def query(
     console.print(f"Searching for: \"[bold]{query}[/bold]\"")
     console.print(f"Search mode: [cyan]{mode}[/cyan]")
 
-    # Create indexer
-    indexer = Indexer(config=indexer_config)
-
     # Import progress indicator
     from oboyu.cli.formatters import create_indeterminate_progress
+
+    # Show progress during indexer initialization (model loading and database setup)
+    with create_indeterminate_progress("Initializing...") as init_progress:
+        init_task = init_progress.add_task("Loading embedding model and setting up database...", total=None)
+
+        # Create indexer (this loads the model and sets up the database)
+        indexer = Indexer(config=indexer_config)
+
+        # Mark initialization as complete
+        init_progress.update(init_task, description="[green]✓[/green] Initialization complete")
 
     start_time = time.time()
     with create_indeterminate_progress("Searching database...") as progress:
