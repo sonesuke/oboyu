@@ -27,14 +27,16 @@ dependencies = [
     "transformers>=4.48.0",
     "sentence-transformers",
     "torch",
-    "duckdb>=0.9.0",  # Version supporting VSS extension
+    "duckdb>=0.9.0", # Version supporting VSS extension
     "duckdb-engine",
-    "protobuf>=4.25.1",  # Required for SentenceTransformer with Ruri model
-    "sentencepiece>=0.2.0",  # Required for Japanese tokenization
-    "typer>=0.9.0",  # CLI framework
-    "rich>=13.4.2",  # Rich terminal output formatting
-    "pyyaml>=6.0",  # YAML configuration file handling
-    "mcp[cli]>=0.3.0"  # Model Context Protocol for AI assistant integration
+    "protobuf>=4.25.1", # Required for SentenceTransformer with Ruri model
+    "sentencepiece>=0.2.0", # Required for Japanese tokenization
+    "typer>=0.9.0", # CLI framework
+    "rich>=13.4.2", # Rich terminal output formatting
+    "pyyaml>=6.0", # YAML configuration file handling # Model Context Protocol for AI assistant integration
+    "mcp[cli]>=0.3.0",
+    "adbc-driver-manager>=1.6.0",
+    "pyarrow>=20.0.0",
 ]
 
 [project.scripts]
