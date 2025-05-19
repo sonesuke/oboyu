@@ -14,6 +14,7 @@ from typing_extensions import Annotated
 from oboyu import __version__
 from oboyu.cli.config import load_config
 from oboyu.cli.index import app as index_app
+from oboyu.cli.mcp import app as mcp_app
 from oboyu.cli.paths import DEFAULT_DB_PATH, ensure_config_dirs
 from oboyu.cli.query import app as query_app
 from oboyu.indexer.config import IndexerConfig
@@ -33,6 +34,7 @@ console = Console()
 # Add subcommands
 app.add_typer(index_app, name="index", help="Index documents for search")
 app.add_typer(query_app, name="query", help="Search indexed documents")
+app.add_typer(mcp_app, name="mcp", help="Run an MCP server for AI assistant integration")
 
 # Define global options
 ConfigOption = Annotated[

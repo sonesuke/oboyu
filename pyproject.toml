@@ -33,7 +33,8 @@ dependencies = [
     "sentencepiece>=0.2.0",  # Required for Japanese tokenization
     "typer>=0.9.0",  # CLI framework
     "rich>=13.4.2",  # Rich terminal output formatting
-    "pyyaml>=6.0"  # YAML configuration file handling
+    "pyyaml>=6.0",  # YAML configuration file handling
+    "mcp[cli]>=0.3.0"  # Model Context Protocol for AI assistant integration
 ]
 
 [project.scripts]
