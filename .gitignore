@@ -4,6 +4,7 @@
 .mypy_cache
 __pycache__
 .coverage
+.coverage.*
 repomix-output.xml
 .DS_Store
 oboyu.db

@@ -449,6 +449,53 @@ class Database:
         # Optionally, we could recompact the index here
         self.recompact_index()
 
+    def get_statistics(self) -> Dict[str, object]:
+        """Retrieve statistics about the database.
+
+        Returns:
+            Dictionary with database statistics including document count,
+            chunk count, languages, embedding model, and last updated timestamp
+
+        """
+        if self.conn is None:
+            raise ValueError("Database connection not initialized. Call setup() first.")
+
+        # Get chunk count
+        chunk_count_result = self.conn.execute("SELECT COUNT(*) FROM chunks").fetchone()
+        chunk_count = chunk_count_result[0] if chunk_count_result is not None else 0
+
+        # Get document count (unique paths)
+        document_count_result = self.conn.execute("SELECT COUNT(DISTINCT path) FROM chunks").fetchone()
+        document_count = document_count_result[0] if document_count_result is not None else 0
+
+        # Get available languages
+        languages_result = self.conn.execute(
+            "SELECT DISTINCT language FROM chunks WHERE language IS NOT NULL"
+        ).fetchall()
+        languages = [lang[0] for lang in languages_result if lang[0]]
+
+        # Get embedding model
+        model_result = self.conn.execute(
+            "SELECT model FROM embeddings LIMIT 1"
+        ).fetchone()
+        model = model_result[0] if model_result else "unknown"
+
+        # Get last updated timestamp
+        last_updated_result = self.conn.execute(
+            "SELECT MAX(modified_at) FROM chunks"
+        ).fetchone()
+        last_updated = last_updated_result[0] if last_updated_result and last_updated_result[0] else "unknown"
+
+        # Return statistics
+        return {
+            "document_count": document_count,
+            "chunk_count": chunk_count,
+            "languages": languages,
+            "embedding_model": model,
+            "db_path": str(self.db_path),
+            "last_updated": last_updated
+        }
+
     def close(self) -> None:
         """Close the database connection."""
         if self.conn:
