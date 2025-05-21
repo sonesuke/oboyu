@@ -10,9 +10,6 @@ The implementation provides:
 - Automatic batching for large datasets to control memory usage
 - Support for vector similarity search using HNSW index
 
-Future versions will integrate ADBC (Arrow Database Connectivity) for even higher
-performance, once compatibility issues with the VSS extension are resolved.
-
 Key components:
 - DuckDB with VSS extension for vector similarity search
 - HNSW index for efficient vector search
@@ -29,16 +26,11 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import duckdb
 import numpy as np
-
-# Import PyArrow for future ADBC integration
-from adbc_driver_duckdb.dbapi import connect
 from duckdb import DuckDBPyConnection
 from numpy.typing import NDArray
 
+from oboyu.indexer.config import DEFAULT_BATCH_SIZE
 from oboyu.indexer.processor import Chunk
-
-# For now, we'll use this as a placeholder for future ADBC implementation
-HAS_DUCKDB_DRIVER = False
 
 
 # Custom JSON encoder for datetime objects
@@ -51,13 +43,6 @@ class DateTimeEncoder(json.JSONEncoder):
             return obj.isoformat()
         return super().default(obj)
 
-
-# Batch size constants for batched operations
-# These values will be used for both standard DuckDB and future ADBC implementation
-ADBC_DEFAULT_BATCH_SIZE = 100000  # Default batch size (good balance of performance and memory)
-ADBC_OPTIMAL_BATCH_SIZE = 122880  # Optimal batch size based on benchmarks
-ADBC_MIN_BATCH_SIZE = 10000       # Minimum reasonable batch size (smaller batches aren't efficient)
-ADBC_MAX_BATCH_SIZE = 1000000     # Maximum reasonable batch size (larger batches consume too much memory)
 
 
 class Database:
@@ -87,7 +72,7 @@ class Database:
         ef_search: int = 64,
         m: int = 16,
         m0: Optional[int] = None,
-        batch_size: int = ADBC_OPTIMAL_BATCH_SIZE,
+        batch_size: int = DEFAULT_BATCH_SIZE,
     ) -> None:
         """Initialize the database.
 
@@ -107,29 +92,11 @@ class Database:
         self.ef_search = ef_search
         self.m = m
         self.m0 = m0 if m0 is not None else 2 * m
-        self.set_batch_size(batch_size)
+        self.batch_size = batch_size
 
         # Connections will be initialized in setup()
         self.conn: Optional[DuckDBPyConnection] = None
-        self.adbc_conn = None
 
-    def set_batch_size(self, batch_size: int) -> None:
-        """Set the batch size for ADBC operations with validation.
-
-        Args:
-            batch_size: Batch size for ADBC operations
-
-        """
-        # Validate batch size is within reasonable bounds
-        if batch_size < ADBC_MIN_BATCH_SIZE:
-            # If batch size is too small, use minimum
-            self.batch_size = ADBC_MIN_BATCH_SIZE
-        elif batch_size > ADBC_MAX_BATCH_SIZE:
-            # If batch size is too large, use maximum
-            self.batch_size = ADBC_MAX_BATCH_SIZE
-        else:
-            # Use provided batch size
-            self.batch_size = batch_size
 
     def setup(self) -> None:
         """Set up the database schema and extensions."""
@@ -149,26 +116,10 @@ class Database:
         # Enable experimental persistence for HNSW indexes
         self.conn.execute("SET hnsw_enable_experimental_persistence=true")
 
-        # Set up ADBC connection
-        self._setup_adbc_connection()
-
         # Create tables if they don't exist
         self._create_schema()
 
-    def _setup_adbc_connection(self) -> None:
-        """Set up ADBC connection for streaming operations.
 
-        DuckDB ADBC connection must be initialized after the tables have been created
-        to ensure it can access the same database state.
-        """
-        # Ensure tables are created before initializing ADBC connection
-        if self.conn is None:
-            raise ValueError("DuckDB connection not initialized. Can't set up ADBC connection.")
-
-        # We don't initialize the ADBC connection until _store_chunks_batch or _store_embeddings_batch
-        # are called to ensure the database schema is already set up
-        # Convert Path to string because ADBC only accepts string paths
-        self.adbc_conn = connect(str(self.db_path))
 
     def _create_schema(self) -> None:
         """Create database schema."""
@@ -235,32 +186,8 @@ class Database:
         if not chunks:
             return
 
-        # Use ADBC for batch processing if available, otherwise fall back to DuckDB
-        if self.adbc_conn is not None:
-            # Process chunks in batches to control memory usage with ADBC
-            for batch_start in range(0, len(chunks), self.batch_size):
-                batch_end = min(batch_start + self.batch_size, len(chunks))
-                chunks_batch = chunks[batch_start:batch_end]
-                self._store_chunks_batch(chunks_batch)
-        else:
-            # Fall back to standard DuckDB if ADBC is not available
-            self._store_chunks_duckdb(chunks)
-
-    def _store_chunks_batch(self, chunks: List[Chunk]) -> None:
-        """Store a batch of document chunks.
-
-        Args:
-            chunks: Batch of document chunks to store
-
-        Note:
-            This implementation uses standard DuckDB for compatibility with
-            the VSS extension. The ADBC implementation is planned for a future release
-            once compatibility issues with the VSS extension are resolved.
-
-        """
-        # Due to compatibility issues with ADBC and the VSS extension,
-        # we're using the standard DuckDB method for now
         self._store_chunks_duckdb(chunks)
+
 
     def store_embeddings(
         self,
@@ -284,7 +211,7 @@ class Database:
         for batch_start in range(0, len(embeddings), self.batch_size):
             batch_end = min(batch_start + self.batch_size, len(embeddings))
             embeddings_batch = embeddings[batch_start:batch_end]
-            self._store_embeddings_batch(embeddings_batch, model_name)
+            self._store_embeddings_duckdb(embeddings_batch, model_name)
 
     def _store_chunks_duckdb(self, chunks: List[Chunk]) -> None:
         """Store document chunks using standard DuckDB (fallback method).
@@ -297,23 +224,12 @@ class Database:
             raise ValueError("Database connection not initialized. Call setup() first.")
 
         # Store each chunk individually using standard DuckDB
+        batch_data = []
         for chunk in chunks:
             # Convert metadata to JSON string
             metadata_json = json.dumps(chunk.metadata, cls=DateTimeEncoder) if chunk.metadata else None
 
-            # UPSERT operation
-            self.conn.execute("""
-                INSERT INTO chunks (id, path, title, content, chunk_index, language, created_at, modified_at, metadata)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT (id) DO UPDATE SET
-                    path = excluded.path,
-                    title = excluded.title,
-                    content = excluded.content,
-                    chunk_index = excluded.chunk_index,
-                    language = excluded.language,
-                    modified_at = excluded.modified_at,
-                    metadata = excluded.metadata
-            """, [
+            batch_data.append((
                 chunk.id,
                 str(chunk.path),
                 chunk.title,
@@ -323,28 +239,23 @@ class Database:
                 chunk.created_at,
                 chunk.modified_at,
                 metadata_json
-            ])
+            ))
 
-    def _store_embeddings_batch(
-        self,
-        embeddings: List[Tuple[str, str, NDArray[np.float32], datetime]],
-        model_name: str,
-    ) -> None:
-        """Store a batch of embeddings.
+        # UPSERT operation
+        self.conn.executemany("""
+            INSERT INTO chunks (id, path, title, content, chunk_index, language, created_at, modified_at, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (id) DO UPDATE SET
+                path = excluded.path,
+                title = excluded.title,
+                content = excluded.content,
+                chunk_index = excluded.chunk_index,
+                language = excluded.language,
+                modified_at = excluded.modified_at,
+                metadata = excluded.metadata
+        """, batch_data)
+        self.conn.commit()
 
-        Args:
-            embeddings: Batch of embedding tuples
-            model_name: Name of the embedding model used
-
-        Note:
-            This implementation uses standard DuckDB for compatibility with
-            the VSS extension. The ADBC implementation is planned for a future release
-            once compatibility issues with the VSS extension are resolved.
-
-        """
-        # Due to compatibility issues with ADBC and the VSS extension,
-        # we're using the standard DuckDB method for now
-        self._store_embeddings_duckdb(embeddings, model_name)
 
     def _store_embeddings_duckdb(
         self,
@@ -361,27 +272,30 @@ class Database:
         if self.conn is None:
             raise ValueError("Database connection not initialized. Call setup() first.")
 
-        # Store each embedding individually using standard DuckDB
+        # バッチ挿入用のデータを準備
+        batch_data = []
         for embedding_id, chunk_id, vector, timestamp in embeddings:
-            # Convert numpy array to list for DuckDB
-            vector_list = vector.tolist()
-
-            # UPSERT operation
-            self.conn.execute("""
-                INSERT INTO embeddings (id, chunk_id, model, vector, created_at)
-                VALUES (?, ?, ?, ?, ?)
-                ON CONFLICT (id) DO UPDATE SET
-                    chunk_id = excluded.chunk_id,
-                    model = excluded.model,
-                    vector = excluded.vector,
-                    created_at = excluded.created_at
-            """, [
+            batch_data.append((
                 embedding_id,
                 chunk_id,
                 model_name,
-                vector_list,
+                vector.tolist(),  # NumPy配列をリストに変換
                 timestamp
-            ])
+            ))
+        
+        # バッチ挿入を実行（2つの方法があります）
+        
+        # 方法1: executemanyを使用（多くのSQLデータベースでサポートされている）
+        self.conn.executemany("""
+            INSERT INTO embeddings (id, chunk_id, model, vector, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT (id) DO UPDATE SET
+                chunk_id = excluded.chunk_id,
+                model = excluded.model,
+                vector = excluded.vector,
+                created_at = excluded.created_at
+        """, batch_data)
+        self.conn.commit()
 
     def search(
         self,
@@ -672,7 +586,3 @@ class Database:
             self.conn.close()
             self.conn = None
 
-        # Close the ADBC connection
-        if self.adbc_conn:
-            self.adbc_conn.close()
-            self.adbc_conn = None

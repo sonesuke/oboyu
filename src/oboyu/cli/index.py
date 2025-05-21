@@ -205,6 +205,9 @@ def clear(
         # Mark clearing as complete
         clear_progress.update(clear_task, description="[green]✓[/green] Database cleared")
 
+    # Clean up resources to prevent semaphore leaks
+    indexer.close()
+
     console.print("[bold green]Index database cleared successfully![/bold green]")
 
 
@@ -354,4 +357,7 @@ def index(
     console.print(f"Processing rate: [bold]{total_chunks / max(1, elapsed_time):.1f}[/bold] chunks/sec")
     console.print(f"Database: [cyan]{indexer_config.db_path}[/cyan]")
     console.print(f"Average chunks per file: [bold]{total_chunks / max(1, total_files):.1f}[/bold]")
+    
+    # Clean up resources to prevent semaphore leaks
+    indexer.close()
 
