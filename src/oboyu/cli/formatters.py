@@ -4,19 +4,20 @@ This module provides functions for formatting CLI output.
 """
 
 import json
-from typing import Any, Dict, List, Optional, Union, Callable
+from typing import Any, Dict, List, Optional
 
 from rich.box import ROUNDED
 from rich.console import Console
 from rich.progress import (
     BarColumn,
     Progress,
+    ProgressColumn,
     SpinnerColumn,
+    Task as ProgressTask,
+    TaskID,
     TextColumn,
     TimeElapsedColumn,
     TimeRemainingColumn,
-    TaskID,
-    ProgressColumn,
 )
 from rich.syntax import Syntax
 from rich.table import Table
@@ -36,11 +37,12 @@ class RateColumn(ProgressColumn):
         
         Args:
             unit: Unit name to display (default: "items")
+
         """
         super().__init__()
         self.unit = unit
 
-    def render(self, task: "Progress.Task") -> Text:
+    def render(self, task: "ProgressTask") -> Text:
         """Calculate and render the processing rate.
         
         Args:
@@ -48,6 +50,7 @@ class RateColumn(ProgressColumn):
             
         Returns:
             Formatted text with processing rate
+
         """
         elapsed = task.finished_time if task.finished else task.elapsed
         if elapsed is None or elapsed == 0:
@@ -59,7 +62,7 @@ class RateColumn(ProgressColumn):
 
 
 def create_progress_bar(
-    description: str, 
+    description: str,
     total: Optional[int] = None,
     unit: str = "items"
 ) -> Progress:
@@ -88,7 +91,7 @@ def create_progress_bar(
 
 
 def create_indeterminate_progress(
-    description: str, 
+    description: str,
     show_count: bool = False,
     unit: str = "items"
 ) -> Progress:
@@ -127,11 +130,12 @@ class ProgressGroup:
     a way to track complex multi-stage processes with a cleaner interface.
     """
     
-    def __init__(self, description: str):
+    def __init__(self, description: str) -> None:
         """Initialize the progress group.
         
         Args:
             description: Description of the overall process
+
         """
         self.description = description
         self.progress_bars: Dict[str, Progress] = {}
@@ -139,9 +143,9 @@ class ProgressGroup:
         self.active_progress: Optional[str] = None
         
     def add_progress(
-        self, 
-        name: str, 
-        description: str, 
+        self,
+        name: str,
+        description: str,
         total: Optional[int] = None,
         unit: str = "items",
         indeterminate: bool = False,
@@ -156,6 +160,7 @@ class ProgressGroup:
             unit: Unit name for rate display
             indeterminate: Whether this is an indeterminate progress
             show_count: For indeterminate progress, whether to show count
+
         """
         if indeterminate:
             progress = create_indeterminate_progress(description, show_count, unit)
@@ -171,18 +176,18 @@ class ProgressGroup:
         
         Args:
             name: Name of the progress bar to start
+
         """
         if name in self.progress_bars:
             self.active_progress = name
             self.progress_bars[name].start()
     
     def update(
-        self, 
-        name: str, 
-        advance: Optional[int] = None, 
+        self,
+        name: str,
+        advance: Optional[int] = None,
         completed: Optional[int] = None,
         description: Optional[str] = None,
-        **kwargs: Any
     ) -> None:
         """Update a specific progress bar.
         
@@ -192,24 +197,23 @@ class ProgressGroup:
             completed: Set the completed count directly
             description: New description for the task
             **kwargs: Additional fields to update
+
         """
         if name in self.progress_bars and name in self.tasks:
-            update_args = {}
+            # Update progress bar attributes
             if advance is not None:
-                update_args["advance"] = advance
+                self.progress_bars[name].update(self.tasks[name], advance=advance)
             if completed is not None:
-                update_args["completed"] = completed
+                self.progress_bars[name].update(self.tasks[name], completed=completed)
             if description is not None:
-                update_args["description"] = description
-            update_args.update(kwargs)
-            
-            self.progress_bars[name].update(self.tasks[name], **update_args)
+                self.progress_bars[name].update(self.tasks[name], description=description)
     
     def stop(self, name: Optional[str] = None) -> None:
         """Stop displaying a specific progress bar or the active one.
         
         Args:
             name: Name of the progress bar to stop (defaults to active)
+
         """
         target = name if name is not None else self.active_progress
         if target and target in self.progress_bars:

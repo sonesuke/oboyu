@@ -6,10 +6,11 @@ using the Ruri v3 model with specialized handling for Japanese content.
 
 import hashlib
 import json
+import logging
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Tuple, Union, cast
+from typing import Callable, List, Optional, Tuple, Union, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -25,6 +26,9 @@ EMBEDDING_MODELS_DIR = Path.home() / ".config" / "oboyu" / "embedding" / "models
 # Ensure directories exist
 EMBEDDING_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 EMBEDDING_MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
+# Silence SentenceTransformer logging (INFO level is too verbose)
+logging.getLogger('sentence_transformers').setLevel(logging.ERROR)
 
 
 class EmbeddingCache:
@@ -153,7 +157,7 @@ class EmbeddingGenerator:
 
         Args:
             chunks: List of document chunks
-            progress_callback: Optional callback for progress updates 
+            progress_callback: Optional callback for progress updates
                                (chunks_processed, total_chunks, status)
 
         Returns:
@@ -173,8 +177,8 @@ class EmbeddingGenerator:
                 processed_count += 1
                 if progress_callback:
                     progress_callback(
-                        processed_count, 
-                        total_chunk_count, 
+                        processed_count,
+                        total_chunk_count,
                         f"Skipped empty chunk {processed_count}/{total_chunk_count}"
                     )
                 continue
@@ -195,8 +199,8 @@ class EmbeddingGenerator:
                 processed_count += 1
                 if progress_callback:
                     progress_callback(
-                        processed_count, 
-                        total_chunk_count, 
+                        processed_count,
+                        total_chunk_count,
                         f"Using cached embedding {processed_count}/{total_chunk_count} ({cache_hit_count} cache hits)"
                     )
 
@@ -210,8 +214,8 @@ class EmbeddingGenerator:
                 # Update progress before batch processing
                 if progress_callback:
                     progress_callback(
-                        processed_count, 
-                        total_chunk_count, 
+                        processed_count,
+                        total_chunk_count,
                         f"Generating batch of {len(batch_texts)} embeddings..."
                     )
                 
@@ -238,8 +242,8 @@ class EmbeddingGenerator:
                     processed_count += 1
                     if progress_callback:
                         progress_callback(
-                            processed_count, 
-                            total_chunk_count, 
+                            processed_count,
+                            total_chunk_count,
                             f"Generated embedding {processed_count}/{total_chunk_count}"
                         )
 
@@ -261,8 +265,8 @@ class EmbeddingGenerator:
         # Final progress update
         if progress_callback:
             progress_callback(
-                total_chunk_count, 
-                total_chunk_count, 
+                total_chunk_count,
+                total_chunk_count,
                 f"Completed embedding generation: {len(new_embeddings)} new, {len(cached_embeddings)} cached"
             )
 

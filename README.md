@@ -38,6 +38,31 @@ cd oboyu
 pip install -e .
 ```
 
+### Requirements
+
+Oboyu requires several dependencies that are automatically installed:
+
+1. **sentencepiece**: Required for the Japanese tokenization used by the Ruri embedding model. This is pre-built on PyPI but may require compilation on some systems.
+2. **torch**: Required for running the embedding model.
+3. **duckdb**: Required for storing and retrieving the vector search database.
+
+> **Note**: On the first run, Oboyu will download the Ruri v3 model (~90MB) and its required components from the Hugging Face model hub.
+
+#### SentencePiece Installation
+
+SentencePiece is a critical dependency for processing Japanese text. If you encounter issues during installation:
+
+```bash
+# On Ubuntu/Debian
+sudo apt-get install cmake build-essential pkg-config libgoogle-perftools-dev
+
+# On macOS with Homebrew
+brew install cmake
+
+# On Windows
+# Install Visual Studio Build Tools with C++ support
+```
+
 ## Quick Start
 
 ```bash
