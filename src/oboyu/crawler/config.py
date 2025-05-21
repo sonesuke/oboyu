@@ -19,7 +19,7 @@ DEFAULT_CONFIG = {
         ],
         "exclude_patterns": [
             "*/node_modules/*",
-            "*/venv/*",
+            "*/.venv/*",
         ],
         "max_file_size": 10 * 1024 * 1024,  # 10MB
         "follow_symlinks": False,
@@ -29,6 +29,7 @@ DEFAULT_CONFIG = {
             "euc-jp",
         ],
         "max_workers": 4,  # Default number of worker threads
+        "respect_gitignore": True,  # Whether to respect .gitignore files
     }
 }
 
@@ -40,6 +41,7 @@ DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 DEFAULT_FOLLOW_SYMLINKS = False
 DEFAULT_JAPANESE_ENCODINGS = ["utf-8", "shift-jis", "euc-jp"]
 DEFAULT_MAX_WORKERS = 4
+DEFAULT_RESPECT_GITIGNORE = True
 
 
 class CrawlerConfig:
@@ -135,6 +137,10 @@ class CrawlerConfig:
         # Validate max_workers - must be a positive integer
         if not isinstance(crawler_config.get("max_workers"), int) or crawler_config.get("max_workers", 0) <= 0:
             crawler_config["max_workers"] = DEFAULT_MAX_WORKERS
+            
+        # Validate respect_gitignore - must be a boolean
+        if not isinstance(crawler_config.get("respect_gitignore"), bool):
+            crawler_config["respect_gitignore"] = DEFAULT_RESPECT_GITIGNORE
 
     @property
     def depth(self) -> int:
@@ -170,6 +176,11 @@ class CrawlerConfig:
     def max_workers(self) -> int:
         """Maximum number of worker threads for parallel processing."""
         return int(self.config["crawler"]["max_workers"])
+        
+    @property
+    def respect_gitignore(self) -> bool:
+        """Whether to respect .gitignore files."""
+        return bool(self.config["crawler"]["respect_gitignore"])
 
 
 def load_default_config() -> CrawlerConfig:

@@ -6,7 +6,6 @@ document chunks with specialized handling for Japanese content.
 
 import concurrent.futures
 import logging
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Union
@@ -104,6 +103,9 @@ class Indexer:
 
         # Keep track of processed files
         self._processed_files: Set[Path] = set()
+        
+        # Create a ThreadPoolExecutor that we'll reuse
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.config.max_workers)
 
     def index_documents(self, crawler_results: List[CrawlerResult]) -> int:
         """Process and index documents from crawler results.
@@ -128,23 +130,22 @@ class Indexer:
         # Process documents into chunks
         all_chunks: List[Chunk] = []
 
-        # Use ThreadPoolExecutor for parallel processing
-        with ThreadPoolExecutor(max_workers=self.config.max_workers) as executor:
-            # Submit document processing tasks
-            future_to_doc = {
-                executor.submit(self._process_document, doc): doc
-                for doc in new_docs
-            }
+        # Use the shared ThreadPoolExecutor for parallel processing
+        # Submit document processing tasks
+        future_to_doc = {
+            self._executor.submit(self._process_document, doc): doc
+            for doc in new_docs
+        }
 
-            # Collect chunks as they complete
-            for future in concurrent.futures.as_completed(future_to_doc):
-                doc = future_to_doc[future]
-                try:
-                    chunks = future.result()
-                    if chunks:
-                        all_chunks.extend(chunks)
-                except Exception as e:
-                    logging.error(f"Error processing {doc.path}: {e}")
+        # Collect chunks as they complete
+        for future in concurrent.futures.as_completed(future_to_doc):
+            doc = future_to_doc[future]
+            try:
+                chunks = future.result()
+                if chunks:
+                    all_chunks.extend(chunks)
+            except Exception as e:
+                logging.error(f"Error processing {doc.path}: {e}")
 
         if not all_chunks:
             return 0
@@ -310,12 +311,14 @@ class Indexer:
             crawler._processed_files = self._processed_files.copy()
 
         # Crawl directory
+        print("crawling directory...")
         results = crawler.crawl(Path(directory))
 
         # Count the number of files processed
         files_processed = len(results)
 
         # Index results
+        print("indexing documents...")
         chunks_indexed = self.index_documents(results)
 
         return chunks_indexed, files_processed
@@ -343,5 +346,10 @@ class Indexer:
 
     def close(self) -> None:
         """Close the indexer and its resources."""
+        # Shut down the executor first
+        if hasattr(self, '_executor'):
+            self._executor.shutdown(wait=True)
+            
+        # Then close the database
         if self.database:
             self.database.close()

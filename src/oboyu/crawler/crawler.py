@@ -45,6 +45,7 @@ class Crawler:
         follow_symlinks: bool = False,
         japanese_encodings: Optional[List[str]] = None,
         max_workers: int = 4,  # Number of worker threads for parallel processing
+        respect_gitignore: bool = True,  # Whether to respect .gitignore files
     ) -> None:
         """Initialize the crawler with configuration options.
 
@@ -56,6 +57,7 @@ class Crawler:
             follow_symlinks: Whether to follow symbolic links during traversal
             japanese_encodings: List of Japanese encodings to detect
             max_workers: Maximum number of worker threads for parallel processing
+            respect_gitignore: Whether to respect .gitignore files (default: True)
 
         """
         self.depth = depth
@@ -65,6 +67,7 @@ class Crawler:
         self.follow_symlinks = follow_symlinks
         self.japanese_encodings = japanese_encodings or ["utf-8", "shift-jis", "euc-jp"]
         self.max_workers = max_workers
+        self.respect_gitignore = respect_gitignore
 
         # Keep track of processed files to avoid duplicates
         self._processed_files: Set[Path] = set()
@@ -87,6 +90,7 @@ class Crawler:
             max_depth=self.depth,
             max_file_size=self.max_file_size,
             follow_symlinks=self.follow_symlinks,
+            respect_gitignore=self.respect_gitignore,
         )
 
         # Filter out already processed files
