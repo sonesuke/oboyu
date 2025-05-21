@@ -9,7 +9,7 @@ import json
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Tuple, Union, cast
+from typing import Callable, List, Optional, Tuple, Union, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -153,7 +153,7 @@ class EmbeddingGenerator:
 
         Args:
             chunks: List of document chunks
-            progress_callback: Optional callback for progress updates 
+            progress_callback: Optional callback for progress updates
                                (chunks_processed, total_chunks, status)
 
         Returns:
@@ -173,8 +173,8 @@ class EmbeddingGenerator:
                 processed_count += 1
                 if progress_callback:
                     progress_callback(
-                        processed_count, 
-                        total_chunk_count, 
+                        processed_count,
+                        total_chunk_count,
                         f"Skipped empty chunk {processed_count}/{total_chunk_count}"
                     )
                 continue
@@ -195,8 +195,8 @@ class EmbeddingGenerator:
                 processed_count += 1
                 if progress_callback:
                     progress_callback(
-                        processed_count, 
-                        total_chunk_count, 
+                        processed_count,
+                        total_chunk_count,
                         f"Using cached embedding {processed_count}/{total_chunk_count} ({cache_hit_count} cache hits)"
                     )
 
@@ -210,8 +210,8 @@ class EmbeddingGenerator:
                 # Update progress before batch processing
                 if progress_callback:
                     progress_callback(
-                        processed_count, 
-                        total_chunk_count, 
+                        processed_count,
+                        total_chunk_count,
                         f"Generating batch of {len(batch_texts)} embeddings..."
                     )
                 
@@ -238,8 +238,8 @@ class EmbeddingGenerator:
                     processed_count += 1
                     if progress_callback:
                         progress_callback(
-                            processed_count, 
-                            total_chunk_count, 
+                            processed_count,
+                            total_chunk_count,
                             f"Generated embedding {processed_count}/{total_chunk_count}"
                         )
 
@@ -261,8 +261,8 @@ class EmbeddingGenerator:
         # Final progress update
         if progress_callback:
             progress_callback(
-                total_chunk_count, 
-                total_chunk_count, 
+                total_chunk_count,
+                total_chunk_count,
                 f"Completed embedding generation: {len(new_embeddings)} new, {len(cached_embeddings)} cached"
             )
 

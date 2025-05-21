@@ -8,10 +8,9 @@ from pathlib import Path
 from typing import List, Optional
 
 import typer
-from rich.console import Console
 from typing_extensions import Annotated
 
-from oboyu.cli.formatters import console, ProgressGroup
+from oboyu.cli.formatters import ProgressGroup, console
 from oboyu.cli.paths import DEFAULT_DB_PATH
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.indexer import Indexer
@@ -180,8 +179,8 @@ def clear(
     
     # Add initialization progress
     progress.add_progress(
-        "init", 
-        "Loading embedding model and setting up database...", 
+        "init",
+        "Loading embedding model and setting up database...",
         indeterminate=True
     )
     
@@ -197,8 +196,8 @@ def clear(
     
     # Add clearing progress
     progress.add_progress(
-        "clear", 
-        "Removing indexed data...", 
+        "clear",
+        "Removing indexed data...",
         indeterminate=True
     )
     
@@ -354,7 +353,7 @@ def index(
     for directory in directories:
         # Output information about current directory
         progress.update(
-            "index", 
+            "index",
             description=f"Indexing [cyan]{directory}[/cyan]..."
         )
         
@@ -372,7 +371,7 @@ def index(
             
             # Update the progress with the appropriate description
             description = stage_descriptions.get(
-                stage, 
+                stage,
                 f"Processing {stage} ({current}/{total}) from [cyan]{directory}[/cyan]..."
             )
             
@@ -385,7 +384,7 @@ def index(
 
         # Index directory - returns tuple of (chunks, files)
         chunks_indexed, files_processed = indexer.index_directory(
-            directory, 
+            directory,
             incremental=not force,
             progress_callback=indexer_progress_callback
         )
@@ -401,7 +400,7 @@ def index(
 
     # Complete indexing
     progress.update(
-        "index", 
+        "index",
         description=f"[green]✓[/green] Indexed {total_files} files with {total_chunks} chunks"
     )
     progress.stop("index")
