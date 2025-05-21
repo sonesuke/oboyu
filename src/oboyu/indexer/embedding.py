@@ -6,6 +6,7 @@ using the Ruri v3 model with specialized handling for Japanese content.
 
 import hashlib
 import json
+import logging
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -25,6 +26,9 @@ EMBEDDING_MODELS_DIR = Path.home() / ".config" / "oboyu" / "embedding" / "models
 # Ensure directories exist
 EMBEDDING_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 EMBEDDING_MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
+# Silence SentenceTransformer logging (INFO level is too verbose)
+logging.getLogger('sentence_transformers').setLevel(logging.ERROR)
 
 
 class EmbeddingCache:
