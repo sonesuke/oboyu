@@ -144,11 +144,17 @@ class EmbeddingGenerator:
         # Dimensions for this model (Ruri v3-30m produces 256-dim embeddings)
         self.dimensions = self.model.get_sentence_embedding_dimension()
 
-    def generate_embeddings(self, chunks: List[Chunk]) -> List[Tuple[str, str, NDArray[np.float32], datetime]]:
+    def generate_embeddings(
+        self,
+        chunks: List[Chunk],
+        progress_callback: Optional[Callable[[int, int, str], None]] = None
+    ) -> List[Tuple[str, str, NDArray[np.float32], datetime]]:
         """Generate embeddings for a list of document chunks.
 
         Args:
             chunks: List of document chunks
+            progress_callback: Optional callback for progress updates 
+                               (chunks_processed, total_chunks, status)
 
         Returns:
             List of (id, chunk_id, embedding, timestamp) tuples
@@ -157,20 +163,42 @@ class EmbeddingGenerator:
         # Prepare texts for embedding
         texts_to_embed = []
         chunk_indices = []
+        total_chunk_count = len(chunks)
+        processed_count = 0
+        cache_hit_count = 0
 
         for i, chunk in enumerate(chunks):
             if chunk.prefix_content is None:
+                # Skip chunks with no content
+                processed_count += 1
+                if progress_callback:
+                    progress_callback(
+                        processed_count, 
+                        total_chunk_count, 
+                        f"Skipped empty chunk {processed_count}/{total_chunk_count}"
+                    )
                 continue
 
             # Check cache first if enabled
             embedding = None
             if self.use_cache:
                 embedding = self.cache.get(chunk.prefix_content, self.model_name)
+                if embedding is not None:
+                    cache_hit_count += 1
 
             if embedding is None:
                 # Need to generate embedding
                 texts_to_embed.append(chunk.prefix_content)
                 chunk_indices.append(i)
+            else:
+                # Count cached chunks as processed
+                processed_count += 1
+                if progress_callback:
+                    progress_callback(
+                        processed_count, 
+                        total_chunk_count, 
+                        f"Using cached embedding {processed_count}/{total_chunk_count} ({cache_hit_count} cache hits)"
+                    )
 
         # Generate new embeddings if needed
         new_embeddings = []
@@ -178,6 +206,16 @@ class EmbeddingGenerator:
             # Process in batches
             for i in range(0, len(texts_to_embed), self.batch_size):
                 batch_texts = texts_to_embed[i:i + self.batch_size]
+                
+                # Update progress before batch processing
+                if progress_callback:
+                    progress_callback(
+                        processed_count, 
+                        total_chunk_count, 
+                        f"Generating batch of {len(batch_texts)} embeddings..."
+                    )
+                
+                # Process batch
                 batch_embeddings = self.model.encode(batch_texts, normalize_embeddings=True)
 
                 for j, embedding in enumerate(batch_embeddings):
@@ -195,6 +233,15 @@ class EmbeddingGenerator:
                         cast(NDArray[np.float32], embedding),  # The embedding vector - cast to correct type
                         datetime.now(),  # Timestamp
                     ))
+                    
+                    # Update progress per embedding
+                    processed_count += 1
+                    if progress_callback:
+                        progress_callback(
+                            processed_count, 
+                            total_chunk_count, 
+                            f"Generated embedding {processed_count}/{total_chunk_count}"
+                        )
 
         # Collect pre-cached embeddings
         cached_embeddings = []
@@ -210,6 +257,14 @@ class EmbeddingGenerator:
                             cached_emb,  # The embedding vector - already properly typed from get()
                             datetime.now(),  # Timestamp
                         ))
+
+        # Final progress update
+        if progress_callback:
+            progress_callback(
+                total_chunk_count, 
+                total_chunk_count, 
+                f"Completed embedding generation: {len(new_embeddings)} new, {len(cached_embeddings)} cached"
+            )
 
         # Combine new and cached embeddings
         return new_embeddings + cached_embeddings

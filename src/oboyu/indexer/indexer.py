@@ -107,11 +107,17 @@ class Indexer:
         # Create a ThreadPoolExecutor that we'll reuse
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.config.max_workers)
 
-    def index_documents(self, crawler_results: List[CrawlerResult]) -> int:
+    def index_documents(
+        self, 
+        crawler_results: List[CrawlerResult],
+        progress_callback: Optional[Callable[[str, int, int], None]] = None
+    ) -> int:
         """Process and index documents from crawler results.
 
         Args:
             crawler_results: List of crawler results to index
+            progress_callback: Optional callback for progress updates
+                              (stage, current, total)
 
         Returns:
             Number of chunks indexed
@@ -127,8 +133,13 @@ class Indexer:
         if not new_docs:
             return 0
 
+        # Report starting document processing
+        if progress_callback:
+            progress_callback("processing", 0, len(new_docs))
+
         # Process documents into chunks
         all_chunks: List[Chunk] = []
+        processed_count = 0
 
         # Use the shared ThreadPoolExecutor for parallel processing
         # Submit document processing tasks
@@ -144,22 +155,77 @@ class Indexer:
                 chunks = future.result()
                 if chunks:
                     all_chunks.extend(chunks)
+                
+                # Update progress
+                processed_count += 1
+                if progress_callback:
+                    progress_callback(
+                        "processing", 
+                        processed_count, 
+                        len(new_docs)
+                    )
             except Exception as e:
                 logging.error(f"Error processing {doc.path}: {e}")
+                # Still count as processed for progress tracking
+                processed_count += 1
+                if progress_callback:
+                    progress_callback(
+                        "processing_error", 
+                        processed_count, 
+                        len(new_docs)
+                    )
 
         if not all_chunks:
             return 0
 
+        # Report storing chunks
+        if progress_callback:
+            progress_callback("storing", 0, 1)
+
         # Store chunks in database
         self.database.store_chunks(all_chunks)
+        
+        # Report chunk storage complete
+        if progress_callback:
+            progress_callback("storing", 1, 1)
 
-        # Generate and store embeddings
-        embeddings = self.embedding_generator.generate_embeddings(all_chunks)
+        # Generate and store embeddings with progress reporting
+        if progress_callback:
+            progress_callback("embedding", 0, len(all_chunks))
+            
+        # Create embedding progress callback
+        def embedding_progress(current: int, total: int, status: str) -> None:
+            if progress_callback:
+                progress_callback("embedding", current, total)
+        
+        # Generate embeddings with progress tracking
+        embeddings = self.embedding_generator.generate_embeddings(
+            all_chunks, 
+            progress_callback=embedding_progress
+        )
+        
+        # Report storing embeddings
+        if progress_callback:
+            progress_callback("storing_embeddings", 0, 1)
+            
+        # Store embeddings
         self.database.store_embeddings(embeddings, self.config.embedding_model)
+        
+        # Report embeddings stored
+        if progress_callback:
+            progress_callback("storing_embeddings", 1, 1)
 
         # Recompact index periodically
         if len(all_chunks) > 100:  # Only recompact after significant additions
+            # Report recompacting
+            if progress_callback:
+                progress_callback("recompacting", 0, 1)
+                
             self.database.recompact_index()
+            
+            # Report recompacting complete
+            if progress_callback:
+                progress_callback("recompacting", 1, 1)
 
         return len(all_chunks)
 
@@ -280,12 +346,19 @@ class Indexer:
 
         return deleted_count
 
-    def index_directory(self, directory: Union[str, Path], incremental: bool = True) -> tuple[int, int]:
+    def index_directory(
+        self, 
+        directory: Union[str, Path], 
+        incremental: bool = True,
+        progress_callback: Optional[Callable[[str, int, int], None]] = None
+    ) -> tuple[int, int]:
         """Index documents in a directory using the integrated crawler.
 
         Args:
             directory: Directory to index
             incremental: Whether to only index new files
+            progress_callback: Optional callback for progress updates
+                              (stage, current, total)
 
         Returns:
             Tuple of (number of chunks indexed, number of files processed)
@@ -310,16 +383,22 @@ class Indexer:
         if incremental:
             crawler._processed_files = self._processed_files.copy()
 
-        # Crawl directory
-        print("crawling directory...")
+        # Report starting crawler
+        if progress_callback:
+            progress_callback("crawling", 0, 1)
+            
+        # Crawl directory - no verbosity
         results = crawler.crawl(Path(directory))
+        
+        # Report crawling complete
+        if progress_callback:
+            progress_callback("crawling", 1, 1)
 
         # Count the number of files processed
         files_processed = len(results)
 
-        # Index results
-        print("indexing documents...")
-        chunks_indexed = self.index_documents(results)
+        # Index results with progress callback
+        chunks_indexed = self.index_documents(results, progress_callback)
 
         return chunks_indexed, files_processed
 
