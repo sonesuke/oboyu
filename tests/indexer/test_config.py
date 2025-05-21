@@ -21,7 +21,7 @@ class TestIndexerConfig:
         assert config.chunk_overlap == 256
         assert config.embedding_model == "cl-nagoya/ruri-v3-30m"
         assert config.embedding_device == "cpu"
-        assert config.batch_size == 8
+        assert config.batch_size == 128
         assert config.max_seq_length == 8192
         assert config.document_prefix == "検索文書: "
         assert config.query_prefix == "検索クエリ: "
@@ -103,7 +103,7 @@ class TestIndexerConfig:
         assert config.chunk_size == 1024  # Default
         assert config.chunk_overlap == 256  # Default
         assert config.embedding_device == "cpu"  # Default
-        assert config.batch_size == 8  # Default
+        assert config.batch_size == 128  # Default
         assert config.max_seq_length == 8192  # Default
         assert config.ef_construction == 128  # Default
         assert config.ef_search == 64  # Default

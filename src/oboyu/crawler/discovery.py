@@ -1,12 +1,19 @@
 """Document discovery module for Oboyu.
 
 This module provides utilities for discovering documents in the file system.
+It respects .gitignore files in the directory hierarchy.
 """
 
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Iterator, List, Set, Tuple
+from typing import Callable, Dict, Iterator, List, Optional, Set, Tuple
+
+try:
+    from gitignore_parser import parse_gitignore
+    HAS_GITIGNORE_PARSER = True
+except ImportError:
+    HAS_GITIGNORE_PARSER = False
 
 # Type alias for document path and metadata
 DocumentInfo = Tuple[Path, Dict[str, object]]
@@ -19,6 +26,7 @@ def discover_documents(
     max_depth: int = 10,
     max_file_size: int = 10 * 1024 * 1024,  # 10MB
     follow_symlinks: bool = False,
+    respect_gitignore: bool = True,
 ) -> List[DocumentInfo]:
     """Discover documents in a directory based on patterns.
 
@@ -29,6 +37,7 @@ def discover_documents(
         max_depth: Maximum directory traversal depth
         max_file_size: Maximum file size in bytes
         follow_symlinks: Whether to follow symbolic links
+        respect_gitignore: Whether to respect .gitignore files (default: True)
 
     Returns:
         List of tuples with document path and metadata
@@ -46,6 +55,13 @@ def discover_documents(
     # List to store discovered documents
     documents: List[DocumentInfo] = []
 
+    # Set up .gitignore matching if enabled and library is available
+    gitignore_matcher: Optional[Callable[[str], bool]] = None
+    if respect_gitignore and HAS_GITIGNORE_PARSER:
+        gitignore_path = directory / ".gitignore"
+        if gitignore_path.exists():
+            gitignore_matcher = parse_gitignore(gitignore_path)
+
     # Walk the directory tree
     for doc_path, metadata in _walk_directory(
         directory=directory,
@@ -56,6 +72,8 @@ def discover_documents(
         max_file_size=max_file_size,
         follow_symlinks=follow_symlinks,
         visited_dirs=visited_dirs,
+        gitignore_matcher=gitignore_matcher,
+        root_directory=directory,
     ):
         documents.append((doc_path, metadata))
 
@@ -71,6 +89,8 @@ def _walk_directory(
     max_file_size: int,
     follow_symlinks: bool,
     visited_dirs: Set[Path],
+    gitignore_matcher: Optional[Callable[[str], bool]] = None,
+    root_directory: Optional[Path] = None,
 ) -> Iterator[DocumentInfo]:
     """Recursively walk a directory to discover documents.
 
@@ -83,6 +103,8 @@ def _walk_directory(
         max_file_size: Maximum file size in bytes
         follow_symlinks: Whether to follow symbolic links
         visited_dirs: Set of already visited directories
+        gitignore_matcher: Optional function to match paths against gitignore rules
+        root_directory: Root directory for relative path calculation for gitignore
 
     Yields:
         Tuples of document path and metadata
@@ -95,14 +117,31 @@ def _walk_directory(
     # Add this directory to visited set
     visited_dirs.add(directory)
 
+    # Check for .gitignore in this directory if we're using gitignore support
+    # This enables us to respect nested .gitignore files
+    local_gitignore_matcher = gitignore_matcher
+    if HAS_GITIGNORE_PARSER:
+        gitignore_path = directory / ".gitignore"
+        if gitignore_path.exists():
+            # Create a new matcher for this directory's .gitignore
+            local_gitignore_matcher = parse_gitignore(gitignore_path)
+
     try:
         # List directory contents
         for item in os.scandir(directory):
             item_path = Path(item.path)
 
-            # Check if the path should be excluded
+            # Check if the path should be excluded by patterns
             if _should_exclude(item_path, exclude_patterns):
                 continue
+
+            # Check if the path should be excluded by .gitignore
+            if local_gitignore_matcher is not None:
+                # Get the absolute path as a string
+                abs_path_str = str(item_path.absolute())
+                # If the path matches gitignore rules, skip it
+                if local_gitignore_matcher(abs_path_str):
+                    continue
 
             # Handle directories
             if item.is_dir(follow_symlinks=follow_symlinks):
@@ -110,7 +149,7 @@ def _walk_directory(
                 if item_path in visited_dirs:
                     continue
 
-                # Recursively walk subdirectory
+                # Recursively walk subdirectory, passing the gitignore matcher
                 yield from _walk_directory(
                     directory=item_path,
                     patterns=patterns,
@@ -120,6 +159,8 @@ def _walk_directory(
                     max_file_size=max_file_size,
                     follow_symlinks=follow_symlinks,
                     visited_dirs=visited_dirs,
+                    gitignore_matcher=local_gitignore_matcher,
+                    root_directory=root_directory or directory,
                 )
 
             # Handle files

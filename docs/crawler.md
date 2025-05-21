@@ -21,11 +21,12 @@ The document discovery subsystem implements:
 - Recursive directory traversal with configurable depth
 - File pattern matching using glob patterns
 - Exclusion rules for unwanted files and directories
+- Support for .gitignore files to respect project-specific exclusions
 - Metadata extraction including creation and modification times
 - Change detection for incremental updates
 
 ```python
-def discover_documents(directory, patterns, exclude_patterns, max_depth):
+def discover_documents(directory, patterns, exclude_patterns, max_depth, respect_gitignore=True):
     # Implementation details
     # Returns list of document paths with metadata
 ```
@@ -89,10 +90,12 @@ crawler:
     - "*/venv/*"
   max_file_size: 10485760        # 10MB maximum file size
   follow_symlinks: false         # Whether to follow symbolic links
+  respect_gitignore: true        # Whether to respect .gitignore files
   japanese_encodings:            # Japanese encodings to detect
     - "utf-8"
     - "shift-jis"
     - "euc-jp"
+  max_workers: 4                 # Number of parallel workers for processing
 ```
 
 ## Performance Considerations

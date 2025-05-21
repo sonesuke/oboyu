@@ -16,7 +16,7 @@ DEFAULT_CONFIG = {
         # Embedding settings
         "embedding_model": "cl-nagoya/ruri-v3-30m",  # Default embedding model
         "embedding_device": "cpu",  # Default device for embeddings (cpu/cuda)
-        "batch_size": 8,  # Default batch size for embedding generation
+        "batch_size": 128,  # Default batch size for embedding generation
         "max_seq_length": 8192,  # Maximum sequence length (Ruri v3 default is 8192)
 
         # Prefix scheme settings (Ruri v3's 1+3 prefix scheme)
@@ -44,7 +44,7 @@ DEFAULT_CHUNK_SIZE = 1024
 DEFAULT_CHUNK_OVERLAP = 256
 DEFAULT_EMBEDDING_MODEL = "cl-nagoya/ruri-v3-30m"
 DEFAULT_EMBEDDING_DEVICE = "cpu"
-DEFAULT_BATCH_SIZE = 8
+DEFAULT_BATCH_SIZE = 128
 DEFAULT_MAX_SEQ_LENGTH = 8192
 DEFAULT_DOCUMENT_PREFIX = "検索文書: "
 DEFAULT_QUERY_PREFIX = "検索クエリ: "
