@@ -11,6 +11,7 @@ import typer
 from rich.console import Console
 from typing_extensions import Annotated
 
+from oboyu.cli.formatters import console, ProgressGroup
 from oboyu.cli.paths import DEFAULT_DB_PATH
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.indexer import Indexer
@@ -21,9 +22,6 @@ app = typer.Typer(help="Index documents for search and manage the index")
 # Create manage subcommand app
 manage_app = typer.Typer(help="Manage the index database")
 app.add_typer(manage_app, name="manage", help="Manage the index database")
-
-# Create console for rich output
-console = Console()
 
 # Define command options
 DirectoryOption = Annotated[
@@ -177,34 +175,44 @@ def clear(
             console.print("Operation cancelled.")
             return
 
-    # Import progress indicator if not already imported
-    try:
-        # Check if create_indeterminate_progress is already imported
-        create_indeterminate_progress
-    except NameError:
-        from oboyu.cli.formatters import create_indeterminate_progress
-
-    # Show progress during indexer initialization
-    with create_indeterminate_progress("Initializing...") as init_progress:
-        init_task = init_progress.add_task("Loading embedding model and setting up database...", total=None)
-
-        # Create indexer (this loads the model and sets up the database)
-        indexer = Indexer(config=indexer_config)
-
-        # Mark initialization as complete
-        init_progress.update(init_task, description="[green]✓[/green] Initialization complete")
-
-    # Clear the index with progress indicator
+    # Create a progress group for the whole operation
+    progress = ProgressGroup("Clear Database")
+    
+    # Add initialization progress
+    progress.add_progress(
+        "init", 
+        "Loading embedding model and setting up database...", 
+        indeterminate=True
+    )
+    
+    # Start initialization progress
+    progress.start("init")
+    
+    # Create indexer (this loads the model and sets up the database)
+    indexer = Indexer(config=indexer_config)
+    
+    # Update initialization progress
+    progress.update("init", description="[green]✓[/green] Initialization complete")
+    progress.stop("init")
+    
+    # Add clearing progress
+    progress.add_progress(
+        "clear", 
+        "Removing indexed data...", 
+        indeterminate=True
+    )
+    
+    # Start clearing progress
     console.print("Clearing index database...")
-    with create_indeterminate_progress("Clearing...") as clear_progress:
-        clear_task = clear_progress.add_task("Removing indexed data...", total=None)
-
-        # Clear the index
-        indexer.clear_index()
-
-        # Mark clearing as complete
-        clear_progress.update(clear_task, description="[green]✓[/green] Database cleared")
-
+    progress.start("clear")
+    
+    # Clear the index
+    indexer.clear_index()
+    
+    # Update clearing progress
+    progress.update("clear", description="[green]✓[/green] Database cleared")
+    progress.stop("clear")
+    
     # Clean up resources to prevent semaphore leaks
     indexer.close()
 
@@ -283,71 +291,120 @@ def index(
     # Provide immediate feedback
     console.print(f"Starting indexing of {', '.join(str(d) for d in directories)}...")
 
-    # Import progress indicator
-    from oboyu.cli.formatters import create_indeterminate_progress
+    # Create a progress group to manage all progress indicators
+    progress = ProgressGroup("Indexing Process")
+    
+    # Add initialization progress
+    progress.add_progress(
+        "init",
+        "Loading embedding model and setting up database...",
+        indeterminate=True
+    )
+    
+    # Start initialization progress
+    progress.start("init")
+    
+    # Create indexer (this loads the model and sets up the database)
+    indexer = Indexer(config=indexer_config)
+    
+    # Mark initialization as complete
+    progress.update("init", description="[green]✓[/green] Initialization complete")
+    progress.stop("init")
 
-    # Show progress during indexer initialization (model loading and database setup)
-    with create_indeterminate_progress("Initializing...") as init_progress:
-        init_task = init_progress.add_task("Loading embedding model and setting up database...", total=None)
-
-        # Create indexer (this loads the model and sets up the database)
-        indexer = Indexer(config=indexer_config)
-
-        # Mark initialization as complete
-        init_progress.update(init_task, description="[green]✓[/green] Initialization complete")
-
+    # Set up scanning progress
+    progress.add_progress(
+        "scan",
+        "Scanning for documents...",
+        indeterminate=True,
+        show_count=True,
+        unit="files"
+    )
+    
+    # Start scanning progress
     console.print("Scanning files...")
+    progress.start("scan")
 
-    # Process each directory
+    # Track totals
     total_chunks = 0
     total_files = 0
     start_time = time.time()
+    
+    # Create the indexing progress indicator
+    progress.add_progress(
+        "index",
+        "Indexing documents...",
+        indeterminate=True,
+        show_count=True,
+        unit="files"
+    )
+    
+    # Update scanning progress for each directory
+    for directory in directories:
+        progress.update(
+            "scan",
+            description=f"Scanning [cyan]{directory}[/cyan]..."
+        )
+    
+    # Complete scanning and move to indexing
+    progress.stop("scan")
+    console.print("Beginning document indexing...")
+    progress.start("index")
 
-    # Reuse the progress indicator already imported
-
-    # First, count the total number of files to be processed
-    console.print("Counting files to index...")
-
-    # This requires a two-pass approach:
-    # 1. First, we'll estimate the number of files to be processed
-    # 2. Then we'll process them with a progress bar
-
-    # Progress tracking is handled by the Progress class
-
-    with create_indeterminate_progress("Scanning directories...", show_count=True) as scan_progress:
-        scan_task = scan_progress.add_task("Scanning for documents...", total=None)
-
-        for directory in directories:
-            # Update progress
-            scan_progress.update(
-                scan_task,
-                description=f"Scanning [cyan]{directory}[/cyan]...",
-                completed=total_files
+    # Process each directory
+    for directory in directories:
+        # Output information about current directory
+        progress.update(
+            "index", 
+            description=f"Indexing [cyan]{directory}[/cyan]..."
+        )
+        
+        # Create a progress callback for the indexer
+        def indexer_progress_callback(stage: str, current: int, total: int) -> None:
+            # Map the stages to appropriate progress messages
+            stage_descriptions = {
+                "crawling": f"Crawling [cyan]{directory}[/cyan]...",
+                "processing": f"Processing documents from [cyan]{directory}[/cyan]...",
+                "storing": f"Storing chunks from [cyan]{directory}[/cyan]...",
+                "embedding": f"Generating embeddings for [cyan]{directory}[/cyan]...",
+                "storing_embeddings": f"Storing embeddings for [cyan]{directory}[/cyan]...",
+                "recompacting": f"Optimizing index for [cyan]{directory}[/cyan]...",
+            }
+            
+            # Update the progress with the appropriate description
+            description = stage_descriptions.get(
+                stage, 
+                f"Processing {stage} ({current}/{total}) from [cyan]{directory}[/cyan]..."
             )
+            
+            # Add completion percentage for non-zero totals
+            if total > 0:
+                percentage = int(100 * current / total)
+                description = f"{description} {percentage}%"
+                
+            progress.update("index", description=description)
 
-    # Now do the actual indexing with an accurate progress bar
-    console.print("")
-    console.print("Indexing documents...")
+        # Index directory - returns tuple of (chunks, files)
+        chunks_indexed, files_processed = indexer.index_directory(
+            directory, 
+            incremental=not force,
+            progress_callback=indexer_progress_callback
+        )
+        total_chunks += chunks_indexed
+        total_files += files_processed
 
-    with create_indeterminate_progress("Indexing documents...", show_count=True) as progress:
-        task = progress.add_task("Indexing documents...", total=None)
+        # Update progress with count
+        progress.update(
+            "index",
+            completed=total_files,
+            description=f"Processed {files_processed} files from [cyan]{directory}[/cyan]"
+        )
 
-        for directory in directories:
-            # Output information
-            console.print(f"\nProcessing directory: [cyan]{directory}[/cyan]")
-            progress.update(task, description=f"Indexing [cyan]{directory}[/cyan]...")
-
-            # Index directory - now returns tuple of (chunks, files)
-            chunks_indexed, files_processed = indexer.index_directory(directory, incremental=not force)
-            total_chunks += chunks_indexed
-            total_files += files_processed
-
-            # Update progress with count
-            progress.update(
-                task,
-                completed=total_files,
-                description=f"Processed {files_processed} files ({total_files} total), {chunks_indexed} chunks"
-            )
+    # Complete indexing
+    progress.update(
+        "index", 
+        description=f"[green]✓[/green] Indexed {total_files} files with {total_chunks} chunks"
+    )
+    progress.stop("index")
 
     # Show summary
     elapsed_time = time.time() - start_time
