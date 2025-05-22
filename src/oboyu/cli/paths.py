@@ -4,23 +4,22 @@ This module provides centralized path definitions for the application,
 following the XDG Base Directory specification.
 """
 
-import os
-from pathlib import Path
 
-# XDG Base Directory environment variables with defaults
-XDG_CONFIG_HOME = os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))
-XDG_DATA_HOME = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
-XDG_CACHE_HOME = os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))
-XDG_STATE_HOME = os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local" / "state"))
+from xdg_base_dirs import (
+    xdg_cache_home,
+    xdg_config_home,
+    xdg_data_home,
+    xdg_state_home,
+)
 
 # Application name
 APP_NAME = "oboyu"
 
 # Base directories for different types of data
-CONFIG_BASE_DIR = Path(XDG_CONFIG_HOME) / APP_NAME
-DATA_BASE_DIR = Path(XDG_DATA_HOME) / APP_NAME
-CACHE_BASE_DIR = Path(XDG_CACHE_HOME) / APP_NAME
-STATE_BASE_DIR = Path(XDG_STATE_HOME) / APP_NAME
+CONFIG_BASE_DIR = xdg_config_home() / APP_NAME
+DATA_BASE_DIR = xdg_data_home() / APP_NAME
+CACHE_BASE_DIR = xdg_cache_home() / APP_NAME
+STATE_BASE_DIR = xdg_state_home() / APP_NAME
 
 # Configuration file path
 DEFAULT_CONFIG_PATH = CONFIG_BASE_DIR / "config.yaml"
