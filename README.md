@@ -93,7 +93,7 @@ oboyu version
 
 ## Configuration
 
-Create a configuration file at `~/.oboyu/config.yaml`:
+Create a configuration file at the XDG-compliant location `~/.config/oboyu/config.yaml`:
 
 ```yaml
 # Crawler settings

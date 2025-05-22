@@ -17,15 +17,8 @@ from numpy.typing import NDArray
 from sentence_transformers import SentenceTransformer
 from torch import Tensor
 
+from oboyu.cli.paths import EMBEDDING_CACHE_DIR, EMBEDDING_MODELS_DIR
 from oboyu.indexer.processor import Chunk
-
-# Default embedding directories
-EMBEDDING_CACHE_DIR = Path.home() / ".config" / "oboyu" / "embedding" / "cache"
-EMBEDDING_MODELS_DIR = Path.home() / ".config" / "oboyu" / "embedding" / "models"
-
-# Ensure directories exist
-EMBEDDING_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-EMBEDDING_MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Silence SentenceTransformer logging (INFO level is too verbose)
 logging.getLogger('sentence_transformers').setLevel(logging.ERROR)
