@@ -44,6 +44,9 @@ oboyu = "oboyu.cli.main:run"
 requires = ["hatchling>=1.8.0"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/oboyu"]
+
 [dependency-groups]
 dev = [
     "mypy>=1.15.0",
