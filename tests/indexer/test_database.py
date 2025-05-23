@@ -142,7 +142,7 @@ class TestDatabase:
             results = db.search(vector, limit=1)
             assert len(results) == 1
             assert results[0]["chunk_id"] == "test-chunk-1"
-            assert results[0]["score"] < 0.0001  # Should be very close to 0 for exact match
+            assert results[0]["score"] > 0.999  # Should be very close to 1.0 for exact match
             
             # Close database connection
             db.close()

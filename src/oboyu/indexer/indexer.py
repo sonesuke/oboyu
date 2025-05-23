@@ -47,7 +47,7 @@ class SearchResult:
     """Additional metadata about the chunk."""
 
     score: float
-    """Similarity score (lower is better for cosine distance)."""
+    """Similarity score (0-1, where 1 is perfect match)."""
 
 
 class Indexer:
