@@ -535,8 +535,23 @@ class Database:
         # Delete all data from chunks
         self.conn.execute("DELETE FROM chunks")
 
-        # Optionally, we could recompact the index here
-        self.recompact_index()
+        # Drop and recreate the HNSW index to ensure clean state
+        # This is necessary because HNSW indexes can retain internal state
+        # even after all data is deleted
+        self.conn.execute("DROP INDEX IF EXISTS vector_idx")
+        
+        # Recreate the HNSW index with the same parameters
+        self.conn.execute(f"""
+            CREATE INDEX vector_idx ON embeddings
+            USING HNSW (vector)
+            WITH (
+                metric = 'cosine',
+                ef_construction = {self.ef_construction},
+                ef_search = {self.ef_search},
+                m = {self.m},
+                m0 = {self.m0}
+            )
+        """)
 
     def get_statistics(self) -> Dict[str, object]:
         """Retrieve statistics about the database.

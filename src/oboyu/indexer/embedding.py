@@ -17,7 +17,7 @@ from numpy.typing import NDArray
 from sentence_transformers import SentenceTransformer
 from torch import Tensor
 
-from oboyu.cli.paths import EMBEDDING_CACHE_DIR, EMBEDDING_MODELS_DIR
+from oboyu.common.paths import EMBEDDING_CACHE_DIR, EMBEDDING_MODELS_DIR
 from oboyu.indexer.processor import Chunk
 
 # Silence SentenceTransformer logging (INFO level is too verbose)

@@ -48,6 +48,9 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/oboyu"]
 
+[tool.uv.sources]
+oboyu = { path = ".", editable = true }
+
 [dependency-groups]
 dev = [
     "mypy>=1.15.0",
