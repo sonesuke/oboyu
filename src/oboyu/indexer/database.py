@@ -365,6 +365,12 @@ class Database:
         # Format results
         formatted_results = []
         for row in results:
+            # Convert cosine distance to similarity score
+            # Cosine distance ranges from 0 to 2, where 0 is best match
+            # Convert to similarity score where 1 is best match
+            distance = float(row[7])
+            similarity_score = 1.0 - (distance / 2.0)
+            
             formatted_results.append({
                 "chunk_id": row[0],
                 "path": row[1],
@@ -373,7 +379,7 @@ class Database:
                 "chunk_index": row[4],
                 "language": row[5],
                 "metadata": json.loads(row[6]) if row[6] else {},
-                "score": float(row[7]),  # Convert to float for JSON serialization
+                "score": similarity_score,  # Now higher scores are better
             })
 
         return formatted_results
