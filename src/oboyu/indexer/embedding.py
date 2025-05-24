@@ -10,7 +10,7 @@ import logging
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, List, Optional, Tuple, Union, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -18,6 +18,7 @@ from sentence_transformers import SentenceTransformer
 from torch import Tensor
 
 from oboyu.common.paths import EMBEDDING_CACHE_DIR, EMBEDDING_MODELS_DIR
+from oboyu.indexer.onnx_converter import ONNXEmbeddingModel, get_or_convert_onnx_model
 from oboyu.indexer.processor import Chunk
 
 # Global model cache to avoid reloading models in the same process
@@ -114,6 +115,7 @@ class EmbeddingGenerator:
         use_cache: bool = True,
         cache_dir: Union[str, Path] = EMBEDDING_CACHE_DIR,
         model_dir: Union[str, Path] = EMBEDDING_MODELS_DIR,
+        use_onnx: bool = True,
     ) -> None:
         """Initialize the embedding generator.
 
@@ -126,29 +128,68 @@ class EmbeddingGenerator:
             use_cache: Whether to use embedding cache
             cache_dir: Directory to store cached embeddings (defaults to XDG config path)
             model_dir: Directory to store downloaded models (defaults to XDG config path)
+            use_onnx: Whether to use ONNX optimization for faster inference
+
+        Note:
+            The model is loaded lazily on first use to improve startup performance.
 
         """
-        # Use global model cache to avoid reloading models in the same process
-        cache_key = f"{model_name}_{device}_{max_seq_length}"
-        if cache_key not in _MODEL_CACHE:
-            # Load the model (with model_dir as cache directory)
-            model = SentenceTransformer(model_name, device=device, cache_folder=str(model_dir))
-            model.max_seq_length = max_seq_length
-            _MODEL_CACHE[cache_key] = model
-        
-        self.model = _MODEL_CACHE[cache_key]
+        # Store configuration for lazy loading
+        self.use_onnx = use_onnx and device == "cpu"  # ONNX is most beneficial for CPU
+        self.device = device
+        self.model_dir = model_dir
+        self._model: Optional[Any] = None  # Lazy-loaded model
+        self._cache_key = f"{model_name}_{device}_{max_seq_length}_{'onnx' if self.use_onnx else 'torch'}"
 
         self.model_name = model_name
         self.batch_size = batch_size
         self.query_prefix = query_prefix
+        self.max_seq_length = max_seq_length
 
         # Set up cache
         self.use_cache = use_cache
         if use_cache:
             self.cache = EmbeddingCache(cache_dir)
 
-        # Dimensions for this model (Ruri v3-30m produces 256-dim embeddings)
-        self.dimensions = self.model.get_sentence_embedding_dimension()
+        # Dimensions for this model (will be set when model is loaded)
+        self._dimensions: Optional[int] = None
+
+    @property
+    def model(self) -> Any:  # noqa: ANN401
+        """Get the model, loading it lazily if not already loaded."""
+        if self._model is None:
+            self._load_model()
+        return self._model
+
+    @property
+    def dimensions(self) -> int:
+        """Get the embedding dimensions, loading the model if necessary."""
+        if self._dimensions is None:
+            # Trigger model loading to get dimensions
+            _ = self.model
+        return self._dimensions or 256  # Fallback for type safety
+
+    def _load_model(self) -> None:
+        """Load the model (ONNX or PyTorch) and cache it."""
+        # Use global model cache to avoid reloading models in the same process
+        if self._cache_key not in _MODEL_CACHE:
+            model: Any  # Type hint to allow both model types
+            if self.use_onnx:
+                # Load or convert to ONNX model
+                onnx_path = get_or_convert_onnx_model(self.model_name, self.model_dir)
+                model = ONNXEmbeddingModel(
+                    onnx_path,
+                    max_seq_length=self.max_seq_length,
+                )
+            else:
+                # Load the model (with model_dir as cache directory)
+                model = SentenceTransformer(self.model_name, device=self.device, cache_folder=str(self.model_dir))
+                model.max_seq_length = self.max_seq_length
+            _MODEL_CACHE[self._cache_key] = model
+
+        self._model = _MODEL_CACHE[self._cache_key]
+        # Set dimensions after loading
+        self._dimensions = self._model.get_sentence_embedding_dimension()
 
     def generate_embeddings(
         self,
@@ -236,7 +277,7 @@ class EmbeddingGenerator:
                     new_embeddings.append((
                         f"{uuid.uuid4()}",  # Generate unique ID for the embedding
                         chunk.id,  # Reference to the chunk
-                        cast(NDArray[np.float32], embedding),  # The embedding vector - cast to correct type
+                        np.asarray(embedding, dtype=np.float32),  # The embedding vector - ensure numpy array
                         datetime.now(),  # Timestamp
                     ))
                     
