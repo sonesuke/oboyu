@@ -61,6 +61,7 @@ The Embedding Generator creates vector representations:
 - Handles batching for efficient processing
 - Implements persistent embedding cache
 - Applies specialized prefix scheme for different text types
+- **NEW**: Supports ONNX optimization for faster CPU inference
 
 ```python
 def generate_embeddings(chunks):
@@ -71,6 +72,34 @@ def generate_embeddings(chunks):
     # Returns vectors for document chunks
     return embeddings
 ```
+
+#### ONNX Optimization
+
+Oboyu supports ONNX (Open Neural Network Exchange) optimization for accelerated inference:
+
+- **Automatic Conversion**: Models are automatically converted to ONNX format on first use
+- **Optimized Runtime**: Uses ONNX Runtime with graph optimization for better CPU performance
+- **Transparent Switching**: Can toggle between PyTorch and ONNX backends via configuration
+- **Model Caching**: ONNX models are cached to avoid re-conversion overhead
+- **Performance Benefits**: Typically 2-4x faster inference on CPU compared to PyTorch
+- **Lazy Loading**: Models are loaded only when first needed, improving startup time
+
+To enable ONNX optimization (enabled by default for CPU):
+
+```yaml
+indexer:
+  use_onnx: true  # Enable ONNX optimization
+  embedding_device: cpu  # ONNX is most beneficial for CPU
+```
+
+#### Lazy Loading
+
+The EmbeddingGenerator implements lazy loading for optimal performance:
+
+- **Fast Initialization**: Creating EmbeddingGenerator instances is nearly instantaneous
+- **On-Demand Loading**: Models are only loaded when first accessed (e.g., during embedding generation)
+- **Global Caching**: Multiple instances with the same configuration share cached models
+- **Memory Efficiency**: Reduces memory usage when models aren't immediately needed
 
 ### Database Manager
 
@@ -197,6 +226,7 @@ DEFAULT_CONFIG = {
         "embedding_device": "cpu",  # Default device for embeddings
         "batch_size": 8,  # Default batch size for embedding generation
         "max_seq_length": 8192,  # Maximum sequence length
+        "use_onnx": true,  # Use ONNX optimization for faster inference
         
         # Prefix scheme settings (Ruri v3's 1+3 prefix scheme)
         "document_prefix": "検索文書: ",  # Prefix for documents
@@ -226,6 +256,7 @@ DEFAULT_CONFIG = {
 - Persistent embedding cache to avoid regenerating embeddings
 - Periodic HNSW index recompaction for better search performance
 - Intelligent chunk boundary detection at sentence/paragraph level
+- ONNX optimization provides 2-4x faster CPU inference for embeddings
 
 ## Integration with Other Components
 

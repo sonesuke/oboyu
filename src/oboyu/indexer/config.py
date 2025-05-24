@@ -18,6 +18,7 @@ DEFAULT_CONFIG = {
         "embedding_device": "cpu",  # Default device for embeddings (cpu/cuda)
         "batch_size": 128,  # Default batch size for embedding generation
         "max_seq_length": 8192,  # Maximum sequence length (Ruri v3 default is 8192)
+        "use_onnx": True,  # Whether to use ONNX optimization for faster inference
 
         # Prefix scheme settings (Ruri v3's 1+3 prefix scheme)
         "document_prefix": "検索文書: ",  # Prefix for documents to be indexed
@@ -46,6 +47,7 @@ DEFAULT_EMBEDDING_MODEL = "cl-nagoya/ruri-v3-30m"
 DEFAULT_EMBEDDING_DEVICE = "cpu"
 DEFAULT_BATCH_SIZE = 128
 DEFAULT_MAX_SEQ_LENGTH = 8192
+DEFAULT_USE_ONNX = True
 DEFAULT_DOCUMENT_PREFIX = "検索文書: "
 DEFAULT_QUERY_PREFIX = "検索クエリ: "
 DEFAULT_TOPIC_PREFIX = "トピック: "
@@ -149,6 +151,10 @@ class IndexerConfig:
         if not isinstance(indexer_config.get("max_seq_length"), int) or indexer_config.get("max_seq_length", 0) <= 0:
             indexer_config["max_seq_length"] = DEFAULT_MAX_SEQ_LENGTH
 
+        # Validate use_onnx - must be a boolean
+        if not isinstance(indexer_config.get("use_onnx"), bool):
+            indexer_config["use_onnx"] = DEFAULT_USE_ONNX
+
         # Validate prefixes - must be strings
         if not isinstance(indexer_config.get("document_prefix"), str):
             indexer_config["document_prefix"] = DEFAULT_DOCUMENT_PREFIX
@@ -210,6 +216,11 @@ class IndexerConfig:
     def max_seq_length(self) -> int:
         """Maximum sequence length for embedding model."""
         return int(self.config["indexer"]["max_seq_length"])
+
+    @property
+    def use_onnx(self) -> bool:
+        """Whether to use ONNX optimization for faster inference."""
+        return bool(self.config["indexer"]["use_onnx"])
 
     @property
     def document_prefix(self) -> str:
