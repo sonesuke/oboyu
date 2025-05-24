@@ -32,6 +32,8 @@ app = typer.Typer(
     name="oboyu",
     help="A Japanese-enhanced semantic search system for your local documents.",
     add_completion=False,
+    pretty_exceptions_enable=False,
+    rich_markup_mode=None,
     context_settings={
         "help_option_names": ["-h", "--help"],
     },

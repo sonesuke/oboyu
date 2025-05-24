@@ -21,6 +21,7 @@ from oboyu.indexer.indexer import Indexer, SearchResult
 app = typer.Typer(
     help="Search indexed documents",
     pretty_exceptions_enable=False,
+    rich_markup_mode=None,
 )
 
 # Create console for rich output
