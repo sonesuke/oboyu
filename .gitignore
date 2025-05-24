@@ -10,3 +10,8 @@ repomix-output.xml
 oboyu.db
 oboyu.db.wal
 .embedding_cache
+
+# Benchmark directories
+bench/data/
+bench/queries/
+bench/results/

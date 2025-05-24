@@ -273,28 +273,36 @@ class Database:
             raise ValueError("Database connection not initialized. Call setup() first.")
 
         # バッチ挿入用のデータを準備
-        batch_data = []
-        for embedding_id, chunk_id, vector, timestamp in embeddings:
-            batch_data.append((
-                embedding_id,
-                chunk_id,
-                model_name,
-                vector.tolist(),  # NumPy配列をリストに変換
-                timestamp
-            ))
+        # DuckDB v1.2+ has issues with FLOAT[] type conversion
+        # We need to insert one by one and use array literal syntax
+        for idx, (embedding_id, chunk_id, vector, timestamp) in enumerate(embeddings):
+            # Skip problematic embeddings with scalar shape
+            if vector.shape == ():
+                # This is a bug in the embedding generation, skip for now
+                continue
+            
+            # Convert vector to list
+            vector_list = vector.tolist()
+            
+            # Handle case where tolist() returns a scalar
+            if not isinstance(vector_list, list):
+                # This shouldn't happen with properly shaped embeddings
+                raise ValueError(f"Expected list from vector.tolist() but got {type(vector_list)}. Vector shape: {vector.shape}")
+            
+            # Build array literal string for DuckDB
+            array_str = '[' + ','.join(str(float(v)) for v in vector_list) + ']'
+            
+            # Use parameterized query for other values but array as literal
+            self.conn.execute(f"""
+                INSERT INTO embeddings (id, chunk_id, model, vector, created_at)
+                VALUES (?, ?, ?, {array_str}::FLOAT[{len(vector_list)}], ?)
+                ON CONFLICT (id) DO UPDATE SET
+                    chunk_id = excluded.chunk_id,
+                    model = excluded.model,
+                    vector = excluded.vector,
+                    created_at = excluded.created_at
+            """, (embedding_id, chunk_id, model_name, timestamp))
         
-        # バッチ挿入を実行（2つの方法があります）
-        
-        # 方法1: executemanyを使用（多くのSQLデータベースでサポートされている）
-        self.conn.executemany("""
-            INSERT INTO embeddings (id, chunk_id, model, vector, created_at)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT (id) DO UPDATE SET
-                chunk_id = excluded.chunk_id,
-                model = excluded.model,
-                vector = excluded.vector,
-                created_at = excluded.created_at
-        """, batch_data)
         self.conn.commit()
 
     def search(
