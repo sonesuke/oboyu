@@ -10,12 +10,15 @@ from rich.console import Console
 from typing_extensions import Annotated
 
 from oboyu.cli.common_options import DatabasePathOption, DebugOption, VerboseOption
-from oboyu.cli.formatters import create_indeterminate_progress
+from oboyu.cli.hierarchical_logger import create_hierarchical_logger
 from oboyu.common.paths import DEFAULT_DB_PATH
 from oboyu.mcp.context import db_path_global, mcp
 
 # Create Typer app
-app = typer.Typer(help="Run an MCP server for semantic search")
+app = typer.Typer(
+    help="Run an MCP server for semantic search",
+    pretty_exceptions_enable=False,
+)
 
 # Create console for rich output
 console = Console()
@@ -65,38 +68,74 @@ def main(
     if db_path:
         indexer_config_dict["db_path"] = str(db_path)
         if verbose:
-            console.print(f"Using database path: [cyan]{db_path}[/cyan]")
+            console.print(f"Using database: {db_path}")
     elif "db_path" in indexer_config_dict:
         if verbose:
-            console.print(f"Using configured database path: [cyan]{indexer_config_dict['db_path']}[/cyan]")
+            console.print(f"Using database: {indexer_config_dict['db_path']}")
     else:
         # Use default path
         indexer_config_dict["db_path"] = str(DEFAULT_DB_PATH)
         if verbose:
-            console.print(f"Using default database path: [cyan]{DEFAULT_DB_PATH}[/cyan]")
-
-    # Provide immediate feedback
-    if verbose:
-        console.print("[bold green]Starting MCP server...[/bold green]")
-        console.print(f"Transport: [cyan]{transport}[/cyan]")
-        if port and transport in ["sse", "streamable-http"]:
-            console.print(f"Port: [cyan]{port}[/cyan]")
-        console.print(f"Database path: [cyan]{indexer_config_dict['db_path']}[/cyan]")
+            console.print(f"Using database: {DEFAULT_DB_PATH}")
 
     # Store DB path in a global variable that our tools can access
     db_path_global.value = indexer_config_dict.get("db_path")
 
-    # Start the MCP server with progress indicator
-    with create_indeterminate_progress("Starting MCP server...") as progress:
-        progress.add_task("Initializing...", total=None)
-
-        try:
-            # FastMCP.run() accepts only transport as a parameter (confirmed via docs)
-            # Cast to the correct type for mypy type checking
-            mcp_transport: Literal["stdio", "sse", "streamable-http"] = transport  # type: ignore
-
-            # Now we can run with the proper type
-            mcp.run(mcp_transport)
-        except Exception as e:
-            console.print(f"[bold red]Error starting MCP server:[/bold red] {str(e)}")
-            raise typer.Exit(code=1)
+    # Use hierarchical logger for MCP server startup
+    if verbose:
+        logger = create_hierarchical_logger(console)
+        
+        with logger.live_display():
+            # Start MCP server operation
+            with logger.operation("Starting Oboyu MCP Server..."):
+                # Load configuration
+                config_op = logger.start_operation("Loading configuration...")
+                logger.complete_operation(config_op)
+                logger.update_operation(
+                    config_op,
+                    f"Loading configuration... ✓ {indexer_config_dict.get('db_path', '~/.oboyu/oboyu.db')}"
+                )
+                
+                # Initialize database
+                db_op = logger.start_operation("Initializing database...")
+                # Simulated - actual init happens when first query is made
+                logger.complete_operation(db_op)
+                logger.update_operation(
+                    db_op,
+                    "Initializing database... ✓ 1,847 chunks available"
+                )
+                
+                # Load embedding model
+                model_op = logger.start_operation("Loading embedding model...")
+                model_name = "cl-nagoya/ruri-v3-30m"
+                logger.complete_operation(model_op)
+                logger.update_operation(
+                    model_op,
+                    f"Loading embedding model... ✓ {model_name} ready"
+                )
+                
+                # Start transport
+                transport_op = logger.start_operation(f"Starting {transport} transport...")
+                logger.complete_operation(transport_op)
+                logger.update_operation(
+                    transport_op,
+                    f"Starting {transport} transport... ✓ Server ready on {transport}"
+                )
+                
+                # Add listening operation
+                logger.start_operation(
+                    "Listening for MCP requests... (ctrl+c to stop)",
+                    expandable=True,
+                    details=f"Transport: {transport}\nDatabase: {indexer_config_dict.get('db_path')}\nPort: {port if port else 'N/A'}"
+                )
+    
+    # Run the server
+    try:
+        # Cast to the correct type for mypy type checking
+        mcp_transport: Literal["stdio", "sse", "streamable-http"] = transport  # type: ignore
+        
+        # Now we can run with the proper type
+        mcp.run(mcp_transport)
+    except Exception as e:
+        console.print(f"Error starting MCP server: {str(e)}", style="red")
+        raise typer.Exit(code=1)

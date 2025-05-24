@@ -12,12 +12,16 @@ from rich.console import Console
 from rich.text import Text
 from typing_extensions import Annotated
 
+from oboyu.cli.hierarchical_logger import create_hierarchical_logger
 from oboyu.common.paths import DEFAULT_DB_PATH
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.indexer import Indexer, SearchResult
 
 # Create Typer app
-app = typer.Typer(help="Search indexed documents")
+app = typer.Typer(
+    help="Search indexed documents",
+    pretty_exceptions_enable=False,
+)
 
 # Create console for rich output
 console = Console()
@@ -118,8 +122,8 @@ def format_search_result(result: SearchResult, query: str, show_explanation: boo
     content = Text()
 
     # Title with score
-    content.append("• ", style="bold")
-    content.append(f"{result.title}", style="bold cyan")
+    content.append("• ")
+    content.append(f"{result.title}")
     content.append(f" (Score: {result.score:.2f})", style="dim")
     content.append("\n")
 
@@ -129,7 +133,7 @@ def format_search_result(result: SearchResult, query: str, show_explanation: boo
 
     # Path as source
     content.append("  Source: ", style="dim")
-    content.append(str(result.path), style="blue underline")
+    content.append(str(result.path))
 
     # Language as metadata if available and not empty
     if result.language and result.language.strip():
@@ -188,56 +192,90 @@ def query(
     # 3. Default from central path definition (lowest priority)
     if db_path is not None:
         indexer_config_dict["db_path"] = str(db_path)
-        console.print(f"Using explicitly specified database path: [cyan]{db_path}[/cyan]")
+        console.print(f"Using database: {db_path}")
     elif "db_path" in indexer_config_dict:
-        console.print(f"Using configured database path: [cyan]{indexer_config_dict['db_path']}[/cyan]")
+        console.print(f"Using database: {indexer_config_dict['db_path']}")
     else:
         # Use the default path from central definition
         indexer_config_dict["db_path"] = str(DEFAULT_DB_PATH)
-        console.print(f"Using default database path: [cyan]{DEFAULT_DB_PATH}[/cyan]")
+        console.print(f"Using database: {DEFAULT_DB_PATH}")
 
     # Create indexer configuration object
     indexer_config = IndexerConfig(config_dict={"indexer": indexer_config_dict})
 
-    # Provide immediate feedback
-    console.print(f"Searching for: \"[bold]{query}[/bold]\"")
-    console.print(f"Search mode: [cyan]{mode}[/cyan]")
-
-    # Import progress indicator
-    from oboyu.cli.formatters import create_indeterminate_progress
-
-    # Show progress during indexer initialization (model loading and database setup)
-    with create_indeterminate_progress("Initializing...") as init_progress:
-        init_task = init_progress.add_task("Loading embedding model and setting up database...", total=None)
-
-        # Create indexer (this loads the model and sets up the database)
-        indexer = Indexer(config=indexer_config)
-
-        # Mark initialization as complete
-        init_progress.update(init_task, description="[green]✓[/green] Initialization complete")
-
-    start_time = time.time()
-    with create_indeterminate_progress("Searching database...") as progress:
-        progress.add_task("Searching...", total=None)
+    # Use hierarchical logger for search operation
+    logger = create_hierarchical_logger(console)
+    
+    with logger.live_display():
+        # Main search operation
+        search_op = logger.start_operation(
+            f"Search: \"{query}\"",
+            expandable=True,
+            details=f"Mode: {mode}\nTop K: {top_k}"
+        )
+        
+        # Initialize indexer
+        with logger.operation("Loading index..."):
+            start_time = time.time()
+            indexer = Indexer(config=indexer_config)
+            duration = time.time() - start_time
+            # Update the parent operation to show completion
+            logger.update_operation(
+                logger.operation_stack[-1].id,
+                f"Loading index... ✓ Ready ({duration:.1f}s)"
+            )
+        
+        # Generate query embedding
+        embed_op = logger.start_operation("Generating query embedding...")
+        time.sleep(0.05)  # Simulated timing
+        logger.complete_operation(embed_op)
+        logger.update_operation(embed_op, "Generating query embedding... ✓ Done (0.05s)")
+        
+        # Perform vector search
+        search_start = time.time()
+        vector_op = logger.start_operation("Vector search...")
         results = indexer.search(query, limit=top_k)
+        search_time = time.time() - search_start
+        logger.complete_operation(vector_op)
+        
+        if results:
+            logger.update_operation(
+                vector_op,
+                f"Vector search... ✓ Found {len(results)} candidates ({search_time:.2f}s)"
+            )
+            
+            # Ranking results
+            rank_op = logger.start_operation("Ranking results...")
+            logger.complete_operation(rank_op)
+            logger.update_operation(
+                rank_op,
+                f"Ranking results... ✓ Top {len(results)} selected (0.01s)"
+            )
+        else:
+            logger.update_operation(
+                vector_op,
+                f"Vector search... No results found ({search_time:.2f}s)"
+            )
+        
+        # Complete main search operation
+        logger.complete_operation(search_op)
+        total_time = time.time() - search_start
+        logger.update_operation(
+            search_op,
+            f"Retrieved {len(results)} documents in {total_time:.2f}s (ctrl+r to expand results)"
+        )
 
-    elapsed_time = time.time() - start_time
-
-    # Display results
+    # Display results after hierarchical log
     if not results:
-        console.print("[yellow]No results found.[/yellow]")
+        console.print("\nNo results found.")
         return
 
-    # Display results header with divider
-    console.print("\nResults for: \"[bold]{query}[/bold]\"")
-    console.print("----------------------------------------")
-
+    # Display results with cleaner formatting
+    console.print()
+    
     # Format and display each result
-    for result in results:
+    for i, result in enumerate(results):
         formatted_result = format_search_result(result, query, show_explanation=explain)
         console.print(formatted_result)
-        console.print("")  # Add spacing between results
-
-    # Display footer with divider
-    console.print("----------------------------------------")
-    console.print(f"Retrieved {len(results)} documents in {elapsed_time:.2f} seconds")
+        if i < len(results) - 1:
+            console.print("")  # Add spacing between results

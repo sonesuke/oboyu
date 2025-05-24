@@ -79,10 +79,10 @@ def create_progress_bar(
     """
     return Progress(
         SpinnerColumn(),
-        TextColumn("[bold blue]{task.description}"),
+        TextColumn("{task.description}"),
         BarColumn(),
         "[progress.percentage]{task.percentage:>3.0f}%",
-        TextColumn("[dim]({task.completed}/{task.total} {task.fields[unit]})[/dim]"),
+        TextColumn("({task.completed}/{task.total} {task.fields[unit]})", style="dim"),
         RateColumn(unit=unit),
         TimeRemainingColumn(),
         TimeElapsedColumn(),
@@ -108,11 +108,11 @@ def create_indeterminate_progress(
     """
     columns = [
         SpinnerColumn(),
-        TextColumn("[bold blue]{task.description}")
+        TextColumn("{task.description}")
     ]
 
     if show_count:
-        columns.append(TextColumn(f"[dim]({{task.completed}} {unit} processed)[/dim]"))
+        columns.append(TextColumn(f"({{task.completed}} {unit} processed)", style="dim"))
         columns.append(RateColumn(unit=unit))
 
     columns.append(TimeElapsedColumn())
@@ -282,12 +282,10 @@ def format_search_results_text(
 
     """
     if not results:
-        console.print("[yellow]No results found.[/yellow]")
+        console.print("No results found.")
         return
 
-    console.print(f"Results for: \"[bold]{query}[/bold]\"")
-    console.print("----------------------------------------")
-    console.print("")
+    console.print(f"\nResults for: \"{query}\"\n")
 
     # Display each result
     for result in results:
@@ -300,13 +298,12 @@ def format_search_results_text(
         snippet = format_snippet(content, query, snippet_length, highlight)
 
         # Create structured output
-        console.print(f"• [bold cyan]{title}[/bold cyan] [dim](Score: {score:.2f})[/dim]")
+        console.print(f"• {title} (Score: {score:.2f})")
         console.print(f"  {snippet}")
-        console.print(f"  Source: [blue underline]{path}[/blue underline]")
+        console.print(f"  Source: {path}")
         console.print("")
 
-    console.print("----------------------------------------")
-    console.print(f"Retrieved {len(results)} documents")
+    console.print(f"\nRetrieved {len(results)} documents")
 
 
 def format_search_results_json(results: List[Dict[str, Any]]) -> None:
