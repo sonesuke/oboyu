@@ -99,8 +99,8 @@ def create_default_config(path: Path) -> Dict[str, Any]:
     try:
         with open(path, "w", encoding="utf-8") as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)
-        console.print(f"Created default configuration at [cyan]{path}[/cyan]")
+        console.print(f"Created default configuration at {path}")
     except Exception as e:
-        console.print(f"[bold red]Warning:[/bold red] Could not create default configuration: {e}")
+        console.print(f"Warning: Could not create default configuration: {e}", style="yellow")
 
     return config

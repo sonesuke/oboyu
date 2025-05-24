@@ -97,7 +97,7 @@ def test_clear_command_with_db_path(mock_indexer):
         assert result.exit_code == 0
         
         # Check the db_path message is displayed
-        assert f"Using explicitly specified database path:" in result.stdout
+        assert f"Using database:" in result.stdout
         assert str(db_path) in result.stdout
         
         # Check the clear_index method was called

@@ -4,9 +4,16 @@ This module provides the main command-line interface for Oboyu,
 a Japanese-enhanced semantic search system for local documents.
 """
 
+import os
+import sys
 from pathlib import Path
 from typing import Optional
 
+# Disable Rich's error formatting for all Typer output
+os.environ["_TYPER_STANDARD_TRACEBACK"] = "1"
+os.environ["_TYPER_COMPLETE_SHOW_ERRORS"] = "0"
+
+import click
 import typer
 from rich.console import Console
 from typing_extensions import Annotated
@@ -25,7 +32,9 @@ app = typer.Typer(
     name="oboyu",
     help="A Japanese-enhanced semantic search system for your local documents.",
     add_completion=False,
-    rich_markup_mode="rich",
+    context_settings={
+        "help_option_names": ["-h", "--help"],
+    },
 )
 
 # Create console for rich output
@@ -110,7 +119,7 @@ def callback(
 @app.command()
 def version() -> None:
     """Display version information."""
-    console.print(f"Oboyu version: [bold green]{__version__}[/bold green]")
+    console.print(f"Oboyu version: {__version__}")
 
 
 @app.command()
@@ -133,20 +142,20 @@ def clear(
     # Handle database path explicitly, with clear precedence
     if db_path is not None:
         indexer_config_dict["db_path"] = str(db_path)
-        console.print(f"Using explicitly specified database path: [cyan]{db_path}[/cyan]")
+        console.print(f"Using database: {db_path}")
     elif "db_path" in indexer_config_dict:
-        console.print(f"Using configured database path: [cyan]{indexer_config_dict['db_path']}[/cyan]")
+        console.print(f"Using database: {indexer_config_dict['db_path']}")
     else:
         # Use the default path from central definition
         indexer_config_dict["db_path"] = str(DEFAULT_DB_PATH)
-        console.print(f"Using default database path: [cyan]{DEFAULT_DB_PATH}[/cyan]")
+        console.print(f"Using database: {DEFAULT_DB_PATH}")
 
     # Create configuration object
     indexer_config = IndexerConfig(config_dict={"indexer": indexer_config_dict})
 
     # Confirm before clearing if not forced
     if not force:
-        console.print("[bold yellow]Warning:[/bold yellow] This will remove all indexed documents and search data.")
+        console.print("Warning: This will remove all indexed documents and search data.")
         confirm = typer.confirm("Are you sure you want to continue?")
         if not confirm:
             console.print("Operation cancelled.")
@@ -163,7 +172,7 @@ def clear(
         indexer = Indexer(config=indexer_config)
 
         # Mark initialization as complete
-        init_progress.update(init_task, description="[green]✓[/green] Initialization complete")
+        init_progress.update(init_task, description="✓ Initialization complete")
 
     # Clear the index with progress indicator
     console.print("Clearing index database...")
@@ -174,29 +183,56 @@ def clear(
         indexer.clear_index()
 
         # Mark clearing as complete
-        clear_progress.update(clear_task, description="[green]✓[/green] Database cleared")
+        clear_progress.update(clear_task, description="✓ Database cleared")
 
-    console.print("[bold green]Index database cleared successfully![/bold green]")
+    console.print("\nIndex database cleared successfully!")
 
 
 def run() -> None:
     """Run the CLI application."""
-    # Display a welcome banner for better UX
-    console.print("""
-[bold cyan]=====================================[/bold cyan]
-[bold green]  Oboyu - Japanese-Enhanced Search[/bold green]
-[bold cyan]=====================================[/bold cyan]
-""")
-
     # Ensure config directory exists
     ensure_config_dirs()
 
+    # Monkey-patch to disable Rich error boxes
+    try:
+        # Try to import typer's rich module and disable it
+        import typer.rich_utils
+        typer.rich_utils.FORCE_TERMINAL = False
+        if hasattr(typer.rich_utils, "SHOW_ARGUMENTS"):
+            typer.rich_utils.SHOW_ARGUMENTS = False
+        
+        # Also try to disable click's rich integration
+        if hasattr(click, "rich"):
+            click.rich = None
+    except ImportError:
+        pass
+    
+    # Custom exception handler for Click errors
+    def handle_click_exception(e: click.ClickException) -> None:
+        """Handle Click exceptions without Rich formatting."""
+        if isinstance(e, click.UsageError):
+            if e.ctx:
+                print(f"Usage: {e.ctx.command_path} [OPTIONS] COMMAND [ARGS]...")
+            else:
+                print("Usage: oboyu [OPTIONS] COMMAND [ARGS]...")
+            print("Try 'oboyu --help' for help.")
+            print(f"\nError: {e.message}")
+        else:
+            print(f"Error: {e.message}")
+        sys.exit(e.exit_code)
+    
     # Run the app
     try:
-        app()
+        app(standalone_mode=False)
+    except click.UsageError as e:
+        handle_click_exception(e)
+    except click.ClickException as e:
+        handle_click_exception(e)
+    except SystemExit:
+        raise
     except Exception as e:
-        console.print(f"[bold red]Error:[/bold red] {str(e)}")
-        raise typer.Exit(code=1)
+        print(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
