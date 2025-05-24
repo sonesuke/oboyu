@@ -18,6 +18,7 @@ from oboyu.mcp.context import db_path_global, mcp
 app = typer.Typer(
     help="Run an MCP server for semantic search",
     pretty_exceptions_enable=False,
+    rich_markup_mode=None,
 )
 
 # Create console for rich output
