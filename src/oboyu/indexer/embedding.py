@@ -35,7 +35,7 @@ class EmbeddingCache:
         """Initialize the embedding cache.
 
         Args:
-            cache_dir: Directory to store cached embeddings (defaults to XDG config path)
+            cache_dir: Directory to store cached embeddings (defaults to XDG cache path)
 
         """
         self.cache_dir = Path(cache_dir)
@@ -126,8 +126,8 @@ class EmbeddingGenerator:
             max_seq_length: Maximum sequence length for the model
             query_prefix: Prefix to add to search queries
             use_cache: Whether to use embedding cache
-            cache_dir: Directory to store cached embeddings (defaults to XDG config path)
-            model_dir: Directory to store downloaded models (defaults to XDG config path)
+            cache_dir: Directory to store cached embeddings (defaults to XDG cache path)
+            model_dir: Directory to store downloaded models (defaults to XDG data path)
             use_onnx: Whether to use ONNX optimization for faster inference
 
         Note:
