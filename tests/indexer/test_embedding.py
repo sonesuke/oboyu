@@ -13,6 +13,16 @@ from oboyu.indexer.embedding import EmbeddingCache, EmbeddingGenerator
 from oboyu.indexer.processor import Chunk
 
 
+@pytest.fixture(scope="module")
+def shared_embedding_generator():
+    """Module-scoped fixture to share embedding generator across tests."""
+    return EmbeddingGenerator(
+        model_name="cl-nagoya/ruri-v3-30m",
+        batch_size=2,
+        use_cache=True,  # Enable caching
+    )
+
+
 class TestEmbeddingCache:
     """Test cases for the embedding cache."""
 
@@ -68,14 +78,10 @@ class TestEmbeddingGenerator:
     These tests will download the actual model (cl-nagoya/ruri-v3-30m) on first run.
     """
 
-    def test_generate_embeddings(self) -> None:
+    def test_generate_embeddings(self, shared_embedding_generator) -> None:
         """Test generating embeddings for chunks."""
-        # Initialize with the default Ruri model
-        generator = EmbeddingGenerator(
-            model_name="cl-nagoya/ruri-v3-30m",  # Default Japanese model
-            batch_size=2,
-            use_cache=False,
-        )
+        # Use shared generator to avoid repeated model loading
+        generator = shared_embedding_generator
         
         # Create test chunks with both English and Japanese content
         chunks = [
@@ -118,14 +124,10 @@ class TestEmbeddingGenerator:
             assert embedding[2].shape[0] == generator.dimensions  # embedding dimensions
             assert isinstance(embedding[3], datetime)  # timestamp
 
-    def test_generate_query_embedding(self) -> None:
+    def test_generate_query_embedding(self, shared_embedding_generator) -> None:
         """Test generating embedding for a search query."""
-        # Initialize with the default Ruri model
-        generator = EmbeddingGenerator(
-            model_name="cl-nagoya/ruri-v3-30m",  # Default Japanese model
-            batch_size=2,
-            use_cache=False,
-        )
+        # Use shared generator to avoid repeated model loading
+        generator = shared_embedding_generator
         
         # Generate query embedding with Japanese text
         query = "意味検索のテストクエリです"  # "This is a semantic search test query" in Japanese

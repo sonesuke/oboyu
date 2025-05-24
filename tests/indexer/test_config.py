@@ -41,7 +41,7 @@ class TestIndexerConfig:
             "indexer": {
                 "chunk_size": 512,
                 "chunk_overlap": 128,
-                "embedding_model": "custom-model",
+                "embedding_model": "cl-nagoya/ruri-v3-30m",
                 "embedding_device": "cuda",
                 "batch_size": 16,
                 "max_seq_length": 4096,
@@ -63,7 +63,7 @@ class TestIndexerConfig:
         # Check values from dict
         assert config.chunk_size == 512
         assert config.chunk_overlap == 128
-        assert config.embedding_model == "custom-model"
+        assert config.embedding_model == "cl-nagoya/ruri-v3-30m"
         assert config.embedding_device == "cuda"
         assert config.batch_size == 16
         assert config.max_seq_length == 4096
