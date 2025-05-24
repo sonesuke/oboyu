@@ -1,23 +1,27 @@
 """Test the actual CLI workflow: clear -> index -> query."""
+# ruff: noqa: S101, S603
 
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
-import pytest
-
-# CLI integration tests now work with proper PYTHONPATH setup
+# CLI integration tests work with the package installed in editable mode
 
 
-def test_cli_clear_index_query_workflow():
+def test_cli_clear_index_query_workflow() -> None:
     """Test the CLI clear-index-query workflow as described in issue #29."""
-    
-    # Set up environment with proper PYTHONPATH
+    # Set up environment to ensure the package can be imported
     env = os.environ.copy()
     project_root = Path(__file__).parent.parent.parent
-    src_path = project_root / "src"
-    env["PYTHONPATH"] = str(src_path)
+    
+    # Add src directory to PYTHONPATH to ensure imports work in subprocess
+    src_path = str(project_root / "src")
+    if "PYTHONPATH" in env:
+        env["PYTHONPATH"] = f"{src_path}{os.pathsep}{env['PYTHONPATH']}"
+    else:
+        env["PYTHONPATH"] = src_path
     
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir_path = Path(tmpdir)
@@ -31,7 +35,7 @@ def test_cli_clear_index_query_workflow():
         
         # Step 1: Initial index
         result = subprocess.run([
-            "uv", "run", "python", "-m", "oboyu.cli.main", "index", 
+            sys.executable, "-m", "oboyu.cli", "index",
             "--db-path", str(db_path), str(docs_dir)
         ], capture_output=True, text=True, env=env, cwd=str(project_root))
         print(f"Index command output: {result.stdout}")
@@ -40,7 +44,7 @@ def test_cli_clear_index_query_workflow():
         
         # Step 2: Verify initial query works
         result = subprocess.run([
-            "uv", "run", "python", "-m", "oboyu.cli.main", "query",
+            sys.executable, "-m", "oboyu.cli", "query",
             "--db-path", str(db_path), "Python programming"
         ], capture_output=True, text=True, env=env, cwd=str(project_root))
         print(f"Initial query output: {result.stdout}")
@@ -51,7 +55,7 @@ def test_cli_clear_index_query_workflow():
         
         # Step 3: Clear operation
         result = subprocess.run([
-            "uv", "run", "python", "-m", "oboyu.cli.main", "clear", "--force",
+            sys.executable, "-m", "oboyu.cli", "clear", "--force",
             "--db-path", str(db_path)
         ], capture_output=True, text=True, env=env, cwd=str(project_root))
         print(f"Clear command output: {result.stdout}")
@@ -60,7 +64,7 @@ def test_cli_clear_index_query_workflow():
         
         # Step 4: Re-index documents
         result = subprocess.run([
-            "uv", "run", "python", "-m", "oboyu.cli.main", "index",
+            sys.executable, "-m", "oboyu.cli", "index",
             "--db-path", str(db_path), str(docs_dir)
         ], capture_output=True, text=True, env=env, cwd=str(project_root))
         print(f"Re-index command output: {result.stdout}")
@@ -69,7 +73,7 @@ def test_cli_clear_index_query_workflow():
         
         # Step 5: Query after re-index (this is where the bug would manifest)
         result = subprocess.run([
-            "uv", "run", "python", "-m", "oboyu.cli.main", "query",
+            sys.executable, "-m", "oboyu.cli", "query",
             "--db-path", str(db_path), "Python programming"
         ], capture_output=True, text=True, env=env, cwd=str(project_root))
         print(f"Final query output: {result.stdout}")
