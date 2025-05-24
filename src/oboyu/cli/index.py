@@ -20,12 +20,14 @@ from oboyu.indexer.indexer import Indexer
 app = typer.Typer(
     help="Index documents for search and manage the index",
     pretty_exceptions_enable=False,
+    rich_markup_mode=None,
 )
 
 # Create manage subcommand app
 manage_app = typer.Typer(
     help="Manage the index database",
     pretty_exceptions_enable=False,
+    rich_markup_mode=None,
 )
 app.add_typer(manage_app, name="manage", help="Manage the index database")
 
