@@ -16,7 +16,7 @@ from onnxruntime import GraphOptimizationLevel, InferenceSession, SessionOptions
 from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer  # type: ignore[attr-defined]
 
-from oboyu.common.paths import EMBEDDING_MODELS_DIR
+from oboyu.common.paths import EMBEDDING_CACHE_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -258,19 +258,22 @@ def convert_to_onnx(
 
 def get_or_convert_onnx_model(
     model_name: str,
-    cache_dir: Union[str, Path] = EMBEDDING_MODELS_DIR,
+    cache_dir: Optional[Union[str, Path]] = None,
 ) -> Path:
     """Get ONNX model path, converting if necessary.
 
     Args:
         model_name: Name of the SentenceTransformer model
-        cache_dir: Directory to cache ONNX models
+        cache_dir: Directory to cache ONNX models (defaults to XDG cache path)
 
     Returns:
         Path to ONNX model file
 
     """
-    cache_dir = Path(cache_dir)
+    if cache_dir is None:
+        cache_dir = EMBEDDING_CACHE_DIR / "models"
+    else:
+        cache_dir = Path(cache_dir)
     model_dir = cache_dir / "onnx" / model_name.replace("/", "_")
     
     # Try optimized model first

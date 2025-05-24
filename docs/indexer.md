@@ -92,6 +92,28 @@ indexer:
   embedding_device: cpu  # ONNX is most beneficial for CPU
 ```
 
+##### ONNX Model Cache Directory Structure
+
+ONNX models are cached following the XDG Base Directory specification:
+
+```
+$XDG_CACHE_HOME/oboyu/embedding/cache/     # ~/.cache/oboyu/embedding/cache/
+├── models/                                # ONNX converted models
+│   └── onnx/                              # ONNX model subdirectory
+│       ├── cl-nagoya_ruri-v3-30m/
+│       │   ├── model.onnx                 # Converted ONNX model
+│       │   ├── model_optimized.onnx       # Optimized ONNX model (if optimization succeeds)
+│       │   ├── tokenizer_config.json      # Tokenizer configuration
+│       │   ├── special_tokens_map.json    # Special tokens mapping
+│       │   ├── vocab.txt                  # Vocabulary file
+│       │   └── onnx_config.json           # ONNX-specific configuration
+│       └── other_model_name/
+│           └── ...
+└── [embedding cache files]                # Regular embedding cache (*.pkl files)
+```
+
+The ONNX models are stored in the cache directory because they can be regenerated from the original models, making them appropriate for cache storage according to XDG specifications.
+
 #### Lazy Loading
 
 The EmbeddingGenerator implements lazy loading for optimal performance:

@@ -176,7 +176,8 @@ class EmbeddingGenerator:
             model: Any  # Type hint to allow both model types
             if self.use_onnx:
                 # Load or convert to ONNX model
-                onnx_path = get_or_convert_onnx_model(self.model_name, self.model_dir)
+                # ONNX models are cached separately in XDG cache directory
+                onnx_path = get_or_convert_onnx_model(self.model_name)
                 model = ONNXEmbeddingModel(
                     onnx_path,
                     max_seq_length=self.max_seq_length,
