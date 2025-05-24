@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Important Git Guidelines
+
+### Pre-commit Hooks
+- NEVER use `--no-verify` option when committing
+- Always fix lint errors and test failures before committing
+- Pre-commit hooks are there to maintain code quality
+
 ## Build and Development Commands
 
 ### Dependency Management
@@ -16,9 +23,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Run all tests with coverage: `uv run pytest --cov=src`
 - Run a specific test: `uv run pytest tests/test_file.py::test_function`
 
-### Code Analysis
-- Generate codebase analysis: `repomix`
-- This creates a `repomix-output.xml` file for better AI understanding of the codebase
+### Code Analysis with Repomix in Claude Code
+When analyzing this codebase with Claude Code's repomix tool:
+- Use the `mcp__repomix__pack_codebase` tool with `compress: true` option to reduce token count
+- If the output is still too large, use `includePatterns` to filter specific files
+- Example: `includePatterns: "src/**/*.py,tests/**/*.py,pyproject.toml"`
 
 ## Project Architecture
 

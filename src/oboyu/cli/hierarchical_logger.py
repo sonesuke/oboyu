@@ -91,7 +91,7 @@ class HierarchicalLogger:
         description: str,
         expandable: bool = False,
         details: Optional[str] = None,
-        **metadata: Any
+        **metadata: Any  # noqa: ANN401
     ) -> str:
         """Start a new operation.
         
@@ -136,7 +136,7 @@ class HierarchicalLogger:
         op_id: str,
         description: Optional[str] = None,
         details: Optional[str] = None,
-        **metadata: Any
+        **metadata: Any  # noqa: ANN401
     ) -> None:
         """Update an existing operation.
         
@@ -268,7 +268,7 @@ class HierarchicalLogger:
         description: str,
         expandable: bool = False,
         details: Optional[str] = None,
-        **metadata: Any
+        **metadata: Any  # noqa: ANN401
     ) -> Iterator[str]:
         """Context manager for an operation."""
         op_id = self.start_operation(description, expandable, details, **metadata)

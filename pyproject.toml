@@ -51,8 +51,11 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/oboyu"]
 
-[tool.uv.sources]
-oboyu = { path = ".", editable = true }
+[tool.hatch.build]
+sources = ["src"]
+
+# Remove [tool.uv.sources] as it's causing conflicts
+# The package should be installed in editable mode via uv sync or uv pip install -e .
 
 [dependency-groups]
 dev = [
