@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(ls:*)",
+      "Bash(gh issue develop:*)",
+      "mcp__repomix__pack_codebase",
+      "mcp__repomix__read_repomix_output",
+      "Bash(gh issue create:*)",
+      "Bash(mkdir:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run:*)",
+      "Bash(git checkout:*)",
+      "WebFetch(domain:*)",
+      "Bash(gh issue view:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(uv sync:*)",
+      "Bash(cat:*)",
+      "Bash(git push:*)",
+      "Bash(uv add:*)",
+      "Bash(git fetch:*)",
+      "Bash(find:*)",
+      "Bash(rg:*)",
+      "Bash(git rebase:*)"
+    ],
+    "deny": []
+  }
+}
