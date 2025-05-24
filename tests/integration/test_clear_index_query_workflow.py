@@ -14,6 +14,43 @@ from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.indexer import Indexer
 
 # Integration tests now optimized to avoid repeated model downloads
+# Use explicit crawler configuration to avoid test interference
+
+
+def index_documents_safely(indexer, directory):
+    """Index documents with explicit crawler config to avoid test interference."""
+    from oboyu.crawler.config import CrawlerConfig
+    from oboyu.crawler.crawler import Crawler
+    
+    # Create fresh crawler config to avoid test interference
+    crawler_config = CrawlerConfig(config_dict={
+        "crawler": {
+            "depth": 10,
+            "include_patterns": ["*.txt"],
+            "exclude_patterns": ["*/node_modules/*"],
+            "max_file_size": 10 * 1024 * 1024,
+            "follow_symlinks": False,
+            "japanese_encodings": ["utf-8"],
+            "max_workers": 4,
+            "respect_gitignore": False,  # Disable gitignore to ensure files are found
+        }
+    })
+    
+    # Use crawler directly instead of index_directory to have more control
+    crawler = Crawler(
+        depth=crawler_config.depth,
+        include_patterns=crawler_config.include_patterns,
+        exclude_patterns=crawler_config.exclude_patterns,
+        max_file_size=crawler_config.max_file_size,
+        follow_symlinks=crawler_config.follow_symlinks,
+        japanese_encodings=crawler_config.japanese_encodings,
+    )
+    
+    crawler_results = crawler.crawl(directory)
+    chunks_indexed = indexer.index_documents(crawler_results)
+    files_processed = len(crawler_results)
+    
+    return chunks_indexed, files_processed
 
 
 @pytest.fixture
@@ -45,41 +82,43 @@ def test_clear_index_query_workflow(test_documents, temp_db_path):
     config = IndexerConfig(config_dict={"indexer": {"db_path": str(temp_db_path)}})
     indexer = Indexer(config=config)
     
-    # Index the test documents
-    chunks_indexed, files_processed = indexer.index_directory(test_documents)
-    assert chunks_indexed > 0
-    assert files_processed == 3
-    
-    # Step 2: Verify initial query works
-    results = indexer.search("machine learning", limit=5)
-    assert len(results) > 0
-    assert any("machine learning" in result.content.lower() for result in results)
-    
-    # Step 3: Clear database
-    indexer.clear_index()
-    
-    # Step 4: Verify database is empty
-    results_after_clear = indexer.search("machine learning", limit=5)
-    assert len(results_after_clear) == 0
-    
-    # Step 5: Re-index documents
-    chunks_reindexed, files_reprocessed = indexer.index_directory(test_documents)
-    assert chunks_reindexed > 0
-    assert files_reprocessed == 3
-    
-    # Step 6: Verify query works after re-index
-    results_after_reindex = indexer.search("machine learning", limit=5)
-    assert len(results_after_reindex) > 0
-    assert any("machine learning" in result.content.lower() for result in results_after_reindex)
-    
-    # Step 7: Compare results with initial index
-    # The results should be similar (same documents should be found)
-    initial_paths = {result.path for result in results}
-    reindex_paths = {result.path for result in results_after_reindex}
-    assert initial_paths == reindex_paths
-    
-    # Clean up
-    indexer.close()
+    try:
+        # Index the test documents
+        chunks_indexed, files_processed = index_documents_safely(indexer, test_documents)
+        assert chunks_indexed > 0
+        assert files_processed == 3
+        
+        # Step 2: Verify initial query works
+        results = indexer.search("machine learning", limit=5)
+        assert len(results) > 0
+        assert any("machine learning" in result.content.lower() for result in results)
+        
+        # Step 3: Clear database
+        indexer.clear_index()
+        
+        # Step 4: Verify database is empty
+        results_after_clear = indexer.search("machine learning", limit=5)
+        assert len(results_after_clear) == 0
+        
+        # Step 5: Re-index documents
+        chunks_reindexed, files_reprocessed = index_documents_safely(indexer, test_documents)
+        assert chunks_reindexed > 0
+        assert files_reprocessed == 3
+        
+        # Step 6: Verify query works after re-index
+        results_after_reindex = indexer.search("machine learning", limit=5)
+        assert len(results_after_reindex) > 0
+        assert any("machine learning" in result.content.lower() for result in results_after_reindex)
+        
+        # Step 7: Compare results with initial index
+        # The results should be similar (same documents should be found)
+        initial_paths = {result.path for result in results}
+        reindex_paths = {result.path for result in results_after_reindex}
+        assert initial_paths == reindex_paths
+        
+    finally:
+        # Clean up
+        indexer.close()
 
 
 def test_multiple_clear_index_cycles(test_documents, temp_db_path):
@@ -95,7 +134,7 @@ def test_multiple_clear_index_cycles(test_documents, temp_db_path):
             indexer.clear_index()
             
             # Index documents
-            chunks_indexed, files_processed = indexer.index_directory(test_documents)
+            chunks_indexed, files_processed = index_documents_safely(indexer, test_documents)
             assert chunks_indexed > 0
             assert files_processed == 3
             
@@ -126,14 +165,16 @@ def test_clear_index_different_documents(temp_db_path):
         indexer = Indexer(config=config)
         
         # Index set A
-        indexer.index_directory(test_dir1)
+        chunks_a, files_a = index_documents_safely(indexer, test_dir1)
+        assert chunks_a > 0
         results_a = indexer.search("Python", limit=5)
         assert len(results_a) > 0
         assert any("python" in result.content.lower() for result in results_a)
         
         # Clear and index set B
         indexer.clear_index()
-        indexer.index_directory(test_dir2)
+        chunks_b, files_b = index_documents_safely(indexer, test_dir2)
+        assert chunks_b > 0
         
         # Verify only B is searchable (Note: may find related content due to semantic similarity)
         results_python = indexer.search("Python", limit=5)
@@ -164,7 +205,8 @@ def test_clear_preserves_schema(temp_db_path):
         (test_dir / "test.txt").write_text("Test document content.")
         
         # Index document
-        indexer.index_directory(test_dir)
+        chunks_indexed, files_processed = index_documents_safely(indexer, test_dir)
+        assert chunks_indexed > 0
         stats_after_index = indexer.database.get_statistics()
         assert stats_after_index["chunk_count"] > 0
         assert stats_after_index["document_count"] > 0
@@ -177,7 +219,8 @@ def test_clear_preserves_schema(temp_db_path):
         
         # Database should still be functional
         # Re-index should work
-        indexer.index_directory(test_dir)
+        chunks_reindexed, files_reprocessed = index_documents_safely(indexer, test_dir)
+        assert chunks_reindexed > 0
         stats_after_reindex = indexer.database.get_statistics()
         assert stats_after_reindex["chunk_count"] > 0
         assert stats_after_reindex["document_count"] > 0
@@ -203,7 +246,8 @@ def test_clear_index_error_recovery(temp_db_path):
         # Perform several operations to test recovery
         for i in range(3):
             indexer.clear_index()
-            indexer.index_directory(test_dir)
+            chunks_indexed, files_processed = index_documents_safely(indexer, test_dir)
+            assert chunks_indexed > 0
             results = indexer.search("test document", limit=5)
             assert len(results) > 0
         
