@@ -5,13 +5,13 @@ This module provides the command-line interface for indexing documents.
 
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import typer
 from typing_extensions import Annotated
 
 from oboyu.cli.formatters import console
-from oboyu.cli.hierarchical_logger import create_hierarchical_logger
+from oboyu.cli.hierarchical_logger import HierarchicalLogger, create_hierarchical_logger
 from oboyu.common.paths import DEFAULT_DB_PATH
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.indexer import Indexer
@@ -208,6 +208,144 @@ def clear(
     console.print("\nIndex database cleared successfully!")
 
 
+def _create_crawler_config(
+    config_data: dict[str, Any],
+    recursive: Optional[bool],
+    max_depth: Optional[int],
+    include_patterns: Optional[List[str]],
+    exclude_patterns: Optional[List[str]],
+    japanese_encodings: Optional[List[str]],
+) -> dict[str, Any]:
+    """Create crawler configuration from config data and command-line options."""
+    crawler_config_dict = config_data.get("crawler", {})
+
+    # Override with command-line options
+    if recursive is not None:
+        crawler_config_dict["depth"] = 0 if not recursive else (max_depth or 10)
+    elif max_depth is not None:
+        crawler_config_dict["depth"] = max_depth
+
+    if include_patterns:
+        crawler_config_dict["include_patterns"] = include_patterns
+    if exclude_patterns:
+        crawler_config_dict["exclude_patterns"] = exclude_patterns
+    if japanese_encodings:
+        crawler_config_dict["japanese_encodings"] = japanese_encodings
+
+    return dict(crawler_config_dict)
+
+
+def _create_progress_callback(logger: HierarchicalLogger, scan_op_id: str, current_ops: dict[str, Optional[str]]) -> Callable[[str, int, int], None]:
+    """Create a progress callback for the indexer."""
+    files_found = 0
+    last_stage = None
+    
+    def indexer_progress_callback(stage: str, current: int, total: int) -> None:
+        nonlocal files_found, last_stage
+        
+        if stage == "crawling":
+            if total > 0 and files_found == 0:
+                files_found = total
+                logger.update_operation(
+                    scan_op_id,
+                    "Scanning directory...",
+                    details=f"Found {total} files"
+                )
+                logger.complete_operation(scan_op_id)
+                logger.update_operation(
+                    scan_op_id,
+                    f"Found {total} files (ctrl+r to expand)"
+                )
+                
+                # Start processing documents operation
+                current_ops["process"] = logger.start_operation("Processing documents...")
+        
+        elif stage == "processing":
+            # Update single line for file processing progress
+            if current <= total:
+                if not current_ops["read"]:
+                    current_ops["read"] = logger.start_operation(f"Reading files... {current}/{total}")
+                else:
+                    logger.update_operation(
+                        current_ops["read"],
+                        f"Reading files... {current}/{total}"
+                    )
+                
+                # Mark complete on last file
+                if current == total:
+                    if current_ops["read"]:
+                        logger.complete_operation(current_ops["read"])
+                        logger.update_operation(
+                            current_ops["read"],
+                            f"Reading files... ✓ {total} files processed"
+                        )
+                        current_ops["read"] = None
+        
+        elif stage == "embedding":
+            # Start embedding generation on first batch
+            if current == 1 and last_stage != "embedding":
+                if current_ops["process"]:
+                    logger.complete_operation(current_ops["process"])
+                    current_ops["process"] = None
+                current_ops["embed"] = logger.start_operation("Generating embeddings...")
+            
+            # Update batch progress
+            batch_op_id = current_ops.get("batch")
+            if not batch_op_id:
+                batch_op_id = logger.start_operation(f"Processing batch {current}/{total}...")
+                current_ops["batch"] = batch_op_id
+            else:
+                logger.update_operation(batch_op_id, f"Processing batch {current}/{total}...")
+            
+            # Mark complete on last batch
+            if current == total:
+                if batch_op_id:
+                    logger.complete_operation(batch_op_id)
+                    logger.update_operation(batch_op_id, f"Processing batch {total}/{total}... ✓ Done")
+                    current_ops["batch"] = None
+        
+        elif stage == "storing" or stage == "storing_embeddings":
+            # Handle storing progress
+            if current == 1 and last_stage not in ["storing", "storing_embeddings"]:
+                # Start storing operation on first chunk
+                if current_ops.get("embed"):
+                    logger.complete_operation(current_ops["embed"])
+                    current_ops["embed"] = None
+                store_op_id = logger.start_operation("Storing in database...")
+                current_ops["store"] = store_op_id
+        
+        last_stage = stage
+    
+    return indexer_progress_callback
+
+
+def _create_indexer_config(
+    config_data: dict[str, Any],
+    chunk_size: Optional[int],
+    chunk_overlap: Optional[int],
+    embedding_model: Optional[str],
+    db_path: Optional[Path],
+) -> dict[str, Any]:
+    """Create indexer configuration from config data and command-line options."""
+    indexer_config_dict = config_data.get("indexer", {})
+
+    # Override with command-line options
+    if chunk_size is not None:
+        indexer_config_dict["chunk_size"] = chunk_size
+    if chunk_overlap is not None:
+        indexer_config_dict["chunk_overlap"] = chunk_overlap
+    if embedding_model is not None:
+        indexer_config_dict["embedding_model"] = embedding_model
+
+    # Handle database path
+    if db_path:
+        indexer_config_dict["database_path"] = str(db_path)
+    elif "database_path" not in indexer_config_dict:
+        indexer_config_dict["database_path"] = str(DEFAULT_DB_PATH)
+
+    return dict(indexer_config_dict)
+
+
 @app.callback(invoke_without_command=True)
 def index(
     ctx: typer.Context,
@@ -231,37 +369,25 @@ def index(
     # Get global options from context
     config_data = ctx.obj.get("config_data", {}) if ctx.obj else {}
 
-    # Create crawler configuration
-    crawler_config_dict = config_data.get("crawler", {})
+    # Create configurations using helper functions
+    crawler_config_dict = _create_crawler_config(
+        config_data,
+        recursive,
+        max_depth,
+        include_patterns,
+        exclude_patterns,
+        japanese_encodings,
+    )
+    
+    indexer_config_dict = _create_indexer_config(
+        config_data,
+        chunk_size,
+        chunk_overlap,
+        embedding_model,
+        db_path,
+    )
 
-    # Override with command-line options
-    if recursive is not None:
-        crawler_config_dict["depth"] = 0 if not recursive else (max_depth or 10)
-    elif max_depth is not None:
-        crawler_config_dict["depth"] = max_depth
-
-    if include_patterns:
-        crawler_config_dict["include_patterns"] = include_patterns
-    if exclude_patterns:
-        crawler_config_dict["exclude_patterns"] = exclude_patterns
-    if japanese_encodings:
-        crawler_config_dict["japanese_encodings"] = japanese_encodings
-
-    # Create indexer configuration
-    indexer_config_dict = config_data.get("indexer", {})
-
-    # Override with command-line options
-    if chunk_size is not None:
-        indexer_config_dict["chunk_size"] = chunk_size
-    if chunk_overlap is not None:
-        indexer_config_dict["chunk_overlap"] = chunk_overlap
-    if embedding_model is not None:
-        indexer_config_dict["embedding_model"] = embedding_model
-
-    # Handle database path explicitly, with clear precedence:
-    # 1. Command-line option (highest priority)
-    # 2. Config file value
-    # 3. Default from central path definition (lowest priority)
+    # Handle database path explicitly if needed (already handled in helper)
     if db_path is not None:
         indexer_config_dict["db_path"] = str(db_path)
         console.print(f"Using database: {db_path}")
@@ -273,9 +399,12 @@ def index(
         console.print(f"Using database: {DEFAULT_DB_PATH}")
 
     # Create configuration objects
-    # We don't need to use the crawler_config directly; it's used by the indexer internally
-    # when we call index_directory method
-    indexer_config = IndexerConfig(config_dict={"indexer": indexer_config_dict})
+    # Combine crawler and indexer configs for the IndexerConfig
+    combined_config = {
+        "crawler": crawler_config_dict,
+        "indexer": indexer_config_dict
+    }
+    indexer_config = IndexerConfig(config_dict=combined_config)
 
     # Use hierarchical logger for indexing operation
     logger = create_hierarchical_logger(console)
@@ -317,84 +446,9 @@ def index(
                 "read": None,
                 "store": None
             }
-            files_found = 0
-            last_stage = None
             
-            def indexer_progress_callback(stage: str, current: int, total: int) -> None:
-                nonlocal files_found, last_stage
-                
-                if stage == "crawling":
-                    if total > 0 and files_found == 0:
-                        files_found = total
-                        logger.update_operation(
-                            scan_op_id,
-                            f"Scanning directory {directory}...",
-                            details=f"Found {total} files"
-                        )
-                        logger.complete_operation(scan_op_id)
-                        logger.update_operation(
-                            scan_op_id,
-                            f"Found {total} files (ctrl+r to expand)"
-                        )
-                        
-                        # Start processing documents operation
-                        current_ops["process"] = logger.start_operation("Processing documents...")
-                
-                elif stage == "processing":
-                    # Update single line for file processing progress
-                    if current <= total:
-                        if not current_ops["read"]:
-                            current_ops["read"] = logger.start_operation(f"Reading files... {current}/{total}")
-                        else:
-                            logger.update_operation(
-                                current_ops["read"],
-                                f"Reading files... {current}/{total}"
-                            )
-                        
-                        # Mark complete on last file
-                        if current == total:
-                            if current_ops["read"]:
-                                logger.complete_operation(current_ops["read"])
-                                logger.update_operation(
-                                    current_ops["read"],
-                                    f"Reading files... ✓ {total} files processed"
-                                )
-                                current_ops["read"] = None
-                
-                elif stage == "embedding":
-                    # Start embedding generation on first batch
-                    if current == 1 and last_stage != "embedding":
-                        if current_ops["process"]:
-                            logger.complete_operation(current_ops["process"])
-                        current_ops["embed"] = logger.start_operation("Generating embeddings...")
-                    
-                    # Update single line for batch progress
-                    if not current_ops["batch"]:
-                        current_ops["batch"] = logger.start_operation(f"Processing batch {current}/{total}...")
-                    else:
-                        logger.update_operation(
-                            current_ops["batch"],
-                            f"Processing batch {current}/{total}..."
-                        )
-                    
-                    # Mark complete on last batch
-                    if current == total:
-                        if current_ops["batch"]:
-                            logger.complete_operation(current_ops["batch"])
-                            logger.update_operation(
-                                current_ops["batch"],
-                                f"Processing batch {total}/{total}... ✓ Done"
-                            )
-                            current_ops["batch"] = None
-                
-                elif stage == "storing_embeddings":
-                    if current == 1 and last_stage != "storing_embeddings":
-                        if current_ops["embed"]:
-                            logger.complete_operation(current_ops["embed"])
-                        store_op = logger.start_operation("Storing in database...")
-                        current_ops["store"] = store_op
-                
-                last_stage = stage
+            # Create progress callback using helper function
+            indexer_progress_callback = _create_progress_callback(logger, scan_op_id, current_ops)
             
             # Index directory
             chunks_indexed, files_processed = indexer.index_directory(
@@ -408,7 +462,7 @@ def index(
                 if op_id:
                     try:
                         logger.complete_operation(op_id)
-                    except Exception:
+                    except Exception:  # noqa: S110
                         pass  # Operation might already be completed
             
             # Add summary

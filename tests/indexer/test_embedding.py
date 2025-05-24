@@ -163,6 +163,7 @@ class TestEmbeddingGeneratorMocked:
                     use_cache=True,
                     cache_dir=temp_dir,
                     model_dir=temp_dir,  # Use same temp dir for both
+                    use_onnx=False,  # Disable ONNX for this test
                 )
                 
                 # Create test chunks

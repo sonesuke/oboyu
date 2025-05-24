@@ -202,7 +202,10 @@ class TestONNXConversion:
         
         # Verify conversion
         assert onnx_path == tmp_path / "model.onnx"
-        mock_st.assert_called_once_with(model_name)
+        # Check that SentenceTransformer was called (may include device parameter)
+        mock_st.assert_called_once()
+        call_args = mock_st.call_args
+        assert call_args[0][0] == model_name
         mock_export.assert_called_once()
         mock_tokenizer.save_pretrained.assert_called_once_with(tmp_path)
         
@@ -225,7 +228,7 @@ class TestONNXConversion:
         model_dir = cache_dir / "onnx" / "test_model"
         model_dir.mkdir(parents=True)
         onnx_path = model_dir / "model.onnx"
-        onnx_path.touch()
+        onnx_path.write_text("dummy")  # Ensure file has content
         
         # Get model (should use cache)
         result = get_or_convert_onnx_model(model_name, cache_dir)
