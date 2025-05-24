@@ -111,12 +111,8 @@ def format_snippet(text: str, query: str, length: int = 160, highlight: bool = T
         # If no match found, use the beginning of the text
         snippet = text[:length] + ("..." if len(text) > length else "")
 
-    # Highlight query terms if requested
-    if highlight:
-        for term in query_terms:
-            if term and len(term) > 2:  # Skip short terms
-                pattern = re.compile(re.escape(term), re.IGNORECASE)
-                snippet = pattern.sub(f"[bold][yellow]{term}[/yellow][/bold]", snippet)
+    # Highlighting disabled for cleaner output
+    # (Previously highlighted query terms)
 
     return snippet
 
