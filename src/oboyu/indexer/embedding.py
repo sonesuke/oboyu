@@ -20,6 +20,9 @@ from torch import Tensor
 from oboyu.common.paths import EMBEDDING_CACHE_DIR, EMBEDDING_MODELS_DIR
 from oboyu.indexer.processor import Chunk
 
+# Global model cache to avoid reloading models in the same process
+_MODEL_CACHE = {}
+
 # Silence SentenceTransformer logging (INFO level is too verbose)
 logging.getLogger('sentence_transformers').setLevel(logging.ERROR)
 
@@ -125,9 +128,15 @@ class EmbeddingGenerator:
             model_dir: Directory to store downloaded models (defaults to XDG config path)
 
         """
-        # Load the model (with model_dir as cache directory)
-        self.model = SentenceTransformer(model_name, device=device, cache_folder=str(model_dir))
-        self.model.max_seq_length = max_seq_length
+        # Use global model cache to avoid reloading models in the same process
+        cache_key = f"{model_name}_{device}_{max_seq_length}"
+        if cache_key not in _MODEL_CACHE:
+            # Load the model (with model_dir as cache directory)
+            model = SentenceTransformer(model_name, device=device, cache_folder=str(model_dir))
+            model.max_seq_length = max_seq_length
+            _MODEL_CACHE[cache_key] = model
+        
+        self.model = _MODEL_CACHE[cache_key]
 
         self.model_name = model_name
         self.batch_size = batch_size

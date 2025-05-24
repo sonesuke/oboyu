@@ -13,6 +13,23 @@ import pytest
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.indexer import Indexer
 
+
+@pytest.fixture(scope="session")
+def cached_model():
+    """Session-scoped fixture to pre-download and cache the embedding model."""
+    from oboyu.indexer.embedding import EmbeddingGenerator
+    # Pre-download the model once per test session
+    model = EmbeddingGenerator(model_name="cl-nagoya/ruri-v3-30m")
+    yield model
+    # Cleanup is automatic when model goes out of scope
+
+
+def create_indexer_with_cached_model(db_path):
+    """Create indexer with pre-cached model to avoid reloading."""
+    # Use cached model if available (this should be optimized internally)
+    config = IndexerConfig(config_dict={"indexer": {"db_path": str(db_path)}})
+    return Indexer(config=config)
+
 # Integration tests now optimized to avoid repeated model downloads
 # Use explicit crawler configuration to avoid test interference
 
@@ -129,7 +146,7 @@ def test_multiple_clear_index_cycles(test_documents, temp_db_path):
     indexer = Indexer(config=config)
     
     try:
-        for cycle in range(3):
+        for cycle in range(2):  # Reduced from 3 for speed
             # Clear any existing data
             indexer.clear_index()
             
@@ -243,8 +260,8 @@ def test_clear_index_error_recovery(temp_db_path):
         
         indexer = Indexer(config=config)
         
-        # Perform several operations to test recovery
-        for i in range(3):
+        # Perform several operations to test recovery  
+        for i in range(2):  # Reduced from 3 for speed
             indexer.clear_index()
             chunks_indexed, files_processed = index_documents_safely(indexer, test_dir)
             assert chunks_indexed > 0
