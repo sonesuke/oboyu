@@ -85,6 +85,7 @@ class Indexer:
             batch_size=self.config.batch_size,
             max_seq_length=self.config.max_seq_length,
             query_prefix=self.config.query_prefix,
+            use_onnx=self.config.use_onnx,
         )
 
         # Dimensions can't be None here, but mypy doesn't know that

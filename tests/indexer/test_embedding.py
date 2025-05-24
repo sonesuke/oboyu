@@ -16,10 +16,12 @@ from oboyu.indexer.processor import Chunk
 @pytest.fixture(scope="module")
 def shared_embedding_generator():
     """Module-scoped fixture to share embedding generator across tests."""
+    # Note: The model will be loaded lazily on first use
     return EmbeddingGenerator(
         model_name="cl-nagoya/ruri-v3-30m",
         batch_size=2,
         use_cache=True,  # Enable caching
+        use_onnx=False,  # Use PyTorch backend for tests
     )
 
 
