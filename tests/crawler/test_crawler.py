@@ -93,14 +93,23 @@ class TestCrawler:
         """Test title generation from content and filename."""
         crawler = Crawler()
         
-        # Test title from content
+        # Test title from metadata
         path = Path("test.txt")
         content = "Title Line\nSecond line\nThird line"
-        title = crawler._generate_title(path, content)
+        metadata = {"title": "Metadata Title"}
+        title = crawler._generate_title(path, content, metadata)
+        assert title == "Metadata Title"
+        
+        # Test title from content when no metadata
+        path = Path("test.txt")
+        content = "Title Line\nSecond line\nThird line"
+        metadata = {}
+        title = crawler._generate_title(path, content, metadata)
         assert title == "Title Line"
         
         # Test title from filename when content doesn't have a good title
         path = Path("document-title.txt")
         content = "This is not a good title because it is too long and contains multiple sentences. It should not be used as a title."
-        title = crawler._generate_title(path, content)
+        metadata = {}
+        title = crawler._generate_title(path, content, metadata)
         assert title == "document-title"
