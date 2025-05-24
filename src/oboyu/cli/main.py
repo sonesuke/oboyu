@@ -15,8 +15,8 @@ from oboyu import __version__
 from oboyu.cli.config import load_config
 from oboyu.cli.index import app as index_app
 from oboyu.cli.mcp import app as mcp_app
-from oboyu.cli.paths import DEFAULT_DB_PATH, ensure_config_dirs
 from oboyu.cli.query import app as query_app
+from oboyu.common.paths import DEFAULT_DB_PATH, ensure_config_dirs
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.indexer import Indexer
 

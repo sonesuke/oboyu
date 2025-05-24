@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional, Union
 import yaml
 from rich.console import Console
 
-from oboyu.cli.paths import DEFAULT_CONFIG_PATH, DEFAULT_DB_PATH
+from oboyu.common.paths import DEFAULT_CONFIG_PATH, DEFAULT_DB_PATH
 
 # Console for output
 console = Console()

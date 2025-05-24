@@ -12,7 +12,7 @@ from rich.console import Console
 from rich.text import Text
 from typing_extensions import Annotated
 
-from oboyu.cli.paths import DEFAULT_DB_PATH
+from oboyu.common.paths import DEFAULT_DB_PATH
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.indexer import Indexer, SearchResult
 

@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import Dict, Optional
 
-from oboyu.cli.paths import DEFAULT_DB_PATH
+from oboyu.common.paths import DEFAULT_DB_PATH
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.indexer import Indexer
 from oboyu.mcp.context import db_path_global, mcp

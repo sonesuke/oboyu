@@ -11,7 +11,7 @@ from typing_extensions import Annotated
 
 from oboyu.cli.common_options import DatabasePathOption, DebugOption, VerboseOption
 from oboyu.cli.formatters import create_indeterminate_progress
-from oboyu.cli.paths import DEFAULT_DB_PATH
+from oboyu.common.paths import DEFAULT_DB_PATH
 from oboyu.mcp.context import db_path_global, mcp
 
 # Create Typer app

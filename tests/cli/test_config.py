@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 from oboyu.cli.config import create_default_config, load_config
-from oboyu.cli.paths import DEFAULT_DB_PATH
+from oboyu.common.paths import DEFAULT_DB_PATH
 
 
 def test_load_config_nonexistent() -> None:
