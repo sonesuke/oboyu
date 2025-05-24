@@ -4,11 +4,13 @@ This module provides utilities for extracting content from various file types.
 """
 
 import mimetypes
+from datetime import datetime
 from pathlib import Path
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 import chardet
 import charset_normalizer
+import frontmatter
 import langdetect
 
 # Initialize mimetypes
@@ -18,14 +20,15 @@ mimetypes.init()
 langdetect.DetectorFactory.seed = 0  # Make results deterministic
 
 
-def extract_content(file_path: Path) -> Tuple[str, str]:
+def extract_content(file_path: Path) -> Tuple[str, str, Dict[str, Any]]:
     """Extract content from a file and detect its language.
 
     Args:
         file_path: Path to the file
 
     Returns:
-        Tuple of (content, language_code)
+        Tuple of (content, language_code, metadata)
+        Where metadata contains optional fields: title, created_at, updated_at, uri
 
     """
     # Ensure the file exists
@@ -35,13 +38,13 @@ def extract_content(file_path: Path) -> Tuple[str, str]:
     # Get file type
     file_type = _get_file_type(file_path)
 
-    # Extract content based on file type
-    content = _extract_by_type(file_path, file_type)
+    # Extract content and metadata based on file type
+    content, metadata = _extract_by_type(file_path, file_type)
 
-    # Detect language (simplified version - a more sophisticated implementation would use a language detection library)
+    # Detect language
     language = _detect_language(content)
 
-    return content, language
+    return content, language, metadata
 
 
 def _get_file_type(file_path: Path) -> str:
@@ -84,7 +87,7 @@ def _get_file_type(file_path: Path) -> str:
     return 'text/plain'
 
 
-def _extract_by_type(file_path: Path, file_type: str) -> str:
+def _extract_by_type(file_path: Path, file_type: str) -> Tuple[str, Dict[str, Any]]:
     """Extract content based on file type.
 
     Args:
@@ -92,27 +95,46 @@ def _extract_by_type(file_path: Path, file_type: str) -> str:
         file_type: File type string
 
     Returns:
-        Extracted content as string
+        Tuple of (content, metadata)
 
     """
     # Oboyu only supports text files
     return _extract_text_file(file_path)
 
 
-def _extract_text_file(file_path: Path) -> str:
-    """Extract content from a text file.
+def _extract_text_file(file_path: Path) -> Tuple[str, Dict[str, Any]]:
+    """Extract content and metadata from a text file.
 
     Args:
         file_path: Path to the file
 
     Returns:
-        File content as string
+        Tuple of (content, metadata)
 
     """
     # First read the file as binary
     with open(file_path, 'rb') as f:
         raw_data = f.read()  # Read the entire file
 
+    # Decode the content
+    content = _decode_content(raw_data)
+    
+    # Parse YAML front matter if present
+    content, metadata = _parse_front_matter(content)
+    
+    return content, metadata
+
+
+def _decode_content(raw_data: bytes) -> str:
+    """Decode raw bytes to string using various encoding detection methods.
+    
+    Args:
+        raw_data: Raw bytes to decode
+        
+    Returns:
+        Decoded string
+
+    """
     # Try charset-normalizer first (modern and very accurate)
     charset_results = charset_normalizer.from_bytes(raw_data).best()
     if charset_results:
@@ -152,6 +174,55 @@ def _extract_text_file(file_path: Path) -> str:
 
     # Last resort: use UTF-8 with replacement for invalid characters
     return raw_data.decode('utf-8', errors='replace')
+
+
+def _parse_front_matter(content: str) -> Tuple[str, Dict[str, Any]]:
+    """Parse YAML front matter from content if present.
+    
+    Extracts YAML front matter and returns the content without it,
+    along with the parsed metadata.
+    
+    Args:
+        content: File content that may contain YAML front matter
+        
+    Returns:
+        Tuple of (content without front matter, metadata dict)
+        Metadata may contain: title, created_at, updated_at, uri
+
+    """
+    # Use python-frontmatter to parse
+    post = frontmatter.loads(content)
+    
+    # Extract supported metadata fields
+    metadata: Dict[str, Any] = {}
+    
+    # Extract title
+    if 'title' in post.metadata:
+        metadata['title'] = str(post.metadata['title'])
+    
+    # Extract dates - convert to datetime if string
+    for date_field in ['created_at', 'updated_at']:
+        if date_field in post.metadata:
+            value = post.metadata[date_field]
+            if isinstance(value, str):
+                # Try to parse ISO format datetime
+                try:
+                    metadata[date_field] = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                except ValueError:
+                    # If parsing fails, store as string
+                    metadata[date_field] = value
+            elif isinstance(value, datetime):
+                metadata[date_field] = value
+            else:
+                # Store other types as-is
+                metadata[date_field] = value
+    
+    # Extract URI
+    if 'uri' in post.metadata:
+        metadata['uri'] = str(post.metadata['uri'])
+    
+    # Return content without front matter and the metadata
+    return post.content, metadata
 
 
 def _detect_language(text: str) -> str:

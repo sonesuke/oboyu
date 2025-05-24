@@ -138,16 +138,19 @@ class Crawler:
 
         """
         try:
-            # Extract content and detect language
-            content, language = extract_content(doc_path)
+            # Extract content, detect language, and get metadata
+            content, language, extracted_metadata = extract_content(doc_path)
 
             # Apply special processing for Japanese text
             if language == "ja":
                 encoding = detect_encoding(content, self.japanese_encodings)
                 content = process_japanese_text(content, encoding)
 
-            # Generate a title from the filename or content
-            title = self._generate_title(doc_path, content)
+            # Merge extracted metadata with doc_metadata
+            merged_metadata = {**doc_metadata, **extracted_metadata}
+
+            # Generate a title from metadata, filename, or content
+            title = self._generate_title(doc_path, content, extracted_metadata)
 
             # Create the result
             return CrawlerResult(
@@ -155,23 +158,28 @@ class Crawler:
                 title=title,
                 content=content,
                 language=language,
-                metadata=doc_metadata,
+                metadata=merged_metadata,
             )
         except Exception:
             # The exception will be caught and logged in the calling function
             raise
 
-    def _generate_title(self, path: Path, content: str) -> str:
+    def _generate_title(self, path: Path, content: str, metadata: Dict[str, object]) -> str:
         """Generate a title for the document.
 
         Args:
             path: Path to the document
             content: Document content
+            metadata: Extracted metadata from the document
 
         Returns:
             Generated title
 
         """
+        # First, check if title is in metadata
+        if 'title' in metadata and metadata['title']:
+            return str(metadata['title'])
+        
         # Try to extract a title from the first line of content
         if content and content.strip():
             first_line = content.strip().splitlines()[0].strip()
