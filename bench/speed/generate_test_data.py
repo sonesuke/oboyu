@@ -11,8 +11,8 @@ from typing import Dict, Tuple
 from rich.console import Console
 from rich.progress import track
 
-from .config import DATA_DIR, DATASET_SIZES, get_dataset_config
-from .utils import ensure_directory, print_header, print_metric, print_section
+from bench.config import DATA_DIR, DATASET_SIZES, get_dataset_config
+from bench.utils import ensure_directory, print_header, print_metric, print_section
 
 console = Console()
 

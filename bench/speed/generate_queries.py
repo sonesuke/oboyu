@@ -8,8 +8,8 @@ from typing import Dict, List
 
 from rich.console import Console
 
-from .config import QUERIES_DIR, QUERY_CONFIG
-from .utils import ensure_directory, print_header, print_metric, print_section, save_json
+from bench.config import QUERIES_DIR, QUERY_CONFIG
+from bench.utils import ensure_directory, print_header, print_metric, print_section, save_json
 
 console = Console()
 

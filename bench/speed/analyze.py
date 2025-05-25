@@ -8,10 +8,10 @@ from typing import Any, Dict, List
 from rich.console import Console
 from rich.table import Table
 
-from .config import RESULTS_DIR
-from .reporter import generate_comparison_report
-from .results import BenchmarkRun, ResultsManager
-from .utils import print_header, print_metric, print_section
+from bench.config import RESULTS_DIR
+from reporter import generate_comparison_report
+from results import BenchmarkRun, ResultsManager
+from bench.utils import print_header, print_metric, print_section
 
 console = Console()
 
