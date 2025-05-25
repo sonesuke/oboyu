@@ -37,6 +37,16 @@ DEFAULT_CONFIG = {
 
         # Processing settings
         "max_workers": 4,  # Maximum number of worker threads for parallel processing
+        
+        # Reranker settings
+        "reranker_model": "cl-nagoya/ruri-v3-reranker-310m",  # Default reranker model
+        "use_reranker": False,  # Whether to use reranker for search results
+        "reranker_use_onnx": True,  # Whether to use ONNX optimization for reranker
+        "reranker_device": "cpu",  # Device for reranker (cpu/cuda)
+        "reranker_top_k_multiplier": 3,  # Multiplier for initial retrieval (3x final top_k)
+        "reranker_batch_size": 8,  # Batch size for reranking
+        "reranker_max_length": 512,  # Maximum sequence length for reranker
+        "reranker_threshold": None,  # Minimum score threshold (None = no threshold)
     }
 }
 
@@ -58,6 +68,15 @@ DEFAULT_EF_SEARCH = 64
 DEFAULT_M = 16
 DEFAULT_M0 = None
 DEFAULT_MAX_WORKERS = 4
+# Reranker defaults
+DEFAULT_RERANKER_MODEL = "cl-nagoya/ruri-v3-reranker-310m"
+DEFAULT_USE_RERANKER = False
+DEFAULT_RERANKER_USE_ONNX = True
+DEFAULT_RERANKER_DEVICE = "cpu"
+DEFAULT_RERANKER_TOP_K_MULTIPLIER = 3
+DEFAULT_RERANKER_BATCH_SIZE = 8
+DEFAULT_RERANKER_MAX_LENGTH = 512
+DEFAULT_RERANKER_THRESHOLD = None
 
 
 class IndexerConfig:
@@ -120,6 +139,26 @@ class IndexerConfig:
         # Get the indexer config dict
         indexer_config = self.config["indexer"]
 
+        # Validate basic settings
+        self._validate_basic_settings(indexer_config)
+        
+        # Validate embedding settings
+        self._validate_embedding_settings(indexer_config)
+        
+        # Validate prefix settings
+        self._validate_prefix_settings(indexer_config)
+        
+        # Validate database settings
+        self._validate_database_settings(indexer_config)
+        
+        # Validate VSS parameters
+        self._validate_vss_settings(indexer_config)
+        
+        # Validate reranker settings
+        self._validate_reranker_settings(indexer_config)
+
+    def _validate_basic_settings(self, indexer_config: dict[str, Any]) -> None:
+        """Validate basic indexer settings."""
         # Validate chunk_size - must be a positive integer
         if not isinstance(indexer_config.get("chunk_size"), int) or indexer_config.get("chunk_size", 0) <= 0:
             indexer_config["chunk_size"] = DEFAULT_CHUNK_SIZE
@@ -132,6 +171,20 @@ class IndexerConfig:
         ):
             indexer_config["chunk_overlap"] = DEFAULT_CHUNK_OVERLAP
 
+        # Validate batch_size - must be a positive integer
+        if not isinstance(indexer_config.get("batch_size"), int) or indexer_config.get("batch_size", 0) <= 0:
+            indexer_config["batch_size"] = DEFAULT_BATCH_SIZE
+
+        # Validate max_seq_length - must be a positive integer
+        if not isinstance(indexer_config.get("max_seq_length"), int) or indexer_config.get("max_seq_length", 0) <= 0:
+            indexer_config["max_seq_length"] = DEFAULT_MAX_SEQ_LENGTH
+
+        # Validate max_workers - must be a positive integer
+        if not isinstance(indexer_config.get("max_workers"), int) or indexer_config.get("max_workers", 0) <= 0:
+            indexer_config["max_workers"] = DEFAULT_MAX_WORKERS
+
+    def _validate_embedding_settings(self, indexer_config: dict[str, Any]) -> None:
+        """Validate embedding-related settings."""
         # Validate embedding_model - must be a non-empty string
         if not isinstance(indexer_config.get("embedding_model"), str) or not indexer_config.get("embedding_model"):
             indexer_config["embedding_model"] = DEFAULT_EMBEDDING_MODEL
@@ -143,18 +196,12 @@ class IndexerConfig:
         ):
             indexer_config["embedding_device"] = DEFAULT_EMBEDDING_DEVICE
 
-        # Validate batch_size - must be a positive integer
-        if not isinstance(indexer_config.get("batch_size"), int) or indexer_config.get("batch_size", 0) <= 0:
-            indexer_config["batch_size"] = DEFAULT_BATCH_SIZE
-
-        # Validate max_seq_length - must be a positive integer
-        if not isinstance(indexer_config.get("max_seq_length"), int) or indexer_config.get("max_seq_length", 0) <= 0:
-            indexer_config["max_seq_length"] = DEFAULT_MAX_SEQ_LENGTH
-
         # Validate use_onnx - must be a boolean
         if not isinstance(indexer_config.get("use_onnx"), bool):
             indexer_config["use_onnx"] = DEFAULT_USE_ONNX
 
+    def _validate_prefix_settings(self, indexer_config: dict[str, Any]) -> None:
+        """Validate prefix settings."""
         # Validate prefixes - must be strings
         if not isinstance(indexer_config.get("document_prefix"), str):
             indexer_config["document_prefix"] = DEFAULT_DOCUMENT_PREFIX
@@ -165,10 +212,14 @@ class IndexerConfig:
         if not isinstance(indexer_config.get("general_prefix"), str):
             indexer_config["general_prefix"] = DEFAULT_GENERAL_PREFIX
 
+    def _validate_database_settings(self, indexer_config: dict[str, Any]) -> None:
+        """Validate database settings."""
         # Validate db_path - must be a non-empty string and must be provided
         if not isinstance(indexer_config.get("db_path"), str) or not indexer_config.get("db_path"):
             raise ValueError("Database path (db_path) must be provided and cannot be empty")
 
+    def _validate_vss_settings(self, indexer_config: dict[str, Any]) -> None:
+        """Validate VSS parameters."""
         # Validate VSS parameters - must be positive integers
         if not isinstance(indexer_config.get("ef_construction"), int) or indexer_config.get("ef_construction", 0) <= 0:
             indexer_config["ef_construction"] = DEFAULT_EF_CONSTRUCTION
@@ -183,9 +234,40 @@ class IndexerConfig:
         ):
             indexer_config["m0"] = DEFAULT_M0
 
-        # Validate max_workers - must be a positive integer
-        if not isinstance(indexer_config.get("max_workers"), int) or indexer_config.get("max_workers", 0) <= 0:
-            indexer_config["max_workers"] = DEFAULT_MAX_WORKERS
+    def _validate_reranker_settings(self, indexer_config: dict[str, Any]) -> None:
+        """Validate reranker settings."""
+        # Validate reranker_model - must be a non-empty string
+        if not isinstance(indexer_config.get("reranker_model"), str) or not indexer_config.get("reranker_model"):
+            indexer_config["reranker_model"] = DEFAULT_RERANKER_MODEL
+        
+        # Validate use_reranker - must be a boolean
+        if not isinstance(indexer_config.get("use_reranker"), bool):
+            indexer_config["use_reranker"] = DEFAULT_USE_RERANKER
+        
+        # Validate reranker_use_onnx - must be a boolean
+        if not isinstance(indexer_config.get("reranker_use_onnx"), bool):
+            indexer_config["reranker_use_onnx"] = DEFAULT_RERANKER_USE_ONNX
+        
+        # Validate reranker_device - must be 'cpu' or 'cuda'
+        if indexer_config.get("reranker_device") not in ["cpu", "cuda"]:
+            indexer_config["reranker_device"] = DEFAULT_RERANKER_DEVICE
+        
+        # Validate reranker_top_k_multiplier - must be a positive integer
+        if not isinstance(indexer_config.get("reranker_top_k_multiplier"), int) or indexer_config.get("reranker_top_k_multiplier", 0) <= 0:
+            indexer_config["reranker_top_k_multiplier"] = DEFAULT_RERANKER_TOP_K_MULTIPLIER
+        
+        # Validate reranker_batch_size - must be a positive integer
+        if not isinstance(indexer_config.get("reranker_batch_size"), int) or indexer_config.get("reranker_batch_size", 0) <= 0:
+            indexer_config["reranker_batch_size"] = DEFAULT_RERANKER_BATCH_SIZE
+        
+        # Validate reranker_max_length - must be a positive integer
+        if not isinstance(indexer_config.get("reranker_max_length"), int) or indexer_config.get("reranker_max_length", 0) <= 0:
+            indexer_config["reranker_max_length"] = DEFAULT_RERANKER_MAX_LENGTH
+        
+        # Validate reranker_threshold - must be None or a float between 0 and 1
+        threshold = indexer_config.get("reranker_threshold")
+        if threshold is not None and (not isinstance(threshold, (int, float)) or threshold < 0 or threshold > 1):
+            indexer_config["reranker_threshold"] = DEFAULT_RERANKER_THRESHOLD
 
     @property
     def chunk_size(self) -> int:
@@ -272,6 +354,47 @@ class IndexerConfig:
     def max_workers(self) -> int:
         """Maximum number of worker threads for parallel processing."""
         return int(self.config["indexer"]["max_workers"])
+    
+    @property
+    def reranker_model(self) -> str:
+        """Reranker model name."""
+        return str(self.config["indexer"]["reranker_model"])
+    
+    @property
+    def use_reranker(self) -> bool:
+        """Whether to use reranker for search results."""
+        return bool(self.config["indexer"]["use_reranker"])
+    
+    @property
+    def reranker_use_onnx(self) -> bool:
+        """Whether to use ONNX optimization for reranker."""
+        return bool(self.config["indexer"]["reranker_use_onnx"])
+    
+    @property
+    def reranker_device(self) -> str:
+        """Device for reranker (cpu/cuda)."""
+        return str(self.config["indexer"]["reranker_device"])
+    
+    @property
+    def reranker_top_k_multiplier(self) -> int:
+        """Multiplier for initial retrieval."""
+        return int(self.config["indexer"]["reranker_top_k_multiplier"])
+    
+    @property
+    def reranker_batch_size(self) -> int:
+        """Batch size for reranking."""
+        return int(self.config["indexer"]["reranker_batch_size"])
+    
+    @property
+    def reranker_max_length(self) -> int:
+        """Maximum sequence length for reranker."""
+        return int(self.config["indexer"]["reranker_max_length"])
+    
+    @property
+    def reranker_threshold(self) -> Optional[float]:
+        """Minimum score threshold for reranker."""
+        threshold = self.config["indexer"]["reranker_threshold"]
+        return float(threshold) if threshold is not None else None
 
 
 def load_default_config(db_path: str) -> IndexerConfig:
