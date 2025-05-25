@@ -1,80 +1,108 @@
-# Oboyu Performance Benchmark Suite
+# Oboyu Benchmark Suite
 
-This directory contains a comprehensive performance benchmark suite for Oboyu, designed to measure and track performance metrics over time.
+This directory contains a comprehensive benchmark suite for Oboyu, designed to measure and track performance metrics and accuracy over time.
 
 ## Overview
 
-The benchmark suite measures two key performance areas:
+The benchmark suite provides two main evaluation areas:
 
-1. **Indexing Performance**: How fast Oboyu can discover, process, and index documents
-2. **Search Performance**: How fast Oboyu can execute vector searches and return results
+1. **Speed Benchmarks** (`speed/`): Measure indexing and search performance
+2. **RAG Accuracy Benchmarks** (`rag_accuracy/`): Evaluate retrieval accuracy for Japanese document search
 
 ## Quick Start
 
-### Running Your First Benchmark
+### Running Speed Benchmarks
 
 ```bash
-# Run benchmark with small dataset (default)
-uv run python bench/run_speed_benchmark.py
+# Run speed benchmark with small dataset (default)
+uv run python bench/speed/run_speed_benchmark.py
 
-# Run benchmark with specific datasets
-uv run python bench/run_speed_benchmark.py --datasets small medium
+# Run speed benchmark with specific datasets
+uv run python bench/speed/run_speed_benchmark.py --datasets small medium
+```
+
+### Running RAG Accuracy Benchmarks
+
+```bash
+# Run accuracy evaluation on all JMTEB datasets
+uv run python bench/benchmark_rag_accuracy.py --datasets miracl-ja mldr-ja jagovfaqs-22k jacwir
+
+# Run accuracy evaluation with specific search modes
+uv run python bench/benchmark_rag_accuracy.py --datasets miracl-ja --search-modes vector hybrid
 ```
 
 ### Analyzing Results
 
 ```bash
-# Analyze the latest benchmark results
-uv run python bench/run_speed_benchmark.py --analyze-only
+# Analyze the latest speed benchmark results
+uv run python bench/speed/run_speed_benchmark.py --analyze-only
 
-# Compare specific runs
-uv run python bench/analyze.py --compare <run_id_1> <run_id_2>
+# Compare specific speed benchmark runs
+uv run python bench/speed/analyze.py --compare <run_id_1> <run_id_2>
+
+# Generate accuracy report from existing results
+uv run python bench/benchmark_rag_accuracy.py --report-only
 ```
 
 ## Directory Structure
 
 ```
 bench/
-├── __init__.py              # Package initialization
-├── README.md                # This file
-├── config.py                # Centralized configuration
-├── utils.py                 # Common utilities
-├── data/                    # Test datasets (generated)
-│   ├── small/              # Small dataset (~50 files)
-│   ├── medium/             # Medium dataset (~1,000 files)
-│   └── large/              # Large dataset (~10,000 files)
-├── queries/                 # Query datasets (generated)
+├── __init__.py                    # Package initialization
+├── README.md                      # This file
+├── config.py                      # Shared configuration
+├── utils.py                       # Common utilities
+├── logger.py                      # Shared logging utilities
+├── benchmark_rag_accuracy.py      # RAG accuracy benchmark runner
+├── speed/                         # Speed benchmarks
+│   ├── __init__.py               # Speed module initialization
+│   ├── run_speed_benchmark.py    # Main speed benchmark runner
+│   ├── benchmark_indexing.py     # Indexing performance tests
+│   ├── benchmark_search.py       # Search performance tests
+│   ├── runner.py                 # Speed benchmark orchestration
+│   ├── analyze.py                # Results analysis
+│   ├── reporter.py               # Report generation
+│   ├── results.py                # Results management
+│   ├── generate_queries.py       # Query generation
+│   └── generate_test_data.py     # Test data generation
+├── rag_accuracy/                  # RAG accuracy evaluation
+│   ├── __init__.py               # RAG accuracy module initialization
+│   ├── rag_evaluator.py          # Core RAG evaluation logic
+│   ├── dataset_manager.py        # JMTEB dataset management
+│   ├── metrics_calculator.py     # IR metrics calculation
+│   ├── reranker_evaluator.py     # Reranking evaluation
+│   └── results_analyzer.py       # Results analysis and reporting
+├── config/                        # Configuration files
+│   └── rag_eval_config.yaml      # RAG evaluation configuration
+├── data/                          # Test datasets (generated)
+│   ├── small/                    # Small dataset (~50 files)
+│   ├── medium/                   # Medium dataset (~1,000 files)
+│   └── large/                    # Large dataset (~10,000 files)
+├── queries/                       # Query datasets (generated)
 │   ├── japanese_queries.json
 │   ├── english_queries.json
 │   └── mixed_queries.json
-├── results/                 # Benchmark results and reports
-│   ├── benchmark_run_*.json
-│   ├── summary_*.json
-│   └── report_*.txt
-├── generate_test_data.py    # Generate test datasets
-├── generate_queries.py      # Generate query datasets
-├── benchmark_indexing.py    # Indexing performance benchmarks
-├── benchmark_search.py      # Search performance benchmarks
-├── results.py              # Result data structures
-├── reporter.py             # Report generation
-├── runner.py               # Benchmark orchestration
-├── analyze.py              # Result analysis tools
-└── run_speed_benchmark.py  # Main entry point
+└── results/                       # Benchmark results and reports
+    ├── rag_accuracy_*.json        # RAG accuracy results
+    ├── rag_report_*.txt           # RAG accuracy reports
+    ├── benchmark_run_*.json       # Speed benchmark results
+    ├── summary_*.json             # Speed benchmark summaries
+    └── report_*.txt               # Speed benchmark reports
 ```
 
-## Generating Test Data
+## Speed Benchmarks
 
-### Generate Datasets
+### Generate Test Datasets
 
 ```bash
 # Generate all dataset sizes
-uv run python -m bench.generate_test_data all
+uv run python bench/speed/generate_test_data.py all
 
 # Generate specific dataset size
-uv run python -m bench.generate_test_data small medium
+uv run python bench/speed/generate_test_data.py small medium
 
 # Custom output directory
-uv run python -m bench.generate_test_data small --output-dir /path/to/data
+uv run python bench/speed/generate_test_data.py small --output-dir /path/to/data
 ```
 
 Dataset characteristics:
@@ -82,14 +110,14 @@ Dataset characteristics:
 - **Medium**: 1,000 files, 2-10KB each  
 - **Large**: 10,000 files, 3-15KB each
 
-### Generate Queries
+### Generate Query Datasets
 
 ```bash
 # Generate all query languages
-uv run python -m bench.generate_queries
+uv run python bench/speed/generate_queries.py
 
 # Generate specific languages
-uv run python -m bench.generate_queries --languages japanese english
+uv run python bench/speed/generate_queries.py --languages japanese english
 ```
 
 Query characteristics:
@@ -97,12 +125,53 @@ Query characteristics:
 - **English**: 50 queries (technical, business, general, code)
 - **Mixed**: 20 queries (Japanese-English mixed)
 
-## Running Benchmarks
+## RAG Accuracy Benchmarks
 
-### Command Line Options
+The RAG accuracy evaluation framework measures retrieval quality using standard Information Retrieval (IR) metrics on Japanese datasets based on JMTEB (Japanese Massive Text Embedding Benchmark).
+
+### Supported Datasets
+
+- **MIRACL-ja**: Academic research papers and queries
+- **MLDR-ja**: Long document retrieval scenarios  
+- **JaGovFaqs-22k**: Government FAQ-style content
+- **JaCWIR**: Casual web information retrieval
+
+### Available Metrics
+
+- **Precision@K**: Proportion of relevant documents in top-K results
+- **Recall@K**: Proportion of relevant documents retrieved in top-K  
+- **NDCG@K**: Normalized Discounted Cumulative Gain at K
+- **MRR**: Mean Reciprocal Rank
+- **Hit Rate**: Percentage of queries with at least one relevant result
+- **F1@K**: Harmonic mean of precision and recall at K
+
+### Running RAG Evaluations
 
 ```bash
-uv run python bench/run_speed_benchmark.py [options]
+# Evaluate all datasets with all search modes
+uv run python bench/benchmark_rag_accuracy.py
+
+# Evaluate specific datasets
+uv run python bench/benchmark_rag_accuracy.py --datasets miracl-ja mldr-ja
+
+# Evaluate with specific search modes and top-k values
+uv run python bench/benchmark_rag_accuracy.py --search-modes vector hybrid --top-k-values 1 5 10
+
+# Generate report from existing results
+uv run python bench/benchmark_rag_accuracy.py --report-only
+
+# Compare with previous results for regression detection
+uv run python bench/benchmark_rag_accuracy.py --compare-with bench/results/rag_accuracy_20250101_120000.json
+```
+
+## Speed Benchmarks
+
+### Running Speed Benchmarks
+
+#### Command Line Options
+
+```bash
+uv run python bench/speed/run_speed_benchmark.py [options]
 ```
 
 Options:
@@ -114,17 +183,17 @@ Options:
 - `--force-regenerate`: Force regeneration of test data
 - `--analyze-only`: Only analyze existing results
 
-### Examples
+#### Examples
 
 ```bash
 # Run benchmark on medium dataset with Japanese queries only
-uv run python bench/run_speed_benchmark.py --datasets medium --languages japanese
+uv run python bench/speed/run_speed_benchmark.py --datasets medium --languages japanese
 
 # Skip indexing and use existing indexes for search benchmark
-uv run python bench/run_speed_benchmark.py --skip-indexing --use-existing-indexes
+uv run python bench/speed/run_speed_benchmark.py --skip-indexing --use-existing-indexes
 
 # Force regenerate all test data and run benchmark
-uv run python bench/run_speed_benchmark.py --datasets small medium large --force-regenerate
+uv run python bench/speed/run_speed_benchmark.py --datasets small medium large --force-regenerate
 ```
 
 ## Understanding Results

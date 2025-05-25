@@ -4,8 +4,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .config import RESULTS_DIR
-from .utils import get_python_info, get_timestamp, load_json, save_json
+from bench.config import RESULTS_DIR
+from bench.utils import get_python_info, get_timestamp, load_json, save_json
 
 
 @dataclass

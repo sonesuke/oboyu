@@ -7,8 +7,8 @@ from typing import Any, Dict, List
 from rich.console import Console
 from rich.table import Table
 
-from .results import BenchmarkRun
-from .utils import format_time, print_header, print_metric, print_section
+from results import BenchmarkRun
+from bench.utils import format_time, print_header, print_metric, print_section
 
 console = Console()
 
