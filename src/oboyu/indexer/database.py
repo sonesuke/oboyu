@@ -729,7 +729,7 @@ class Database:
         
         # Store collection statistics
         self.conn.execute("""
-            INSERT INTO collection_stats 
+            INSERT INTO collection_stats
             (id, total_documents, total_terms, avg_document_length, last_updated)
             VALUES (1, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT (id) DO UPDATE SET
@@ -777,14 +777,14 @@ class Database:
             SELECT value AS term FROM (VALUES {",".join(f"('{term}')" for term in query_terms)})
         ),
         collection_info AS (
-            SELECT 
+            SELECT
                 total_documents,
                 avg_document_length
             FROM collection_stats
             WHERE id = 1
         ),
         doc_scores AS (
-            SELECT 
+            SELECT
                 c.id as chunk_id,
                 c.path,
                 c.title,
@@ -794,11 +794,11 @@ class Database:
                 c.metadata,
                 SUM(
                     -- IDF component
-                    LOG((ci.total_documents - v.document_frequency + 0.5) / 
+                    LOG((ci.total_documents - v.document_frequency + 0.5) /
                         (v.document_frequency + 0.5) + 1.0) *
                     -- Normalized TF component (k1=1.2, b=0.75)
-                    ((ii.term_frequency * 2.2) / 
-                     (ii.term_frequency + 1.2 * 
+                    ((ii.term_frequency * 2.2) /
+                     (ii.term_frequency + 1.2 *
                       (0.25 + 0.75 * (ds.total_terms / ci.avg_document_length))))
                 ) AS score
             FROM inverted_index ii

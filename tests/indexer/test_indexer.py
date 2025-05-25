@@ -121,8 +121,8 @@ class TestIndexer:
             database=mock_db
         )
         
-        # Search for documents
-        results = indexer.search("test query", limit=5)
+        # Search for documents using vector mode (original behavior)
+        results = indexer.search("test query", limit=5, mode="vector")
         
         # Verify results
         assert len(results) == 1

@@ -373,7 +373,7 @@ class Indexer:
             progress_callback("bm25_indexing", 0, 1)
         
         # Index chunks for BM25
-        stats = self.bm25_indexer.index_chunks(chunks)
+        self.bm25_indexer.index_chunks(chunks)
         
         # Prepare data for database storage
         vocabulary = {}

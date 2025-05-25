@@ -302,7 +302,7 @@ class FallbackTokenizer:
         )
     
     def tokenize(self, text: str) -> List[str]:
-        """Basic tokenization using regex patterns.
+        """Tokenize text using regex patterns.
         
         Args:
             text: Text to tokenize
