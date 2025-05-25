@@ -162,22 +162,69 @@ class IndexingBenchmark:
         finally:
             self._cleanup_temp_db(db, db_path)
     
+    def _run_warmup(self) -> None:
+        """Run warmup with minimal data to initialize models and libraries."""
+        from datetime import datetime
+        
+        console.print(f"[dim]  Initializing models with dummy data...[/dim]")
+        
+        # Create temporary database
+        db_path, db = self._create_temp_db()
+        
+        try:
+            # Create a few dummy documents using CrawlerResult
+            from oboyu.crawler.crawler import CrawlerResult
+            dummy_documents = [
+                CrawlerResult(
+                    path=Path(f"/tmp/dummy{i}.txt"),
+                    title=f"Dummy Document {i}",
+                    content=f"This is test document {i}. " * 10,
+                    language="en",
+                    metadata={}
+                )
+                for i in range(5)
+            ]
+            
+            # Initialize indexer and process dummy documents
+            from oboyu.indexer.config import IndexerConfig
+            config_dict = {
+                "indexer": {
+                    **OBOYU_CONFIG["indexer"],
+                    "db_path": str(db_path)
+                }
+            }
+            indexer_cfg = IndexerConfig(config_dict=config_dict)
+            indexer = Indexer(config=indexer_cfg)
+            
+            # Index dummy documents to initialize models
+            indexer.index_documents(dummy_documents)
+            
+        finally:
+            self._cleanup_temp_db(db, db_path)
+    
     def run(self, monitor_system: bool = True) -> IndexingResult:
         """Run the indexing benchmark."""
+        from datetime import datetime
+        
         print_section(f"Indexing Benchmark - {self.dataset_size} dataset")
+        console.print(f"[dim]Start time: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
         
         # System monitoring
         monitor = SystemMonitor() if monitor_system else None
         
         # Warmup runs
         if self.warmup_runs > 0:
-            console.print(f"Running {self.warmup_runs} warmup run(s)...")
-            for i in range(self.warmup_runs):
-                self._run_single_indexing(show_progress=False)
-                gc.collect()
+            console.print(f"\n[yellow]Phase 1: Warmup[/yellow]")
+            console.print(f"Initializing models and libraries...")
+            console.print(f"[dim]Warmup start: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
+            self._run_warmup()
+            gc.collect()
+            console.print(f"[dim]Warmup complete: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
         
         # Test runs
+        console.print(f"\n[yellow]Phase 2: Test Runs[/yellow]")
         console.print(f"Running {self.test_runs} test run(s)...")
+        console.print(f"[dim]Test runs start: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
         all_metrics: List[Dict[str, float]] = []
         
         if monitor:
@@ -185,7 +232,9 @@ class IndexingBenchmark:
         
         for i in range(self.test_runs):
             console.print(f"\nRun {i+1}/{self.test_runs}:")
+            console.print(f"[dim]  Test {i+1} start: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
             metrics = self._run_single_indexing(show_progress=True)
+            console.print(f"[dim]  Test {i+1} end: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
             all_metrics.append(metrics)
             
             # Print run results
@@ -197,18 +246,26 @@ class IndexingBenchmark:
             if monitor:
                 monitor.samples.append(monitor.sample())
             
+            console.print(f"[dim]  GC start: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
             gc.collect()
+            console.print(f"[dim]  GC end: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
         
         if monitor:
             monitor.stop()
         
+        console.print(f"[dim]Test runs complete: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
+        
         # Calculate aggregated results
+        console.print(f"\n[yellow]Phase 3: Aggregating Results[/yellow]")
+        console.print(f"[dim]Aggregation start: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
         result = self._aggregate_results(all_metrics)
+        console.print(f"[dim]Aggregation end: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
         
         # Add system metrics
         if monitor:
             result.system_metrics = monitor.get_summary()
         
+        console.print(f"[dim]Benchmark complete: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
         return result
     
     def _aggregate_results(self, all_metrics: List[Dict[str, float]]) -> IndexingResult:

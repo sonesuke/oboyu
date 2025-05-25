@@ -14,24 +14,21 @@ The benchmark suite measures two key performance areas:
 ### Running Your First Benchmark
 
 ```bash
-# Install dependencies (if not already installed)
-pip install psutil
+# Run benchmark with small dataset (default)
+uv run python bench/run_speed_benchmark.py
 
-# Run a quick benchmark with small dataset
-python bench/run_speed_benchmark.py --quick
-
-# Run full benchmark suite
-python bench/run_speed_benchmark.py --full
+# Run benchmark with specific datasets
+uv run python bench/run_speed_benchmark.py --datasets small medium
 ```
 
 ### Analyzing Results
 
 ```bash
 # Analyze the latest benchmark results
-python bench/run_speed_benchmark.py --analyze-only
+uv run python bench/run_speed_benchmark.py --analyze-only
 
 # Compare specific runs
-python bench/analyze.py --compare <run_id_1> <run_id_2>
+uv run python bench/analyze.py --compare <run_id_1> <run_id_2>
 ```
 
 ## Directory Structure
@@ -71,13 +68,13 @@ bench/
 
 ```bash
 # Generate all dataset sizes
-python -m bench.generate_test_data all
+uv run python -m bench.generate_test_data all
 
 # Generate specific dataset size
-python -m bench.generate_test_data small medium
+uv run python -m bench.generate_test_data small medium
 
 # Custom output directory
-python -m bench.generate_test_data small --output-dir /path/to/data
+uv run python -m bench.generate_test_data small --output-dir /path/to/data
 ```
 
 Dataset characteristics:
@@ -89,10 +86,10 @@ Dataset characteristics:
 
 ```bash
 # Generate all query languages
-python -m bench.generate_queries
+uv run python -m bench.generate_queries
 
 # Generate specific languages
-python -m bench.generate_queries --languages japanese english
+uv run python -m bench.generate_queries --languages japanese english
 ```
 
 Query characteristics:
@@ -105,12 +102,10 @@ Query characteristics:
 ### Command Line Options
 
 ```bash
-python bench/run_speed_benchmark.py [options]
+uv run python bench/run_speed_benchmark.py [options]
 ```
 
 Options:
-- `--quick`: Run quick benchmark with small dataset only
-- `--full`: Run full benchmark with all datasets
 - `--datasets SIZES`: Specify dataset sizes (small, medium, large)
 - `--languages LANGS`: Specify query languages (japanese, english, mixed)
 - `--skip-indexing`: Skip indexing benchmarks
@@ -123,13 +118,13 @@ Options:
 
 ```bash
 # Run benchmark on medium dataset with Japanese queries only
-python bench/run_speed_benchmark.py --datasets medium --languages japanese
+uv run python bench/run_speed_benchmark.py --datasets medium --languages japanese
 
 # Skip indexing and use existing indexes for search benchmark
-python bench/run_speed_benchmark.py --skip-indexing --use-existing-indexes
+uv run python bench/run_speed_benchmark.py --skip-indexing --use-existing-indexes
 
-# Force regenerate all test data and run full benchmark
-python bench/run_speed_benchmark.py --full --force-regenerate
+# Force regenerate all test data and run benchmark
+uv run python bench/run_speed_benchmark.py --datasets small medium large --force-regenerate
 ```
 
 ## Understanding Results
@@ -163,20 +158,20 @@ python bench/run_speed_benchmark.py --full --force-regenerate
 
 ```bash
 # Analyze last 5 runs
-python bench/analyze.py --latest 5
+uv run python bench/analyze.py --latest 5
 
 # Analyze with custom results directory
-python bench/analyze.py --results-dir /path/to/results
+uv run python bench/analyze.py --results-dir /path/to/results
 ```
 
 ### Compare Runs
 
 ```bash
 # Compare two specific runs
-python bench/analyze.py --compare <run_id_1> <run_id_2>
+uv run python bench/analyze.py --compare <run_id_1> <run_id_2>
 
 # Set regression threshold (default: 10%)
-python bench/analyze.py --compare <run_id_1> <run_id_2> --regression-threshold 0.05
+uv run python bench/analyze.py --compare <run_id_1> <run_id_2> --regression-threshold 0.05
 ```
 
 ### Performance Trends
@@ -242,19 +237,19 @@ BENCHMARK_CONFIG = {
 
 ```bash
 # Run benchmark and check for regressions
-python bench/run_speed_benchmark.py --quick
-python bench/analyze.py --latest 2 --regression-threshold 0.1
+uv run python bench/run_speed_benchmark.py --datasets small
+uv run python bench/analyze.py --latest 2 --regression-threshold 0.1
 ```
 
 ### GitHub Actions Example
 
 ```yaml
 - name: Run Performance Benchmark
-  run: python bench/run_speed_benchmark.py --quick
+  run: uv run python bench/run_speed_benchmark.py --datasets small
   
 - name: Check for Regressions
   run: |
-    python bench/analyze.py --latest 2 --regression-threshold 0.1
+    uv run python bench/analyze.py --latest 2 --regression-threshold 0.1
     if [ $? -ne 0 ]; then
       echo "Performance regression detected!"
       exit 1
@@ -267,17 +262,17 @@ python bench/analyze.py --latest 2 --regression-threshold 0.1
 
 1. **"Oboyu is not installed"**
    ```bash
-   pip install -e .
+   uv pip install -e .
    ```
 
 2. **"Dataset not found"**
    ```bash
-   python -m bench.generate_test_data all
+   uv run python -m bench.generate_test_data all
    ```
 
 3. **"Query file not found"**
    ```bash
-   python -m bench.generate_queries
+   uv run python -m bench.generate_queries
    ```
 
 4. **Memory issues with large dataset**
@@ -288,7 +283,7 @@ python bench/analyze.py --latest 2 --regression-threshold 0.1
 
 Enable verbose output:
 ```bash
-python bench/run_speed_benchmark.py --quick --verbose
+uv run python bench/run_speed_benchmark.py --datasets small --verbose
 ```
 
 ## Future Enhancements

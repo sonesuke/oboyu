@@ -39,6 +39,7 @@ class SearchBenchmark:
         
         # Initialize database and embedding model
         self.db = Database(db_path=db_path)
+        self.db.setup()  # Ensure connection is established
         self.embedding_model = EmbeddingGenerator()
         
         # Get dataset info

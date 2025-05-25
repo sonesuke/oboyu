@@ -8,6 +8,11 @@ from pathlib import Path
 # Add parent directory to path for importing bench modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Add src directory to path for importing oboyu modules
+src_path = Path(__file__).parent.parent / "src"
+if src_path.exists():
+    sys.path.insert(0, str(src_path))
+
 from rich.console import Console
 
 from bench.analyze import BenchmarkAnalyzer
@@ -25,13 +30,10 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Run quick benchmark with small dataset
-  python bench/run_speed_benchmark.py --quick
+  # Run benchmark with small dataset
+  python bench/run_speed_benchmark.py --datasets small
   
-  # Run full benchmark suite
-  python bench/run_speed_benchmark.py --full
-  
-  # Run specific dataset sizes
+  # Run benchmark with multiple datasets
   python bench/run_speed_benchmark.py --datasets small medium
   
   # Skip indexing benchmarks
@@ -43,18 +45,7 @@ Examples:
     )
     
     # Benchmark mode
-    mode_group = parser.add_mutually_exclusive_group()
-    mode_group.add_argument(
-        "--quick",
-        action="store_true",
-        help="Run quick benchmark with small dataset only"
-    )
-    mode_group.add_argument(
-        "--full",
-        action="store_true",
-        help="Run full benchmark with all datasets"
-    )
-    mode_group.add_argument(
+    parser.add_argument(
         "--analyze-only",
         action="store_true",
         help="Only analyze existing results"
@@ -146,15 +137,8 @@ Examples:
         sys.exit(0)
     
     # Determine datasets and languages
-    if args.quick:
-        datasets = ["small"]
-        languages = ["english", "japanese"]
-    elif args.full:
-        datasets = list(DATASET_SIZES.keys())
-        languages = get_query_languages()
-    else:
-        datasets = args.datasets or ["small"]
-        languages = args.languages or ["english", "japanese"]
+    datasets = args.datasets or ["small"]
+    languages = args.languages or ["english", "japanese"]
     
     # Create and run benchmark
     try:
