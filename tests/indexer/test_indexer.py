@@ -115,7 +115,7 @@ class TestIndexer:
         
         # Initialize indexer with mocks
         indexer = Indexer(
-            config=IndexerConfig(config_dict={"indexer": {"db_path": "test.db"}}),
+            config=IndexerConfig(config_dict={"indexer": {"db_path": "test.db", "use_reranker": False}}),
             processor=mock_processor,
             embedding_generator=mock_generator,
             database=mock_db
