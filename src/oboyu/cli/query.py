@@ -104,6 +104,14 @@ DatabasePathOption = Annotated[
     ),
 ]
 
+RerankOption = Annotated[
+    Optional[bool],
+    typer.Option(
+        "--rerank/--no-rerank",
+        help="Enable or disable reranking of search results",
+    ),
+]
+
 
 def format_search_result(result: SearchResult, query: str, show_explanation: bool = False) -> Text:
     """Format a search result for display using cleaner hierarchical format.
@@ -161,6 +169,7 @@ def query(
     vector_weight: VectorWeightOption = None,
     bm25_weight: BM25WeightOption = None,
     db_path: DatabasePathOption = None,
+    rerank: RerankOption = None,
 ) -> None:
     """Search indexed documents.
 
@@ -234,24 +243,27 @@ def query(
         
         # Perform vector search
         search_start = time.time()
-        vector_op = logger.start_operation("Vector search...")
-        results = indexer.search(query, limit=top_k)
+        search_desc = "Vector search" + (" with reranking" if rerank else "") + "..."
+        vector_op = logger.start_operation(search_desc)
+        results = indexer.search(query, limit=top_k, use_reranker=rerank)
         search_time = time.time() - search_start
         logger.complete_operation(vector_op)
         
         if results:
+            rerank_note = " (reranked)" if rerank else ""
             logger.update_operation(
                 vector_op,
-                f"Vector search... ✓ Found {len(results)} candidates ({search_time:.2f}s)"
+                f"{search_desc} ✓ Found {len(results)} results{rerank_note} ({search_time:.2f}s)"
             )
             
-            # Ranking results
-            rank_op = logger.start_operation("Ranking results...")
-            logger.complete_operation(rank_op)
-            logger.update_operation(
-                rank_op,
-                f"Ranking results... ✓ Top {len(results)} selected (0.01s)"
-            )
+            # Ranking results step is only shown if not reranking (since reranking does its own ranking)
+            if not rerank:
+                rank_op = logger.start_operation("Ranking results...")
+                logger.complete_operation(rank_op)
+                logger.update_operation(
+                    rank_op,
+                    f"Ranking results... ✓ Top {len(results)} selected (0.01s)"
+                )
         else:
             logger.update_operation(
                 vector_op,

@@ -19,6 +19,7 @@ from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.database import Database
 from oboyu.indexer.embedding import EmbeddingGenerator
 from oboyu.indexer.processor import Chunk, DocumentProcessor
+from oboyu.indexer.reranker import BaseReranker, create_reranker
 
 
 @dataclass
@@ -59,6 +60,7 @@ class Indexer:
         processor: Optional[DocumentProcessor] = None,
         embedding_generator: Optional[EmbeddingGenerator] = None,
         database: Optional[Database] = None,
+        reranker: Optional[BaseReranker] = None,
     ) -> None:
         """Initialize the indexer.
 
@@ -67,6 +69,7 @@ class Indexer:
             processor: Document processor for chunking
             embedding_generator: Generator for document embeddings
             database: Database for storing chunks and embeddings
+            reranker: Reranker for improving search results
 
         """
         # Initialize configuration
@@ -105,6 +108,17 @@ class Indexer:
 
         # Set up the database schema
         self.database.setup()
+        
+        # Initialize reranker if enabled
+        self.reranker = reranker
+        if self.reranker is None and self.config.use_reranker:
+            self.reranker = create_reranker(
+                model_name=self.config.reranker_model,
+                use_onnx=self.config.reranker_use_onnx,
+                device=self.config.reranker_device,
+                batch_size=self.config.reranker_batch_size,
+                max_length=self.config.reranker_max_length,
+            )
 
         # Keep track of processed files
         self._processed_files: Set[Path] = set()
@@ -354,6 +368,7 @@ class Indexer:
         query: str,
         limit: int = 10,
         language: Optional[str] = None,
+        use_reranker: Optional[bool] = None,
     ) -> List[SearchResult]:
         """Search for documents similar to the query.
 
@@ -361,16 +376,35 @@ class Indexer:
             query: Search query
             limit: Maximum number of results to return
             language: Optional language filter
+            use_reranker: Whether to use reranker (None = use config setting)
 
         Returns:
             List of search results
 
         """
+        # Determine whether to use reranker
+        should_rerank = use_reranker if use_reranker is not None else self.config.use_reranker
+        
+        # Initialize reranker if needed but not yet initialized
+        if should_rerank and self.reranker is None:
+            self.reranker = create_reranker(
+                model_name=self.config.reranker_model,
+                use_onnx=self.config.reranker_use_onnx,
+                device=self.config.reranker_device,
+                batch_size=self.config.reranker_batch_size,
+                max_length=self.config.reranker_max_length,
+            )
+        
+        # Adjust initial retrieval limit if using reranker
+        initial_limit = limit
+        if should_rerank and self.reranker is not None:
+            initial_limit = limit * self.config.reranker_top_k_multiplier
+        
         # Generate query embedding
         query_embedding = self.embedding_generator.generate_query_embedding(query)
 
-        # Search the database
-        db_results = self.database.search(query_embedding, limit, language)
+        # Search the database with adjusted limit
+        db_results = self.database.search(query_embedding, initial_limit, language)
 
         # Convert to SearchResult objects
         search_results = []
@@ -421,6 +455,19 @@ class Indexer:
                 metadata=metadata,
                 score=score,
             ))
+        
+        # Apply reranking if enabled
+        if should_rerank and self.reranker is not None:
+            # Rerank the results
+            search_results = self.reranker.rerank(
+                query=query,
+                results=search_results,
+                top_k=limit,
+                threshold=self.config.reranker_threshold,
+            )
+        else:
+            # If not reranking, just limit the results
+            search_results = search_results[:limit]
 
         return search_results
 

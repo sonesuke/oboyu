@@ -22,6 +22,8 @@ The system provides both command-line interface for direct queries and an MCP se
 - **Japanese Language Excellence**: First-class support for Japanese text with built-in specialized tokenization and encoding detection
 - **Semantic Search**: Retrieve the most relevant documents using vector embeddings with the Ruri v3 model
 - **Multiple Search Modes**: Choose between vector, BM25, or hybrid search depending on your needs
+- **Advanced Reranking**: Improve search accuracy with Ruri Cross-Encoder reranker models for enhanced RAG performance
+- **ONNX Optimization**: 2-4x faster inference with automatic ONNX conversion for both embedding and reranker models
 - **Document-Focused Results**: Get top matching documents with URIs, titles, and relevant snippets
 - **Rich Command-Line Interface**: Powerful CLI with extensive options and colorized output
 - **Privacy-Focused**: Your documents stay on your machine - no data sent to external services by default
@@ -78,6 +80,12 @@ oboyu query "ドキュメント内の重要な概念は何ですか？"
 # Query in English with specific search mode and number of results
 oboyu query "What are the key concepts in the documents?" --mode vector --top-k 10
 
+# Query with reranking for improved accuracy (enabled by default)
+oboyu query "技術的な実装の詳細" --rerank
+
+# Query without reranking for faster results
+oboyu query "Quick overview of the project" --no-rerank
+
 # Get detailed explanation of search results
 oboyu query "Important design principles" --explain
 
@@ -124,6 +132,12 @@ indexer:
   embedding_device: "cpu"
   batch_size: 8
   db_path: "oboyu.db"
+  # Reranker settings
+  use_reranker: true
+  reranker_model: "cl-nagoya/ruri-v3-reranker-310m"
+  reranker_use_onnx: true
+  reranker_top_k_multiplier: 3
+  reranker_score_threshold: 0.5
 
 # Query settings
 query:
@@ -157,6 +171,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - [Japanese Support Details](docs/japanese.md)
 - [Architecture Overview](docs/architecture.md)
 - [MCP Server Guide](docs/mcp_server.md)
+- [Reranker Guide](docs/reranker.md)
 
 ## License
 
