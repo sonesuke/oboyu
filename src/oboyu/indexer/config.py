@@ -40,7 +40,7 @@ DEFAULT_CONFIG = {
         
         # Reranker settings
         "reranker_model": "cl-nagoya/ruri-v3-reranker-310m",  # Default reranker model
-        "use_reranker": True,  # Whether to use reranker for search results
+        "use_reranker": False,  # Whether to use reranker for search results
         "reranker_use_onnx": True,  # Whether to use ONNX optimization for reranker
         "reranker_device": "cpu",  # Device for reranker (cpu/cuda)
         "reranker_top_k_multiplier": 3,  # Multiplier for initial retrieval (3x final top_k)
@@ -70,7 +70,7 @@ DEFAULT_M0 = None
 DEFAULT_MAX_WORKERS = 4
 # Reranker defaults
 DEFAULT_RERANKER_MODEL = "cl-nagoya/ruri-v3-reranker-310m"
-DEFAULT_USE_RERANKER = True
+DEFAULT_USE_RERANKER = False
 DEFAULT_RERANKER_USE_ONNX = True
 DEFAULT_RERANKER_DEVICE = "cpu"
 DEFAULT_RERANKER_TOP_K_MULTIPLIER = 3

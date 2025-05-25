@@ -383,11 +383,21 @@ class Indexer:
 
         """
         # Determine whether to use reranker
-        should_rerank = use_reranker if use_reranker is not None else (self.config.use_reranker and self.reranker is not None)
+        should_rerank = use_reranker if use_reranker is not None else self.config.use_reranker
+        
+        # Initialize reranker if needed but not yet initialized
+        if should_rerank and self.reranker is None:
+            self.reranker = create_reranker(
+                model_name=self.config.reranker_model,
+                use_onnx=self.config.reranker_use_onnx,
+                device=self.config.reranker_device,
+                batch_size=self.config.reranker_batch_size,
+                max_length=self.config.reranker_max_length,
+            )
         
         # Adjust initial retrieval limit if using reranker
         initial_limit = limit
-        if should_rerank:
+        if should_rerank and self.reranker is not None:
             initial_limit = limit * self.config.reranker_top_k_multiplier
         
         # Generate query embedding

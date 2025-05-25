@@ -104,6 +104,7 @@ class CrossEncoderReranker(BaseReranker):
                 self.model_name,
                 device=self.device,
                 max_length=self.max_length,
+                trust_remote_code=True,
             )
             logger.info("CrossEncoder model loaded successfully")
         return cast(CrossEncoder, self._model)

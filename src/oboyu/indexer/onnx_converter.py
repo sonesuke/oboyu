@@ -411,19 +411,19 @@ def convert_cross_encoder_to_onnx(
     if "cross-encoder" in model_name.lower() or "reranker" in model_name.lower():
         # Use CrossEncoder class if available
         try:
-            ce_model = CrossEncoder(model_name, device="cpu")
+            ce_model = CrossEncoder(model_name, device="cpu", trust_remote_code=True)
             model = ce_model.model
             tokenizer = ce_model.tokenizer
             max_length = ce_model.max_length
         except Exception:
             # Fallback to direct loading
-            model = AutoModelForSequenceClassification.from_pretrained(model_name)
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            model = AutoModelForSequenceClassification.from_pretrained(model_name, trust_remote_code=True)
+            tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
             max_length = 512
     else:
         # Direct loading for other models
-        model = AutoModelForSequenceClassification.from_pretrained(model_name)
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForSequenceClassification.from_pretrained(model_name, trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
         max_length = 512
     
     # Ensure model is on CPU

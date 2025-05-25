@@ -101,6 +101,7 @@ class TestCrossEncoderReranker:
             "test-model",
             device="cpu",
             max_length=512,
+            trust_remote_code=True,
         )
         assert model == mock_model
         assert reranker._model == mock_model
