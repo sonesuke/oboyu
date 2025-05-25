@@ -172,6 +172,61 @@ class Database:
                 m0 = {self.m0}
             )
         """)
+        
+        # Create BM25 schema
+        self._create_bm25_schema()
+    
+    def _create_bm25_schema(self) -> None:
+        """Create BM25-related database schema."""
+        if self.conn is None:
+            raise ValueError("Database connection not initialized. Call setup() first.")
+        
+        # Create vocabulary table
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS vocabulary (
+                term VARCHAR PRIMARY KEY,
+                document_frequency INTEGER,
+                collection_frequency INTEGER
+            )
+        """)
+        
+        # Create inverted index table
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS inverted_index (
+                term VARCHAR,
+                chunk_id VARCHAR,
+                term_frequency INTEGER,
+                positions TEXT,  -- JSON array of positions
+                PRIMARY KEY (term, chunk_id),
+                FOREIGN KEY (chunk_id) REFERENCES chunks (id)
+            )
+        """)
+        
+        # Create document statistics table
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS document_stats (
+                chunk_id VARCHAR PRIMARY KEY,
+                total_terms INTEGER,
+                unique_terms INTEGER,
+                avg_term_frequency REAL,
+                FOREIGN KEY (chunk_id) REFERENCES chunks (id)
+            )
+        """)
+        
+        # Create collection statistics table
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS collection_stats (
+                id INTEGER PRIMARY KEY DEFAULT 1,  -- Single row
+                total_documents INTEGER,
+                total_terms INTEGER,
+                avg_document_length REAL,
+                last_updated TIMESTAMP
+            )
+        """)
+        
+        # Create indexes for BM25 search performance
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_inverted_index_term ON inverted_index(term)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_inverted_index_chunk ON inverted_index(chunk_id)")
 
     def store_chunks(self, chunks: List[Chunk]) -> None:
         """Store document chunks in the database using ADBC for efficient batch operations.
@@ -542,6 +597,9 @@ class Database:
 
         # Delete all data from chunks
         self.conn.execute("DELETE FROM chunks")
+        
+        # Clear BM25 index data
+        self.clear_bm25_index()
 
         # Drop and recreate the HNSW index to ensure clean state
         # This is necessary because HNSW indexes can retain internal state
@@ -607,6 +665,193 @@ class Database:
             "db_path": str(self.db_path),
             "last_updated": last_updated
         }
+
+    def store_bm25_index(
+        self,
+        vocabulary: Dict[str, Tuple[int, int]],
+        inverted_index: Dict[str, List[Tuple[str, int, List[int]]]],
+        document_stats: Dict[str, Tuple[int, int, float]],
+        collection_stats: Dict[str, Union[int, float]],
+    ) -> None:
+        """Store BM25 index data in the database.
+        
+        Args:
+            vocabulary: Dictionary mapping terms to (doc_freq, collection_freq)
+            inverted_index: Dictionary mapping terms to list of (chunk_id, term_freq, positions)
+            document_stats: Dictionary mapping chunk_id to (total_terms, unique_terms, avg_term_freq)
+            collection_stats: Dictionary with collection-level statistics
+
+        """
+        if self.conn is None:
+            raise ValueError("Database connection not initialized. Call setup() first.")
+        
+        # Store vocabulary
+        vocab_data = [
+            (term, doc_freq, coll_freq)
+            for term, (doc_freq, coll_freq) in vocabulary.items()
+        ]
+        self.conn.executemany("""
+            INSERT INTO vocabulary (term, document_frequency, collection_frequency)
+            VALUES (?, ?, ?)
+            ON CONFLICT (term) DO UPDATE SET
+                document_frequency = excluded.document_frequency,
+                collection_frequency = excluded.collection_frequency
+        """, vocab_data)
+        
+        # Store inverted index
+        inv_index_data = []
+        for term, postings in inverted_index.items():
+            for chunk_id, term_freq, positions in postings:
+                positions_json = json.dumps(positions) if positions else "[]"
+                inv_index_data.append((term, chunk_id, term_freq, positions_json))
+        
+        self.conn.executemany("""
+            INSERT INTO inverted_index (term, chunk_id, term_frequency, positions)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT (term, chunk_id) DO UPDATE SET
+                term_frequency = excluded.term_frequency,
+                positions = excluded.positions
+        """, inv_index_data)
+        
+        # Store document statistics
+        doc_stats_data = [
+            (chunk_id, total_terms, unique_terms, avg_freq)
+            for chunk_id, (total_terms, unique_terms, avg_freq) in document_stats.items()
+        ]
+        self.conn.executemany("""
+            INSERT INTO document_stats (chunk_id, total_terms, unique_terms, avg_term_frequency)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT (chunk_id) DO UPDATE SET
+                total_terms = excluded.total_terms,
+                unique_terms = excluded.unique_terms,
+                avg_term_frequency = excluded.avg_term_frequency
+        """, doc_stats_data)
+        
+        # Store collection statistics
+        self.conn.execute("""
+            INSERT INTO collection_stats 
+            (id, total_documents, total_terms, avg_document_length, last_updated)
+            VALUES (1, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT (id) DO UPDATE SET
+                total_documents = excluded.total_documents,
+                total_terms = excluded.total_terms,
+                avg_document_length = excluded.avg_document_length,
+                last_updated = excluded.last_updated
+        """, (
+            collection_stats.get("total_documents", 0),
+            collection_stats.get("total_terms", 0),
+            collection_stats.get("avg_document_length", 0.0),
+        ))
+        
+        self.conn.commit()
+    
+    def search_bm25(
+        self,
+        query_terms: List[str],
+        limit: int = 10,
+        language: Optional[str] = None,
+    ) -> List[Dict[str, object]]:
+        """Search using BM25 scoring.
+        
+        Args:
+            query_terms: List of query terms
+            limit: Maximum number of results to return
+            language: Optional language filter
+            
+        Returns:
+            List of matching document chunks with BM25 scores
+
+        """
+        if self.conn is None:
+            raise ValueError("Database connection not initialized. Call setup() first.")
+        
+        if not query_terms:
+            return []
+        
+        # Build the query dynamically based on number of terms
+        # This query calculates BM25 scores using the stored statistics
+        terms_placeholder = ",".join(["?"] * len(query_terms))
+        
+        base_query = f"""
+        WITH query_terms AS (
+            SELECT value AS term FROM (VALUES {",".join(f"('{term}')" for term in query_terms)})
+        ),
+        collection_info AS (
+            SELECT 
+                total_documents,
+                avg_document_length
+            FROM collection_stats
+            WHERE id = 1
+        ),
+        doc_scores AS (
+            SELECT 
+                c.id as chunk_id,
+                c.path,
+                c.title,
+                c.content,
+                c.chunk_index,
+                c.language,
+                c.metadata,
+                SUM(
+                    -- IDF component
+                    LOG((ci.total_documents - v.document_frequency + 0.5) / 
+                        (v.document_frequency + 0.5) + 1.0) *
+                    -- Normalized TF component (k1=1.2, b=0.75)
+                    ((ii.term_frequency * 2.2) / 
+                     (ii.term_frequency + 1.2 * 
+                      (0.25 + 0.75 * (ds.total_terms / ci.avg_document_length))))
+                ) AS score
+            FROM inverted_index ii
+            JOIN vocabulary v ON ii.term = v.term
+            JOIN chunks c ON ii.chunk_id = c.id
+            JOIN document_stats ds ON c.id = ds.chunk_id
+            CROSS JOIN collection_info ci
+            WHERE ii.term IN ({terms_placeholder})
+        """
+        
+        # Add language filter if specified
+        if language:
+            base_query += f" AND c.language = '{language}'"
+        
+        base_query += """
+            GROUP BY c.id, c.path, c.title, c.content, c.chunk_index, c.language, c.metadata
+            ORDER BY score DESC
+            LIMIT ?
+        )
+        SELECT * FROM doc_scores
+        """
+        
+        # Execute query
+        params = query_terms + [limit]
+        results = self.conn.execute(base_query, params).fetchall()
+        
+        # Format results
+        formatted_results = []
+        for row in results:
+            formatted_results.append({
+                "chunk_id": row[0],
+                "path": row[1],
+                "title": row[2],
+                "content": row[3],
+                "chunk_index": row[4],
+                "language": row[5],
+                "metadata": json.loads(row[6]) if row[6] else {},
+                "score": float(row[7]),  # BM25 score
+            })
+        
+        return formatted_results
+    
+    def clear_bm25_index(self) -> None:
+        """Clear all BM25 index data."""
+        if self.conn is None:
+            raise ValueError("Database connection not initialized. Call setup() first.")
+        
+        # Clear BM25 tables
+        self.conn.execute("DELETE FROM inverted_index")
+        self.conn.execute("DELETE FROM vocabulary")
+        self.conn.execute("DELETE FROM document_stats")
+        self.conn.execute("DELETE FROM collection_stats")
+        self.conn.commit()
 
     def close(self) -> None:
         """Close the database connections."""

@@ -15,11 +15,13 @@ import numpy as np
 from numpy.typing import NDArray
 
 from oboyu.crawler.crawler import CrawlerResult
+from oboyu.indexer.bm25_indexer import BM25Indexer
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.database import Database
 from oboyu.indexer.embedding import EmbeddingGenerator
 from oboyu.indexer.processor import Chunk, DocumentProcessor
 from oboyu.indexer.reranker import BaseReranker, create_reranker
+from oboyu.indexer.tokenizer import create_tokenizer
 
 
 @dataclass
@@ -61,6 +63,7 @@ class Indexer:
         embedding_generator: Optional[EmbeddingGenerator] = None,
         database: Optional[Database] = None,
         reranker: Optional[BaseReranker] = None,
+        bm25_indexer: Optional[BM25Indexer] = None,
     ) -> None:
         """Initialize the indexer.
 
@@ -70,6 +73,7 @@ class Indexer:
             embedding_generator: Generator for document embeddings
             database: Database for storing chunks and embeddings
             reranker: Reranker for improving search results
+            bm25_indexer: BM25 indexer for keyword search
 
         """
         # Initialize configuration
@@ -108,6 +112,14 @@ class Indexer:
 
         # Set up the database schema
         self.database.setup()
+        
+        # Initialize BM25 indexer
+        self.bm25_indexer = bm25_indexer or BM25Indexer(
+            k1=self.config.bm25_k1,
+            b=self.config.bm25_b,
+            min_token_length=self.config.bm25_min_token_length,
+            use_japanese_tokenizer=self.config.use_japanese_tokenizer,
+        )
         
         # Initialize reranker if enabled
         self.reranker = reranker
@@ -154,6 +166,9 @@ class Indexer:
 
         # Store chunks and report progress
         self._store_chunks_with_progress(all_chunks, progress_callback)
+        
+        # Build BM25 index
+        self._build_bm25_index_with_progress(all_chunks, progress_callback)
 
         # Generate and store embeddings with progress reporting
         embeddings = self._generate_embeddings_with_progress(all_chunks, progress_callback)
@@ -340,6 +355,61 @@ class Indexer:
             # Report recompacting complete
             if progress_callback:
                 progress_callback("recompacting", 1, 1)
+    
+    def _build_bm25_index_with_progress(
+        self,
+        chunks: List[Chunk],
+        progress_callback: Optional[Callable[[str, int, int], None]]
+    ) -> None:
+        """Build BM25 index with progress tracking.
+        
+        Args:
+            chunks: Chunks to index for BM25
+            progress_callback: Progress callback function
+
+        """
+        # Report starting BM25 indexing
+        if progress_callback:
+            progress_callback("bm25_indexing", 0, 1)
+        
+        # Index chunks for BM25
+        stats = self.bm25_indexer.index_chunks(chunks)
+        
+        # Prepare data for database storage
+        vocabulary = {}
+        for term, doc_freq in self.bm25_indexer.document_frequencies.items():
+            coll_freq = self.bm25_indexer.collection_frequencies[term]
+            vocabulary[term] = (doc_freq, coll_freq)
+        
+        # Prepare document statistics
+        document_stats = {}
+        for chunk_id, doc_length in self.bm25_indexer.document_lengths.items():
+            # Calculate statistics
+            total_terms = doc_length
+            # Get unique terms for this document from inverted index
+            unique_terms = sum(1 for term, postings in self.bm25_indexer.inverted_index.items()
+                             if any(posting[0] == chunk_id for posting in postings))
+            avg_term_freq = total_terms / max(unique_terms, 1)
+            document_stats[chunk_id] = (total_terms, unique_terms, avg_term_freq)
+        
+        # Prepare collection statistics
+        collection_stats = {
+            "total_documents": self.bm25_indexer.document_count,
+            "total_terms": self.bm25_indexer.total_document_length,
+            "avg_document_length": self.bm25_indexer.total_document_length / max(self.bm25_indexer.document_count, 1),
+        }
+        
+        # Store BM25 index in database
+        self.database.store_bm25_index(
+            vocabulary=vocabulary,
+            inverted_index=self.bm25_indexer.inverted_index,
+            document_stats=document_stats,
+            collection_stats=collection_stats,
+        )
+        
+        # Report BM25 indexing complete
+        if progress_callback:
+            progress_callback("bm25_indexing", 1, 1)
 
     def _process_document(self, doc: CrawlerResult) -> List[Chunk]:
         """Process a single document into chunks.
@@ -367,16 +437,22 @@ class Indexer:
         self,
         query: str,
         limit: int = 10,
+        mode: str = "hybrid",
         language: Optional[str] = None,
         use_reranker: Optional[bool] = None,
+        vector_weight: float = 0.7,
+        bm25_weight: float = 0.3,
     ) -> List[SearchResult]:
         """Search for documents similar to the query.
 
         Args:
             query: Search query
             limit: Maximum number of results to return
+            mode: Search mode ("vector", "bm25", "hybrid")
             language: Optional language filter
             use_reranker: Whether to use reranker (None = use config setting)
+            vector_weight: Weight for vector scores in hybrid search
+            bm25_weight: Weight for BM25 scores in hybrid search
 
         Returns:
             List of search results
@@ -400,11 +476,41 @@ class Indexer:
         if should_rerank and self.reranker is not None:
             initial_limit = limit * self.config.reranker_top_k_multiplier
         
-        # Generate query embedding
-        query_embedding = self.embedding_generator.generate_query_embedding(query)
-
-        # Search the database with adjusted limit
-        db_results = self.database.search(query_embedding, initial_limit, language)
+        # Perform search based on mode
+        if mode == "vector":
+            # Vector search
+            query_embedding = self.embedding_generator.generate_query_embedding(query)
+            db_results = self.database.search(query_embedding, initial_limit, language)
+        elif mode == "bm25":
+            # BM25 search
+            tokenizer = create_tokenizer(
+                language="ja" if self.config.use_japanese_tokenizer else "en",
+                min_token_length=self.config.bm25_min_token_length,
+            )
+            query_terms = tokenizer.tokenize(query)
+            db_results = self.database.search_bm25(query_terms, initial_limit, language)
+        elif mode == "hybrid":
+            # Hybrid search - combine vector and BM25
+            # Vector search
+            query_embedding = self.embedding_generator.generate_query_embedding(query)
+            vector_results = self.database.search(query_embedding, initial_limit * 2, language)
+            
+            # BM25 search
+            tokenizer = create_tokenizer(
+                language="ja" if self.config.use_japanese_tokenizer else "en",
+                min_token_length=self.config.bm25_min_token_length,
+            )
+            query_terms = tokenizer.tokenize(query)
+            bm25_results = self.database.search_bm25(query_terms, initial_limit * 2, language)
+            
+            # Combine results
+            db_results = self._combine_search_results(
+                vector_results, bm25_results,
+                vector_weight, bm25_weight,
+                initial_limit
+            )
+        else:
+            raise ValueError(f"Unknown search mode: {mode}")
 
         # Convert to SearchResult objects
         search_results = []
@@ -564,9 +670,86 @@ class Indexer:
         """
         # Clear the database
         self.database.clear()
+        
+        # Clear BM25 indexer
+        self.bm25_indexer.clear()
 
         # Reset processed files tracking
         self._processed_files.clear()
+    
+    def _combine_search_results(
+        self,
+        vector_results: List[Dict[str, object]],
+        bm25_results: List[Dict[str, object]],
+        vector_weight: float,
+        bm25_weight: float,
+        limit: int
+    ) -> List[Dict[str, object]]:
+        """Combine vector and BM25 search results using weighted scores.
+        
+        Args:
+            vector_results: Results from vector search
+            bm25_results: Results from BM25 search
+            vector_weight: Weight for vector scores
+            bm25_weight: Weight for BM25 scores
+            limit: Maximum number of results to return
+            
+        Returns:
+            Combined and re-ranked results
+
+        """
+        # Normalize weights
+        total_weight = vector_weight + bm25_weight
+        vector_weight = vector_weight / total_weight
+        bm25_weight = bm25_weight / total_weight
+        
+        # Create score dictionaries
+        vector_scores = {result["chunk_id"]: result["score"] for result in vector_results}
+        bm25_scores = {result["chunk_id"]: result["score"] for result in bm25_results}
+        
+        # Normalize scores using min-max normalization
+        if vector_scores:
+            min_vec = min(vector_scores.values())
+            max_vec = max(vector_scores.values())
+            range_vec = max_vec - min_vec
+            if range_vec > 0:
+                vector_scores = {k: (v - min_vec) / range_vec for k, v in vector_scores.items()}
+        
+        if bm25_scores:
+            min_bm25 = min(bm25_scores.values())
+            max_bm25 = max(bm25_scores.values())
+            range_bm25 = max_bm25 - min_bm25
+            if range_bm25 > 0:
+                bm25_scores = {k: (v - min_bm25) / range_bm25 for k, v in bm25_scores.items()}
+        
+        # Combine all unique results
+        all_results = {}
+        
+        # Add vector results
+        for result in vector_results:
+            chunk_id = result["chunk_id"]
+            all_results[chunk_id] = result.copy()
+            all_results[chunk_id]["vector_score"] = vector_scores.get(chunk_id, 0)
+            all_results[chunk_id]["bm25_score"] = bm25_scores.get(chunk_id, 0)
+        
+        # Add BM25 results not in vector results
+        for result in bm25_results:
+            chunk_id = result["chunk_id"]
+            if chunk_id not in all_results:
+                all_results[chunk_id] = result.copy()
+                all_results[chunk_id]["vector_score"] = vector_scores.get(chunk_id, 0)
+                all_results[chunk_id]["bm25_score"] = bm25_scores.get(chunk_id, 0)
+        
+        # Calculate combined scores
+        for chunk_id, result in all_results.items():
+            result["score"] = (
+                result["vector_score"] * vector_weight +
+                result["bm25_score"] * bm25_weight
+            )
+        
+        # Sort by combined score and return top results
+        sorted_results = sorted(all_results.values(), key=lambda x: x["score"], reverse=True)
+        return sorted_results[:limit]
 
     def close(self) -> None:
         """Close the indexer and its resources."""

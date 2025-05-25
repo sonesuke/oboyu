@@ -48,6 +48,13 @@ dependencies = [
     "pandas>=1.3.0",  # For data analysis and reporting
 ]
 
+[project.optional-dependencies]
+bm25 = [
+    "fugashi>=1.3.0",  # Japanese morphological analyzer
+    "unidic-lite>=1.0.8",  # Lightweight UniDic dictionary
+    "jaconv>=0.3.4",  # Japanese character conversion
+]
+
 [project.scripts]
 oboyu = "oboyu.cli.main:run"
 

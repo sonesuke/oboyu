@@ -218,7 +218,7 @@ def query(
     
     with logger.live_display():
         # Main search operation
-        search_op = logger.start_operation(
+        main_op = logger.start_operation(
             f"Search: \"{query}\"",
             expandable=True,
             details=f"Mode: {mode}\nTop K: {top_k}"
@@ -235,24 +235,32 @@ def query(
                 f"Loading index... ✓ Ready ({duration:.1f}s)"
             )
         
-        # Generate query embedding
-        embed_op = logger.start_operation("Generating query embedding...")
-        time.sleep(0.05)  # Simulated timing
-        logger.complete_operation(embed_op)
-        logger.update_operation(embed_op, "Generating query embedding... ✓ Done (0.05s)")
+        # Generate query embedding (for vector and hybrid modes)
+        if mode in ["vector", "hybrid"]:
+            embed_op = logger.start_operation("Generating query embedding...")
+            time.sleep(0.05)  # Simulated timing
+            logger.complete_operation(embed_op)
+            logger.update_operation(embed_op, "Generating query embedding... ✓ Done (0.05s)")
         
-        # Perform vector search
+        # Perform search
         search_start = time.time()
-        search_desc = "Vector search" + (" with reranking" if rerank else "") + "..."
-        vector_op = logger.start_operation(search_desc)
-        results = indexer.search(query, limit=top_k, use_reranker=rerank)
+        search_desc = f"{mode.capitalize()} search" + (" with reranking" if rerank else "") + "..."
+        search_op = logger.start_operation(search_desc)
+        results = indexer.search(
+            query,
+            limit=top_k,
+            mode=mode,
+            use_reranker=rerank,
+            vector_weight=vector_weight if vector_weight is not None else 0.7,
+            bm25_weight=bm25_weight if bm25_weight is not None else 0.3,
+        )
         search_time = time.time() - search_start
-        logger.complete_operation(vector_op)
+        logger.complete_operation(search_op)
         
         if results:
             rerank_note = " (reranked)" if rerank else ""
             logger.update_operation(
-                vector_op,
+                search_op,
                 f"{search_desc} ✓ Found {len(results)} results{rerank_note} ({search_time:.2f}s)"
             )
             
@@ -266,15 +274,15 @@ def query(
                 )
         else:
             logger.update_operation(
-                vector_op,
-                f"Vector search... No results found ({search_time:.2f}s)"
+                search_op,
+                f"{mode.capitalize()} search... No results found ({search_time:.2f}s)"
             )
         
         # Complete main search operation
-        logger.complete_operation(search_op)
+        logger.complete_operation(main_op)
         total_time = time.time() - search_start
         logger.update_operation(
-            search_op,
+            main_op,
             f"Retrieved {len(results)} documents in {total_time:.2f}s (ctrl+r to expand results)"
         )
 
