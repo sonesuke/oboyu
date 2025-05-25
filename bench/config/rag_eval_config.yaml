@@ -1,0 +1,112 @@
+# RAG Evaluation Configuration for Oboyu
+# This configuration defines parameters for evaluating Oboyu as a RAG system
+
+rag_evaluation:
+  # Datasets to evaluate
+  datasets:
+    retrieval:
+      - "miracl-ja"        # Multilingual information retrieval (Japanese split)
+      - "mldr-ja"         # Long document retrieval (Japanese split)
+      - "jagovfaqs-22k"   # Japanese government FAQ retrieval
+      - "jacwir"          # Japanese casual web information retrieval
+    
+    # Custom datasets can be added here
+    custom:
+      - name: "technical_docs_ja"
+        path: "data/custom/technical_docs.json"
+      - name: "qa_pairs_ja"
+        path: "data/custom/qa_pairs.json"
+  
+  # Metrics to calculate
+  metrics:
+    retrieval:
+      - "precision_at_k"    # Precision at K
+      - "recall_at_k"       # Recall at K
+      - "ndcg_at_k"        # Normalized Discounted Cumulative Gain
+      - "mrr"              # Mean Reciprocal Rank
+      - "hit_rate"         # Percentage of queries with at least one relevant result
+      - "f1_at_k"          # F1 score at K
+    
+    reranking:
+      - "ranking_improvement"      # Improvement in ranking quality
+      - "map"                     # Mean Average Precision
+      - "reranking_effectiveness" # Overall reranking effectiveness
+      - "position_improvement"    # Average position improvement
+    
+    system_level:
+      - "end_to_end_accuracy"     # Complete pipeline accuracy
+      - "japanese_effectiveness"   # Japanese language processing effectiveness
+      - "multi_hop_capability"    # Multi-hop reasoning capability
+  
+  # Evaluation parameters
+  evaluation_params:
+    top_k_values: [1, 5, 10, 20]    # K values for metrics calculation
+    batch_size: 32                   # Batch size for query processing
+    test_size: 1000                  # Number of queries to evaluate per dataset
+    
+    # Search modes to evaluate
+    search_modes:
+      - "vector"    # Vector search only
+      - "bm25"     # BM25 search only
+      - "hybrid"   # Hybrid search (vector + BM25)
+    
+    # Language-specific settings
+    language_settings:
+      japanese:
+        enable_morphological_analysis: true
+        tokenizer: "mecab"
+        encoding_detection: true
+        supported_encodings: ["utf-8", "shift-jis", "euc-jp"]
+  
+  # Reranking configuration (for planned feature)
+  reranking:
+    enabled: false  # Will be enabled when reranking is implemented
+    models:
+      - name: "cross_encoder_ja"
+        type: "cross_encoder"
+        model_path: "models/reranker/cross_encoder_ja"
+      - name: "colbert_ja"
+        type: "colbert"
+        model_path: "models/reranker/colbert_ja"
+    
+    evaluation_params:
+      rerank_top_k: [20, 50, 100]   # Number of documents to rerank
+      output_top_k: [5, 10]          # Final number of documents to return
+  
+  # Performance thresholds and baselines
+  performance_baselines:
+    # Minimum acceptable performance metrics
+    min_thresholds:
+      ndcg_at_10: 0.3
+      mrr: 0.4
+      hit_rate: 0.7
+    
+    # Target performance metrics
+    target_performance:
+      ndcg_at_10: 0.5
+      mrr: 0.6
+      hit_rate: 0.85
+    
+    # Regression detection
+    regression_threshold: 0.1  # 10% degradation triggers regression alert
+  
+  # Resource constraints
+  resource_limits:
+    max_memory_gb: 16
+    max_indexing_time_minutes: 60
+    max_query_time_ms: 500
+  
+  # Output configuration
+  output:
+    save_detailed_results: true
+    save_query_level_results: false  # Set to true for debugging
+    generate_visualizations: true
+    report_formats: ["json", "txt", "html"]
+    
+    # Results directory structure
+    results_structure:
+      base_dir: "bench/results/rag_accuracy"
+      subdirs:
+        by_dataset: true
+        by_date: true
+        by_search_mode: true

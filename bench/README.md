@@ -286,14 +286,96 @@ Enable verbose output:
 uv run python bench/run_speed_benchmark.py --datasets small --verbose
 ```
 
+## RAG Accuracy Evaluation
+
+### Overview
+
+The RAG accuracy evaluation suite measures Oboyu's effectiveness as a complete RAG (Retrieval-Augmented Generation) system, with special focus on Japanese document search performance.
+
+### Running RAG Accuracy Benchmarks
+
+**Important**: The RAG accuracy benchmark requires the Ruri v3 embedding model (~90MB) to be downloaded on first run. Ensure you have a stable internet connection.
+
+```bash
+# Run with synthetic dataset (quick test)
+uv run python bench/benchmark_rag_accuracy.py --datasets synthetic
+
+# Run with Japanese evaluation datasets
+uv run python bench/benchmark_rag_accuracy.py --datasets miracl-ja mldr-ja jagovfaqs-22k
+
+# Evaluate specific search modes (currently only vector is implemented)
+uv run python bench/benchmark_rag_accuracy.py --search-modes vector
+
+# Include reranking evaluation (for planned feature)
+uv run python bench/benchmark_rag_accuracy.py --evaluate-reranking
+
+# Test components without full indexing
+uv run python bench/test_rag_minimal.py
+```
+
+### RAG Evaluation Datasets
+
+#### Available Datasets
+- **synthetic**: Basic synthetic Japanese dataset for testing
+- **miracl-ja**: Multilingual information retrieval (Japanese) - Academic papers and research
+- **mldr-ja**: Long document retrieval (Japanese) - Government reports and policy documents
+- **jagovfaqs-22k**: Japanese government FAQ dataset - Administrative procedures
+- **jacwir**: Japanese casual web information retrieval - Blog posts and web content
+
+Note: These are synthetic implementations that mimic the structure and characteristics of real JMTEB datasets. They provide realistic Japanese content for testing the RAG evaluation framework.
+
+#### Custom Datasets
+```bash
+# Evaluate with custom dataset
+uv run python bench/benchmark_rag_accuracy.py --datasets custom --custom-dataset-path /path/to/dataset.json
+```
+
+### RAG Metrics
+
+#### Retrieval Metrics
+- **Precision@K**: Fraction of retrieved documents that are relevant
+- **Recall@K**: Fraction of relevant documents that are retrieved
+- **NDCG@K**: Normalized Discounted Cumulative Gain
+- **MRR**: Mean Reciprocal Rank
+- **Hit Rate**: Percentage of queries with at least one relevant result
+
+#### Reranking Metrics (Planned)
+- **Ranking Improvement**: Improvement over initial retrieval
+- **MAP**: Mean Average Precision
+- **Position Improvement**: Average position change for relevant documents
+
+### Analysis and Reporting
+
+```bash
+# Generate report from existing results
+uv run python bench/benchmark_rag_accuracy.py --report-only
+
+# Compare with previous run
+uv run python bench/benchmark_rag_accuracy.py --compare-with bench/results/rag_accuracy_20250101_120000.json
+
+# Set custom regression threshold (default: 10%)
+uv run python bench/benchmark_rag_accuracy.py --compare-with previous.json --regression-threshold 0.05
+```
+
+### Configuration
+
+Edit `bench/config/rag_eval_config.yaml` to customize:
+- Dataset selection
+- Evaluation metrics
+- Performance baselines
+- Resource limits
+- Output formats
+
 ## Future Enhancements
 
-- [ ] Accuracy measurement benchmarks
-- [ ] BM25 and hybrid search benchmarks
+- [x] Accuracy measurement benchmarks (RAG evaluation implemented)
+- [ ] BM25 and hybrid search benchmarks (partially implemented in RAG evaluation)
 - [ ] Multi-threaded indexing benchmarks
 - [ ] Network-based MCP server benchmarks
 - [ ] Automated performance regression alerts
 - [ ] Grafana dashboard integration
+- [ ] Real-time RAG evaluation during development
+- [ ] Cross-language RAG evaluation (Japanese-English)
 
 ## Contributing
 
