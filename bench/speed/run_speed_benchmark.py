@@ -5,20 +5,22 @@ import argparse
 import sys
 from pathlib import Path
 
-# Add parent directory to path for importing bench modules
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add bench parent directory to path for importing bench modules
+bench_parent = Path(__file__).parent.parent
+sys.path.insert(0, str(bench_parent.parent))
+sys.path.insert(0, str(bench_parent))
 
 # Add src directory to path for importing oboyu modules
-src_path = Path(__file__).parent.parent / "src"
+src_path = Path(__file__).parent.parent.parent / "src"
 if src_path.exists():
     sys.path.insert(0, str(src_path))
 
 from rich.console import Console
 
-from bench.analyze import BenchmarkAnalyzer
+from analyze import BenchmarkAnalyzer
 from bench.config import DATA_DIR, DATASET_SIZES, QUERIES_DIR, RESULTS_DIR, get_query_languages
-from bench.runner import BenchmarkRunner
 from bench.utils import check_oboyu_installation, print_header
+from runner import BenchmarkRunner
 
 console = Console()
 

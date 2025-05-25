@@ -8,14 +8,14 @@ from rich.console import Console
 
 from oboyu.indexer.indexer import Indexer
 
-from .benchmark_indexing import benchmark_indexing
-from .benchmark_search import benchmark_search
-from .config import DATA_DIR, DATASET_SIZES, OBOYU_CONFIG, QUERIES_DIR, RESULTS_DIR, get_query_languages
-from .generate_queries import generate_all_queries, save_queries
-from .generate_test_data import generate_dataset
-from .reporter import BenchmarkReporter
-from .results import BenchmarkRun, SystemInfo
-from .utils import check_oboyu_installation, get_timestamp, print_header, print_section
+from benchmark_indexing import benchmark_indexing
+from benchmark_search import benchmark_search
+from bench.config import DATA_DIR, DATASET_SIZES, OBOYU_CONFIG, QUERIES_DIR, RESULTS_DIR, get_query_languages
+from generate_queries import generate_all_queries, save_queries
+from generate_test_data import generate_dataset
+from reporter import BenchmarkReporter
+from results import BenchmarkRun, SystemInfo
+from bench.utils import check_oboyu_installation, get_timestamp, print_header, print_section
 
 console = Console()
 

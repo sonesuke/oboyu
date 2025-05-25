@@ -15,9 +15,9 @@ from oboyu.crawler.discovery import discover_documents
 from oboyu.indexer.database import Database
 from oboyu.indexer.indexer import Indexer
 
-from .config import BENCHMARK_CONFIG, DATA_DIR, OBOYU_CONFIG
-from .results import IndexingResult
-from .utils import SystemMonitor, Timer, print_metric, print_section
+from bench.config import BENCHMARK_CONFIG, DATA_DIR, OBOYU_CONFIG
+from results import IndexingResult
+from bench.utils import SystemMonitor, Timer, print_metric, print_section
 
 console = Console()
 
