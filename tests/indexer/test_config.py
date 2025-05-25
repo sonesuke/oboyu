@@ -134,3 +134,61 @@ class TestIndexerConfig:
         assert config.embedding_device == "cpu"
         # For simplicity, we just verify it's a non-empty string
         assert isinstance(config.db_path, str) and config.db_path
+    
+    def test_use_onnx_property(self) -> None:
+        """Test use_onnx property."""
+        config = IndexerConfig(config_dict={"indexer": {"db_path": "test.db", "use_onnx": True}})
+        assert config.use_onnx is True
+        
+        config = IndexerConfig(config_dict={"indexer": {"db_path": "test.db", "use_onnx": False}})
+        assert config.use_onnx is False
+    
+    def test_onnx_quantization_properties(self) -> None:
+        """Test ONNX quantization properties."""
+        # Test defaults
+        config = IndexerConfig(config_dict={"indexer": {"db_path": "test.db"}})
+        assert config.onnx_quantization_enabled is True
+        assert config.onnx_quantization_method == "dynamic"
+        assert config.onnx_quantization_weight_type == "uint8"
+        assert config.onnx_quantization_config == {
+            "enabled": True,
+            "method": "dynamic",
+            "weight_type": "uint8"
+        }
+        
+        # Test custom config
+        custom_config = {
+            "indexer": {
+                "db_path": "test.db",
+                "onnx_quantization": {
+                    "enabled": False,
+                    "method": "static",
+                    "weight_type": "int8"
+                }
+            }
+        }
+        config = IndexerConfig(config_dict=custom_config)
+        assert config.onnx_quantization_enabled is False
+        assert config.onnx_quantization_method == "static"
+        assert config.onnx_quantization_weight_type == "int8"
+    
+    def test_onnx_quantization_validation(self) -> None:
+        """Test ONNX quantization configuration validation."""
+        # Test with invalid values
+        config_dict = {
+            "indexer": {
+                "db_path": "test.db",
+                "onnx_quantization": {
+                    "enabled": "yes",  # Should be boolean
+                    "method": "invalid",  # Should be dynamic/static/fp16
+                    "weight_type": "float32"  # Should be uint8/int8
+                }
+            }
+        }
+        
+        config = IndexerConfig(config_dict=config_dict)
+        
+        # Should be set to defaults due to invalid values
+        assert config.onnx_quantization_enabled is True
+        assert config.onnx_quantization_method == "dynamic"
+        assert config.onnx_quantization_weight_type == "uint8"

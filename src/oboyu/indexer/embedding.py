@@ -10,7 +10,7 @@ import logging
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -116,6 +116,7 @@ class EmbeddingGenerator:
         cache_dir: Union[str, Path] = EMBEDDING_CACHE_DIR,
         model_dir: Union[str, Path] = EMBEDDING_MODELS_DIR,
         use_onnx: bool = True,
+        onnx_quantization_config: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Initialize the embedding generator.
 
@@ -129,6 +130,7 @@ class EmbeddingGenerator:
             cache_dir: Directory to store cached embeddings (defaults to XDG cache path)
             model_dir: Directory to store downloaded models (defaults to XDG data path)
             use_onnx: Whether to use ONNX optimization for faster inference
+            onnx_quantization_config: Optional ONNX quantization configuration
 
         Note:
             The model is loaded lazily on first use to improve startup performance.
@@ -138,8 +140,14 @@ class EmbeddingGenerator:
         self.use_onnx = use_onnx and device == "cpu"  # ONNX is most beneficial for CPU
         self.device = device
         self.model_dir = model_dir
+        self.onnx_quantization_config = onnx_quantization_config or {"enabled": True, "weight_type": "uint8"}
         self._model: Optional[Any] = None  # Lazy-loaded model
-        self._cache_key = f"{model_name}_{device}_{max_seq_length}_{'onnx' if self.use_onnx else 'torch'}"
+        
+        # Include quantization in cache key if enabled
+        quant_suffix = ""
+        if self.use_onnx and self.onnx_quantization_config.get("enabled", True):
+            quant_suffix = f"_quant_{self.onnx_quantization_config.get('weight_type', 'uint8')}"
+        self._cache_key = f"{model_name}_{device}_{max_seq_length}_{'onnx' if self.use_onnx else 'torch'}{quant_suffix}"
 
         self.model_name = model_name
         self.batch_size = batch_size
@@ -177,7 +185,12 @@ class EmbeddingGenerator:
             if self.use_onnx:
                 # Load or convert to ONNX model
                 # ONNX models are cached separately in XDG cache directory
-                onnx_path = get_or_convert_onnx_model(self.model_name)
+                apply_quantization = self.onnx_quantization_config.get("enabled", True)
+                onnx_path = get_or_convert_onnx_model(
+                    self.model_name,
+                    apply_quantization=apply_quantization,
+                    quantization_config=self.onnx_quantization_config
+                )
                 model = ONNXEmbeddingModel(
                     onnx_path,
                     max_seq_length=self.max_seq_length,

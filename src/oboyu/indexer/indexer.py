@@ -89,6 +89,7 @@ class Indexer:
             max_seq_length=self.config.max_seq_length,
             query_prefix=self.config.query_prefix,
             use_onnx=self.config.use_onnx,
+            onnx_quantization_config=self.config.onnx_quantization_config if self.config.use_onnx else None,
         )
 
         # Dimensions can't be None here, but mypy doesn't know that
@@ -118,6 +119,7 @@ class Indexer:
                 device=self.config.reranker_device,
                 batch_size=self.config.reranker_batch_size,
                 max_length=self.config.reranker_max_length,
+                quantization_config=self.config.onnx_quantization_config if self.config.reranker_use_onnx else None,
             )
 
         # Keep track of processed files

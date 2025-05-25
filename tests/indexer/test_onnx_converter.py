@@ -8,7 +8,13 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from oboyu.indexer.onnx_converter import ONNXEmbeddingModel, convert_to_onnx, get_or_convert_onnx_model
+from oboyu.indexer.onnx_converter import (
+    ONNXEmbeddingModel,
+    convert_to_onnx,
+    get_or_convert_onnx_model,
+    quantize_model_dynamic,
+    QUANTIZATION_AVAILABLE,
+)
 
 
 class TestONNXEmbeddingModel:
@@ -250,4 +256,156 @@ class TestONNXConversion:
         result = get_or_convert_onnx_model(model_name, cache_dir)
         
         assert result == expected_path
-        mock_convert.assert_called_once_with(model_name, cache_dir / "onnx" / "test_model", optimize=False)
+        mock_convert.assert_called_once_with(
+            model_name, 
+            cache_dir / "onnx" / "test_model", 
+            optimize=False,
+            apply_quantization=True,
+            quantization_config=None
+        )
+
+
+class TestONNXQuantization:
+    """Test cases for ONNX quantization functionality."""
+    
+    @pytest.mark.skipif(not QUANTIZATION_AVAILABLE, reason="Quantization tools not available")
+    def test_quantize_model_dynamic(self, tmp_path: Path) -> None:
+        """Test dynamic quantization of ONNX model."""
+        # Create a dummy ONNX model file
+        model_path = tmp_path / "model.onnx"
+        model_path.write_bytes(b"dummy onnx model" * 100)  # Make it reasonably sized
+        
+        with patch("oboyu.indexer.onnx_converter.quantize_dynamic") as mock_quantize:
+            # Mock successful quantization
+            def create_quantized_file(*args, **kwargs):
+                # Get model_output from kwargs (it's a keyword argument)
+                output_path = Path(kwargs["model_output"])
+                output_path.write_bytes(b"quantized model" * 50)  # Smaller than original
+            
+            mock_quantize.side_effect = create_quantized_file
+            
+            # Run quantization
+            result = quantize_model_dynamic(model_path)
+            
+            # Verify result
+            assert result.exists()
+            assert result.name == "model_quantized.onnx"
+            assert result.stat().st_size > 0
+            
+            # Verify quantize_dynamic was called correctly
+            mock_quantize.assert_called_once()
+            call_kwargs = mock_quantize.call_args.kwargs
+            assert call_kwargs["model_input"] == str(model_path)
+            assert call_kwargs["model_output"] == str(result)
+            assert call_kwargs["optimize_model"] is True
+    
+    @pytest.mark.skipif(not QUANTIZATION_AVAILABLE, reason="Quantization tools not available")
+    def test_quantize_model_dynamic_with_int8(self, tmp_path: Path) -> None:
+        """Test dynamic quantization with int8 weights."""
+        model_path = tmp_path / "model.onnx"
+        model_path.write_bytes(b"dummy onnx model" * 100)
+        
+        with patch("oboyu.indexer.onnx_converter.quantize_dynamic") as mock_quantize:
+            # Mock successful quantization
+            def create_quantized_file(*args, **kwargs):
+                output_path = Path(kwargs["model_output"])
+                output_path.write_bytes(b"quantized model" * 50)
+            
+            mock_quantize.side_effect = create_quantized_file
+            
+            # Run quantization with int8
+            result = quantize_model_dynamic(model_path, weight_type="int8")
+            
+            # Verify quantize_dynamic was called with int8
+            mock_quantize.assert_called_once()
+            from oboyu.indexer.onnx_converter import QuantType
+            assert mock_quantize.call_args.kwargs["weight_type"] == QuantType.QInt8
+    
+    @pytest.mark.skipif(QUANTIZATION_AVAILABLE, reason="Testing without quantization tools")
+    def test_quantize_model_dynamic_not_available(self, tmp_path: Path) -> None:
+        """Test quantization when tools are not available."""
+        model_path = tmp_path / "model.onnx"
+        model_path.write_bytes(b"dummy onnx model")
+        
+        # Should raise RuntimeError when tools not available
+        with pytest.raises(RuntimeError, match="quantization tools are not available"):
+            quantize_model_dynamic(model_path)
+    
+    @patch("oboyu.indexer.onnx_converter.SentenceTransformer")
+    @patch("oboyu.indexer.onnx_converter.torch.onnx.export")
+    @patch("oboyu.indexer.onnx_converter.quantize_model_dynamic")
+    def test_convert_to_onnx_with_quantization(
+        self, 
+        mock_quantize: MagicMock, 
+        mock_export: MagicMock, 
+        mock_st: MagicMock, 
+        tmp_path: Path
+    ) -> None:
+        """Test ONNX conversion with quantization enabled."""
+        # Configure mocks
+        mock_model = MagicMock()
+        mock_st.return_value = mock_model
+        
+        mock_transformer = MagicMock()
+        mock_model.__getitem__.return_value.auto_model = mock_transformer
+        mock_model.max_seq_length = 512
+        mock_model.get_sentence_embedding_dimension.return_value = 256
+        
+        mock_tokenizer = MagicMock()
+        mock_model.tokenizer = mock_tokenizer
+        mock_tokenizer.return_value = {
+            "input_ids": MagicMock(),
+            "attention_mask": MagicMock(),
+        }
+        
+        # Mock quantization to return quantized path
+        quantized_path = tmp_path / "model_quantized.onnx"
+        mock_quantize.return_value = quantized_path
+        
+        # Convert with quantization
+        result = convert_to_onnx("test-model", tmp_path, apply_quantization=True)
+        
+        # Verify quantization was called
+        mock_quantize.assert_called_once()
+        assert mock_quantize.call_args[0][0] == tmp_path / "model.onnx"
+        
+        # Verify result is the quantized model
+        assert result == quantized_path
+        
+        # Check config file indicates quantization
+        config_path = tmp_path / "onnx_config.json"
+        with open(config_path) as f:
+            config = json.load(f)
+        assert config.get("quantized") is True
+    
+    @patch("oboyu.indexer.onnx_converter.convert_to_onnx")
+    def test_get_or_convert_onnx_model_with_quantization(self, mock_convert: MagicMock, tmp_path: Path) -> None:
+        """Test get_or_convert with quantization config."""
+        model_name = "test/model"
+        cache_dir = tmp_path / "cache"
+        
+        # Mock conversion
+        expected_path = cache_dir / "onnx" / "test_model" / "model_quantized.onnx"
+        mock_convert.return_value = expected_path
+        
+        # Custom quantization config
+        quant_config = {"enabled": True, "weight_type": "int8"}
+        
+        # Get model with quantization
+        result = get_or_convert_onnx_model(
+            model_name, 
+            cache_dir,
+            apply_quantization=True,
+            quantization_config=quant_config
+        )
+        
+        # Verify convert was called with quantization config
+        mock_convert.assert_called_once_with(
+            model_name,
+            cache_dir / "onnx" / "test_model",
+            optimize=False,
+            apply_quantization=True,
+            quantization_config=quant_config
+        )
+        
+        assert result == expected_path
