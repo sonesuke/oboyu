@@ -10,6 +10,7 @@
       "Bash(mkdir:*)",
       "Bash(uv run pytest:*)",
       "Bash(uv run:*)",
+      "Bash(uv pip show:*)",
       "Bash(git checkout:*)",
       "WebFetch(domain:*)",
       "Bash(gh issue view:*)",
