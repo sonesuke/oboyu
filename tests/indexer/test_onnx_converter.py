@@ -297,7 +297,6 @@ class TestONNXQuantization:
             call_kwargs = mock_quantize.call_args.kwargs
             assert call_kwargs["model_input"] == str(model_path)
             assert call_kwargs["model_output"] == str(result)
-            assert call_kwargs["optimize_model"] is True
     
     @pytest.mark.skipif(not QUANTIZATION_AVAILABLE, reason="Quantization tools not available")
     def test_quantize_model_dynamic_with_int8(self, tmp_path: Path) -> None:

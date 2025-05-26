@@ -71,7 +71,6 @@ def quantize_model_dynamic(
             model_input=str(model_path),
             model_output=str(output_path),
             weight_type=quant_type,
-            optimize_model=True,  # Apply graph optimizations before quantization
         )
         
         # Verify the quantized model exists and has reasonable size
