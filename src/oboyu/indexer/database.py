@@ -592,14 +592,14 @@ class Database:
         if self.conn is None:
             raise ValueError("Database connection not initialized. Call setup() first.")
 
-        # Delete all data from embeddings first (due to foreign key constraint)
+        # Clear BM25 index data first (inverted_index references chunks)
+        self.clear_bm25_index()
+        
+        # Delete all data from embeddings (due to foreign key constraint)
         self.conn.execute("DELETE FROM embeddings")
 
         # Delete all data from chunks
         self.conn.execute("DELETE FROM chunks")
-        
-        # Clear BM25 index data
-        self.clear_bm25_index()
 
         # Drop and recreate the HNSW index to ensure clean state
         # This is necessary because HNSW indexes can retain internal state

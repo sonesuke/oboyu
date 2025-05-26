@@ -24,6 +24,7 @@ dependencies = [
     { name = "propcache" },
     { name = "yarl" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/6a/61/d37b33a074ad867d1ecec9f03183e2b9fee067745cae17e73c264f556d57/aiohttp-3.12.0.tar.gz", hash = "sha256:e3f0a2b4d7fb16c0d584d9b8860f1e46d39f7d93372b25a6f80c10015a7acdab", size = 7762804, upload_time = "2025-05-24T22:33:33.318Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fd/7e/9d27424fadc63f89d9165e7865ecdcf49bd4ce03ed5f453e8fb1300c3ede/aiohttp-3.12.0-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:6ab223f5d0bd30f1b419addc4aef37f8d7723027e3d92393281cba97f8529209", size = 682843, upload_time = "2025-05-24T22:32:08.441Z" },
     { url = "https://files.pythonhosted.org/packages/9d/7e/d8f3b2efbd359138f81121d849c334b6df4bb91805a4e7380f175ea822cf/aiohttp-3.12.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:c5beab804eeff85cfae5c053e0d3bb7a7cdc2756ced50a586c56deb8b8ce16b9", size = 460508, upload_time = "2025-05-24T22:32:10.476Z" },
@@ -847,87 +848,82 @@ source = { editable = "." }
 dependencies = [
     { name = "chardet" },
     { name = "charset-normalizer" },
-    { name = "datasets" },
     { name = "duckdb" },
+    { name = "fugashi" },
     { name = "gitignore-parser" },
+    { name = "jaconv" },
     { name = "langdetect" },
     { name = "mcp", extra = ["cli"] },
     { name = "numpy" },
     { name = "onnx" },
     { name = "onnxruntime" },
     { name = "optimum" },
-    { name = "pandas" },
     { name = "protobuf" },
     { name = "python-frontmatter" },
     { name = "pyyaml" },
     { name = "rich" },
-    { name = "scikit-learn" },
-    { name = "scipy" },
     { name = "sentence-transformers" },
     { name = "sentencepiece" },
     { name = "torch" },
     { name = "transformers" },
     { name = "typer" },
-    { name = "xdg-base-dirs" },
-]
-
-[package.optional-dependencies]
-bm25 = [
-    { name = "fugashi" },
-    { name = "jaconv" },
     { name = "unidic-lite" },
+    { name = "xdg-base-dirs" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "datasets" },
     { name = "mypy" },
+    { name = "pandas" },
     { name = "pre-commit" },
     { name = "psutil" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "chardet", specifier = ">=5.2.0" },
     { name = "charset-normalizer", specifier = ">=3.3.2" },
-    { name = "datasets", specifier = ">=2.0.0" },
     { name = "duckdb", specifier = ">=0.9.0" },
-    { name = "fugashi", marker = "extra == 'bm25'", specifier = ">=1.3.0" },
+    { name = "fugashi", specifier = ">=1.3.0" },
     { name = "gitignore-parser", specifier = ">=0.1.11" },
-    { name = "jaconv", marker = "extra == 'bm25'", specifier = ">=0.3.4" },
+    { name = "jaconv", specifier = ">=0.3.4" },
     { name = "langdetect", specifier = ">=1.0.9" },
     { name = "mcp", extras = ["cli"], specifier = ">=0.3.0" },
     { name = "numpy", specifier = ">=1.21.0" },
     { name = "onnx", specifier = ">=1.18.0" },
     { name = "onnxruntime", specifier = ">=1.22.0" },
     { name = "optimum", specifier = ">=1.25.3" },
-    { name = "pandas", specifier = ">=1.3.0" },
     { name = "protobuf", specifier = ">=4.25.1" },
     { name = "python-frontmatter", specifier = ">=1.1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.4.2" },
-    { name = "scikit-learn", specifier = ">=1.0.0" },
-    { name = "scipy", specifier = ">=1.7.0" },
     { name = "sentence-transformers" },
     { name = "sentencepiece", specifier = ">=0.2.0" },
     { name = "torch" },
     { name = "transformers", specifier = ">=4.48.0" },
     { name = "typer", specifier = ">=0.9.0" },
-    { name = "unidic-lite", marker = "extra == 'bm25'", specifier = ">=1.0.8" },
+    { name = "unidic-lite", specifier = ">=1.0.8" },
     { name = "xdg-base-dirs", specifier = ">=6.0.2" },
 ]
-provides-extras = ["bm25"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "datasets", specifier = ">=2.0.0" },
     { name = "mypy", specifier = ">=1.15.0" },
+    { name = "pandas", specifier = ">=1.3.0" },
     { name = "pre-commit", specifier = ">=4.2.0" },
     { name = "psutil", specifier = ">=5.9.0" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "pytest-cov", specifier = ">=6.1.1" },
     { name = "ruff", specifier = ">=0.11.10" },
+    { name = "scikit-learn", specifier = ">=1.0.0" },
+    { name = "scipy", specifier = ">=1.7.0" },
 ]
 
 [[package]]

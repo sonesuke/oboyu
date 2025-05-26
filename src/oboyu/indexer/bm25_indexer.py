@@ -233,7 +233,7 @@ class BM25Indexer:
             "document_count": self.document_count,
             "vocabulary_size": self.get_vocabulary_size(),
             "total_terms": sum(self.collection_frequencies.values()),
-            "avg_document_length": self.total_document_length / max(self.document_count, 1),
+            "avg_document_length": int(self.total_document_length / max(self.document_count, 1)),
         }
     
     def _get_term_positions(self, text: str, term: str) -> List[int]:

@@ -704,8 +704,23 @@ class Indexer:
         bm25_weight = bm25_weight / total_weight
         
         # Create score dictionaries
-        vector_scores = {result["chunk_id"]: result["score"] for result in vector_results}
-        bm25_scores = {result["chunk_id"]: result["score"] for result in bm25_results}
+        vector_scores: Dict[object, float] = {}
+        for result in vector_results:
+            chunk_id = result["chunk_id"]
+            score = result["score"]
+            if isinstance(score, (int, float)):
+                vector_scores[chunk_id] = float(score)
+            else:
+                vector_scores[chunk_id] = 0.0
+        
+        bm25_scores: Dict[object, float] = {}
+        for result in bm25_results:
+            chunk_id = result["chunk_id"]
+            score = result["score"]
+            if isinstance(score, (int, float)):
+                bm25_scores[chunk_id] = float(score)
+            else:
+                bm25_scores[chunk_id] = 0.0
         
         # Normalize scores using min-max normalization
         if vector_scores:
@@ -742,13 +757,28 @@ class Indexer:
         
         # Calculate combined scores
         for chunk_id, result in all_results.items():
-            result["score"] = (
-                result["vector_score"] * vector_weight +
-                result["bm25_score"] * bm25_weight
-            )
+            vector_score = result.get("vector_score", 0)
+            bm25_score = result.get("bm25_score", 0)
+            
+            # Ensure scores are numeric
+            if isinstance(vector_score, (int, float)):
+                vector_score = float(vector_score)
+            else:
+                vector_score = 0.0
+                
+            if isinstance(bm25_score, (int, float)):
+                bm25_score = float(bm25_score)
+            else:
+                bm25_score = 0.0
+            
+            result["score"] = vector_score * vector_weight + bm25_score * bm25_weight
         
         # Sort by combined score and return top results
-        sorted_results = sorted(all_results.values(), key=lambda x: x["score"], reverse=True)
+        def get_score(x: Dict[str, object]) -> float:
+            score = x.get("score", 0)
+            return float(score) if isinstance(score, (int, float)) else 0.0
+            
+        sorted_results = sorted(all_results.values(), key=get_score, reverse=True)
         return sorted_results[:limit]
 
     def close(self) -> None:

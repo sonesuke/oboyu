@@ -7,18 +7,20 @@ using fugashi (MeCab wrapper) for morphological analysis.
 import logging
 import re
 import unicodedata
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union
+
+if TYPE_CHECKING:
+    import fugashi
+    import jaconv
+    import unidic_lite
 
 try:
     import fugashi
     import jaconv
-    import unidic_lite
+    import unidic_lite  # noqa: F401  # Required for MeCab to find dictionary
     HAS_JAPANESE_TOKENIZER = True
 except ImportError:
     HAS_JAPANESE_TOKENIZER = False
-    fugashi = None
-    unidic_lite = None
-    jaconv = None
 
 logger = logging.getLogger(__name__)
 
