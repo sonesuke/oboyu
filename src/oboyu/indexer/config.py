@@ -19,6 +19,13 @@ DEFAULT_CONFIG = {
         "batch_size": 128,  # Default batch size for embedding generation
         "max_seq_length": 8192,  # Maximum sequence length (Ruri v3 default is 8192)
         "use_onnx": True,  # Whether to use ONNX optimization for faster inference
+        
+        # ONNX quantization settings
+        "onnx_quantization": {
+            "enabled": True,  # Whether to enable dynamic quantization (default: True)
+            "method": "dynamic",  # Quantization method (dynamic, static, fp16)
+            "weight_type": "uint8",  # Weight quantization type (uint8, int8)
+        },
 
         # Prefix scheme settings (Ruri v3's 1+3 prefix scheme)
         "document_prefix": "検索文書: ",  # Prefix for documents to be indexed
@@ -64,6 +71,10 @@ DEFAULT_EMBEDDING_DEVICE = "cpu"
 DEFAULT_BATCH_SIZE = 128
 DEFAULT_MAX_SEQ_LENGTH = 8192
 DEFAULT_USE_ONNX = True
+# ONNX quantization defaults
+DEFAULT_ONNX_QUANTIZATION_ENABLED = True
+DEFAULT_ONNX_QUANTIZATION_METHOD = "dynamic"
+DEFAULT_ONNX_QUANTIZATION_WEIGHT_TYPE = "uint8"
 DEFAULT_DOCUMENT_PREFIX = "検索文書: "
 DEFAULT_QUERY_PREFIX = "検索クエリ: "
 DEFAULT_TOPIC_PREFIX = "トピック: "
@@ -156,6 +167,9 @@ class IndexerConfig:
         # Validate embedding settings
         self._validate_embedding_settings(indexer_config)
         
+        # Validate ONNX quantization settings
+        self._validate_onnx_quantization_settings(indexer_config)
+        
         # Validate prefix settings
         self._validate_prefix_settings(indexer_config)
         
@@ -171,7 +185,7 @@ class IndexerConfig:
         # Validate BM25 settings
         self._validate_bm25_settings(indexer_config)
 
-    def _validate_basic_settings(self, indexer_config: dict[str, Any]) -> None:
+    def _validate_basic_settings(self, indexer_config: Dict[str, Any]) -> None:
         """Validate basic indexer settings."""
         # Validate chunk_size - must be a positive integer
         if not isinstance(indexer_config.get("chunk_size"), int) or indexer_config.get("chunk_size", 0) <= 0:
@@ -197,7 +211,7 @@ class IndexerConfig:
         if not isinstance(indexer_config.get("max_workers"), int) or indexer_config.get("max_workers", 0) <= 0:
             indexer_config["max_workers"] = DEFAULT_MAX_WORKERS
 
-    def _validate_embedding_settings(self, indexer_config: dict[str, Any]) -> None:
+    def _validate_embedding_settings(self, indexer_config: Dict[str, Any]) -> None:
         """Validate embedding-related settings."""
         # Validate embedding_model - must be a non-empty string
         if not isinstance(indexer_config.get("embedding_model"), str) or not indexer_config.get("embedding_model"):
@@ -213,8 +227,28 @@ class IndexerConfig:
         # Validate use_onnx - must be a boolean
         if not isinstance(indexer_config.get("use_onnx"), bool):
             indexer_config["use_onnx"] = DEFAULT_USE_ONNX
+    
+    def _validate_onnx_quantization_settings(self, indexer_config: Dict[str, Any]) -> None:
+        """Validate ONNX quantization settings."""
+        # Ensure onnx_quantization dict exists
+        if not isinstance(indexer_config.get("onnx_quantization"), dict):
+            indexer_config["onnx_quantization"] = {}
+        
+        onnx_quant = indexer_config["onnx_quantization"]
+        
+        # Validate enabled - must be a boolean
+        if not isinstance(onnx_quant.get("enabled"), bool):
+            onnx_quant["enabled"] = DEFAULT_ONNX_QUANTIZATION_ENABLED
+        
+        # Validate method - must be one of the supported methods
+        if onnx_quant.get("method") not in ["dynamic", "static", "fp16"]:
+            onnx_quant["method"] = DEFAULT_ONNX_QUANTIZATION_METHOD
+        
+        # Validate weight_type - must be one of the supported types
+        if onnx_quant.get("weight_type") not in ["uint8", "int8"]:
+            onnx_quant["weight_type"] = DEFAULT_ONNX_QUANTIZATION_WEIGHT_TYPE
 
-    def _validate_prefix_settings(self, indexer_config: dict[str, Any]) -> None:
+    def _validate_prefix_settings(self, indexer_config: Dict[str, Any]) -> None:
         """Validate prefix settings."""
         # Validate prefixes - must be strings
         if not isinstance(indexer_config.get("document_prefix"), str):
@@ -226,13 +260,13 @@ class IndexerConfig:
         if not isinstance(indexer_config.get("general_prefix"), str):
             indexer_config["general_prefix"] = DEFAULT_GENERAL_PREFIX
 
-    def _validate_database_settings(self, indexer_config: dict[str, Any]) -> None:
+    def _validate_database_settings(self, indexer_config: Dict[str, Any]) -> None:
         """Validate database settings."""
         # Validate db_path - must be a non-empty string and must be provided
         if not isinstance(indexer_config.get("db_path"), str) or not indexer_config.get("db_path"):
             raise ValueError("Database path (db_path) must be provided and cannot be empty")
 
-    def _validate_vss_settings(self, indexer_config: dict[str, Any]) -> None:
+    def _validate_vss_settings(self, indexer_config: Dict[str, Any]) -> None:
         """Validate VSS parameters."""
         # Validate VSS parameters - must be positive integers
         if not isinstance(indexer_config.get("ef_construction"), int) or indexer_config.get("ef_construction", 0) <= 0:
@@ -248,7 +282,7 @@ class IndexerConfig:
         ):
             indexer_config["m0"] = DEFAULT_M0
 
-    def _validate_reranker_settings(self, indexer_config: dict[str, Any]) -> None:
+    def _validate_reranker_settings(self, indexer_config: Dict[str, Any]) -> None:
         """Validate reranker settings."""
         # Validate reranker_model - must be a non-empty string
         if not isinstance(indexer_config.get("reranker_model"), str) or not indexer_config.get("reranker_model"):
@@ -335,6 +369,26 @@ class IndexerConfig:
     def use_onnx(self) -> bool:
         """Whether to use ONNX optimization for faster inference."""
         return bool(self.config["indexer"]["use_onnx"])
+    
+    @property
+    def onnx_quantization_enabled(self) -> bool:
+        """Whether ONNX quantization is enabled."""
+        return bool(self.config["indexer"]["onnx_quantization"]["enabled"])
+    
+    @property
+    def onnx_quantization_method(self) -> str:
+        """ONNX quantization method."""
+        return str(self.config["indexer"]["onnx_quantization"]["method"])
+    
+    @property
+    def onnx_quantization_weight_type(self) -> str:
+        """ONNX quantization weight type."""
+        return str(self.config["indexer"]["onnx_quantization"]["weight_type"])
+    
+    @property
+    def onnx_quantization_config(self) -> Dict[str, Any]:
+        """Full ONNX quantization configuration."""
+        return dict(self.config["indexer"]["onnx_quantization"])
 
     @property
     def document_prefix(self) -> str:

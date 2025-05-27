@@ -7,7 +7,7 @@ for faster inference, especially beneficial for CPU-based deployments.
 import json
 import logging
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import torch
@@ -19,6 +19,76 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer  # ty
 from oboyu.common.paths import EMBEDDING_CACHE_DIR
 
 logger = logging.getLogger(__name__)
+
+# Try to import quantization tools
+try:
+    from onnxruntime.quantization import QuantType, quantize_dynamic
+    QUANTIZATION_AVAILABLE = True
+except ImportError:
+    QUANTIZATION_AVAILABLE = False
+    logger.warning("ONNX Runtime quantization tools not available. Quantization will be disabled.")
+
+
+def quantize_model_dynamic(
+    model_path: Union[str, Path],
+    output_path: Optional[Union[str, Path]] = None,
+    weight_type: str = "uint8",
+) -> Path:
+    """Apply dynamic quantization to an ONNX model.
+    
+    Dynamic quantization quantizes the weights to int8 while keeping activations in fp32.
+    This provides good performance improvement with minimal accuracy loss.
+    
+    Args:
+        model_path: Path to the ONNX model file
+        output_path: Path for the quantized model (defaults to model_path with .quantized suffix)
+        weight_type: Weight quantization type ("uint8" or "int8")
+        
+    Returns:
+        Path to the quantized model
+        
+    Raises:
+        RuntimeError: If quantization tools are not available
+        
+    """
+    if not QUANTIZATION_AVAILABLE:
+        raise RuntimeError("ONNX Runtime quantization tools are not available. Please install onnxruntime-tools.")
+    
+    model_path = Path(model_path)
+    if output_path is None:
+        # Default to model_quantized.onnx in the same directory
+        output_path = model_path.parent / "model_quantized.onnx"
+    else:
+        output_path = Path(output_path)
+    
+    # Determine quantization type
+    quant_type = QuantType.QUInt8 if weight_type == "uint8" else QuantType.QInt8
+    
+    logger.info(f"Quantizing model {model_path} to {output_path} with {weight_type} weights...")
+    
+    try:
+        quantize_dynamic(
+            model_input=str(model_path),
+            model_output=str(output_path),
+            weight_type=quant_type,
+        )
+        
+        # Verify the quantized model exists and has reasonable size
+        if output_path.exists() and output_path.stat().st_size > 0:
+            original_size = model_path.stat().st_size
+            quantized_size = output_path.stat().st_size
+            reduction = (1 - quantized_size / original_size) * 100
+            logger.info(f"Quantization complete. Size reduced by {reduction:.1f}% ({original_size} -> {quantized_size} bytes)")
+            return output_path
+        else:
+            raise RuntimeError("Quantization failed: output file is missing or empty")
+            
+    except Exception as e:
+        logger.error(f"Quantization failed: {e}")
+        # Clean up partial output if it exists
+        if output_path.exists():
+            output_path.unlink()
+        raise
 
 
 class ONNXEmbeddingModel:
@@ -165,6 +235,8 @@ def convert_to_onnx(
     output_dir: Union[str, Path],
     opset_version: int = 14,
     optimize: bool = True,
+    apply_quantization: bool = True,
+    quantization_config: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """Convert a SentenceTransformer model to ONNX format.
 
@@ -173,6 +245,8 @@ def convert_to_onnx(
         output_dir: Directory to save ONNX model
         opset_version: ONNX opset version
         optimize: Whether to optimize the ONNX model
+        apply_quantization: Whether to apply dynamic quantization (default: True)
+        quantization_config: Optional quantization configuration
 
     Returns:
         Path to the saved ONNX model
@@ -243,11 +317,30 @@ def convert_to_onnx(
     # Save tokenizer
     tokenizer.save_pretrained(output_dir)
     
+    # Apply quantization if requested and available
+    if apply_quantization and QUANTIZATION_AVAILABLE:
+        try:
+            # Get quantization config
+            quant_config = quantization_config or {}
+            weight_type = quant_config.get("weight_type", "uint8")
+            
+            # Quantize the model
+            quantized_path = quantize_model_dynamic(onnx_path, weight_type=weight_type)
+            
+            # Update path to quantized model
+            onnx_path = quantized_path
+        except Exception as e:
+            logger.warning(f"Quantization failed, using non-quantized model: {e}")
+            # Continue with non-quantized model
+    elif apply_quantization and not QUANTIZATION_AVAILABLE:
+        logger.warning("Quantization requested but tools not available. Using non-quantized model.")
+    
     # Save config
     config = {
         "max_seq_length": model.max_seq_length,
         "pooling_strategy": "mean",  # Default for most models
         "embedding_dimension": model.get_sentence_embedding_dimension(),
+        "quantized": apply_quantization and QUANTIZATION_AVAILABLE and onnx_path.name == "model_quantized.onnx",
     }
     with open(output_dir / "onnx_config.json", "w") as f:
         json.dump(config, f, indent=2)
@@ -259,12 +352,16 @@ def convert_to_onnx(
 def get_or_convert_onnx_model(
     model_name: str,
     cache_dir: Optional[Union[str, Path]] = None,
+    apply_quantization: bool = True,
+    quantization_config: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """Get ONNX model path, converting if necessary.
 
     Args:
         model_name: Name of the SentenceTransformer model
         cache_dir: Directory to cache ONNX models (defaults to XDG cache path)
+        apply_quantization: Whether to apply dynamic quantization (default: True)
+        quantization_config: Optional quantization configuration
 
     Returns:
         Path to ONNX model file
@@ -276,19 +373,49 @@ def get_or_convert_onnx_model(
         cache_dir = Path(cache_dir)
     model_dir = cache_dir / "onnx" / model_name.replace("/", "_")
     
-    # Try optimized model first
+    # Try quantized model first (if quantization is requested)
+    if apply_quantization:
+        onnx_path = model_dir / "model_quantized.onnx"
+        if onnx_path.exists() and onnx_path.stat().st_size > 0:
+            return onnx_path
+    
+    # Try optimized model
     onnx_path = model_dir / "model_optimized.onnx"
     if onnx_path.exists() and onnx_path.stat().st_size > 0:
+        # If quantization is requested but quantized model not found, try to quantize existing model
+        if apply_quantization and QUANTIZATION_AVAILABLE:
+            try:
+                quant_config = quantization_config or {}
+                weight_type = quant_config.get("weight_type", "uint8")
+                quantized_path = quantize_model_dynamic(onnx_path, weight_type=weight_type)
+                return quantized_path
+            except Exception as e:
+                logger.warning(f"Failed to quantize existing model: {e}")
         return onnx_path
     
     # Try non-optimized model
     onnx_path = model_dir / "model.onnx"
     if onnx_path.exists() and onnx_path.stat().st_size > 0:
+        # If quantization is requested but quantized model not found, try to quantize existing model
+        if apply_quantization and QUANTIZATION_AVAILABLE:
+            try:
+                quant_config = quantization_config or {}
+                weight_type = quant_config.get("weight_type", "uint8")
+                quantized_path = quantize_model_dynamic(onnx_path, weight_type=weight_type)
+                return quantized_path
+            except Exception as e:
+                logger.warning(f"Failed to quantize existing model: {e}")
         return onnx_path
     
     # Convert if not found
     logger.info(f"ONNX model not found, converting {model_name}...")
-    onnx_path = convert_to_onnx(model_name, model_dir, optimize=False)  # Disable optimization to avoid issues
+    onnx_path = convert_to_onnx(
+        model_name,
+        model_dir,
+        optimize=False,  # Disable optimization to avoid issues
+        apply_quantization=apply_quantization,
+        quantization_config=quantization_config
+    )
     
     return onnx_path
 
@@ -389,6 +516,8 @@ def convert_cross_encoder_to_onnx(
     output_dir: Union[str, Path],
     opset_version: int = 14,
     optimize: bool = True,
+    apply_quantization: bool = True,
+    quantization_config: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """Convert a Cross-Encoder model to ONNX format.
     
@@ -397,6 +526,8 @@ def convert_cross_encoder_to_onnx(
         output_dir: Directory to save ONNX model
         opset_version: ONNX opset version
         optimize: Whether to optimize the ONNX model
+        apply_quantization: Whether to apply dynamic quantization (default: True)
+        quantization_config: Optional quantization configuration
         
     Returns:
         Path to the saved ONNX model
@@ -483,10 +614,29 @@ def convert_cross_encoder_to_onnx(
     # Save tokenizer
     tokenizer.save_pretrained(output_dir)
     
+    # Apply quantization if requested and available
+    if apply_quantization and QUANTIZATION_AVAILABLE:
+        try:
+            # Get quantization config
+            quant_config = quantization_config or {}
+            weight_type = quant_config.get("weight_type", "uint8")
+            
+            # Quantize the model
+            quantized_path = quantize_model_dynamic(onnx_path, weight_type=weight_type)
+            
+            # Update path to quantized model
+            onnx_path = quantized_path
+        except Exception as e:
+            logger.warning(f"Quantization failed, using non-quantized model: {e}")
+            # Continue with non-quantized model
+    elif apply_quantization and not QUANTIZATION_AVAILABLE:
+        logger.warning("Quantization requested but tools not available. Using non-quantized model.")
+    
     # Save config
     config = {
         "max_seq_length": max_length,
         "model_type": "cross-encoder",
+        "quantized": apply_quantization and QUANTIZATION_AVAILABLE and onnx_path.name == "model_quantized.onnx",
     }
     with open(output_dir / "onnx_config.json", "w") as f:
         json.dump(config, f, indent=2)
@@ -498,12 +648,16 @@ def convert_cross_encoder_to_onnx(
 def get_or_convert_cross_encoder_onnx_model(
     model_name: str,
     cache_dir: Optional[Union[str, Path]] = None,
+    apply_quantization: bool = True,
+    quantization_config: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """Get ONNX Cross-Encoder model path, converting if necessary.
     
     Args:
         model_name: Name of the Cross-Encoder model
         cache_dir: Directory to cache ONNX models (defaults to XDG cache path)
+        apply_quantization: Whether to apply dynamic quantization (default: True)
+        quantization_config: Optional quantization configuration
         
     Returns:
         Path to ONNX model file
@@ -515,18 +669,48 @@ def get_or_convert_cross_encoder_onnx_model(
         cache_dir = Path(cache_dir)
     model_dir = cache_dir / "onnx" / model_name.replace("/", "_")
     
-    # Try optimized model first
+    # Try quantized model first (if quantization is requested)
+    if apply_quantization:
+        onnx_path = model_dir / "model_quantized.onnx"
+        if onnx_path.exists() and onnx_path.stat().st_size > 0:
+            return onnx_path
+    
+    # Try optimized model
     onnx_path = model_dir / "model_optimized.onnx"
     if onnx_path.exists() and onnx_path.stat().st_size > 0:
+        # If quantization is requested but quantized model not found, try to quantize existing model
+        if apply_quantization and QUANTIZATION_AVAILABLE:
+            try:
+                quant_config = quantization_config or {}
+                weight_type = quant_config.get("weight_type", "uint8")
+                quantized_path = quantize_model_dynamic(onnx_path, weight_type=weight_type)
+                return quantized_path
+            except Exception as e:
+                logger.warning(f"Failed to quantize existing model: {e}")
         return onnx_path
     
     # Try non-optimized model
     onnx_path = model_dir / "model.onnx"
     if onnx_path.exists() and onnx_path.stat().st_size > 0:
+        # If quantization is requested but quantized model not found, try to quantize existing model
+        if apply_quantization and QUANTIZATION_AVAILABLE:
+            try:
+                quant_config = quantization_config or {}
+                weight_type = quant_config.get("weight_type", "uint8")
+                quantized_path = quantize_model_dynamic(onnx_path, weight_type=weight_type)
+                return quantized_path
+            except Exception as e:
+                logger.warning(f"Failed to quantize existing model: {e}")
         return onnx_path
     
     # Convert if not found
     logger.info(f"ONNX Cross-Encoder model not found, converting {model_name}...")
-    onnx_path = convert_cross_encoder_to_onnx(model_name, model_dir, optimize=False)  # Disable optimization to avoid issues
+    onnx_path = convert_cross_encoder_to_onnx(
+        model_name,
+        model_dir,
+        optimize=False,  # Disable optimization to avoid issues
+        apply_quantization=apply_quantization,
+        quantization_config=quantization_config
+    )
     
     return onnx_path

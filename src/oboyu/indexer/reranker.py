@@ -7,7 +7,7 @@ to improve search result quality, especially for Japanese queries in RAG applica
 import logging
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, Optional, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 
 import numpy as np
 from sentence_transformers import CrossEncoder
@@ -181,10 +181,12 @@ class ONNXCrossEncoderReranker(BaseReranker):
         batch_size: int = 8,
         max_length: int = 512,
         cache_dir: Optional[Path] = None,
+        quantization_config: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Initialize the ONNX CrossEncoder reranker with lazy loading."""
         super().__init__(model_name, device, batch_size, max_length)
         self.cache_dir = cache_dir or EMBEDDING_CACHE_DIR / "models"
+        self.quantization_config = quantization_config or {"enabled": True, "weight_type": "uint8"}
         self._tokenizer: Optional[Any] = None
         logger.info(f"Initializing ONNX CrossEncoder reranker with model: {model_name}")
     
@@ -196,9 +198,12 @@ class ONNXCrossEncoderReranker(BaseReranker):
             from oboyu.indexer.onnx_converter import ONNXCrossEncoderModel
             
             # Get or convert ONNX model
+            apply_quantization = self.quantization_config.get("enabled", True)
             onnx_path = get_or_convert_cross_encoder_onnx_model(
                 self.model_name,
                 self.cache_dir,
+                apply_quantization=apply_quantization,
+                quantization_config=self.quantization_config,
             )
             
             # Load ONNX model
@@ -271,6 +276,7 @@ def create_reranker(
     batch_size: int = 8,
     max_length: int = 512,
     cache_dir: Optional[Path] = None,
+    quantization_config: Optional[Dict[str, Any]] = None,
 ) -> BaseReranker:
     """Create appropriate reranker instance.
     
@@ -281,6 +287,7 @@ def create_reranker(
         batch_size: Batch size for reranking
         max_length: Maximum sequence length
         cache_dir: Cache directory for ONNX models
+        quantization_config: Optional ONNX quantization configuration
         
     Returns:
         Reranker instance
@@ -293,6 +300,7 @@ def create_reranker(
             batch_size=batch_size,
             max_length=max_length,
             cache_dir=cache_dir,
+            quantization_config=quantization_config,
         )
     else:
         return CrossEncoderReranker(
