@@ -76,65 +76,122 @@ def start_mcp_server():
 
 ## Search Modes
 
+Oboyu supports three distinct search modes, each optimized for different types of queries:
+
 ### Vector Search
 
-Vector search performs semantic similarity matching:
+Vector search performs semantic similarity matching using embeddings:
 
-- Converts query to vector representation
-- Performs approximate nearest neighbor search via HNSW
-- Ranks results by vector similarity
-- Excels at understanding conceptual meaning
+- Converts query to high-dimensional vector representation
+- Performs approximate nearest neighbor search via HNSW index
+- Ranks results by cosine similarity
+- **Best for**: conceptual queries, semantic understanding, synonyms
 
-```python
-def vector_search(query_text, model="default", top_k=5):
-    # Implementation details
-    # Returns vector search results
+**Example CLI usage:**
+```bash
+# Search for conceptually similar content
+oboyu query --mode vector "機械学習の基本概念"
+oboyu query --mode vector "What are design patterns?"
 ```
+
+**When to use:**
+- Queries about concepts rather than specific terms
+- When looking for semantically related content
+- Cross-lingual or synonym matching needs
 
 ### BM25 Search
 
-BM25 search performs keyword-based matching:
+BM25 search performs keyword-based matching with term frequency analysis:
 
-- Tokenizes query with language-appropriate processing
-- Executes BM25 ranking algorithm
-- Scores documents based on term frequency and importance
-- Excels at keyword matching and specific terms
+- Tokenizes query using language-appropriate processing (MeCab for Japanese)
+- Executes BM25 ranking algorithm (k1=1.2, b=0.75)
+- Scores documents based on term frequency and document length normalization
+- **Best for**: exact keyword matching, specific terminology, precise queries
 
-```python
-def bm25_search(query_text, top_k=5):
-    # Implementation details
-    # Returns BM25 search results
+**Example CLI usage:**
+```bash
+# Search for specific keywords
+oboyu query --mode bm25 "データベース設計"
+oboyu query --mode bm25 "REST API implementation"
 ```
 
-### Hybrid Search
+**When to use:**
+- Looking for specific terms or keywords
+- Technical documentation with precise terminology
+- When exact word matching is important
 
-Hybrid search combines the strengths of both approaches:
+### Hybrid Search (Default)
 
-- Executes both vector and BM25 searches
-- Normalizes and combines relevance scores
-- Applies configurable weighting between approaches
-- Delivers superior results for complex queries
+Hybrid search combines both approaches for optimal results:
 
-```python
-def hybrid_search(query_text, vector_weight=0.7, bm25_weight=0.3, top_k=5):
-    # Implementation details
-    # Returns combined search results
+- Executes both vector and BM25 searches in parallel
+- Normalizes scores using min-max normalization
+- Combines results with configurable weights (default: 70% vector, 30% BM25)
+- **Best for**: most general queries, balanced precision and recall
+
+**Example CLI usage:**
+```bash
+# Default hybrid search (recommended)
+oboyu query "Pythonでの非同期処理の実装方法"
+oboyu query --vector-weight 0.8 --bm25-weight 0.2 "database optimization techniques"
+
+# Adjust weights for specific needs
+oboyu query --vector-weight 0.5 --bm25-weight 0.5 "システム設計の原則"
 ```
+
+**When to use:**
+- General purpose searches
+- When you want both semantic and keyword matching
+- Most day-to-day search scenarios
 
 ## Japanese Query Support
 
-The Query Engine provides specialized processing for Japanese queries:
+Oboyu provides advanced Japanese language support through specialized processing:
 
-- Japanese-aware tokenization
-- Character normalization
-- Handling of query variations
-- Mixed Japanese-English query support
+### Tokenization
 
-```python
-def process_japanese_query(query_text):
-    # Implementation details
-    # Returns processed Japanese query
+Japanese text is processed using MeCab morphological analyzer:
+
+- **MeCab with fugashi**: Primary tokenizer for Japanese text
+- **Part-of-speech filtering**: Extracts content words (nouns, verbs, adjectives)
+- **Stop word removal**: Filters common particles and auxiliary words
+- **Fallback tokenizer**: Simple character-based tokenization when MeCab is unavailable
+
+**Example tokenization:**
 ```
+Input:  "機械学習ではPythonがよく使われています"
+Output: ["機械学習", "Python", "使わ", "れる"]
+```
+
+### Character Normalization
+
+Text normalization ensures consistent matching:
+
+- **Unicode normalization**: Converts to NFKC form
+- **Character variant handling**: ひらがな/カタカナ conversion when needed
+- **Width normalization**: Full-width ↔ half-width character conversion
+
+### Query Processing Examples
+
+```bash
+# Natural Japanese queries
+oboyu query "機械学習のアルゴリズムについて教えて"
+oboyu query "Pythonでのデータ処理方法"
+
+# Mixed Japanese-English queries
+oboyu query "REST APIの設計パターン"
+oboyu query "データベースのNormalization理論"
+
+# Technical terminology
+oboyu query "非同期処理とPromise"
+oboyu query "マイクロサービスアーキテクチャの利点"
+```
+
+### Search Mode Recommendations for Japanese
+
+- **Vector search**: Best for conceptual Japanese queries
+- **BM25 search**: Excellent for specific Japanese technical terms
+- **Hybrid search**: Optimal balance for most Japanese content
 
 ## Data Flow
 
@@ -160,61 +217,181 @@ query:
 
 ## Command Line Interface
 
-The Query Engine provides a command-line interface:
+The Query Engine provides a comprehensive command-line interface:
+
+### Basic Usage
 
 ```bash
-# Basic query using default settings
+# Default hybrid search
 oboyu query "システムの設計原則について教えてください"
 
-# Specify search mode and options
-oboyu query --mode vector --top-k 10 "What are the key concepts?"
+# Specify search mode
+oboyu query --mode vector "What are the key concepts?"
+oboyu query --mode bm25 "データベース設計"
+oboyu query --mode hybrid "machine learning algorithms"
+```
 
-# Get detailed result information
-oboyu query --explain "important design principles"
+### Advanced Options
+
+```bash
+# Control number of results
+oboyu query --limit 10 "Python programming best practices"
+
+# Adjust hybrid search weights
+oboyu query --vector-weight 0.8 --bm25-weight 0.2 "システム設計"
+
+# Use different language settings
+oboyu query --language ja "英語ドキュメントの日本語検索"
+
+# Enable reranker for improved results
+oboyu query --use-reranker "complex technical concepts"
+```
+
+### Complete Options
+
+```bash
+oboyu query [OPTIONS] QUERY
+
+Options:
+  --mode [vector|bm25|hybrid]     Search mode (default: hybrid)
+  --limit INTEGER                 Number of results (default: 10)
+  --vector-weight FLOAT          Weight for vector scores (default: 0.7)
+  --bm25-weight FLOAT            Weight for BM25 scores (default: 0.3)
+  --language TEXT                Language hint for processing
+  --use-reranker / --no-reranker Enable reranking (default: auto)
+  --help                         Show this message and exit
+```
+
+### Real-world Examples
+
+```bash
+# Research query with semantic understanding
+oboyu query --mode vector "distributed systems consistency models"
+
+# Exact terminology lookup
+oboyu query --mode bm25 "REST API status codes 404"
+
+# Balanced search for documentation
+oboyu query "Pythonでの例外処理のベストプラクティス"
+
+# Technical documentation with custom weights
+oboyu query --vector-weight 0.3 --bm25-weight 0.7 --limit 15 "database normalization rules"
 ```
 
 ## MCP Protocol
 
-The MCP server mode follows a simple JSON-based protocol:
+The MCP server provides a standardized interface for external tools and AI assistants:
 
-```json
-// Request
-{
-  "type": "query",
-  "query": "ドキュメント内の重要な概念は何ですか？",
-  "mode": "hybrid",
-  "options": {
-    "top_k": 5,
-    "vector_weight": 0.7,
-    "bm25_weight": 0.3
-  }
-}
+### Starting MCP Server
 
-// Response
-{
-  "results": [
-    {
-      "id": "doc123",
-      "title": "システム設計の基本原則",
-      "snippet": "...当システムの設計は「シンプルさ」「モジュール性」「拡張性」の三つの原則に基づいています...",
-      "uri": "file:///projects/docs/設計/principles.md",
-      "score": 0.91
-    },
-    // More results...
-  ],
-  "stats": {
-    "time_ms": 120,
-    "total_matches": 28
-  }
-}
+```bash
+# Start MCP server for integration with Claude/other AI tools
+oboyu mcp
+
+# Specify custom options
+oboyu mcp --log-level debug
+```
+
+### Search Request Examples
+
+**Hybrid Search (Default):**
+```bash
+# Through MCP tools in Claude or other AI assistants
+search_documents("機械学習の基本的なアルゴリズム", limit=5)
+```
+
+**Vector Search:**
+```bash
+search_documents("design patterns in software architecture", mode="vector", limit=10)
+```
+
+**BM25 Search:**
+```bash
+search_documents("データベース正規化", mode="bm25")
+```
+
+**Custom Hybrid Weights:**
+```bash
+search_documents("REST API best practices", 
+                mode="hybrid", 
+                vector_weight=0.6, 
+                bm25_weight=0.4, 
+                limit=8)
+```
+
+### Integration Examples
+
+**With Claude Code:**
+The MCP server integrates seamlessly with Claude for code analysis and documentation queries:
+
+```bash
+# Claude can search your codebase for relevant documentation
+"How do I implement authentication in this project?"
+# → Uses hybrid search to find auth-related docs and code examples
+
+# Claude can find specific technical details
+"What are the database migration patterns used here?"
+# → Uses BM25 search for exact terminology matching
+```
+
+**With Custom Tools:**
+```python
+import mcp_client
+
+# Connect to Oboyu MCP server
+client = mcp_client.connect("oboyu")
+
+# Perform searches programmatically
+results = client.search_documents(
+    query="Python async programming patterns",
+    mode="hybrid",
+    vector_weight=0.7,
+    bm25_weight=0.3,
+    limit=5
+)
 ```
 
 ## Performance Considerations
 
-- Implements caching for frequent queries
-- Optimizes vector operations for speed
-- Uses parallel processing where appropriate
-- Balances accuracy and performance based on configuration
+### Search Mode Performance
+
+- **Vector search**: Fast for small-medium datasets (< 100K documents)
+- **BM25 search**: Scales well with large datasets, fast keyword lookups
+- **Hybrid search**: Slightly slower but provides best quality results
+
+### Optimization Strategies
+
+- **Parallel processing**: Vector and BM25 searches run in parallel during hybrid mode
+- **Index optimization**: HNSW parameters tuned for Japanese content
+- **Tokenization caching**: MeCab tokenization results cached for common queries
+- **Score normalization**: Efficient min-max normalization prevents score dominance
+
+### Japanese-specific Optimizations
+
+- **Tokenizer selection**: Automatic fallback from MeCab to simple tokenizer
+- **Character normalization**: Preprocessing reduces search space
+- **Stop word filtering**: Removes common Japanese particles for better performance
+- **Memory management**: Efficient handling of Japanese Unicode strings
+
+### Tuning Recommendations
+
+For **large Japanese document collections** (>50K docs):
+```bash
+# Favor BM25 for better scaling
+oboyu query --vector-weight 0.4 --bm25-weight 0.6 "検索クエリ"
+```
+
+For **multilingual content**:
+```bash
+# Favor vector search for cross-language understanding
+oboyu query --vector-weight 0.8 --bm25-weight 0.2 "technical concepts"
+```
+
+For **precise technical documentation**:
+```bash
+# Balanced approach works best
+oboyu query --mode hybrid "API documentation patterns"
+```
 
 ## Integration with Other Components
 

@@ -64,8 +64,8 @@ def search(
         # Initialize indexer
         indexer = get_indexer(db_path)
 
-        # Execute search (mode parameter is reserved for future use)
-        results = indexer.search(query, limit=top_k, language=language)
+        # Execute search with specified mode
+        results = indexer.search(query, limit=top_k, mode=mode, language=language)
 
         # Format results for MCP output
         formatted_results = []

@@ -47,6 +47,12 @@ DEFAULT_CONFIG = {
         "reranker_batch_size": 8,  # Batch size for reranking
         "reranker_max_length": 512,  # Maximum sequence length for reranker
         "reranker_threshold": None,  # Minimum score threshold (None = no threshold)
+        
+        # BM25 settings
+        "bm25_k1": 1.2,  # BM25 k1 parameter (term frequency saturation)
+        "bm25_b": 0.75,  # BM25 b parameter (document length normalization)
+        "bm25_min_token_length": 2,  # Minimum token length for BM25
+        "use_japanese_tokenizer": True,  # Use Japanese morphological analyzer
     }
 }
 
@@ -77,6 +83,11 @@ DEFAULT_RERANKER_TOP_K_MULTIPLIER = 3
 DEFAULT_RERANKER_BATCH_SIZE = 8
 DEFAULT_RERANKER_MAX_LENGTH = 512
 DEFAULT_RERANKER_THRESHOLD = None
+# BM25 defaults
+DEFAULT_BM25_K1 = 1.2
+DEFAULT_BM25_B = 0.75
+DEFAULT_BM25_MIN_TOKEN_LENGTH = 2
+DEFAULT_USE_JAPANESE_TOKENIZER = True
 
 
 class IndexerConfig:
@@ -156,6 +167,9 @@ class IndexerConfig:
         
         # Validate reranker settings
         self._validate_reranker_settings(indexer_config)
+        
+        # Validate BM25 settings
+        self._validate_bm25_settings(indexer_config)
 
     def _validate_basic_settings(self, indexer_config: dict[str, Any]) -> None:
         """Validate basic indexer settings."""
@@ -268,6 +282,24 @@ class IndexerConfig:
         threshold = indexer_config.get("reranker_threshold")
         if threshold is not None and (not isinstance(threshold, (int, float)) or threshold < 0 or threshold > 1):
             indexer_config["reranker_threshold"] = DEFAULT_RERANKER_THRESHOLD
+    
+    def _validate_bm25_settings(self, indexer_config: dict[str, Any]) -> None:
+        """Validate BM25 settings."""
+        # Validate bm25_k1 - must be a positive float
+        if not isinstance(indexer_config.get("bm25_k1"), (int, float)) or indexer_config.get("bm25_k1", 0) <= 0:
+            indexer_config["bm25_k1"] = DEFAULT_BM25_K1
+        
+        # Validate bm25_b - must be a float between 0 and 1
+        if not isinstance(indexer_config.get("bm25_b"), (int, float)) or indexer_config.get("bm25_b", -1) < 0 or indexer_config.get("bm25_b", 2) > 1:
+            indexer_config["bm25_b"] = DEFAULT_BM25_B
+        
+        # Validate bm25_min_token_length - must be a positive integer
+        if not isinstance(indexer_config.get("bm25_min_token_length"), int) or indexer_config.get("bm25_min_token_length", 0) <= 0:
+            indexer_config["bm25_min_token_length"] = DEFAULT_BM25_MIN_TOKEN_LENGTH
+        
+        # Validate use_japanese_tokenizer - must be a boolean
+        if not isinstance(indexer_config.get("use_japanese_tokenizer"), bool):
+            indexer_config["use_japanese_tokenizer"] = DEFAULT_USE_JAPANESE_TOKENIZER
 
     @property
     def chunk_size(self) -> int:
@@ -395,6 +427,26 @@ class IndexerConfig:
         """Minimum score threshold for reranker."""
         threshold = self.config["indexer"]["reranker_threshold"]
         return float(threshold) if threshold is not None else None
+    
+    @property
+    def bm25_k1(self) -> float:
+        """BM25 k1 parameter."""
+        return float(self.config["indexer"]["bm25_k1"])
+    
+    @property
+    def bm25_b(self) -> float:
+        """BM25 b parameter."""
+        return float(self.config["indexer"]["bm25_b"])
+    
+    @property
+    def bm25_min_token_length(self) -> int:
+        """Minimum token length for BM25."""
+        return int(self.config["indexer"]["bm25_min_token_length"])
+    
+    @property
+    def use_japanese_tokenizer(self) -> bool:
+        """Whether to use Japanese tokenizer."""
+        return bool(self.config["indexer"]["use_japanese_tokenizer"])
 
 
 def load_default_config(db_path: str) -> IndexerConfig:
