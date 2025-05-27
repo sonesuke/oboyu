@@ -43,7 +43,7 @@ DEFAULT_CONFIG = {
         "m0": None,  # Level-0 connections (None means use 2*M)
 
         # Processing settings
-        "max_workers": 4,  # Maximum number of worker threads for parallel processing
+        "max_workers": 8,  # Maximum number of worker threads for parallel processing
         
         # Reranker settings
         "reranker_model": "cl-nagoya/ruri-v3-reranker-310m",  # Default reranker model
@@ -84,7 +84,7 @@ DEFAULT_EF_CONSTRUCTION = 128
 DEFAULT_EF_SEARCH = 64
 DEFAULT_M = 16
 DEFAULT_M0 = None
-DEFAULT_MAX_WORKERS = 4
+DEFAULT_MAX_WORKERS = 8
 # Reranker defaults
 DEFAULT_RERANKER_MODEL = "cl-nagoya/ruri-v3-reranker-310m"
 DEFAULT_USE_RERANKER = False

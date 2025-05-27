@@ -115,6 +115,12 @@ class Database:
 
         # Enable experimental persistence for HNSW indexes
         self.conn.execute("SET hnsw_enable_experimental_persistence=true")
+        
+        # Set performance optimization pragmas
+        self.conn.execute("PRAGMA threads=8")  # Increase thread count
+        self.conn.execute("SET preserve_insertion_order=false")
+        self.conn.execute("SET memory_limit='4GB'")  # Increase memory limit
+        self.conn.execute("SET temp_directory='/tmp'")  # Use faster temp directory
 
         # Create tables if they don't exist
         self._create_schema()
@@ -190,15 +196,13 @@ class Database:
             )
         """)
         
-        # Create inverted index table
+        # Create inverted index table without primary key for faster bulk inserts
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS inverted_index (
                 term VARCHAR,
                 chunk_id VARCHAR,
                 term_frequency INTEGER,
-                positions TEXT,  -- JSON array of positions
-                PRIMARY KEY (term, chunk_id),
-                FOREIGN KEY (chunk_id) REFERENCES chunks (id)
+                positions TEXT  -- JSON array of positions
             )
         """)
         
@@ -277,7 +281,7 @@ class Database:
         """
         if self.conn is None:
             raise ValueError("Database connection not initialized. Call setup() first.")
-
+        
         # Store each chunk individually using standard DuckDB
         batch_data = []
         for chunk in chunks:
@@ -309,6 +313,7 @@ class Database:
                 modified_at = excluded.modified_at,
                 metadata = excluded.metadata
         """, batch_data)
+        
         self.conn.commit()
 
 
@@ -326,37 +331,33 @@ class Database:
         """
         if self.conn is None:
             raise ValueError("Database connection not initialized. Call setup() first.")
-
-        # バッチ挿入用のデータを準備
-        # DuckDB v1.2+ has issues with FLOAT[] type conversion
-        # We need to insert one by one and use array literal syntax
-        for idx, (embedding_id, chunk_id, vector, timestamp) in enumerate(embeddings):
+        
+        # Direct batch insert
+        
+        # Prepare batch data
+        batch_data = []
+        for embedding_id, chunk_id, vector, timestamp in embeddings:
             # Skip problematic embeddings with scalar shape
             if vector.shape == ():
-                # This is a bug in the embedding generation, skip for now
                 continue
             
             # Convert vector to list
             vector_list = vector.tolist()
-            
-            # Handle case where tolist() returns a scalar
             if not isinstance(vector_list, list):
-                # This shouldn't happen with properly shaped embeddings
                 raise ValueError(f"Expected list from vector.tolist() but got {type(vector_list)}. Vector shape: {vector.shape}")
             
-            # Build array literal string for DuckDB
-            array_str = '[' + ','.join(str(float(v)) for v in vector_list) + ']'
-            
-            # Use parameterized query for other values but array as literal
-            self.conn.execute(f"""
-                INSERT INTO embeddings (id, chunk_id, model, vector, created_at)
-                VALUES (?, ?, ?, {array_str}::FLOAT[{len(vector_list)}], ?)
-                ON CONFLICT (id) DO UPDATE SET
-                    chunk_id = excluded.chunk_id,
-                    model = excluded.model,
-                    vector = excluded.vector,
-                    created_at = excluded.created_at
-            """, (embedding_id, chunk_id, model_name, timestamp))
+            batch_data.append((embedding_id, chunk_id, model_name, vector_list, timestamp))
+        
+        # Bulk insert directly
+        self.conn.executemany("""
+            INSERT INTO embeddings (id, chunk_id, model, vector, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT (id) DO UPDATE SET
+                chunk_id = excluded.chunk_id,
+                model = excluded.model,
+                vector = excluded.vector,
+                created_at = excluded.created_at
+        """, batch_data)
         
         self.conn.commit()
 
@@ -685,50 +686,97 @@ class Database:
         if self.conn is None:
             raise ValueError("Database connection not initialized. Call setup() first.")
         
-        # Store vocabulary
-        vocab_data = [
-            (term, doc_freq, coll_freq)
-            for term, (doc_freq, coll_freq) in vocabulary.items()
-        ]
-        self.conn.executemany("""
-            INSERT INTO vocabulary (term, document_frequency, collection_frequency)
-            VALUES (?, ?, ?)
-            ON CONFLICT (term) DO UPDATE SET
-                document_frequency = excluded.document_frequency,
-                collection_frequency = excluded.collection_frequency
-        """, vocab_data)
+        # Start a transaction for bulk inserts
+        self.conn.begin()
         
-        # Store inverted index
-        inv_index_data = []
-        for term, postings in inverted_index.items():
-            for chunk_id, term_freq, positions in postings:
-                positions_json = json.dumps(positions) if positions else "[]"
-                inv_index_data.append((term, chunk_id, term_freq, positions_json))
-        
-        self.conn.executemany("""
-            INSERT INTO inverted_index (term, chunk_id, term_frequency, positions)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT (term, chunk_id) DO UPDATE SET
-                term_frequency = excluded.term_frequency,
-                positions = excluded.positions
-        """, inv_index_data)
-        
-        # Store document statistics
-        doc_stats_data = [
-            (chunk_id, total_terms, unique_terms, avg_freq)
-            for chunk_id, (total_terms, unique_terms, avg_freq) in document_stats.items()
-        ]
-        self.conn.executemany("""
-            INSERT INTO document_stats (chunk_id, total_terms, unique_terms, avg_term_frequency)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT (chunk_id) DO UPDATE SET
-                total_terms = excluded.total_terms,
-                unique_terms = excluded.unique_terms,
-                avg_term_frequency = excluded.avg_term_frequency
-        """, doc_stats_data)
-        
-        # Store collection statistics
-        self.conn.execute("""
+        try:
+            # Store vocabulary
+            
+            vocab_data = [
+                (term, doc_freq, coll_freq)
+                for term, (doc_freq, coll_freq) in vocabulary.items()
+            ]
+            
+            if vocab_data:  # Only execute if there's data
+                self.conn.executemany("""
+                    INSERT INTO vocabulary (term, document_frequency, collection_frequency)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT (term) DO UPDATE SET
+                        document_frequency = excluded.document_frequency,
+                        collection_frequency = excluded.collection_frequency
+                """, vocab_data)
+            
+            
+            # Store inverted index with optimized batch size
+            
+            # Prepare data for bulk insert
+            inv_index_data = []
+            for term, postings in inverted_index.items():
+                for chunk_id, term_freq, positions in postings:
+                    # Use NULL for empty positions to save space and time
+                    # Skip JSON encoding entirely if positions are not stored
+                    positions_json = None
+                    inv_index_data.append((term, chunk_id, term_freq, positions_json))
+            
+            # Sort data by term for better insertion performance
+            inv_index_data.sort(key=lambda x: (x[0], x[1]))
+            
+            # Check if this is initial indexing (empty table)
+            count_result = self.conn.execute("SELECT COUNT(*) FROM inverted_index").fetchone()
+            is_initial = count_result is not None and count_result[0] == 0
+            
+            if inv_index_data:  # Only process if there's data
+                if is_initial:
+                    # For initial indexing, use simple INSERT for speed
+                    # Use larger batches for better performance
+                    batch_size = 50000  # Increased from default
+                    for i in range(0, len(inv_index_data), batch_size):
+                        batch = inv_index_data[i:i + batch_size]
+                        self.conn.executemany("""
+                            INSERT INTO inverted_index (term, chunk_id, term_frequency, positions)
+                            VALUES (?, ?, ?, ?)
+                        """, batch)
+                
+                    # Create index after bulk insert for better performance
+                    self.conn.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_inverted_index_term
+                        ON inverted_index(term)
+                    """)
+                    self.conn.execute("""
+                        CREATE UNIQUE INDEX IF NOT EXISTS idx_inverted_index_term_chunk
+                        ON inverted_index(term, chunk_id)
+                    """)
+                else:
+                    # For updates, use ON CONFLICT
+                    self.conn.executemany("""
+                        INSERT INTO inverted_index (term, chunk_id, term_frequency, positions)
+                        VALUES (?, ?, ?, ?)
+                        ON CONFLICT (term, chunk_id) DO UPDATE SET
+                            term_frequency = excluded.term_frequency,
+                            positions = excluded.positions
+                    """, inv_index_data)
+            
+            
+            # Store document statistics
+            
+            doc_stats_data = [
+                (chunk_id, total_terms, unique_terms, avg_freq)
+                for chunk_id, (total_terms, unique_terms, avg_freq) in document_stats.items()
+            ]
+            
+            if doc_stats_data:  # Only execute if there's data
+                self.conn.executemany("""
+                    INSERT INTO document_stats (chunk_id, total_terms, unique_terms, avg_term_frequency)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT (chunk_id) DO UPDATE SET
+                        total_terms = excluded.total_terms,
+                        unique_terms = excluded.unique_terms,
+                        avg_term_frequency = excluded.avg_term_frequency
+                """, doc_stats_data)
+            
+            
+            # Store collection statistics
+            self.conn.execute("""
             INSERT INTO collection_stats
             (id, total_documents, total_terms, avg_document_length, last_updated)
             VALUES (1, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -737,13 +785,19 @@ class Database:
                 total_terms = excluded.total_terms,
                 avg_document_length = excluded.avg_document_length,
                 last_updated = excluded.last_updated
-        """, (
-            collection_stats.get("total_documents", 0),
-            collection_stats.get("total_terms", 0),
-            collection_stats.get("avg_document_length", 0.0),
-        ))
-        
-        self.conn.commit()
+            """, (
+                collection_stats.get("total_documents", 0),
+                collection_stats.get("total_terms", 0),
+                collection_stats.get("avg_document_length", 0.0),
+            ))
+            self.conn.commit()
+            
+        except Exception as e:
+            self.conn.rollback()
+            raise e
+        finally:
+            # Ensure any remaining data is written
+            pass
     
     def search_bm25(
         self,

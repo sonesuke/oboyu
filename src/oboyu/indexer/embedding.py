@@ -109,7 +109,7 @@ class EmbeddingGenerator:
         self,
         model_name: str = "cl-nagoya/ruri-v3-30m",
         device: str = "cpu",
-        batch_size: int = 8,
+        batch_size: int = 128,
         max_seq_length: int = 8192,
         query_prefix: str = "検索クエリ: ",
         use_cache: bool = True,
@@ -264,6 +264,7 @@ class EmbeddingGenerator:
         # Generate new embeddings if needed
         new_embeddings = []
         if texts_to_embed:
+            
             # Process in batches
             for i in range(0, len(texts_to_embed), self.batch_size):
                 batch_texts = texts_to_embed[i:i + self.batch_size]

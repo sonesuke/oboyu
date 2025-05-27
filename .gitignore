@@ -15,3 +15,7 @@ oboyu.db.wal
 bench/data/
 bench/queries/
 bench/results/
+test_docs/
+!test_docs/.gitkeep
+test_docs_old/
+!test_docs_old/.gitkeep

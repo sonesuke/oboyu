@@ -114,12 +114,16 @@ class Indexer:
         # Set up the database schema
         self.database.setup()
         
-        # Initialize BM25 indexer
+        # Initialize BM25 indexer with optimizations
         self.bm25_indexer = bm25_indexer or BM25Indexer(
             k1=self.config.bm25_k1,
             b=self.config.bm25_b,
-            min_token_length=self.config.bm25_min_token_length,
-            use_japanese_tokenizer=self.config.use_japanese_tokenizer,
+            tokenizer_kwargs={
+                "min_token_length": self.config.bm25_min_token_length,
+            },
+            use_stopwords=True,  # Enable stopword filtering
+            min_doc_frequency=2,  # Filter terms appearing in less than 2 documents
+            store_positions=False,  # Disable position storage for BM25
         )
         
         # Initialize reranker if enabled
@@ -161,10 +165,12 @@ class Indexer:
         if not new_docs:
             return 0
 
+
         # Process documents into chunks
         all_chunks = self._process_documents_with_progress(new_docs, progress_callback)
         if not all_chunks:
             return 0
+
 
         # Store chunks and report progress
         self._store_chunks_with_progress(all_chunks, progress_callback)
@@ -377,20 +383,32 @@ class Indexer:
         # Index chunks for BM25
         self.bm25_indexer.index_chunks(chunks)
         
-        # Prepare data for database storage
+        # Prepare data for database storage with minimum frequency filtering
         vocabulary = {}
+        filtered_terms = set()
+        min_doc_freq = self.bm25_indexer.min_doc_frequency
+        
         for term, doc_freq in self.bm25_indexer.document_frequencies.items():
-            coll_freq = self.bm25_indexer.collection_frequencies[term]
-            vocabulary[term] = (doc_freq, coll_freq)
+            if doc_freq >= min_doc_freq:
+                coll_freq = self.bm25_indexer.collection_frequencies[term]
+                vocabulary[term] = (doc_freq, coll_freq)
+            else:
+                filtered_terms.add(term)
         
         # Prepare document statistics
         document_stats = {}
+        # First, build a reverse index for efficient lookup
+        doc_unique_terms = {}
+        for term, postings in self.bm25_indexer.inverted_index.items():
+            for chunk_id, _, _ in postings:
+                if chunk_id not in doc_unique_terms:
+                    doc_unique_terms[chunk_id] = 0
+                doc_unique_terms[chunk_id] += 1
+        
         for chunk_id, doc_length in self.bm25_indexer.document_lengths.items():
             # Calculate statistics
             total_terms = doc_length
-            # Get unique terms for this document from inverted index
-            unique_terms = sum(1 for term, postings in self.bm25_indexer.inverted_index.items()
-                             if any(posting[0] == chunk_id for posting in postings))
+            unique_terms = doc_unique_terms.get(chunk_id, 0)
             avg_term_freq = total_terms / max(unique_terms, 1)
             document_stats[chunk_id] = (total_terms, unique_terms, avg_term_freq)
         
@@ -401,10 +419,16 @@ class Indexer:
             "avg_document_length": self.bm25_indexer.total_document_length / max(self.bm25_indexer.document_count, 1),
         }
         
+        # Filter inverted index to exclude low-frequency terms
+        filtered_inverted_index = {}
+        for term, postings in self.bm25_indexer.inverted_index.items():
+            if term not in filtered_terms:
+                filtered_inverted_index[term] = postings
+        
         # Store BM25 index in database
         self.database.store_bm25_index(
             vocabulary=vocabulary,
-            inverted_index=self.bm25_indexer.inverted_index,
+            inverted_index=filtered_inverted_index,
             document_stats=document_stats,
             collection_stats=collection_stats,
         )

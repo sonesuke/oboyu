@@ -18,41 +18,56 @@ logger = logging.getLogger(__name__)
 class BM25Indexer:
     """BM25 indexer for building inverted index and computing statistics.
     
-    This indexer provides:
-    - Inverted index construction
-    - Term frequency and document frequency calculation
-    - Collection statistics management
-    - Batch processing for efficient indexing
+    This class handles the construction of inverted index, document frequency
+    calculation, and other statistics required for BM25 scoring.
     """
     
     def __init__(
         self,
         k1: float = 1.2,
         b: float = 0.75,
-        min_token_length: int = 2,
-        use_japanese_tokenizer: bool = True,
+        tokenizer_class: Optional[str] = None,
+        tokenizer_kwargs: Optional[Dict[str, object]] = None,
+        use_stopwords: bool = False,
+        min_doc_frequency: int = 1,
+        store_positions: bool = True,
     ) -> None:
-        """Initialize the BM25 indexer.
+        """Initialize BM25 indexer.
         
         Args:
-            k1: BM25 k1 parameter (term frequency saturation)
-            b: BM25 b parameter (document length normalization)
-            min_token_length: Minimum token length to index
-            use_japanese_tokenizer: Whether to use Japanese-specific tokenizer
-
+            k1: BM25 k1 parameter (term saturation)
+            b: BM25 b parameter (length normalization)
+            tokenizer_class: Optional tokenizer class name
+            tokenizer_kwargs: Optional tokenizer configuration
+            use_stopwords: Whether to use stopword filtering
+            min_doc_frequency: Minimum document frequency for terms
+            store_positions: Whether to store term positions
+            
         """
         self.k1 = k1
         self.b = b
-        self.min_token_length = min_token_length
-        self.use_japanese_tokenizer = use_japanese_tokenizer
+        self.use_stopwords = use_stopwords
+        self.min_doc_frequency = min_doc_frequency
+        self.store_positions = store_positions
         
         # Create tokenizer
+        tokenizer_kwargs = tokenizer_kwargs or {}
+        # Extract specific parameters for create_tokenizer
+        min_token_length = tokenizer_kwargs.get("min_token_length", 2)
+        if isinstance(min_token_length, int):
+            pass  # It's already an int
+        else:
+            min_token_length = 2  # Default fallback
+            
+        # tokenizer_class is actually the language parameter
+        language = tokenizer_class or "ja"
         self.tokenizer = create_tokenizer(
-            language="ja" if use_japanese_tokenizer else "en",
+            language=language,
             min_token_length=min_token_length,
+            use_stopwords=use_stopwords
         )
         
-        # Initialize index structures
+        # Index structures
         self.inverted_index: Dict[str, List[Tuple[str, int, List[int]]]] = defaultdict(list)
         self.document_frequencies: Dict[str, int] = defaultdict(int)
         self.collection_frequencies: Dict[str, int] = defaultdict(int)
@@ -76,6 +91,9 @@ class BM25Indexer:
             "unique_terms": 0,
         }
         
+        # Debug: Track term distribution
+        term_doc_counts: Dict[int, int] = defaultdict(int)  # num_docs -> count of terms
+        
         for chunk in chunks:
             # Get term frequencies for the chunk
             term_frequencies = self.tokenizer.get_term_frequencies(chunk.content)
@@ -90,8 +108,8 @@ class BM25Indexer:
             
             # Update inverted index
             for term, freq in term_frequencies.items():
-                # Get token positions (if available)
-                positions = self._get_term_positions(chunk.content, term)
+                # Get token positions only if enabled
+                positions = self._get_term_positions(chunk.content, term) if self.store_positions else []
                 
                 # Add to inverted index
                 self.inverted_index[term].append((chunk.id, freq, positions))
@@ -111,153 +129,162 @@ class BM25Indexer:
             stats["chunks_indexed"] += 1
         
         stats["unique_terms"] = len(self.inverted_index)
+        
+        # Track filtered terms
+        if hasattr(self.tokenizer, 'filtered_by_stopwords'):
+            self.tokenizer.filtered_by_stopwords = defaultdict(int)
+        
+        # Debug: Analyze inverted index structure
+        logger.info("=== BM25 Inverted Index Analysis ===")
+        logger.info(f"Total unique terms (vocabulary size): {len(self.inverted_index)}")
+        logger.info(f"Total chunks indexed: {self.document_count}")
+        
+        # Calculate distribution of documents per term
+        for term, postings in self.inverted_index.items():
+            num_docs = len(postings)
+            term_doc_counts[num_docs] += 1
+        
+        # Log distribution
+        logger.info("\nDistribution of term frequencies:")
+        logger.info("Docs per term | Number of terms")
+        logger.info("-" * 30)
+        for num_docs in sorted(term_doc_counts.keys()):
+            logger.info(f"{num_docs:12} | {term_doc_counts[num_docs]:15}")
+        
+        # Calculate average documents per term
+        total_postings = sum(len(postings) for postings in self.inverted_index.values())
+        avg_docs_per_term = total_postings / len(self.inverted_index) if self.inverted_index else 0
+        logger.info(f"\nAverage documents per term: {avg_docs_per_term:.2f}")
+        
+        # Show top terms by document frequency
+        top_terms = sorted(
+            self.document_frequencies.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )[:20]
+        
+        logger.info("\nTop 20 terms by document frequency:")
+        logger.info("Term | Doc Frequency")
+        logger.info("-" * 30)
+        for term, doc_freq in top_terms:
+            logger.info(f"{term:20} | {doc_freq}")
+        
         return stats
     
-    def compute_bm25_score(
+    def _get_term_positions(self, text: str, term: str) -> List[int]:
+        """Get positions of a term in the text.
+        
+        Args:
+            text: Original text
+            term: Term to find
+            
+        Returns:
+            List of positions where the term appears
+            
+        """
+        # This is a simplified implementation
+        # In practice, you'd want to use the same tokenization as get_term_frequencies
+        positions = []
+        tokens = self.tokenizer.tokenize(text)
+        for i, token in enumerate(tokens):
+            if token == term:
+                positions.append(i)
+        return positions
+    
+    def score(
         self,
         query_terms: List[str],
         chunk_id: str,
-        term_frequencies: Dict[str, int],
+        chunk_term_freqs: Dict[str, int],
     ) -> float:
-        """Compute BM25 score for a document given query terms.
+        """Calculate BM25 score for a chunk given query terms.
         
         Args:
             query_terms: List of query terms
             chunk_id: ID of the chunk to score
-            term_frequencies: Term frequencies in the chunk
+            chunk_term_freqs: Term frequencies in the chunk
             
         Returns:
             BM25 score
-
+            
         """
         if chunk_id not in self.document_lengths:
             return 0.0
         
-        doc_length = self.document_lengths[chunk_id]
-        avg_doc_length = self.total_document_length / max(self.document_count, 1)
-        
         score = 0.0
+        doc_length = self.document_lengths[chunk_id]
+        avg_doc_length = self.total_document_length / self.document_count if self.document_count > 0 else 1.0
         
         for term in query_terms:
-            if term not in term_frequencies:
+            if term not in chunk_term_freqs:
                 continue
             
-            # Get term frequency in document
-            tf = term_frequencies[term]
+            # Term frequency in the chunk
+            tf = chunk_term_freqs[term]
             
-            # Get document frequency
+            # Document frequency
             df = self.document_frequencies.get(term, 0)
+            if df == 0:
+                continue
             
-            # Compute IDF component
-            # Adding 0.5 to avoid negative IDF for terms that appear in more than half the documents
-            idf = math.log((self.document_count - df + 0.5) / (df + 0.5) + 1.0)
+            # IDF calculation: log((N - df + 0.5) / (df + 0.5))
+            idf = math.log((self.document_count - df + 0.5) / (df + 0.5))
             
-            # Compute normalized term frequency component
-            norm_tf = (tf * (self.k1 + 1)) / (
-                tf + self.k1 * (1 - self.b + self.b * (doc_length / avg_doc_length))
-            )
+            # BM25 term score
+            numerator = tf * (self.k1 + 1)
+            denominator = tf + self.k1 * (1 - self.b + self.b * (doc_length / avg_doc_length))
+            term_score = idf * (numerator / denominator)
             
-            # Add to total score
-            score += idf * norm_tf
+            score += term_score
         
         return score
     
-    def search(
-        self,
-        query: str,
-        limit: int = 10,
-        filter_chunk_ids: Optional[Set[str]] = None,
-    ) -> List[Tuple[str, float]]:
-        """Search the BM25 index for matching documents.
-        
-        Args:
-            query: Search query
-            limit: Maximum number of results to return
-            filter_chunk_ids: Optional set of chunk IDs to search within
-            
-        Returns:
-            List of (chunk_id, score) tuples sorted by score
-
-        """
-        # Tokenize query
-        query_terms = self.tokenizer.tokenize(query)
-        
-        if not query_terms:
-            return []
-        
-        # Find candidate documents
-        candidate_chunks: Set[str] = set()
-        chunk_term_frequencies: Dict[str, Dict[str, int]] = defaultdict(dict)
-        
-        for term in query_terms:
-            if term in self.inverted_index:
-                for chunk_id, freq, _ in self.inverted_index[term]:
-                    # Apply filter if provided
-                    if filter_chunk_ids and chunk_id not in filter_chunk_ids:
-                        continue
-                    
-                    candidate_chunks.add(chunk_id)
-                    chunk_term_frequencies[chunk_id][term] = freq
-        
-        # Score candidate documents
-        scored_chunks = []
-        for chunk_id in candidate_chunks:
-            score = self.compute_bm25_score(
-                query_terms,
-                chunk_id,
-                chunk_term_frequencies[chunk_id],
-            )
-            scored_chunks.append((chunk_id, score))
-        
-        # Sort by score (descending) and return top results
-        scored_chunks.sort(key=lambda x: x[1], reverse=True)
-        return scored_chunks[:limit]
-    
-    def get_vocabulary_size(self) -> int:
-        """Get the size of the vocabulary.
-        
-        Returns:
-            Number of unique terms in the index
-
-        """
-        return len(self.inverted_index)
-    
-    def get_collection_stats(self) -> Dict[str, int]:
-        """Get collection statistics.
-        
-        Returns:
-            Dictionary with collection statistics
-
-        """
-        return {
-            "document_count": self.document_count,
-            "vocabulary_size": self.get_vocabulary_size(),
-            "total_terms": sum(self.collection_frequencies.values()),
-            "avg_document_length": int(self.total_document_length / max(self.document_count, 1)),
-        }
-    
-    def _get_term_positions(self, text: str, term: str) -> List[int]:
-        """Get positions of a term in text.
-        
-        This is a simplified implementation that returns empty list.
-        Position tracking can be added if needed for phrase queries.
-        
-        Args:
-            text: Document text
-            term: Term to find positions for
-            
-        Returns:
-            List of positions (currently empty)
-
-        """
-        # TODO: Implement position tracking if needed for phrase queries
-        return []
-    
     def clear(self) -> None:
-        """Clear all index data."""
+        """Clear all index data and reset statistics."""
         self.inverted_index.clear()
         self.document_frequencies.clear()
         self.collection_frequencies.clear()
         self.document_lengths.clear()
         self.document_count = 0
         self.total_document_length = 0
+    
+    def compute_bm25_score(
+        self,
+        query_terms: List[str],
+        chunk_id: str,
+        chunk_term_freqs: Dict[str, int],
+    ) -> float:
+        """Compute BM25 score for a chunk given query terms.
+        
+        This is an alias for the score method to maintain backward compatibility.
+        
+        Args:
+            query_terms: List of query terms
+            chunk_id: ID of the chunk to score
+            chunk_term_freqs: Term frequencies in the chunk
+            
+        Returns:
+            BM25 score
+            
+        """
+        return self.score(query_terms, chunk_id, chunk_term_freqs)
+    
+    def get_collection_stats(self) -> Dict[str, object]:
+        """Get collection statistics.
+        
+        Returns:
+            Dictionary containing collection statistics
+            
+        """
+        avg_doc_length = (
+            self.total_document_length / self.document_count
+            if self.document_count > 0 else 0.0
+        )
+        return {
+            "document_count": self.document_count,
+            "total_document_length": self.total_document_length,
+            "average_document_length": avg_doc_length,
+            "avg_document_length": avg_doc_length,  # Alternative key name for backward compatibility
+            "vocabulary_size": len(self.inverted_index),
+            "total_terms": sum(self.collection_frequencies.values()),
+        }

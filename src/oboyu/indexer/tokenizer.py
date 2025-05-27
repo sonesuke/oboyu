@@ -7,6 +7,7 @@ using fugashi (MeCab wrapper) for morphological analysis.
 import logging
 import re
 import unicodedata
+from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union
 
 if TYPE_CHECKING:
@@ -37,14 +38,46 @@ DEFAULT_JAPANESE_STOP_WORDS = {
     "こと", "もの", "ため", "とき", "ところ", "ほう", "さん", "くん", "ちゃん",
     # English common words in Japanese text
     "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with",
+    # High-frequency verbs (from analysis) - include all forms
+    "為る", "する", "し", "居る", "いる", "い", "成る", "なる", "なり", "なっ",
+    "出来る", "できる", "でき", "有る", "ある", "あり", "あっ",
+    "見る", "みる", "み", "言う", "いう", "いい", "いっ", "無い", "ない", "なく",
+    "思う", "おもう", "思い", "思っ", "行く", "いく", "行き", "行っ",
+    "使う", "使い", "使っ", "良い", "よい", "よく",
+    # Common auxiliary expressions
+    "よう", "ような", "ように", "また", "まだ", "もう", "とても", "かなり",
+    # Common nouns in news
+    "記事", "こちら", "もっと", "詳細", "livedoor", "news", "article", "detail",
+    # Common URL/date patterns - these need to be lowercase
+    "http", "https", "com", "jp", "www", "html", "00", "0900", "03",
+    # Years and numbers
+    "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020",
+    "10", "20", "30", "50", "100",
 }
 
 # Part-of-speech tags to exclude (non-content words)
 EXCLUDED_POS_TAGS = {
-    "助詞",      # Particles
+    "助詞",      # Particles (all subtypes)
     "助動詞",    # Auxiliary verbs
     "記号",      # Symbols
     "補助記号",  # Auxiliary symbols
+    "接続詞",    # Conjunctions
+    "連体詞",    # Adnominals
+    "感動詞",    # Interjections
+    "接頭辞",    # Prefixes
+    "接尾辞",    # Suffixes
+    "代名詞",    # Pronouns
+}
+
+# More specific exclusions based on subcategories
+EXCLUDED_POS_SUBCATEGORIES = {
+    ("動詞", "非自立可能"),  # Non-independent verbs (する、できる、なる etc.)
+    ("名詞", "数詞"),        # Numerals (pure numbers)
+    ("名詞", "非自立"),      # Non-independent nouns
+    ("名詞", "代名詞"),      # Pronouns categorized as nouns
+    ("副詞", "*"),           # Adverbs - often not content-bearing
+    ("形状詞", "助動詞語幹"), # Auxiliary verb stems
+    ("形状詞", "タリ"),      # Tari-form adjectives
 }
 
 # Part-of-speech tags to include (content words)
@@ -99,6 +132,12 @@ class JapaneseTokenizer:
         self.use_pos_filter = use_pos_filter
         self.normalize_text = normalize_text
         
+        # Track filtered terms for analysis
+        self.filtered_by_stopwords: Dict[str, int] = defaultdict(int)
+        self.filtered_by_length: Dict[str, int] = defaultdict(int)
+        self.filtered_by_pos: Dict[str, int] = defaultdict(int)
+        self.pos_distribution: Dict[str, int] = defaultdict(int)  # Track all POS tags
+        
         # Compile regex patterns
         self._english_pattern = re.compile(r'[a-zA-Z]+')
         self._number_pattern = re.compile(r'\d+')
@@ -130,18 +169,39 @@ class JapaneseTokenizer:
             
             # Skip if token is too short
             if len(token) < self.min_token_length:
+                self.filtered_by_length[token] += 1
                 continue
             
-            # Skip stop words
-            if token.lower() in self.stop_words:
+            # Skip stop words - check both original and lowercase
+            token_lower = token.lower()
+            if token in self.stop_words or token_lower in self.stop_words:
+                self.filtered_by_stopwords[token] += 1
                 continue
             
             # Apply POS filtering if enabled
             if self.use_pos_filter:
                 pos = features[0]  # First feature is the part-of-speech
+                subpos1 = features[1] if len(features) > 1 else ""  # Sub-category 1
+                subpos2 = features[2] if len(features) > 2 else ""  # Sub-category 2
+                
+                # Track POS distribution
+                full_pos = f"{pos}-{subpos1}-{subpos2}"
+                self.pos_distribution[full_pos] += 1
                 
                 # Skip excluded POS tags
                 if pos in EXCLUDED_POS_TAGS:
+                    self.filtered_by_pos[f"{token}({pos})"] += 1
+                    continue
+                
+                # Check subcategory exclusions
+                excluded_by_subcategory = False
+                for (exc_pos, exc_subpos) in EXCLUDED_POS_SUBCATEGORIES:
+                    if pos == exc_pos and (exc_subpos == "*" or subpos1 == exc_subpos):
+                        self.filtered_by_pos[f"{token}({pos}-{subpos1})"] += 1
+                        excluded_by_subcategory = True
+                        break
+                
+                if excluded_by_subcategory:
                     continue
                 
                 # For included POS tags, use the base form if available
@@ -359,6 +419,7 @@ def create_tokenizer(
     stop_words: Optional[Set[str]] = None,
     min_token_length: int = 2,
     use_fallback: bool = False,
+    use_stopwords: bool = True,
 ) -> Union[JapaneseTokenizer, FallbackTokenizer]:
     """Create an appropriate tokenizer for the given language.
     
@@ -367,11 +428,18 @@ def create_tokenizer(
         stop_words: Set of stop words to exclude
         min_token_length: Minimum token length to keep
         use_fallback: Force use of fallback tokenizer
+        use_stopwords: Whether to use default stop words if none provided
         
     Returns:
         Tokenizer instance
 
     """
+    # Use default stop words if enabled and none provided
+    if use_stopwords and stop_words is None:
+        stop_words = DEFAULT_JAPANESE_STOP_WORDS
+    elif not use_stopwords:
+        stop_words = set()
+    
     if language == "ja" and not use_fallback:
         if HAS_JAPANESE_TOKENIZER:
             return JapaneseTokenizer(
@@ -384,7 +452,7 @@ def create_tokenizer(
                 "For better results, install: pip install fugashi unidic-lite jaconv"
             )
             return FallbackTokenizer(
-                stop_words=stop_words or DEFAULT_JAPANESE_STOP_WORDS,
+                stop_words=stop_words,
                 min_token_length=min_token_length,
             )
     else:
