@@ -256,6 +256,7 @@ class EmbeddingGenerator:
         # Generate new embeddings if needed
         new_embeddings = []
         if texts_to_embed:
+            
             # Process in batches
             for i in range(0, len(texts_to_embed), self.batch_size):
                 batch_texts = texts_to_embed[i : i + self.batch_size]
