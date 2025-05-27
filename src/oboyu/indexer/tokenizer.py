@@ -209,7 +209,13 @@ class JapaneseTokenizer:
                     # Try to get the base form (lemma)
                     base_form = features[7] if len(features) > 7 else None
                     if base_form and base_form != "*":
-                        token = base_form
+                        # Skip lemmatization if it adds non-Japanese suffixes (e.g., "デジタル-digital")
+                        # This can happen with some dictionary entries
+                        if "-" in base_form and not self.is_japanese_text(base_form.split("-", 1)[1]):
+                            # Keep the original surface form
+                            pass
+                        else:
+                            token = base_form
             
             tokens.append(token)
         

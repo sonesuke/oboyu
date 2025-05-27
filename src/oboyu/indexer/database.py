@@ -826,6 +826,7 @@ class Database:
         # This query calculates BM25 scores using the stored statistics
         terms_placeholder = ",".join(["?"] * len(query_terms))
         
+        # Optimized query that avoids GROUP BY on large text fields
         base_query = f"""
         WITH query_terms AS (
             SELECT value AS term FROM (VALUES {",".join(f"('{term}')" for term in query_terms)})
@@ -837,15 +838,10 @@ class Database:
             FROM collection_stats
             WHERE id = 1
         ),
-        doc_scores AS (
+        -- Calculate scores efficiently using only chunk_id
+        chunk_scores AS (
             SELECT
-                c.id as chunk_id,
-                c.path,
-                c.title,
-                c.content,
-                c.chunk_index,
-                c.language,
-                c.metadata,
+                ii.chunk_id,
                 SUM(
                     -- IDF component
                     LOG((ci.total_documents - v.document_frequency + 0.5) /
@@ -857,23 +853,32 @@ class Database:
                 ) AS score
             FROM inverted_index ii
             JOIN vocabulary v ON ii.term = v.term
-            JOIN chunks c ON ii.chunk_id = c.id
-            JOIN document_stats ds ON c.id = ds.chunk_id
+            JOIN document_stats ds ON ii.chunk_id = ds.chunk_id
             CROSS JOIN collection_info ci
             WHERE ii.term IN ({terms_placeholder})
+            GROUP BY ii.chunk_id
+            ORDER BY score DESC
+            LIMIT ?
+        )
+        -- Join with chunks table only for the top-k results
+        SELECT
+            c.id as chunk_id,
+            c.path,
+            c.title,
+            c.content,
+            c.chunk_index,
+            c.language,
+            c.metadata,
+            cs.score
+        FROM chunk_scores cs
+        JOIN chunks c ON cs.chunk_id = c.id
         """
         
         # Add language filter if specified
         if language:
-            base_query += f" AND c.language = '{language}'"
+            base_query += f" WHERE c.language = '{language}'"
         
-        base_query += """
-            GROUP BY c.id, c.path, c.title, c.content, c.chunk_index, c.language, c.metadata
-            ORDER BY score DESC
-            LIMIT ?
-        )
-        SELECT * FROM doc_scores
-        """
+        base_query += " ORDER BY cs.score DESC"
         
         # Execute query
         params = query_terms + [limit]
