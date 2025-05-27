@@ -50,8 +50,8 @@ DEFAULT_CONFIG = {
         "use_reranker": False,  # Whether to use reranker for search results
         "reranker_use_onnx": True,  # Whether to use ONNX optimization for reranker
         "reranker_device": "cpu",  # Device for reranker (cpu/cuda)
-        "reranker_top_k_multiplier": 3,  # Multiplier for initial retrieval (3x final top_k)
-        "reranker_batch_size": 8,  # Batch size for reranking
+        "reranker_top_k_multiplier": 2,  # Multiplier for initial retrieval (2x final top_k)
+        "reranker_batch_size": 32,  # Batch size for reranking
         "reranker_max_length": 512,  # Maximum sequence length for reranker
         "reranker_threshold": None,  # Minimum score threshold (None = no threshold)
         
@@ -91,7 +91,7 @@ DEFAULT_USE_RERANKER = False
 DEFAULT_RERANKER_USE_ONNX = True
 DEFAULT_RERANKER_DEVICE = "cpu"
 DEFAULT_RERANKER_TOP_K_MULTIPLIER = 3
-DEFAULT_RERANKER_BATCH_SIZE = 8
+DEFAULT_RERANKER_BATCH_SIZE = 32
 DEFAULT_RERANKER_MAX_LENGTH = 512
 DEFAULT_RERANKER_THRESHOLD = None
 # BM25 defaults
