@@ -2,15 +2,17 @@
 
 ## Overview
 
-The Indexer is the core processing component of Oboyu, responsible for analyzing documents, generating search indexes, and managing the database. It implements specialized processing for Japanese text and creates vector indexes for powerful semantic search capabilities.
+The Indexer is the core processing component of Oboyu, responsible for analyzing documents, generating search indexes, and managing the database. It implements specialized processing for Japanese text and creates both vector indexes for semantic search and BM25 indexes for keyword-based search capabilities.
 
 ## Design Goals
 
 - Process documents efficiently with language-specific handling
 - Generate high-quality embeddings for semantic search with Ruri v3 model
+- Create BM25 indexes for precise keyword matching with Japanese tokenization
 - Maintain a flexible database schema with DuckDB and VSS extension
 - Support incremental updates and embedding caching
-- Optimize for Japanese text processing
+- Optimize for Japanese text processing with MeCab morphological analysis
+- Provide hybrid search combining vector and BM25 approaches
 
 ## Component Structure
 
@@ -50,6 +52,48 @@ def process_japanese_text(text, encoding="utf-8"):
     standardized = _standardize_line_endings(normalized)
     # Returns processed Japanese text
     return standardized
+```
+
+### BM25 Indexer
+
+The BM25 Indexer creates keyword-based search indexes:
+
+- Japanese tokenization using MeCab morphological analyzer with fugashi
+- Fallback to simple character-based tokenization when MeCab unavailable
+- Inverted index construction for fast keyword lookups
+- Document statistics calculation for BM25 scoring
+- Support for incremental index updates
+
+```python
+def build_bm25_index(chunks):
+    # Tokenize documents using Japanese-aware tokenizer
+    tokenized_docs = [tokenizer.tokenize(chunk.content) for chunk in chunks]
+    # Build inverted index
+    inverted_index = _build_inverted_index(tokenized_docs)
+    # Calculate document statistics
+    doc_stats = _calculate_document_statistics(tokenized_docs)
+    # Store in database
+    store_bm25_index(inverted_index, doc_stats)
+```
+
+### Japanese Tokenizer
+
+The Tokenizer provides Japanese text analysis:
+
+- **MeCab Integration**: Uses fugashi wrapper for morphological analysis
+- **Part-of-Speech Filtering**: Extracts content words (nouns, verbs, adjectives)
+- **Stop Word Removal**: Filters particles and auxiliary words
+- **Text Normalization**: Unicode and character width normalization
+- **Fallback Support**: Simple tokenization when Japanese tools unavailable
+
+```python
+def tokenize_japanese(text):
+    if HAS_JAPANESE_TOKENIZER:
+        # Use MeCab for morphological analysis
+        return japanese_tokenizer.tokenize(text)
+    else:
+        # Fallback to simple tokenization
+        return fallback_tokenizer.tokenize(text)
 ```
 
 ### Embedding Generator
@@ -153,7 +197,9 @@ def clear():
 
 ## Database Schema
 
-The Indexer creates and maintains the following schema:
+The Indexer creates and maintains the following schema for both vector and BM25 search:
+
+### Core Tables
 
 ```sql
 -- Chunks table stores document segments for granular search
@@ -178,8 +224,48 @@ CREATE TABLE embeddings (
     created_at TIMESTAMP,     -- Embedding generation timestamp
     FOREIGN KEY (chunk_id) REFERENCES chunks (id)
 );
+```
 
--- Create HNSW index for vector search
+### BM25 Index Tables
+
+```sql
+-- Vocabulary table stores term statistics for BM25 scoring
+CREATE TABLE vocabulary (
+    term VARCHAR PRIMARY KEY,
+    document_frequency INTEGER,    -- Number of documents containing this term
+    collection_frequency INTEGER   -- Total occurrences across all documents
+);
+
+-- Inverted index table for fast keyword lookups
+CREATE TABLE inverted_index (
+    term VARCHAR,
+    chunk_id VARCHAR,
+    term_frequency INTEGER,       -- Frequency of term in this chunk
+    positions JSON,               -- Term positions (for phrase queries)
+    PRIMARY KEY (term, chunk_id),
+    FOREIGN KEY (chunk_id) REFERENCES chunks (id)
+);
+
+-- Document statistics for BM25 normalization
+CREATE TABLE document_stats (
+    chunk_id VARCHAR PRIMARY KEY,
+    total_terms INTEGER,          -- Total number of terms in document
+    unique_terms INTEGER,         -- Number of unique terms
+    avg_term_frequency FLOAT,     -- Average term frequency
+    FOREIGN KEY (chunk_id) REFERENCES chunks (id)
+);
+
+-- Collection-wide statistics for BM25 calculation
+CREATE TABLE collection_stats (
+    key VARCHAR PRIMARY KEY,
+    value FLOAT                   -- Stores avg_document_length, total_documents, etc.
+);
+```
+
+### Search Indexes
+
+```sql
+-- HNSW index for vector search
 CREATE INDEX vector_idx ON embeddings 
 USING HNSW (vector) 
 WITH (
@@ -188,20 +274,68 @@ WITH (
     ef_search = 64,
     M = 16
 );
+
+-- B-tree indexes for efficient BM25 lookups
+CREATE INDEX idx_vocabulary_term ON vocabulary (term);
+CREATE INDEX idx_inverted_index_term ON inverted_index (term);
+CREATE INDEX idx_inverted_index_chunk ON inverted_index (chunk_id);
 ```
 
 ## Index Types
 
+Oboyu creates two complementary index types for comprehensive search capabilities:
+
 ### Vector Index (HNSW)
+
+The vector index enables semantic similarity search:
 
 - Uses DuckDB's VSS extension for vector similarity search
 - Creates Hierarchical Navigable Small Worlds (HNSW) index
 - Uses cosine similarity as distance metric
-- Configurable parameters for accuracy vs. performance tradeoffs:
-  - `ef_construction`: Controls index build quality (default: 128)
-  - `ef_search`: Controls search quality (default: 64)
-  - `M`: Number of bidirectional links (default: 16)
-  - `M0`: Level-0 connections (default: 2*M)
+- **Best for**: conceptual queries, cross-language understanding, semantic matching
+
+**Configurable parameters for accuracy vs. performance tradeoffs:**
+- `ef_construction`: Controls index build quality (default: 128)
+- `ef_search`: Controls search quality (default: 64)
+- `M`: Number of bidirectional links (default: 16)
+- `M0`: Level-0 connections (default: 2*M)
+
+### BM25 Index (Inverted Index)
+
+The BM25 index enables precise keyword matching:
+
+- Uses inverted index structure for fast term lookups
+- Implements BM25 ranking algorithm with Japanese tokenization
+- Stores term statistics and document frequencies
+- **Best for**: exact keyword matching, specific terminology, technical documentation
+
+**Key components:**
+- **Vocabulary**: Term statistics (document frequency, collection frequency)
+- **Inverted Index**: Term-to-document mappings with frequencies
+- **Document Statistics**: Per-document term counts and averages
+- **Collection Statistics**: Global statistics for normalization
+
+**BM25 Parameters:**
+- `k1`: Term frequency saturation parameter (default: 1.2)
+- `b`: Length normalization parameter (default: 0.75)
+- `min_token_length`: Minimum token length (default: 2)
+
+### Japanese Tokenization Features
+
+For BM25 indexing, Japanese text undergoes specialized processing:
+
+- **Morphological Analysis**: Uses MeCab with fugashi for accurate word segmentation
+- **Part-of-Speech Filtering**: Extracts content words (nouns, verbs, adjectives, adverbs)
+- **Stop Word Removal**: Filters particles (助詞), auxiliary verbs (助動詞), symbols
+- **Text Normalization**: Unicode NFKC normalization, character width conversion
+- **Base Form Extraction**: Uses lemmatized forms when available
+
+**Example Japanese tokenization:**
+```
+Input:  "機械学習アルゴリズムの実装について"
+Tokens: ["機械学習", "アルゴリズム", "実装"]
+Filtered: Removes particles like "の", "について"
+```
 
 ## Ruri v3-30m Embedding Model
 
@@ -265,10 +399,51 @@ DEFAULT_CONFIG = {
         "m": 16,  # Number of bidirectional links in HNSW graph
         "m0": None,  # Level-0 connections (None means use 2*M)
         
+        # BM25 settings
+        "use_bm25": true,  # Enable BM25 indexing (enabled by default)
+        "bm25_k1": 1.2,  # Term frequency saturation parameter
+        "bm25_b": 0.75,  # Length normalization parameter
+        "bm25_min_token_length": 2,  # Minimum token length for indexing
+        "use_japanese_tokenizer": true,  # Use MeCab for Japanese tokenization
+        
         # Processing settings
         "max_workers": 4,  # Maximum number of worker threads
     }
 }
+```
+
+### BM25-specific Configuration
+
+**Japanese Tokenization Settings:**
+- `use_japanese_tokenizer`: Enable MeCab-based tokenization for Japanese text
+- `bm25_min_token_length`: Filter out very short tokens (default: 2)
+
+**BM25 Algorithm Parameters:**
+- `bm25_k1`: Controls term frequency saturation (higher = less saturation)
+- `bm25_b`: Controls document length normalization (0 = no normalization, 1 = full normalization)
+
+**Recommended Settings by Use Case:**
+
+**For Japanese documentation:**
+```yaml
+indexer:
+  use_japanese_tokenizer: true
+  bm25_k1: 1.2  # Standard value works well for Japanese
+  bm25_b: 0.75  # Good balance for varied document lengths
+```
+
+**For technical code documentation:**
+```yaml
+indexer:
+  bm25_k1: 1.5  # Higher saturation for technical terms
+  bm25_b: 0.6   # Less length normalization for code snippets
+```
+
+**For mixed-language content:**
+```yaml
+indexer:
+  use_japanese_tokenizer: true  # Handles Japanese, falls back for other languages
+  bm25_min_token_length: 1     # Include single-character terms for code
 ```
 
 ## Performance Considerations

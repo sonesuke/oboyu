@@ -23,6 +23,7 @@
       "Bash(git fetch:*)",
       "Bash(find:*)",
       "Bash(rg:*)",
+      "Bash(sed:*)",
       "Bash(git rebase:*)"
     ],
     "deny": []

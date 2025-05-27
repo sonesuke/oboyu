@@ -30,6 +30,9 @@ dependencies = [
     "duckdb>=0.9.0", # Version supporting VSS extension
     "protobuf>=4.25.1", # Required for SentenceTransformer with Ruri model
     "sentencepiece>=0.2.0", # Required for Japanese tokenization
+    "fugashi>=1.3.0",  # Japanese morphological analyzer for BM25
+    "unidic-lite>=1.0.8",  # Lightweight UniDic dictionary for BM25
+    "jaconv>=0.3.4",  # Japanese character conversion for BM25
     "typer>=0.9.0", # CLI framework
     "rich>=13.4.2", # Rich terminal output formatting
     "pyyaml>=6.0", # YAML configuration file handling # Model Context Protocol for AI assistant integration
@@ -40,12 +43,7 @@ dependencies = [
     "onnxruntime>=1.22.0",
     "optimum>=1.25.3",
     "python-frontmatter>=1.1.0",
-    # Additional dependencies for RAG accuracy evaluation
-    "datasets>=2.0.0",  # For loading evaluation datasets
-    "numpy>=1.21.0",  # For numerical computations in metrics
-    "scipy>=1.7.0",  # For advanced metric calculations
-    "scikit-learn>=1.0.0",  # For evaluation utilities
-    "pandas>=1.3.0",  # For data analysis and reporting
+    "numpy>=1.21.0",  # For numerical computations (core functionality)
 ]
 
 [project.scripts]
@@ -72,6 +70,11 @@ dev = [
     "pytest-cov>=6.1.1",
     "ruff>=0.11.10",
     "psutil>=5.9.0",  # System resource monitoring for benchmarks
+    # Additional dependencies for RAG accuracy evaluation
+    "datasets>=2.0.0",  # For loading evaluation datasets
+    "scipy>=1.7.0",  # For advanced metric calculations
+    "scikit-learn>=1.0.0",  # For evaluation utilities
+    "pandas>=1.3.0",  # For data analysis and reporting
 ]
 
 [tool.mypy]

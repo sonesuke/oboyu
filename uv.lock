@@ -24,6 +24,7 @@ dependencies = [
     { name = "propcache" },
     { name = "yarl" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/6a/61/d37b33a074ad867d1ecec9f03183e2b9fee067745cae17e73c264f556d57/aiohttp-3.12.0.tar.gz", hash = "sha256:e3f0a2b4d7fb16c0d584d9b8860f1e46d39f7d93372b25a6f80c10015a7acdab", size = 7762804, upload_time = "2025-05-24T22:33:33.318Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fd/7e/9d27424fadc63f89d9165e7865ecdcf49bd4ce03ed5f453e8fb1300c3ede/aiohttp-3.12.0-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:6ab223f5d0bd30f1b419addc4aef37f8d7723027e3d92393281cba97f8529209", size = 682843, upload_time = "2025-05-24T22:32:08.441Z" },
     { url = "https://files.pythonhosted.org/packages/9d/7e/d8f3b2efbd359138f81121d849c334b6df4bb91805a4e7380f175ea822cf/aiohttp-3.12.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:c5beab804eeff85cfae5c053e0d3bb7a7cdc2756ced50a586c56deb8b8ce16b9", size = 460508, upload_time = "2025-05-24T22:32:10.476Z" },
@@ -332,6 +333,20 @@ http = [
 ]
 
 [[package]]
+name = "fugashi"
+version = "1.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/33/69/bb037690c3cc218a139ae89afaf0b099814e7aff570b28577aa0ef1a06f0/fugashi-1.4.0.tar.gz", hash = "sha256:443880fa975defc3194f524fbd6cdbcd32776fa66d573d07ccec9edb76cd5271", size = 339049, upload_time = "2024-11-11T11:52:14.045Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/51/a4/0aef3c27441b080bb526db74d007d05f42376de101d8d9995df86d3a44ff/fugashi-1.4.0-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:8b5e43ef6532c90ad3afac816fe5c63f8613c66119b28aeafdfa442abc4e5735", size = 560512, upload_time = "2024-11-11T12:02:53.265Z" },
+    { url = "https://files.pythonhosted.org/packages/15/4b/9d021385839b3e3b17a477d34dba81fe28bf15632f49ab977d8aeb8b117f/fugashi-1.4.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:322d357c446c1b2eba42f8170fc3c1094d78f08a13dbf060a08e58c7cdebcf42", size = 506320, upload_time = "2024-11-11T12:02:54.477Z" },
+    { url = "https://files.pythonhosted.org/packages/a5/99/30af27297ba8a386de9091968155fbbee54f3efde58c4ceb61b28c439262/fugashi-1.4.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:8fe382c159c2afb6dc3c653b169b9efe1699a7701ab23e5e019539058e5d06db", size = 502341, upload_time = "2024-11-11T12:02:56.547Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/43/64685e4d47599bf15c285fa1f9c3a1d0f86c1a3c8427e051ad17d8f9f22f/fugashi-1.4.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:0cca9a9ecacb5269598764a56ab73b883001b93ab726032962d4d2d416b76c7b", size = 672015, upload_time = "2024-11-11T12:15:48.51Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/49/9ebf43cb093bf68ad97de098ced3e9cc42c0c5da4ff11de4115c040cc891/fugashi-1.4.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:016d003de8db2b7b67a6ffaf74915cee8f717c3aa7a66b78acf30c5b13e0e9bc", size = 693685, upload_time = "2024-11-11T11:53:37.607Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/37/8f56f6eb7d4a487d1b737f4fcc41e25c1f61c9a6ae9adb49581f151d8ef8/fugashi-1.4.0-cp313-cp313-win_amd64.whl", hash = "sha256:99328a498150cfc39e4ac574a1431a24f967033420f4f92b4ade24aab0271ea2", size = 512024, upload_time = "2024-11-11T11:53:11.524Z" },
+]
+
+[[package]]
 name = "gitignore-parser"
 version = "0.1.12"
 source = { registry = "https://pypi.org/simple" }
@@ -439,6 +454,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/f2/97/ebf4da567aa6827c9
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2c/e1/e6716421ea10d38022b952c159d5161ca1193197fb744506875fbb87ea7b/iniconfig-2.1.0-py3-none-any.whl", hash = "sha256:9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760", size = 6050, upload_time = "2025-03-19T20:10:01.071Z" },
 ]
+
+[[package]]
+name = "jaconv"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d2/e1/670cefc7f00b0e1890e114a37a98ea425f7e06131342aeb9636856ac663c/jaconv-0.4.0.tar.gz", hash = "sha256:32da74b247f276e09a52d6b35c153df2387965cb85a6f034cc8af21d446f8161", size = 17402, upload_time = "2024-07-25T16:35:24.75Z" }
 
 [[package]]
 name = "jinja2"
@@ -827,76 +848,82 @@ source = { editable = "." }
 dependencies = [
     { name = "chardet" },
     { name = "charset-normalizer" },
-    { name = "datasets" },
     { name = "duckdb" },
+    { name = "fugashi" },
     { name = "gitignore-parser" },
+    { name = "jaconv" },
     { name = "langdetect" },
     { name = "mcp", extra = ["cli"] },
     { name = "numpy" },
     { name = "onnx" },
     { name = "onnxruntime" },
     { name = "optimum" },
-    { name = "pandas" },
     { name = "protobuf" },
     { name = "python-frontmatter" },
     { name = "pyyaml" },
     { name = "rich" },
-    { name = "scikit-learn" },
-    { name = "scipy" },
     { name = "sentence-transformers" },
     { name = "sentencepiece" },
     { name = "torch" },
     { name = "transformers" },
     { name = "typer" },
+    { name = "unidic-lite" },
     { name = "xdg-base-dirs" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "datasets" },
     { name = "mypy" },
+    { name = "pandas" },
     { name = "pre-commit" },
     { name = "psutil" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "chardet", specifier = ">=5.2.0" },
     { name = "charset-normalizer", specifier = ">=3.3.2" },
-    { name = "datasets", specifier = ">=2.0.0" },
     { name = "duckdb", specifier = ">=0.9.0" },
+    { name = "fugashi", specifier = ">=1.3.0" },
     { name = "gitignore-parser", specifier = ">=0.1.11" },
+    { name = "jaconv", specifier = ">=0.3.4" },
     { name = "langdetect", specifier = ">=1.0.9" },
     { name = "mcp", extras = ["cli"], specifier = ">=0.3.0" },
     { name = "numpy", specifier = ">=1.21.0" },
     { name = "onnx", specifier = ">=1.18.0" },
     { name = "onnxruntime", specifier = ">=1.22.0" },
     { name = "optimum", specifier = ">=1.25.3" },
-    { name = "pandas", specifier = ">=1.3.0" },
     { name = "protobuf", specifier = ">=4.25.1" },
     { name = "python-frontmatter", specifier = ">=1.1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.4.2" },
-    { name = "scikit-learn", specifier = ">=1.0.0" },
-    { name = "scipy", specifier = ">=1.7.0" },
     { name = "sentence-transformers" },
     { name = "sentencepiece", specifier = ">=0.2.0" },
     { name = "torch" },
     { name = "transformers", specifier = ">=4.48.0" },
     { name = "typer", specifier = ">=0.9.0" },
+    { name = "unidic-lite", specifier = ">=1.0.8" },
     { name = "xdg-base-dirs", specifier = ">=6.0.2" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "datasets", specifier = ">=2.0.0" },
     { name = "mypy", specifier = ">=1.15.0" },
+    { name = "pandas", specifier = ">=1.3.0" },
     { name = "pre-commit", specifier = ">=4.2.0" },
     { name = "psutil", specifier = ">=5.9.0" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "pytest-cov", specifier = ">=6.1.1" },
     { name = "ruff", specifier = ">=0.11.10" },
+    { name = "scikit-learn", specifier = ">=1.0.0" },
+    { name = "scipy", specifier = ">=1.7.0" },
 ]
 
 [[package]]
@@ -1734,6 +1761,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/95/32/1a225d6164441be76
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5c/23/c7abc0ca0a1526a0774eca151daeb8de62ec457e77262b66b359c3c7679e/tzdata-2025.2-py2.py3-none-any.whl", hash = "sha256:1a403fada01ff9221ca8044d701868fa132215d84beb92242d9acd2147f667a8", size = 347839, upload_time = "2025-03-23T13:54:41.845Z" },
 ]
+
+[[package]]
+name = "unidic-lite"
+version = "1.0.8"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/55/2b/8cf7514cb57d028abcef625afa847d60ff1ffbf0049c36b78faa7c35046f/unidic-lite-1.0.8.tar.gz", hash = "sha256:db9d4572d9fdd4d00a97949d4b0741ec480ee05a7e7e2e32f547500dae27b245", size = 47356746, upload_time = "2021-01-25T06:07:54.719Z" }
 
 [[package]]
 name = "urllib3"

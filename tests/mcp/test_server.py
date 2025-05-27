@@ -51,7 +51,7 @@ def test_search(mock_get_indexer, mock_indexer):
     
     # Verify the indexer was called with correct parameters
     mock_get_indexer.assert_called_once_with(None)
-    mock_indexer.search.assert_called_once_with("test query", limit=5, language=None)
+    mock_indexer.search.assert_called_once_with("test query", limit=5, mode="hybrid", language=None)
     
     # Check the response format
     assert "results" in result
@@ -79,7 +79,7 @@ def test_search_with_language_filter(mock_get_indexer, mock_indexer):
     
     # Verify the indexer was called with correct parameters
     mock_get_indexer.assert_called_once_with(None)
-    mock_indexer.search.assert_called_once_with("test query", limit=5, language="ja")
+    mock_indexer.search.assert_called_once_with("test query", limit=5, mode="hybrid", language="ja")
 
 
 @patch("oboyu.mcp.server.get_indexer")
