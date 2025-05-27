@@ -134,40 +134,41 @@ class BM25Indexer:
         if hasattr(self.tokenizer, 'filtered_by_stopwords'):
             self.tokenizer.filtered_by_stopwords = defaultdict(int)
         
-        # Debug: Analyze inverted index structure
-        logger.info("=== BM25 Inverted Index Analysis ===")
-        logger.info(f"Total unique terms (vocabulary size): {len(self.inverted_index)}")
-        logger.info(f"Total chunks indexed: {self.document_count}")
-        
-        # Calculate distribution of documents per term
-        for term, postings in self.inverted_index.items():
-            num_docs = len(postings)
-            term_doc_counts[num_docs] += 1
-        
-        # Log distribution
-        logger.info("\nDistribution of term frequencies:")
-        logger.info("Docs per term | Number of terms")
-        logger.info("-" * 30)
-        for num_docs in sorted(term_doc_counts.keys()):
-            logger.info(f"{num_docs:12} | {term_doc_counts[num_docs]:15}")
-        
-        # Calculate average documents per term
-        total_postings = sum(len(postings) for postings in self.inverted_index.values())
-        avg_docs_per_term = total_postings / len(self.inverted_index) if self.inverted_index else 0
-        logger.info(f"\nAverage documents per term: {avg_docs_per_term:.2f}")
-        
-        # Show top terms by document frequency
-        top_terms = sorted(
-            self.document_frequencies.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )[:20]
-        
-        logger.info("\nTop 20 terms by document frequency:")
-        logger.info("Term | Doc Frequency")
-        logger.info("-" * 30)
-        for term, doc_freq in top_terms:
-            logger.info(f"{term:20} | {doc_freq}")
+        # Debug: Analyze inverted index structure (only in debug mode)
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("=== BM25 Inverted Index Analysis ===")
+            logger.debug(f"Total unique terms (vocabulary size): {len(self.inverted_index)}")
+            logger.debug(f"Total chunks indexed: {self.document_count}")
+            
+            # Calculate distribution of documents per term
+            for term, postings in self.inverted_index.items():
+                num_docs = len(postings)
+                term_doc_counts[num_docs] += 1
+            
+            # Log distribution
+            logger.debug("\nDistribution of term frequencies:")
+            logger.debug("Docs per term | Number of terms")
+            logger.debug("-" * 30)
+            for num_docs in sorted(term_doc_counts.keys()):
+                logger.debug(f"{num_docs:12} | {term_doc_counts[num_docs]:15}")
+            
+            # Calculate average documents per term
+            total_postings = sum(len(postings) for postings in self.inverted_index.values())
+            avg_docs_per_term = total_postings / len(self.inverted_index) if self.inverted_index else 0
+            logger.debug(f"\nAverage documents per term: {avg_docs_per_term:.2f}")
+            
+            # Show top terms by document frequency
+            top_terms = sorted(
+                self.document_frequencies.items(),
+                key=lambda x: x[1],
+                reverse=True
+            )[:20]
+            
+            logger.debug("\nTop 20 terms by document frequency:")
+            logger.debug("Term | Doc Frequency")
+            logger.debug("-" * 30)
+            for term, doc_freq in top_terms:
+                logger.debug(f"{term:20} | {doc_freq}")
         
         return stats
     
