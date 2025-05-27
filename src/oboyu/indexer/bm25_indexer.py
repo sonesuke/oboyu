@@ -73,7 +73,6 @@ class BM25Indexer:
             'min_token_length': min_token_length,
             'use_stopwords': use_stopwords
         }
-        
         # Index structures
         self.inverted_index: Dict[str, List[Tuple[str, int, List[int]]]] = defaultdict(list)
         self.document_frequencies: Dict[str, int] = defaultdict(int)
