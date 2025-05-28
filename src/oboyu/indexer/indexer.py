@@ -378,10 +378,14 @@ class Indexer:
         """
         # Report starting BM25 indexing
         if progress_callback:
-            progress_callback("bm25_indexing", 0, 1)
+            progress_callback("bm25_indexing", 0, 3)
         
         # Index chunks for BM25
         self.bm25_indexer.index_chunks(chunks)
+        
+        # Report BM25 chunks indexed
+        if progress_callback:
+            progress_callback("bm25_indexing", 1, 3)
         
         # Prepare data for database storage with minimum frequency filtering
         vocabulary = {}
@@ -425,6 +429,10 @@ class Indexer:
             if term not in filtered_terms:
                 filtered_inverted_index[term] = postings
         
+        # Report BM25 data prepared
+        if progress_callback:
+            progress_callback("bm25_indexing", 2, 3)
+        
         # Store BM25 index in database
         self.database.store_bm25_index(
             vocabulary=vocabulary,
@@ -435,7 +443,7 @@ class Indexer:
         
         # Report BM25 indexing complete
         if progress_callback:
-            progress_callback("bm25_indexing", 1, 1)
+            progress_callback("bm25_indexing", 3, 3)
 
     def _process_document(self, doc: CrawlerResult) -> List[Chunk]:
         """Process a single document into chunks.
