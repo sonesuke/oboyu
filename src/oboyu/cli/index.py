@@ -508,7 +508,7 @@ def index(
             # Start directory scanning operation
             scan_op_id = logger.start_operation(
                 f"Scanning directory {directory}...",
-                expandable=True
+                expandable=False
             )
             
             # Track current operations for updates

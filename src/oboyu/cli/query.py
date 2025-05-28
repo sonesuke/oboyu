@@ -220,7 +220,7 @@ def query(
         # Main search operation
         main_op = logger.start_operation(
             f"Search: \"{query}\"",
-            expandable=True,
+            expandable=False,
             details=f"Mode: {mode}\nTop K: {top_k}"
         )
         
