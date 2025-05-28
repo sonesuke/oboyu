@@ -539,9 +539,12 @@ class Indexer:
             db_results = self.database.search_bm25(query_terms, initial_limit, language)
         elif mode == "hybrid":
             # Hybrid search - combine vector and BM25
+            # Reduce search results to avoid excessive reranking
+            hybrid_multiplier = 1.5 if should_rerank else 2  # Less results when reranking
+            
             # Vector search
             query_embedding = self.embedding_generator.generate_query_embedding(query)
-            vector_results = self.database.search(query_embedding, initial_limit * 2, language)
+            vector_results = self.database.search(query_embedding, int(initial_limit * hybrid_multiplier), language)
             
             # BM25 search
             tokenizer = create_tokenizer(
@@ -549,7 +552,7 @@ class Indexer:
                 min_token_length=self.config.bm25_min_token_length,
             )
             query_terms = tokenizer.tokenize(query)
-            bm25_results = self.database.search_bm25(query_terms, initial_limit * 2, language)
+            bm25_results = self.database.search_bm25(query_terms, int(initial_limit * hybrid_multiplier), language)
             
             # Combine results
             db_results = self._combine_search_results(
@@ -613,12 +616,19 @@ class Indexer:
         # Apply reranking if enabled
         if should_rerank and self.reranker is not None:
             # Rerank the results
+            import logging
+            import time
+            logger = logging.getLogger(__name__)
+            rerank_start = time.time()
+            logger.info(f"Starting reranking of {len(search_results)} results...")
             search_results = self.reranker.rerank(
                 query=query,
                 results=search_results,
                 top_k=limit,
                 threshold=self.config.reranker_threshold,
             )
+            rerank_time = time.time() - rerank_start
+            logger.info(f"Reranking completed in {rerank_time:.2f}s, returned {len(search_results)} results")
         else:
             # If not reranking, just limit the results
             search_results = search_results[:limit]
