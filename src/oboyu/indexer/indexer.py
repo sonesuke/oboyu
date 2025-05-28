@@ -123,7 +123,7 @@ class Indexer:
             },
             use_stopwords=True,  # Enable stopword filtering
             min_doc_frequency=2,  # Filter terms appearing in less than 2 documents
-            store_positions=False,  # Disable position storage for BM25
+            store_positions=True,  # Enable position storage for phrase search
         )
         
         # Initialize reranker if enabled
