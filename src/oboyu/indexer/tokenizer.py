@@ -155,6 +155,11 @@ class JapaneseTokenizer:
         if not text:
             return []
         
+        # Skip very short texts
+        text = text.strip()
+        if len(text) < self.min_token_length:
+            return []
+        
         # Normalize text if enabled
         if self.normalize_text:
             text = self._normalize_japanese_text(text)

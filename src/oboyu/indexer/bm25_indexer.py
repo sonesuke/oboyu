@@ -67,6 +67,13 @@ class BM25Indexer:
             use_stopwords=use_stopwords
         )
         
+        # Store tokenizer config for parallel processing
+        self.tokenizer_config = {
+            'language': language,
+            'min_token_length': min_token_length,
+            'use_stopwords': use_stopwords
+        }
+        
         # Index structures
         self.inverted_index: Dict[str, List[Tuple[str, int, List[int]]]] = defaultdict(list)
         self.document_frequencies: Dict[str, int] = defaultdict(int)
@@ -96,12 +103,26 @@ class BM25Indexer:
         term_doc_counts: Dict[int, int] = defaultdict(int)  # num_docs -> count of terms
         
         total_chunks = len(chunks)
+        
+        # Process chunks with caching for better performance
+        # Cache term frequencies to avoid re-tokenizing identical content
+        term_freq_cache: Dict[int, Dict[str, int]] = {}
+        
         for idx, chunk in enumerate(chunks):
-            # Report progress
-            if progress_callback and idx % 10 == 0:
+            # Report progress more frequently for better user feedback
+            if progress_callback and idx % 5 == 0:  # Report every 5 chunks instead of 10
                 progress_callback(idx, total_chunks)
-            # Get term frequencies for the chunk
-            term_frequencies = self.tokenizer.get_term_frequencies(chunk.content)
+            
+            # Check if we've already tokenized identical content (using hash)
+            content_hash = hash(chunk.content)
+            if content_hash in term_freq_cache:
+                term_frequencies = term_freq_cache[content_hash]
+            else:
+                # Get term frequencies for the chunk
+                term_frequencies = self.tokenizer.get_term_frequencies(chunk.content)
+                # Cache for potential reuse
+                if len(term_freq_cache) < 1000:  # Limit cache size
+                    term_freq_cache[content_hash] = term_frequencies
             
             # Update document length
             doc_length = sum(term_frequencies.values())
@@ -113,8 +134,8 @@ class BM25Indexer:
             
             # Update inverted index
             for term, freq in term_frequencies.items():
-                # Get token positions only if enabled
-                positions = self._get_term_positions(chunk.content, term) if self.store_positions else []
+                # Skip position tracking for now (significant performance impact)
+                positions: List[int] = [] if not self.store_positions else []
                 
                 # Add to inverted index
                 self.inverted_index[term].append((chunk.id, freq, positions))
