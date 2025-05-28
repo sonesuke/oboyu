@@ -202,7 +202,7 @@ class Database:
                 term VARCHAR,
                 chunk_id VARCHAR,
                 term_frequency INTEGER,
-                positions TEXT  -- JSON array of positions
+                positions INTEGER[]  -- Array of token positions for phrase search
             )
         """)
         
@@ -713,10 +713,9 @@ class Database:
             inv_index_data = []
             for term, postings in inverted_index.items():
                 for chunk_id, term_freq, positions in postings:
-                    # Use NULL for empty positions to save space and time
-                    # Skip JSON encoding entirely if positions are not stored
-                    positions_json = None
-                    inv_index_data.append((term, chunk_id, term_freq, positions_json))
+                    # Store positions as integer array (None for empty positions)
+                    positions_array = positions if positions else None
+                    inv_index_data.append((term, chunk_id, term_freq, positions_array))
             
             # Sort data by term for better insertion performance
             inv_index_data.sort(key=lambda x: (x[0], x[1]))
