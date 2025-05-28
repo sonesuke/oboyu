@@ -7,7 +7,7 @@ including inverted index construction and statistical information management.
 import logging
 import math
 from collections import defaultdict
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
 from oboyu.indexer.processor import Chunk
 from oboyu.indexer.tokenizer import create_tokenizer
@@ -75,11 +75,12 @@ class BM25Indexer:
         self.document_count = 0
         self.total_document_length = 0
         
-    def index_chunks(self, chunks: List[Chunk]) -> Dict[str, int]:
+    def index_chunks(self, chunks: List[Chunk], progress_callback: Optional[Callable[[int, int], None]] = None) -> Dict[str, int]:
         """Index a batch of chunks for BM25 search.
         
         Args:
             chunks: List of chunks to index
+            progress_callback: Optional callback for progress updates
             
         Returns:
             Statistics about the indexing operation
@@ -94,7 +95,11 @@ class BM25Indexer:
         # Debug: Track term distribution
         term_doc_counts: Dict[int, int] = defaultdict(int)  # num_docs -> count of terms
         
-        for chunk in chunks:
+        total_chunks = len(chunks)
+        for idx, chunk in enumerate(chunks):
+            # Report progress
+            if progress_callback and idx % 10 == 0:
+                progress_callback(idx, total_chunks)
             # Get term frequencies for the chunk
             term_frequencies = self.tokenizer.get_term_frequencies(chunk.content)
             
@@ -128,6 +133,10 @@ class BM25Indexer:
             self.document_count += 1
             stats["chunks_indexed"] += 1
         
+        # Report final progress
+        if progress_callback:
+            progress_callback(total_chunks, total_chunks)
+            
         stats["unique_terms"] = len(self.inverted_index)
         
         # Track filtered terms

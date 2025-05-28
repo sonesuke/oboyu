@@ -332,9 +332,11 @@ def _handle_bm25_stage(logger: HierarchicalLogger, current_ops: dict[str, Option
         bm25_op = current_ops.get("bm25")
         if bm25_op:
             progress_text = {
-                1: "Tokenizing documents...",
-                2: "Preparing index data..."
-            }.get(current, f"Building BM25 index... {current}/{total}")
+                1: "Tokenizing documents... (this may take a while for Japanese text)",
+                2: "Building vocabulary...",
+                3: "Filtering low-frequency terms...",
+                4: "Storing index in database..."
+            }.get(current, f"Building BM25 index... step {current}/{total}")
             logger.update_operation(bm25_op, progress_text)
     elif current == total:
         # Complete BM25 indexing
@@ -343,6 +345,24 @@ def _handle_bm25_stage(logger: HierarchicalLogger, current_ops: dict[str, Option
             logger.complete_operation(bm25_op)
             logger.update_operation(bm25_op, "Building BM25 search index... ✓ Done")
             current_ops["bm25"] = None
+
+
+def _handle_bm25_tokenizing_stage(logger: HierarchicalLogger, current_ops: dict[str, Optional[str]], current: int, total: int) -> None:
+    """Handle BM25 tokenizing progress."""
+    bm25_op = current_ops.get("bm25_tokenize")
+    if not bm25_op and current == 0:
+        # Start tokenizing sub-operation
+        bm25_op = logger.start_operation(f"Tokenizing chunks... 0/{total}")
+        current_ops["bm25_tokenize"] = bm25_op
+    elif bm25_op:
+        # Update progress
+        logger.update_operation(bm25_op, f"Tokenizing chunks... {current}/{total}")
+        
+        # Complete on last chunk
+        if current == total:
+            logger.complete_operation(bm25_op)
+            logger.update_operation(bm25_op, f"Tokenizing chunks... ✓ {total} chunks processed")
+            current_ops["bm25_tokenize"] = None
 
 
 def _create_progress_callback(logger: HierarchicalLogger, scan_op_id: str, current_ops: dict[str, Optional[str]]) -> Callable[[str, int, int], None]:
@@ -364,6 +384,8 @@ def _create_progress_callback(logger: HierarchicalLogger, scan_op_id: str, curre
                 _handle_storing_stage(logger, current_ops, last_stage)
         elif stage == "bm25_indexing":
             _handle_bm25_stage(logger, current_ops, current, total)
+        elif stage == "bm25_tokenizing":
+            _handle_bm25_tokenizing_stage(logger, current_ops, current, total)
         
         last_stage = stage
     
@@ -496,7 +518,8 @@ def index(
                 "batch": None,
                 "read": None,
                 "store": None,
-                "bm25": None
+                "bm25": None,
+                "bm25_tokenize": None
             }
             
             # Create progress callback using helper function

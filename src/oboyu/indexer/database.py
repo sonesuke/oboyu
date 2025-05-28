@@ -692,6 +692,7 @@ class Database:
             raise ValueError("Database connection not initialized. Call setup() first.")
         
         logger.info(f"Storing BM25 index with batch size: {batch_size}")
+        logger.info(f"Vocabulary size: {len(vocabulary)}, Inverted index entries: {sum(len(postings) for postings in inverted_index.values())}")
         
         # Start a transaction for bulk inserts
         self.conn.begin()

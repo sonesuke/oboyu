@@ -378,14 +378,20 @@ class Indexer:
         """
         # Report starting BM25 indexing
         if progress_callback:
-            progress_callback("bm25_indexing", 0, 3)
+            progress_callback("bm25_indexing", 0, 5)
         
-        # Index chunks for BM25
-        self.bm25_indexer.index_chunks(chunks)
+        # Define BM25 progress callback
+        def bm25_progress(current: int, total: int) -> None:
+            if progress_callback:
+                # Show tokenization progress as step 1
+                progress_callback("bm25_tokenizing", current, total)
+        
+        # Index chunks for BM25 with progress tracking
+        self.bm25_indexer.index_chunks(chunks, progress_callback=bm25_progress)
         
         # Report BM25 chunks indexed
         if progress_callback:
-            progress_callback("bm25_indexing", 1, 3)
+            progress_callback("bm25_indexing", 1, 5)
         
         # Prepare data for database storage with minimum frequency filtering
         vocabulary = {}
@@ -429,9 +435,17 @@ class Indexer:
             if term not in filtered_terms:
                 filtered_inverted_index[term] = postings
         
-        # Report BM25 data prepared
+        # Report vocabulary building
         if progress_callback:
-            progress_callback("bm25_indexing", 2, 3)
+            progress_callback("bm25_indexing", 2, 5)
+            
+        # Report filtering low-frequency terms
+        if progress_callback:
+            progress_callback("bm25_indexing", 3, 5)
+            
+        # Report preparing to store
+        if progress_callback:
+            progress_callback("bm25_indexing", 4, 5)
         
         # Store BM25 index in database
         self.database.store_bm25_index(
@@ -443,7 +457,7 @@ class Indexer:
         
         # Report BM25 indexing complete
         if progress_callback:
-            progress_callback("bm25_indexing", 3, 3)
+            progress_callback("bm25_indexing", 5, 5)
 
     def _process_document(self, doc: CrawlerResult) -> List[Chunk]:
         """Process a single document into chunks.
