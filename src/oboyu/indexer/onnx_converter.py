@@ -118,7 +118,7 @@ class ONNXEmbeddingModel:
         # Set up ONNX runtime options for optimization
         sess_options = SessionOptions()
         sess_options.graph_optimization_level = GraphOptimizationLevel.ORT_ENABLE_ALL
-        sess_options.intra_op_num_threads = 4  # Adjust based on CPU cores
+        sess_options.intra_op_num_threads = 4  # Optimal for most CPU architectures
 
         # Load ONNX model
         self.session = InferenceSession(str(self.model_path), sess_options)
@@ -444,7 +444,7 @@ class ONNXCrossEncoderModel:
         # Set up ONNX runtime options for optimization
         sess_options = SessionOptions()
         sess_options.graph_optimization_level = GraphOptimizationLevel.ORT_ENABLE_ALL
-        sess_options.intra_op_num_threads = 4  # Adjust based on CPU cores
+        sess_options.intra_op_num_threads = 4  # Optimal for most CPU architectures
         
         # Load ONNX model
         self.session = InferenceSession(str(self.model_path), sess_options)

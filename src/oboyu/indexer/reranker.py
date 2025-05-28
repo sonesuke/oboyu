@@ -243,7 +243,12 @@ class ONNXCrossEncoderReranker(BaseReranker):
         documents = [result.content for result in results]
         
         # Score using ONNX model
+        import time
+        predict_start = time.time()
+        logger.info(f"ONNX predict starting with {len(documents)} documents, batch_size={self.batch_size}")
         scores = self.model.predict(queries, documents, batch_size=self.batch_size)
+        predict_time = time.time() - predict_start
+        logger.info(f"ONNX predict completed in {predict_time:.2f}s")
         
         # Create reranked results
         reranked_results: List[RerankedResult] = []

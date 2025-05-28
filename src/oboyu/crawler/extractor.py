@@ -112,9 +112,18 @@ def _extract_text_file(file_path: Path) -> Tuple[str, Dict[str, Any]]:
         Tuple of (content, metadata)
 
     """
-    # First read the file as binary
-    with open(file_path, 'rb') as f:
-        raw_data = f.read()  # Read the entire file
+    # Read file with size limit for efficiency
+    max_size = 10 * 1024 * 1024  # 10MB limit per file
+    file_size = file_path.stat().st_size
+    
+    if file_size > max_size:
+        # For large files, read only the beginning
+        with open(file_path, 'rb') as f:
+            raw_data = f.read(max_size)
+    else:
+        # First read the file as binary
+        with open(file_path, 'rb') as f:
+            raw_data = f.read()  # Read the entire file
 
     # Decode the content
     content = _decode_content(raw_data)
@@ -135,8 +144,20 @@ def _decode_content(raw_data: bytes) -> str:
         Decoded string
 
     """
-    # Try charset-normalizer first (modern and very accurate)
-    charset_results = charset_normalizer.from_bytes(raw_data).best()
+    # Try common encodings first (much faster for Japanese content)
+    common_encodings = ['utf-8', 'shift_jis', 'euc-jp', 'iso-2022-jp']
+    for encoding in common_encodings:
+        try:
+            return raw_data.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    
+    # For small files, use only a sample for detection (faster)
+    sample_size = min(len(raw_data), 32768)  # 32KB sample for faster detection
+    sample_data = raw_data[:sample_size] if len(raw_data) > sample_size else raw_data
+    
+    # Try charset-normalizer as fallback (more accurate but slower)
+    charset_results = charset_normalizer.from_bytes(sample_data).best()
     if charset_results:
         encoding_name = charset_results.encoding
         if encoding_name:
@@ -147,13 +168,13 @@ def _decode_content(raw_data: bytes) -> str:
 
     # If charset-normalizer didn't work well, try chardet
     chardet_result = chardet.detect(raw_data)
-    encoding = chardet_result.get('encoding', 'utf-8')
+    chardet_encoding: str = chardet_result.get('encoding', 'utf-8') or 'utf-8'
     confidence = chardet_result.get('confidence', 0.0)
 
     # If encoding was detected with high confidence, use it
-    if encoding and confidence > 0.7:
+    if chardet_encoding and confidence > 0.7:
         try:
-            return raw_data.decode(encoding)
+            return raw_data.decode(chardet_encoding)
         except UnicodeDecodeError:
             pass  # Fall through to other methods
 

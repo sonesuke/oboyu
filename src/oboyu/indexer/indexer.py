@@ -114,12 +114,16 @@ class Indexer:
         # Set up the database schema
         self.database.setup()
         
-        # Initialize BM25 indexer
+        # Initialize BM25 indexer with optimizations
         self.bm25_indexer = bm25_indexer or BM25Indexer(
             k1=self.config.bm25_k1,
             b=self.config.bm25_b,
-            min_token_length=self.config.bm25_min_token_length,
-            use_japanese_tokenizer=self.config.use_japanese_tokenizer,
+            tokenizer_kwargs={
+                "min_token_length": self.config.bm25_min_token_length,
+            },
+            use_stopwords=True,  # Enable stopword filtering
+            min_doc_frequency=2,  # Filter terms appearing in less than 2 documents
+            store_positions=True,  # Enable position storage for phrase search
         )
         
         # Initialize reranker if enabled
@@ -161,10 +165,12 @@ class Indexer:
         if not new_docs:
             return 0
 
+
         # Process documents into chunks
         all_chunks = self._process_documents_with_progress(new_docs, progress_callback)
         if not all_chunks:
             return 0
+
 
         # Store chunks and report progress
         self._store_chunks_with_progress(all_chunks, progress_callback)
@@ -372,25 +378,47 @@ class Indexer:
         """
         # Report starting BM25 indexing
         if progress_callback:
-            progress_callback("bm25_indexing", 0, 1)
+            progress_callback("bm25_indexing", 0, 5)
         
-        # Index chunks for BM25
-        self.bm25_indexer.index_chunks(chunks)
+        # Define BM25 progress callback
+        def bm25_progress(current: int, total: int) -> None:
+            if progress_callback:
+                # Show tokenization progress as step 1
+                progress_callback("bm25_tokenizing", current, total)
         
-        # Prepare data for database storage
+        # Index chunks for BM25 with progress tracking
+        self.bm25_indexer.index_chunks(chunks, progress_callback=bm25_progress)
+        
+        # Report BM25 chunks indexed
+        if progress_callback:
+            progress_callback("bm25_indexing", 1, 5)
+        
+        # Prepare data for database storage with minimum frequency filtering
         vocabulary = {}
+        filtered_terms = set()
+        min_doc_freq = self.bm25_indexer.min_doc_frequency
+        
         for term, doc_freq in self.bm25_indexer.document_frequencies.items():
-            coll_freq = self.bm25_indexer.collection_frequencies[term]
-            vocabulary[term] = (doc_freq, coll_freq)
+            if doc_freq >= min_doc_freq:
+                coll_freq = self.bm25_indexer.collection_frequencies[term]
+                vocabulary[term] = (doc_freq, coll_freq)
+            else:
+                filtered_terms.add(term)
         
         # Prepare document statistics
         document_stats = {}
+        # First, build a reverse index for efficient lookup
+        doc_unique_terms = {}
+        for term, postings in self.bm25_indexer.inverted_index.items():
+            for chunk_id, _, _ in postings:
+                if chunk_id not in doc_unique_terms:
+                    doc_unique_terms[chunk_id] = 0
+                doc_unique_terms[chunk_id] += 1
+        
         for chunk_id, doc_length in self.bm25_indexer.document_lengths.items():
             # Calculate statistics
             total_terms = doc_length
-            # Get unique terms for this document from inverted index
-            unique_terms = sum(1 for term, postings in self.bm25_indexer.inverted_index.items()
-                             if any(posting[0] == chunk_id for posting in postings))
+            unique_terms = doc_unique_terms.get(chunk_id, 0)
             avg_term_freq = total_terms / max(unique_terms, 1)
             document_stats[chunk_id] = (total_terms, unique_terms, avg_term_freq)
         
@@ -401,17 +429,35 @@ class Indexer:
             "avg_document_length": self.bm25_indexer.total_document_length / max(self.bm25_indexer.document_count, 1),
         }
         
+        # Filter inverted index to exclude low-frequency terms
+        filtered_inverted_index = {}
+        for term, postings in self.bm25_indexer.inverted_index.items():
+            if term not in filtered_terms:
+                filtered_inverted_index[term] = postings
+        
+        # Report vocabulary building
+        if progress_callback:
+            progress_callback("bm25_indexing", 2, 5)
+            
+        # Report filtering low-frequency terms
+        if progress_callback:
+            progress_callback("bm25_indexing", 3, 5)
+            
+        # Report preparing to store
+        if progress_callback:
+            progress_callback("bm25_indexing", 4, 5)
+        
         # Store BM25 index in database
         self.database.store_bm25_index(
             vocabulary=vocabulary,
-            inverted_index=self.bm25_indexer.inverted_index,
+            inverted_index=filtered_inverted_index,
             document_stats=document_stats,
             collection_stats=collection_stats,
         )
         
         # Report BM25 indexing complete
         if progress_callback:
-            progress_callback("bm25_indexing", 1, 1)
+            progress_callback("bm25_indexing", 5, 5)
 
     def _process_document(self, doc: CrawlerResult) -> List[Chunk]:
         """Process a single document into chunks.
@@ -493,9 +539,12 @@ class Indexer:
             db_results = self.database.search_bm25(query_terms, initial_limit, language)
         elif mode == "hybrid":
             # Hybrid search - combine vector and BM25
+            # Reduce search results to avoid excessive reranking
+            hybrid_multiplier = 1.5 if should_rerank else 2  # Less results when reranking
+            
             # Vector search
             query_embedding = self.embedding_generator.generate_query_embedding(query)
-            vector_results = self.database.search(query_embedding, initial_limit * 2, language)
+            vector_results = self.database.search(query_embedding, int(initial_limit * hybrid_multiplier), language)
             
             # BM25 search
             tokenizer = create_tokenizer(
@@ -503,7 +552,7 @@ class Indexer:
                 min_token_length=self.config.bm25_min_token_length,
             )
             query_terms = tokenizer.tokenize(query)
-            bm25_results = self.database.search_bm25(query_terms, initial_limit * 2, language)
+            bm25_results = self.database.search_bm25(query_terms, int(initial_limit * hybrid_multiplier), language)
             
             # Combine results
             db_results = self._combine_search_results(
@@ -567,12 +616,19 @@ class Indexer:
         # Apply reranking if enabled
         if should_rerank and self.reranker is not None:
             # Rerank the results
+            import logging
+            import time
+            logger = logging.getLogger(__name__)
+            rerank_start = time.time()
+            logger.info(f"Starting reranking of {len(search_results)} results...")
             search_results = self.reranker.rerank(
                 query=query,
                 results=search_results,
                 top_k=limit,
                 threshold=self.config.reranker_threshold,
             )
+            rerank_time = time.time() - rerank_start
+            logger.info(f"Reranking completed in {rerank_time:.2f}s, returned {len(search_results)} results")
         else:
             # If not reranking, just limit the results
             search_results = search_results[:limit]

@@ -237,6 +237,134 @@ def _create_crawler_config(
     return dict(crawler_config_dict)
 
 
+def _handle_crawling_stage(logger: HierarchicalLogger, scan_op_id: str, current_ops: dict[str, Optional[str]], total: int, files_found: int) -> int:
+    """Handle crawling stage progress."""
+    if total > 0 and files_found == 0:
+        files_found = total
+        logger.update_operation(
+            scan_op_id,
+            "Scanning directory...",
+            details=f"Found {total} files"
+        )
+        logger.complete_operation(scan_op_id)
+        logger.update_operation(
+            scan_op_id,
+            f"Found {total} files"
+        )
+        # Start processing documents operation
+        current_ops["process"] = logger.start_operation("Processing documents...")
+    return files_found
+
+
+def _handle_processing_stage(logger: HierarchicalLogger, current_ops: dict[str, Optional[str]], current: int, total: int) -> None:
+    """Handle processing stage progress."""
+    if current <= total:
+        if not current_ops["read"]:
+            current_ops["read"] = logger.start_operation(f"Reading files... {current}/{total}")
+        else:
+            logger.update_operation(
+                current_ops["read"],
+                f"Reading files... {current}/{total}"
+            )
+        
+        # Mark complete on last file
+        if current == total:
+            if current_ops["read"]:
+                logger.complete_operation(current_ops["read"])
+                logger.update_operation(
+                    current_ops["read"],
+                    f"Reading files... ✓ {total} files processed"
+                )
+                current_ops["read"] = None
+
+
+def _handle_embedding_stage(logger: HierarchicalLogger, current_ops: dict[str, Optional[str]], current: int, total: int, last_stage: Optional[str]) -> None:
+    """Handle embedding stage progress."""
+    # Start embedding generation on first batch
+    if current == 1 and last_stage != "embedding":
+        if current_ops["process"]:
+            logger.complete_operation(current_ops["process"])
+            current_ops["process"] = None
+        current_ops["embed"] = logger.start_operation("Generating embeddings...")
+    
+    # Update batch progress
+    batch_op_id = current_ops.get("batch")
+    if not batch_op_id:
+        batch_op_id = logger.start_operation(f"Processing batch {current}/{total}...")
+        current_ops["batch"] = batch_op_id
+    else:
+        logger.update_operation(batch_op_id, f"Processing batch {current}/{total}...")
+    
+    # Mark complete on last batch
+    if current == total:
+        if batch_op_id:
+            logger.complete_operation(batch_op_id)
+            logger.update_operation(batch_op_id, f"Processing batch {total}/{total}... ✓ Done")
+            current_ops["batch"] = None
+
+
+def _handle_storing_stage(logger: HierarchicalLogger, current_ops: dict[str, Optional[str]], last_stage: Optional[str]) -> None:
+    """Handle storing stage progress."""
+    if last_stage not in ["storing", "storing_embeddings"]:
+        # Start storing operation on first chunk
+        if current_ops.get("embed"):
+            logger.complete_operation(current_ops["embed"])
+            current_ops["embed"] = None
+        store_op_id = logger.start_operation("Storing in database...")
+        current_ops["store"] = store_op_id
+
+
+def _handle_bm25_stage(logger: HierarchicalLogger, current_ops: dict[str, Optional[str]], current: int, total: int) -> None:
+    """Handle BM25 indexing stage progress."""
+    if current == 0:
+        # Complete embedding operation if active
+        if current_ops.get("embed"):
+            logger.complete_operation(current_ops["embed"])
+            current_ops["embed"] = None
+        # Complete storing operation if active
+        if current_ops.get("store"):
+            logger.complete_operation(current_ops["store"])
+            current_ops["store"] = None
+        # Start BM25 indexing operation
+        current_ops["bm25"] = logger.start_operation("Building BM25 search index...")
+    elif current < total:
+        # Update progress
+        bm25_op = current_ops.get("bm25")
+        if bm25_op:
+            progress_text = {
+                1: "Tokenizing documents... (this may take a while for Japanese text)",
+                2: "Building vocabulary...",
+                3: "Filtering low-frequency terms...",
+                4: "Storing index in database..."
+            }.get(current, f"Building BM25 index... step {current}/{total}")
+            logger.update_operation(bm25_op, progress_text)
+    elif current == total:
+        # Complete BM25 indexing
+        bm25_op = current_ops.get("bm25")
+        if bm25_op:
+            logger.complete_operation(bm25_op)
+            logger.update_operation(bm25_op, "Building BM25 search index... ✓ Done")
+            current_ops["bm25"] = None
+
+
+def _handle_bm25_tokenizing_stage(logger: HierarchicalLogger, current_ops: dict[str, Optional[str]], current: int, total: int) -> None:
+    """Handle BM25 tokenizing progress."""
+    bm25_op = current_ops.get("bm25_tokenize")
+    if not bm25_op and current == 0:
+        # Start tokenizing sub-operation
+        bm25_op = logger.start_operation(f"Tokenizing chunks... 0/{total}")
+        current_ops["bm25_tokenize"] = bm25_op
+    elif bm25_op:
+        # Update progress
+        logger.update_operation(bm25_op, f"Tokenizing chunks... {current}/{total}")
+        
+        # Complete on last chunk
+        if current == total:
+            logger.complete_operation(bm25_op)
+            logger.update_operation(bm25_op, f"Tokenizing chunks... ✓ {total} chunks processed")
+            current_ops["bm25_tokenize"] = None
+
+
 def _create_progress_callback(logger: HierarchicalLogger, scan_op_id: str, current_ops: dict[str, Optional[str]]) -> Callable[[str, int, int], None]:
     """Create a progress callback for the indexer."""
     files_found = 0
@@ -246,75 +374,18 @@ def _create_progress_callback(logger: HierarchicalLogger, scan_op_id: str, curre
         nonlocal files_found, last_stage
         
         if stage == "crawling":
-            if total > 0 and files_found == 0:
-                files_found = total
-                logger.update_operation(
-                    scan_op_id,
-                    "Scanning directory...",
-                    details=f"Found {total} files"
-                )
-                logger.complete_operation(scan_op_id)
-                logger.update_operation(
-                    scan_op_id,
-                    f"Found {total} files (ctrl+r to expand)"
-                )
-                
-                # Start processing documents operation
-                current_ops["process"] = logger.start_operation("Processing documents...")
-        
+            files_found = _handle_crawling_stage(logger, scan_op_id, current_ops, total, files_found)
         elif stage == "processing":
-            # Update single line for file processing progress
-            if current <= total:
-                if not current_ops["read"]:
-                    current_ops["read"] = logger.start_operation(f"Reading files... {current}/{total}")
-                else:
-                    logger.update_operation(
-                        current_ops["read"],
-                        f"Reading files... {current}/{total}"
-                    )
-                
-                # Mark complete on last file
-                if current == total:
-                    if current_ops["read"]:
-                        logger.complete_operation(current_ops["read"])
-                        logger.update_operation(
-                            current_ops["read"],
-                            f"Reading files... ✓ {total} files processed"
-                        )
-                        current_ops["read"] = None
-        
+            _handle_processing_stage(logger, current_ops, current, total)
         elif stage == "embedding":
-            # Start embedding generation on first batch
-            if current == 1 and last_stage != "embedding":
-                if current_ops["process"]:
-                    logger.complete_operation(current_ops["process"])
-                    current_ops["process"] = None
-                current_ops["embed"] = logger.start_operation("Generating embeddings...")
-            
-            # Update batch progress
-            batch_op_id = current_ops.get("batch")
-            if not batch_op_id:
-                batch_op_id = logger.start_operation(f"Processing batch {current}/{total}...")
-                current_ops["batch"] = batch_op_id
-            else:
-                logger.update_operation(batch_op_id, f"Processing batch {current}/{total}...")
-            
-            # Mark complete on last batch
-            if current == total:
-                if batch_op_id:
-                    logger.complete_operation(batch_op_id)
-                    logger.update_operation(batch_op_id, f"Processing batch {total}/{total}... ✓ Done")
-                    current_ops["batch"] = None
-        
+            _handle_embedding_stage(logger, current_ops, current, total, last_stage)
         elif stage == "storing" or stage == "storing_embeddings":
-            # Handle storing progress
-            if current == 1 and last_stage not in ["storing", "storing_embeddings"]:
-                # Start storing operation on first chunk
-                if current_ops.get("embed"):
-                    logger.complete_operation(current_ops["embed"])
-                    current_ops["embed"] = None
-                store_op_id = logger.start_operation("Storing in database...")
-                current_ops["store"] = store_op_id
+            if current == 1:
+                _handle_storing_stage(logger, current_ops, last_stage)
+        elif stage == "bm25_indexing":
+            _handle_bm25_stage(logger, current_ops, current, total)
+        elif stage == "bm25_tokenizing":
+            _handle_bm25_tokenizing_stage(logger, current_ops, current, total)
         
         last_stage = stage
     
@@ -437,7 +508,7 @@ def index(
             # Start directory scanning operation
             scan_op_id = logger.start_operation(
                 f"Scanning directory {directory}...",
-                expandable=True
+                expandable=False
             )
             
             # Track current operations for updates
@@ -446,7 +517,9 @@ def index(
                 "embed": None,
                 "batch": None,
                 "read": None,
-                "store": None
+                "store": None,
+                "bm25": None,
+                "bm25_tokenize": None
             }
             
             # Create progress callback using helper function
