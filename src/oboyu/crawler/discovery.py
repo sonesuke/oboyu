@@ -127,8 +127,11 @@ def _walk_directory(
             local_gitignore_matcher = parse_gitignore(gitignore_path)
 
     try:
-        # List directory contents
-        for item in os.scandir(directory):
+        # List directory contents - use scandir for better performance
+        # Convert to list first to avoid holding directory handle
+        items = list(os.scandir(directory))
+        
+        for item in items:
             item_path = Path(item.path)
 
             # Check if the path should be excluded by patterns

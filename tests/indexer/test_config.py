@@ -33,7 +33,7 @@ class TestIndexerConfig:
         assert config.ef_search == 64
         assert config.m == 16
         assert config.m0 is None
-        assert config.max_workers == 4
+        assert config.max_workers == 8
 
     def test_config_from_dict(self) -> None:
         """Test loading configuration from dictionary."""
@@ -109,7 +109,7 @@ class TestIndexerConfig:
         assert config.ef_search == 64  # Default
         assert config.m == 16  # Default
         assert config.m0 is None  # Default
-        assert config.max_workers == 4  # Default
+        assert config.max_workers == 8  # Default
 
     def test_partial_config(self) -> None:
         """Test partial configuration override."""

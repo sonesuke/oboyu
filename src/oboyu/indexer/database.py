@@ -18,6 +18,7 @@ Key components:
 """
 
 import json
+import logging
 import shutil
 import uuid
 from datetime import datetime
@@ -31,6 +32,8 @@ from numpy.typing import NDArray
 
 from oboyu.indexer.config import DEFAULT_BATCH_SIZE
 from oboyu.indexer.processor import Chunk
+
+logger = logging.getLogger(__name__)
 
 
 # Custom JSON encoder for datetime objects
@@ -115,6 +118,12 @@ class Database:
 
         # Enable experimental persistence for HNSW indexes
         self.conn.execute("SET hnsw_enable_experimental_persistence=true")
+        
+        # Set performance optimization pragmas
+        self.conn.execute("PRAGMA threads=8")  # Increase thread count
+        self.conn.execute("SET preserve_insertion_order=false")
+        self.conn.execute("SET memory_limit='4GB'")  # Increase memory limit
+        self.conn.execute("SET temp_directory='/tmp'")  # Use faster temp directory
 
         # Create tables if they don't exist
         self._create_schema()
@@ -190,15 +199,13 @@ class Database:
             )
         """)
         
-        # Create inverted index table
+        # Create inverted index table without primary key for faster bulk inserts
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS inverted_index (
                 term VARCHAR,
                 chunk_id VARCHAR,
                 term_frequency INTEGER,
-                positions TEXT,  -- JSON array of positions
-                PRIMARY KEY (term, chunk_id),
-                FOREIGN KEY (chunk_id) REFERENCES chunks (id)
+                positions INTEGER[]  -- Array of token positions for phrase search
             )
         """)
         
@@ -277,7 +284,7 @@ class Database:
         """
         if self.conn is None:
             raise ValueError("Database connection not initialized. Call setup() first.")
-
+        
         # Store each chunk individually using standard DuckDB
         batch_data = []
         for chunk in chunks:
@@ -309,6 +316,7 @@ class Database:
                 modified_at = excluded.modified_at,
                 metadata = excluded.metadata
         """, batch_data)
+        
         self.conn.commit()
 
 
@@ -326,37 +334,33 @@ class Database:
         """
         if self.conn is None:
             raise ValueError("Database connection not initialized. Call setup() first.")
-
-        # バッチ挿入用のデータを準備
-        # DuckDB v1.2+ has issues with FLOAT[] type conversion
-        # We need to insert one by one and use array literal syntax
-        for idx, (embedding_id, chunk_id, vector, timestamp) in enumerate(embeddings):
+        
+        # Direct batch insert
+        
+        # Prepare batch data
+        batch_data = []
+        for embedding_id, chunk_id, vector, timestamp in embeddings:
             # Skip problematic embeddings with scalar shape
             if vector.shape == ():
-                # This is a bug in the embedding generation, skip for now
                 continue
             
             # Convert vector to list
             vector_list = vector.tolist()
-            
-            # Handle case where tolist() returns a scalar
             if not isinstance(vector_list, list):
-                # This shouldn't happen with properly shaped embeddings
                 raise ValueError(f"Expected list from vector.tolist() but got {type(vector_list)}. Vector shape: {vector.shape}")
             
-            # Build array literal string for DuckDB
-            array_str = '[' + ','.join(str(float(v)) for v in vector_list) + ']'
-            
-            # Use parameterized query for other values but array as literal
-            self.conn.execute(f"""
-                INSERT INTO embeddings (id, chunk_id, model, vector, created_at)
-                VALUES (?, ?, ?, {array_str}::FLOAT[{len(vector_list)}], ?)
-                ON CONFLICT (id) DO UPDATE SET
-                    chunk_id = excluded.chunk_id,
-                    model = excluded.model,
-                    vector = excluded.vector,
-                    created_at = excluded.created_at
-            """, (embedding_id, chunk_id, model_name, timestamp))
+            batch_data.append((embedding_id, chunk_id, model_name, vector_list, timestamp))
+        
+        # Bulk insert directly
+        self.conn.executemany("""
+            INSERT INTO embeddings (id, chunk_id, model, vector, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT (id) DO UPDATE SET
+                chunk_id = excluded.chunk_id,
+                model = excluded.model,
+                vector = excluded.vector,
+                created_at = excluded.created_at
+        """, batch_data)
         
         self.conn.commit()
 
@@ -672,63 +676,133 @@ class Database:
         inverted_index: Dict[str, List[Tuple[str, int, List[int]]]],
         document_stats: Dict[str, Tuple[int, int, float]],
         collection_stats: Dict[str, Union[int, float]],
+        batch_size: int = 10000,
     ) -> None:
-        """Store BM25 index data in the database.
+        """Store BM25 index data in the database with batch processing.
         
         Args:
             vocabulary: Dictionary mapping terms to (doc_freq, collection_freq)
             inverted_index: Dictionary mapping terms to list of (chunk_id, term_freq, positions)
             document_stats: Dictionary mapping chunk_id to (total_terms, unique_terms, avg_term_freq)
             collection_stats: Dictionary with collection-level statistics
+            batch_size: Number of records to process in each batch (default: 10000)
 
         """
         if self.conn is None:
             raise ValueError("Database connection not initialized. Call setup() first.")
         
-        # Store vocabulary
-        vocab_data = [
-            (term, doc_freq, coll_freq)
-            for term, (doc_freq, coll_freq) in vocabulary.items()
-        ]
-        self.conn.executemany("""
-            INSERT INTO vocabulary (term, document_frequency, collection_frequency)
-            VALUES (?, ?, ?)
-            ON CONFLICT (term) DO UPDATE SET
-                document_frequency = excluded.document_frequency,
-                collection_frequency = excluded.collection_frequency
-        """, vocab_data)
+        logger.info(f"Storing BM25 index with batch size: {batch_size}")
+        logger.info(f"Vocabulary size: {len(vocabulary)}, Inverted index entries: {sum(len(postings) for postings in inverted_index.values())}")
         
-        # Store inverted index
-        inv_index_data = []
-        for term, postings in inverted_index.items():
-            for chunk_id, term_freq, positions in postings:
-                positions_json = json.dumps(positions) if positions else "[]"
-                inv_index_data.append((term, chunk_id, term_freq, positions_json))
+        # Start a transaction for bulk inserts
+        self.conn.begin()
         
-        self.conn.executemany("""
-            INSERT INTO inverted_index (term, chunk_id, term_frequency, positions)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT (term, chunk_id) DO UPDATE SET
-                term_frequency = excluded.term_frequency,
-                positions = excluded.positions
-        """, inv_index_data)
-        
-        # Store document statistics
-        doc_stats_data = [
-            (chunk_id, total_terms, unique_terms, avg_freq)
-            for chunk_id, (total_terms, unique_terms, avg_freq) in document_stats.items()
-        ]
-        self.conn.executemany("""
-            INSERT INTO document_stats (chunk_id, total_terms, unique_terms, avg_term_frequency)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT (chunk_id) DO UPDATE SET
-                total_terms = excluded.total_terms,
-                unique_terms = excluded.unique_terms,
-                avg_term_frequency = excluded.avg_term_frequency
-        """, doc_stats_data)
-        
-        # Store collection statistics
-        self.conn.execute("""
+        try:
+            # Store vocabulary with batch processing
+            
+            vocab_data = [
+                (term, doc_freq, coll_freq)
+                for term, (doc_freq, coll_freq) in vocabulary.items()
+            ]
+            
+            if vocab_data:  # Only execute if there's data
+                logger.info(f"Storing {len(vocab_data)} vocabulary terms in batches...")
+                for i in range(0, len(vocab_data), batch_size):
+                    batch = vocab_data[i:i + batch_size]
+                    if i > 0 and i % (batch_size * 10) == 0:
+                        logger.debug(f"Vocabulary progress: {i}/{len(vocab_data)} terms")
+                    self.conn.executemany("""
+                        INSERT INTO vocabulary (term, document_frequency, collection_frequency)
+                        VALUES (?, ?, ?)
+                        ON CONFLICT (term) DO UPDATE SET
+                            document_frequency = excluded.document_frequency,
+                            collection_frequency = excluded.collection_frequency
+                    """, batch)
+            
+            
+            # Store inverted index with optimized batch size
+            
+            # Prepare data for bulk insert
+            inv_index_data = []
+            for term, postings in inverted_index.items():
+                for chunk_id, term_freq, positions in postings:
+                    # Store positions as integer array (None for empty positions)
+                    positions_array = positions if positions else None
+                    inv_index_data.append((term, chunk_id, term_freq, positions_array))
+            
+            # Sort data by term for better insertion performance
+            inv_index_data.sort(key=lambda x: (x[0], x[1]))
+            
+            # Check if this is initial indexing (empty table)
+            count_result = self.conn.execute("SELECT COUNT(*) FROM inverted_index").fetchone()
+            is_initial = count_result is not None and count_result[0] == 0
+            
+            if inv_index_data:  # Only process if there's data
+                logger.info(f"Storing {len(inv_index_data)} inverted index entries...")
+                if is_initial:
+                    # For initial indexing, use simple INSERT for speed
+                    # Use larger batches for better performance
+                    initial_batch_size = 50000  # Larger batch size for initial indexing
+                    for i in range(0, len(inv_index_data), initial_batch_size):
+                        inv_batch = inv_index_data[i:i + initial_batch_size]
+                        if i > 0 and i % (initial_batch_size * 5) == 0:
+                            logger.debug(f"Inverted index progress: {i}/{len(inv_index_data)} entries")
+                        self.conn.executemany("""
+                            INSERT INTO inverted_index (term, chunk_id, term_frequency, positions)
+                            VALUES (?, ?, ?, ?)
+                        """, inv_batch)
+                
+                    # Create index after bulk insert for better performance
+                    self.conn.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_inverted_index_term
+                        ON inverted_index(term)
+                    """)
+                    self.conn.execute("""
+                        CREATE UNIQUE INDEX IF NOT EXISTS idx_inverted_index_term_chunk
+                        ON inverted_index(term, chunk_id)
+                    """)
+                else:
+                    # For updates, use ON CONFLICT with batching
+                    update_batch_size = batch_size  # Use configured batch size for updates
+                    for i in range(0, len(inv_index_data), update_batch_size):
+                        inv_batch = inv_index_data[i:i + update_batch_size]
+                        if i > 0 and i % (update_batch_size * 10) == 0:
+                            logger.debug(f"Inverted index update progress: {i}/{len(inv_index_data)} entries")
+                        self.conn.executemany("""
+                            INSERT INTO inverted_index (term, chunk_id, term_frequency, positions)
+                            VALUES (?, ?, ?, ?)
+                            ON CONFLICT (term, chunk_id) DO UPDATE SET
+                                term_frequency = excluded.term_frequency,
+                                positions = excluded.positions
+                        """, inv_batch)
+            
+            
+            # Store document statistics with batch processing
+            
+            doc_stats_data = [
+                (chunk_id, total_terms, unique_terms, avg_freq)
+                for chunk_id, (total_terms, unique_terms, avg_freq) in document_stats.items()
+            ]
+            
+            if doc_stats_data:  # Only execute if there's data
+                logger.info(f"Storing {len(doc_stats_data)} document statistics...")
+                # Use same batch size as vocabulary
+                for i in range(0, len(doc_stats_data), batch_size):
+                    doc_batch = doc_stats_data[i:i + batch_size]
+                    if i > 0 and i % (batch_size * 10) == 0:
+                        logger.debug(f"Document stats progress: {i}/{len(doc_stats_data)} documents")
+                    self.conn.executemany("""
+                        INSERT INTO document_stats (chunk_id, total_terms, unique_terms, avg_term_frequency)
+                        VALUES (?, ?, ?, ?)
+                        ON CONFLICT (chunk_id) DO UPDATE SET
+                            total_terms = excluded.total_terms,
+                            unique_terms = excluded.unique_terms,
+                            avg_term_frequency = excluded.avg_term_frequency
+                    """, doc_batch)
+            
+            
+            # Store collection statistics
+            self.conn.execute("""
             INSERT INTO collection_stats
             (id, total_documents, total_terms, avg_document_length, last_updated)
             VALUES (1, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -737,13 +811,19 @@ class Database:
                 total_terms = excluded.total_terms,
                 avg_document_length = excluded.avg_document_length,
                 last_updated = excluded.last_updated
-        """, (
-            collection_stats.get("total_documents", 0),
-            collection_stats.get("total_terms", 0),
-            collection_stats.get("avg_document_length", 0.0),
-        ))
-        
-        self.conn.commit()
+            """, (
+                collection_stats.get("total_documents", 0),
+                collection_stats.get("total_terms", 0),
+                collection_stats.get("avg_document_length", 0.0),
+            ))
+            self.conn.commit()
+            
+        except Exception as e:
+            self.conn.rollback()
+            raise e
+        finally:
+            # Ensure any remaining data is written
+            pass
     
     def search_bm25(
         self,
@@ -772,6 +852,7 @@ class Database:
         # This query calculates BM25 scores using the stored statistics
         terms_placeholder = ",".join(["?"] * len(query_terms))
         
+        # Optimized query that avoids GROUP BY on large text fields
         base_query = f"""
         WITH query_terms AS (
             SELECT value AS term FROM (VALUES {",".join(f"('{term}')" for term in query_terms)})
@@ -783,15 +864,10 @@ class Database:
             FROM collection_stats
             WHERE id = 1
         ),
-        doc_scores AS (
+        -- Calculate scores efficiently using only chunk_id
+        chunk_scores AS (
             SELECT
-                c.id as chunk_id,
-                c.path,
-                c.title,
-                c.content,
-                c.chunk_index,
-                c.language,
-                c.metadata,
+                ii.chunk_id,
                 SUM(
                     -- IDF component
                     LOG((ci.total_documents - v.document_frequency + 0.5) /
@@ -803,23 +879,32 @@ class Database:
                 ) AS score
             FROM inverted_index ii
             JOIN vocabulary v ON ii.term = v.term
-            JOIN chunks c ON ii.chunk_id = c.id
-            JOIN document_stats ds ON c.id = ds.chunk_id
+            JOIN document_stats ds ON ii.chunk_id = ds.chunk_id
             CROSS JOIN collection_info ci
             WHERE ii.term IN ({terms_placeholder})
+            GROUP BY ii.chunk_id
+            ORDER BY score DESC
+            LIMIT ?
+        )
+        -- Join with chunks table only for the top-k results
+        SELECT
+            c.id as chunk_id,
+            c.path,
+            c.title,
+            c.content,
+            c.chunk_index,
+            c.language,
+            c.metadata,
+            cs.score
+        FROM chunk_scores cs
+        JOIN chunks c ON cs.chunk_id = c.id
         """
         
         # Add language filter if specified
         if language:
-            base_query += f" AND c.language = '{language}'"
+            base_query += f" WHERE c.language = '{language}'"
         
-        base_query += """
-            GROUP BY c.id, c.path, c.title, c.content, c.chunk_index, c.language, c.metadata
-            ORDER BY score DESC
-            LIMIT ?
-        )
-        SELECT * FROM doc_scores
-        """
+        base_query += " ORDER BY cs.score DESC"
         
         # Execute query
         params = query_terms + [limit]

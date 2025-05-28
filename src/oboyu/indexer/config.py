@@ -43,15 +43,15 @@ DEFAULT_CONFIG = {
         "m0": None,  # Level-0 connections (None means use 2*M)
 
         # Processing settings
-        "max_workers": 4,  # Maximum number of worker threads for parallel processing
+        "max_workers": 8,  # Maximum number of worker threads for parallel processing
         
         # Reranker settings
         "reranker_model": "cl-nagoya/ruri-v3-reranker-310m",  # Default reranker model
         "use_reranker": False,  # Whether to use reranker for search results
         "reranker_use_onnx": True,  # Whether to use ONNX optimization for reranker
         "reranker_device": "cpu",  # Device for reranker (cpu/cuda)
-        "reranker_top_k_multiplier": 3,  # Multiplier for initial retrieval (3x final top_k)
-        "reranker_batch_size": 8,  # Batch size for reranking
+        "reranker_top_k_multiplier": 2,  # Multiplier for initial retrieval (2x final top_k)
+        "reranker_batch_size": 64,  # Batch size for reranking
         "reranker_max_length": 512,  # Maximum sequence length for reranker
         "reranker_threshold": None,  # Minimum score threshold (None = no threshold)
         
@@ -84,14 +84,14 @@ DEFAULT_EF_CONSTRUCTION = 128
 DEFAULT_EF_SEARCH = 64
 DEFAULT_M = 16
 DEFAULT_M0 = None
-DEFAULT_MAX_WORKERS = 4
+DEFAULT_MAX_WORKERS = 8
 # Reranker defaults
 DEFAULT_RERANKER_MODEL = "cl-nagoya/ruri-v3-reranker-310m"
 DEFAULT_USE_RERANKER = False
 DEFAULT_RERANKER_USE_ONNX = True
 DEFAULT_RERANKER_DEVICE = "cpu"
-DEFAULT_RERANKER_TOP_K_MULTIPLIER = 3
-DEFAULT_RERANKER_BATCH_SIZE = 8
+DEFAULT_RERANKER_TOP_K_MULTIPLIER = 2
+DEFAULT_RERANKER_BATCH_SIZE = 64
 DEFAULT_RERANKER_MAX_LENGTH = 512
 DEFAULT_RERANKER_THRESHOLD = None
 # BM25 defaults
