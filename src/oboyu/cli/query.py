@@ -283,7 +283,7 @@ def query(
         total_time = time.time() - search_start
         logger.update_operation(
             main_op,
-            f"Retrieved {len(results)} documents in {total_time:.2f}s (ctrl+r to expand results)"
+            f"Retrieved {len(results)} documents in {total_time:.2f}s"
         )
 
     # Display results after hierarchical log

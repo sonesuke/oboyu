@@ -249,7 +249,7 @@ def _handle_crawling_stage(logger: HierarchicalLogger, scan_op_id: str, current_
         logger.complete_operation(scan_op_id)
         logger.update_operation(
             scan_op_id,
-            f"Found {total} files (ctrl+r to expand)"
+            f"Found {total} files"
         )
         # Start processing documents operation
         current_ops["process"] = logger.start_operation("Processing documents...")
