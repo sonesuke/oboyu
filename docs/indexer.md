@@ -200,7 +200,7 @@ The Database Manager handles:
 
 - DuckDB setup with VSS extension
 - Schema creation and management
-- HNSW index for vector similarity search
+- HNSW index for vector similarity search with persistence support
 - Efficient vector storage and search
 - Transaction management for data consistency
 - Index clearing and maintenance
@@ -209,17 +209,22 @@ The Database Manager handles:
 def setup():
     # Install and load VSS extension
     conn.execute("INSTALL vss; LOAD vss;")
+    # Enable experimental persistence for HNSW indexes
+    conn.execute("SET hnsw_enable_experimental_persistence=true")
     # Create database schema
     _create_schema()
-    # Create HNSW index
-    _create_hnsw_index()
+    # Check if HNSW index exists before creating (NEW)
+    if not _hnsw_index_exists():
+        _create_hnsw_index()
+    else:
+        logger.info("Using existing HNSW index")
 
 def clear():
     # Clear all data from the database
     conn.execute("DELETE FROM embeddings")
     conn.execute("DELETE FROM chunks")
-    # Recompact index after clearing
-    recompact_index()
+    # Recreate index to ensure clean state
+    recreate_hnsw_index(force=True)
 ```
 
 ## Database Schema
@@ -320,12 +325,28 @@ The vector index enables semantic similarity search:
 - Creates Hierarchical Navigable Small Worlds (HNSW) index
 - Uses cosine similarity as distance metric
 - **Best for**: conceptual queries, cross-language understanding, semantic matching
+- **NEW**: Supports index persistence (experimental) for faster startup
 
 **Configurable parameters for accuracy vs. performance tradeoffs:**
 - `ef_construction`: Controls index build quality (default: 128)
 - `ef_search`: Controls search quality (default: 64)
 - `M`: Number of bidirectional links (default: 16)
 - `M0`: Level-0 connections (default: 2*M)
+
+#### HNSW Index Persistence (NEW)
+
+Oboyu now preserves HNSW indexes across database restarts:
+
+- **Automatic Detection**: Checks for existing indexes on startup
+- **Faster Queries**: No need to rebuild index after restart
+- **Experimental Feature**: Enabled via `SET hnsw_enable_experimental_persistence=true`
+- **Index Maintenance**: Provides `recreate_hnsw_index()` method for manual rebuilds
+
+**Important Notes:**
+- The entire index must fit in RAM (not buffer-managed)
+- No incremental updates - full index is serialized on checkpoint
+- WAL recovery not fully implemented - use with caution in production
+- Index is loaded lazily when first accessed after restart
 
 ### BM25 Index (Inverted Index)
 
