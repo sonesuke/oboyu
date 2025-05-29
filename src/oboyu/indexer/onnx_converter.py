@@ -100,6 +100,7 @@ class ONNXEmbeddingModel:
         tokenizer_path: Optional[Union[str, Path]] = None,
         max_seq_length: int = 8192,
         pooling_strategy: str = "mean",
+        optimization_level: str = "none",
     ) -> None:
         """Initialize ONNX embedding model.
 
@@ -108,6 +109,7 @@ class ONNXEmbeddingModel:
             tokenizer_path: Path to tokenizer directory (defaults to model_path parent)
             max_seq_length: Maximum sequence length
             pooling_strategy: Pooling strategy for embeddings ("mean", "max", "cls")
+            optimization_level: Graph optimization level ("none", "basic", "extended", "all")
 
         """
         self.model_path = Path(model_path)
@@ -117,7 +119,16 @@ class ONNXEmbeddingModel:
 
         # Set up ONNX runtime options for optimization
         sess_options = SessionOptions()
-        sess_options.graph_optimization_level = GraphOptimizationLevel.ORT_ENABLE_ALL
+        # Map string optimization level to GraphOptimizationLevel enum
+        opt_level_map = {
+            "none": GraphOptimizationLevel.ORT_DISABLE_ALL,
+            "basic": GraphOptimizationLevel.ORT_ENABLE_BASIC,
+            "extended": GraphOptimizationLevel.ORT_ENABLE_EXTENDED,
+            "all": GraphOptimizationLevel.ORT_ENABLE_ALL,
+        }
+        sess_options.graph_optimization_level = opt_level_map.get(
+            optimization_level, GraphOptimizationLevel.ORT_DISABLE_ALL
+        )
         sess_options.intra_op_num_threads = 4  # Optimal for most CPU architectures
 
         # Load ONNX model
@@ -428,6 +439,7 @@ class ONNXCrossEncoderModel:
         model_path: Union[str, Path],
         tokenizer_path: Optional[Union[str, Path]] = None,
         max_seq_length: int = 512,
+        optimization_level: str = "none",
     ) -> None:
         """Initialize ONNX Cross-Encoder model.
         
@@ -435,6 +447,7 @@ class ONNXCrossEncoderModel:
             model_path: Path to ONNX model file
             tokenizer_path: Path to tokenizer directory (defaults to model_path parent)
             max_seq_length: Maximum sequence length
+            optimization_level: Graph optimization level ("none", "basic", "extended", "all")
         
         """
         self.model_path = Path(model_path)
@@ -443,7 +456,16 @@ class ONNXCrossEncoderModel:
         
         # Set up ONNX runtime options for optimization
         sess_options = SessionOptions()
-        sess_options.graph_optimization_level = GraphOptimizationLevel.ORT_ENABLE_ALL
+        # Map string optimization level to GraphOptimizationLevel enum
+        opt_level_map = {
+            "none": GraphOptimizationLevel.ORT_DISABLE_ALL,
+            "basic": GraphOptimizationLevel.ORT_ENABLE_BASIC,
+            "extended": GraphOptimizationLevel.ORT_ENABLE_EXTENDED,
+            "all": GraphOptimizationLevel.ORT_ENABLE_ALL,
+        }
+        sess_options.graph_optimization_level = opt_level_map.get(
+            optimization_level, GraphOptimizationLevel.ORT_DISABLE_ALL
+        )
         sess_options.intra_op_num_threads = 4  # Optimal for most CPU architectures
         
         # Load ONNX model

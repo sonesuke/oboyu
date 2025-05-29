@@ -26,6 +26,9 @@ DEFAULT_CONFIG = {
             "method": "dynamic",  # Quantization method (dynamic, static, fp16)
             "weight_type": "uint8",  # Weight quantization type (uint8, int8)
         },
+        
+        # ONNX optimization settings
+        "onnx_optimization_level": "none",  # Graph optimization level: none, basic, extended, all
 
         # Prefix scheme settings (Ruri v3's 1+3 prefix scheme)
         "document_prefix": "検索文書: ",  # Prefix for documents to be indexed
@@ -75,6 +78,7 @@ DEFAULT_USE_ONNX = True
 DEFAULT_ONNX_QUANTIZATION_ENABLED = True
 DEFAULT_ONNX_QUANTIZATION_METHOD = "dynamic"
 DEFAULT_ONNX_QUANTIZATION_WEIGHT_TYPE = "uint8"
+DEFAULT_ONNX_OPTIMIZATION_LEVEL = "none"
 DEFAULT_DOCUMENT_PREFIX = "検索文書: "
 DEFAULT_QUERY_PREFIX = "検索クエリ: "
 DEFAULT_TOPIC_PREFIX = "トピック: "
@@ -170,6 +174,9 @@ class IndexerConfig:
         # Validate ONNX quantization settings
         self._validate_onnx_quantization_settings(indexer_config)
         
+        # Validate ONNX optimization settings
+        self._validate_onnx_optimization_settings(indexer_config)
+        
         # Validate prefix settings
         self._validate_prefix_settings(indexer_config)
         
@@ -247,6 +254,12 @@ class IndexerConfig:
         # Validate weight_type - must be one of the supported types
         if onnx_quant.get("weight_type") not in ["uint8", "int8"]:
             onnx_quant["weight_type"] = DEFAULT_ONNX_QUANTIZATION_WEIGHT_TYPE
+    
+    def _validate_onnx_optimization_settings(self, indexer_config: Dict[str, Any]) -> None:
+        """Validate ONNX optimization settings."""
+        # Validate onnx_optimization_level - must be one of the supported levels
+        if indexer_config.get("onnx_optimization_level") not in ["none", "basic", "extended", "all"]:
+            indexer_config["onnx_optimization_level"] = DEFAULT_ONNX_OPTIMIZATION_LEVEL
 
     def _validate_prefix_settings(self, indexer_config: Dict[str, Any]) -> None:
         """Validate prefix settings."""
@@ -389,6 +402,11 @@ class IndexerConfig:
     def onnx_quantization_config(self) -> Dict[str, Any]:
         """Full ONNX quantization configuration."""
         return dict(self.config["indexer"]["onnx_quantization"])
+    
+    @property
+    def onnx_optimization_level(self) -> str:
+        """ONNX graph optimization level."""
+        return str(self.config["indexer"]["onnx_optimization_level"])
 
     @property
     def document_prefix(self) -> str:

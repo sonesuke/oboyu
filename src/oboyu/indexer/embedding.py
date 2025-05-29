@@ -117,6 +117,7 @@ class EmbeddingGenerator:
         model_dir: Union[str, Path] = EMBEDDING_MODELS_DIR,
         use_onnx: bool = True,
         onnx_quantization_config: Optional[Dict[str, Any]] = None,
+        onnx_optimization_level: str = "none",
     ) -> None:
         """Initialize the embedding generator.
 
@@ -131,6 +132,7 @@ class EmbeddingGenerator:
             model_dir: Directory to store downloaded models (defaults to XDG data path)
             use_onnx: Whether to use ONNX optimization for faster inference
             onnx_quantization_config: Optional ONNX quantization configuration
+            onnx_optimization_level: ONNX graph optimization level ("none", "basic", "extended", "all")
 
         Note:
             The model is loaded lazily on first use to improve startup performance.
@@ -141,6 +143,7 @@ class EmbeddingGenerator:
         self.device = device
         self.model_dir = model_dir
         self.onnx_quantization_config = onnx_quantization_config or {"enabled": True, "weight_type": "uint8"}
+        self.onnx_optimization_level = onnx_optimization_level
         self._model: Optional[Any] = None  # Lazy-loaded model
         
         # Include quantization in cache key if enabled
@@ -194,6 +197,7 @@ class EmbeddingGenerator:
                 model = ONNXEmbeddingModel(
                     onnx_path,
                     max_seq_length=self.max_seq_length,
+                    optimization_level=self.onnx_optimization_level,
                 )
             else:
                 # Load the model (with model_dir as cache directory)

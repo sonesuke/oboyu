@@ -182,11 +182,13 @@ class ONNXCrossEncoderReranker(BaseReranker):
         max_length: int = 512,
         cache_dir: Optional[Path] = None,
         quantization_config: Optional[Dict[str, Any]] = None,
+        optimization_level: str = "none",
     ) -> None:
         """Initialize the ONNX CrossEncoder reranker with lazy loading."""
         super().__init__(model_name, device, batch_size, max_length)
         self.cache_dir = cache_dir or EMBEDDING_CACHE_DIR / "models"
         self.quantization_config = quantization_config or {"enabled": True, "weight_type": "uint8"}
+        self.optimization_level = optimization_level
         self._tokenizer: Optional[Any] = None
         logger.info(f"Initializing ONNX CrossEncoder reranker with model: {model_name}")
     
@@ -210,6 +212,7 @@ class ONNXCrossEncoderReranker(BaseReranker):
             self._model = ONNXCrossEncoderModel(
                 model_path=onnx_path,
                 max_seq_length=self.max_length,
+                optimization_level=self.optimization_level,
             )
             logger.info("ONNX CrossEncoder model loaded successfully")
         return self._model
@@ -282,6 +285,7 @@ def create_reranker(
     max_length: int = 512,
     cache_dir: Optional[Path] = None,
     quantization_config: Optional[Dict[str, Any]] = None,
+    optimization_level: str = "none",
 ) -> BaseReranker:
     """Create appropriate reranker instance.
     
@@ -293,6 +297,7 @@ def create_reranker(
         max_length: Maximum sequence length
         cache_dir: Cache directory for ONNX models
         quantization_config: Optional ONNX quantization configuration
+        optimization_level: ONNX graph optimization level ("none", "basic", "extended", "all")
         
     Returns:
         Reranker instance
@@ -306,6 +311,7 @@ def create_reranker(
             max_length=max_length,
             cache_dir=cache_dir,
             quantization_config=quantization_config,
+            optimization_level=optimization_level,
         )
     else:
         return CrossEncoderReranker(
