@@ -137,7 +137,7 @@ class CrawlerConfig:
         # Validate max_workers - must be a positive integer
         if not isinstance(crawler_config.get("max_workers"), int) or crawler_config.get("max_workers", 0) <= 0:
             crawler_config["max_workers"] = DEFAULT_MAX_WORKERS
-            
+
         # Validate respect_gitignore - must be a boolean
         if not isinstance(crawler_config.get("respect_gitignore"), bool):
             crawler_config["respect_gitignore"] = DEFAULT_RESPECT_GITIGNORE
@@ -176,7 +176,7 @@ class CrawlerConfig:
     def max_workers(self) -> int:
         """Maximum number of worker threads for parallel processing."""
         return int(self.config["crawler"]["max_workers"])
-        
+
     @property
     def respect_gitignore(self) -> bool:
         """Whether to respect .gitignore files."""

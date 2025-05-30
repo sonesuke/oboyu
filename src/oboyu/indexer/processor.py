@@ -100,22 +100,22 @@ class DocumentProcessor:
 
         # Create chunk objects
         now = datetime.now()
-        
+
         # Extract dates from metadata if available
         created_at = now
         modified_at = now
-        
+
         if metadata:
-            if 'created_at' in metadata and isinstance(metadata['created_at'], datetime):
-                created_at = metadata['created_at']
+            if "created_at" in metadata and isinstance(metadata["created_at"], datetime):
+                created_at = metadata["created_at"]
                 # Remove from metadata dict to avoid duplication in JSON field
-                metadata = {k: v for k, v in metadata.items() if k != 'created_at'}
-            
-            if 'updated_at' in metadata and isinstance(metadata['updated_at'], datetime):
-                modified_at = metadata['updated_at']
+                metadata = {k: v for k, v in metadata.items() if k != "created_at"}
+
+            if "updated_at" in metadata and isinstance(metadata["updated_at"], datetime):
+                modified_at = metadata["updated_at"]
                 # Remove from metadata dict to avoid duplication in JSON field
-                metadata = {k: v for k, v in metadata.items() if k != 'updated_at'}
-        
+                metadata = {k: v for k, v in metadata.items() if k != "updated_at"}
+
         result = []
 
         for i, chunk_text in enumerate(chunks):
@@ -126,7 +126,7 @@ class DocumentProcessor:
             chunk = Chunk(
                 id=chunk_id,
                 path=path,
-                title=f"{title} - Part {i+1}" if len(chunks) > 1 else title,
+                title=f"{title} - Part {i + 1}" if len(chunks) > 1 else title,
                 content=chunk_text,
                 chunk_index=i,
                 language=language,

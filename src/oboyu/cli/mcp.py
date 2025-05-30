@@ -27,7 +27,8 @@ console = Console()
 TransportOption = Annotated[
     str,  # Using str for Typer but we'll validate values ourselves
     typer.Option(
-        "--transport", "-t",
+        "--transport",
+        "-t",
         help="Transport mechanism (stdio, sse, streamable-http)",
     ),
 ]
@@ -35,7 +36,8 @@ TransportOption = Annotated[
 PortOption = Annotated[
     Optional[int],
     typer.Option(
-        "--port", "-p",
+        "--port",
+        "-p",
         help="Port number for HTTP or WebSocket transport",
         min=1024,
         max=65535,
@@ -85,56 +87,44 @@ def main(
     # Use hierarchical logger for MCP server startup
     if verbose:
         logger = create_hierarchical_logger(console)
-        
+
         with logger.live_display():
             # Start MCP server operation
             with logger.operation("Starting Oboyu MCP Server..."):
                 # Load configuration
                 config_op = logger.start_operation("Loading configuration...")
                 logger.complete_operation(config_op)
-                logger.update_operation(
-                    config_op,
-                    f"Loading configuration... ✓ {indexer_config_dict.get('db_path', '~/.oboyu/oboyu.db')}"
-                )
-                
+                logger.update_operation(config_op, f"Loading configuration... ✓ {indexer_config_dict.get('db_path', '~/.oboyu/oboyu.db')}")
+
                 # Initialize database
                 db_op = logger.start_operation("Initializing database...")
                 # Simulated - actual init happens when first query is made
                 logger.complete_operation(db_op)
-                logger.update_operation(
-                    db_op,
-                    "Initializing database... ✓ 1,847 chunks available"
-                )
-                
+                logger.update_operation(db_op, "Initializing database... ✓ 1,847 chunks available")
+
                 # Load embedding model
                 model_op = logger.start_operation("Loading embedding model...")
                 model_name = "cl-nagoya/ruri-v3-30m"
                 logger.complete_operation(model_op)
-                logger.update_operation(
-                    model_op,
-                    f"Loading embedding model... ✓ {model_name} ready"
-                )
-                
+                logger.update_operation(model_op, f"Loading embedding model... ✓ {model_name} ready")
+
                 # Start transport
                 transport_op = logger.start_operation(f"Starting {transport} transport...")
                 logger.complete_operation(transport_op)
-                logger.update_operation(
-                    transport_op,
-                    f"Starting {transport} transport... ✓ Server ready on {transport}"
-                )
-                
+                logger.update_operation(transport_op, f"Starting {transport} transport... ✓ Server ready on {transport}")
+
                 # Add listening operation
                 logger.start_operation(
                     "Listening for MCP requests... (ctrl+c to stop)",
                     expandable=True,
-                    details=f"Transport: {transport}\nDatabase: {indexer_config_dict.get('db_path')}\nPort: {port if port else 'N/A'}"
+                    details=f"Transport: {transport}\nDatabase: {indexer_config_dict.get('db_path')}\nPort: {port if port else 'N/A'}",
                 )
-    
+
     # Run the server
     try:
         # Cast to the correct type for mypy type checking
         mcp_transport: Literal["stdio", "sse", "streamable-http"] = transport  # type: ignore
-        
+
         # Now we can run with the proper type
         mcp.run(mcp_transport)
     except Exception as e:

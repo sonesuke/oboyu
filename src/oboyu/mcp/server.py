@@ -70,35 +70,23 @@ def search(
         # Format results for MCP output
         formatted_results = []
         for result in results:
-            formatted_results.append({
-                "title": result.title,
-                "content": result.content,
-                "uri": f"file://{result.path}",
-                "score": result.score,
-                "language": result.language,
-                "metadata": result.metadata
-            })
+            formatted_results.append(
+                {
+                    "title": result.title,
+                    "content": result.content,
+                    "uri": f"file://{result.path}",
+                    "score": result.score,
+                    "language": result.language,
+                    "metadata": result.metadata,
+                }
+            )
 
         # Return results and statistics
-        return {
-            "results": formatted_results,
-            "stats": {
-                "count": len(formatted_results),
-                "query": query,
-                "language_filter": language or "none"
-            }
-        }
+        return {"results": formatted_results, "stats": {"count": len(formatted_results), "query": query, "language_filter": language or "none"}}
     except Exception as e:
         logger.error(f"Error executing search: {str(e)}")
         # Return error information
-        return {
-            "error": str(e),
-            "results": [],
-            "stats": {
-                "count": 0,
-                "query": query
-            }
-        }
+        return {"error": str(e), "results": [], "stats": {"count": 0, "query": query}}
 
 
 @mcp.tool()
@@ -122,21 +110,13 @@ def index_directory(
         # Validate directory exists
         directory = Path(directory_path)
         if not directory.exists() or not directory.is_dir():
-            return {
-                "error": f"Directory does not exist or is not a directory: {directory_path}",
-                "success": False,
-                "documents_indexed": 0,
-                "chunks_indexed": 0
-            }
+            return {"error": f"Directory does not exist or is not a directory: {directory_path}", "success": False, "documents_indexed": 0, "chunks_indexed": 0}
 
         # Initialize indexer
         indexer = get_indexer(db_path)
 
         # Perform indexing
-        chunks_indexed, files_processed = indexer.index_directory(
-            directory=directory,
-            incremental=incremental
-        )
+        chunks_indexed, files_processed = indexer.index_directory(directory=directory, incremental=incremental)
 
         # Return results
         return {
@@ -144,16 +124,11 @@ def index_directory(
             "directory": str(directory.absolute()),
             "documents_indexed": files_processed,
             "chunks_indexed": chunks_indexed,
-            "db_path": indexer.config.db_path
+            "db_path": indexer.config.db_path,
         }
     except Exception as e:
         logger.error(f"Error indexing directory: {str(e)}")
-        return {
-            "error": str(e),
-            "success": False,
-            "documents_indexed": 0,
-            "chunks_indexed": 0
-        }
+        return {"error": str(e), "success": False, "documents_indexed": 0, "chunks_indexed": 0}
 
 
 @mcp.tool()
@@ -177,17 +152,10 @@ def clear_index(
         indexer.clear_index()
 
         # Return success
-        return {
-            "success": True,
-            "message": "Index database cleared successfully",
-            "db_path": indexer.config.db_path
-        }
+        return {"success": True, "message": "Index database cleared successfully", "db_path": indexer.config.db_path}
     except Exception as e:
         logger.error(f"Error clearing index: {str(e)}")
-        return {
-            "error": str(e),
-            "success": False
-        }
+        return {"error": str(e), "success": False}
 
 
 @mcp.tool()
@@ -215,15 +183,9 @@ def get_index_info(db_path: Optional[str] = None) -> Dict[str, object]:
             "languages": db_stats.get("languages", ["unknown"]),
             "embedding_model": db_stats.get("embedding_model", "unknown"),
             "db_path": db_stats.get("db_path", str(DEFAULT_DB_PATH)),
-            "last_updated": db_stats.get("last_updated", "unknown")
+            "last_updated": db_stats.get("last_updated", "unknown"),
         }
     except Exception as e:
         logger.error(f"Error retrieving index info: {str(e)}")
         # Return error information
-        return {
-            "error": str(e),
-            "document_count": 0,
-            "chunk_count": 0,
-            "languages": [],
-            "db_path": db_path or str(DEFAULT_DB_PATH)
-        }
+        return {"error": str(e), "document_count": 0, "chunk_count": 0, "languages": [], "db_path": db_path or str(DEFAULT_DB_PATH)}
