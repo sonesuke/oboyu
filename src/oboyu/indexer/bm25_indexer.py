@@ -224,7 +224,7 @@ class BM25Indexer:
 
         Returns:
             BM25 score
-
+            
         """
         if chunk_id not in self.document_lengths:
             return 0.0
