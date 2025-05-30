@@ -25,7 +25,7 @@ from oboyu.indexer.processor import Chunk
 _MODEL_CACHE = {}
 
 # Silence SentenceTransformer logging (INFO level is too verbose)
-logging.getLogger('sentence_transformers').setLevel(logging.ERROR)
+logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 
 
 class EmbeddingCache:
@@ -145,7 +145,7 @@ class EmbeddingGenerator:
         self.onnx_quantization_config = onnx_quantization_config or {"enabled": True, "weight_type": "uint8"}
         self.onnx_optimization_level = onnx_optimization_level
         self._model: Optional[Any] = None  # Lazy-loaded model
-        
+
         # Include quantization in cache key if enabled
         quant_suffix = ""
         if self.use_onnx and self.onnx_quantization_config.get("enabled", True):
@@ -189,11 +189,7 @@ class EmbeddingGenerator:
                 # Load or convert to ONNX model
                 # ONNX models are cached separately in XDG cache directory
                 apply_quantization = self.onnx_quantization_config.get("enabled", True)
-                onnx_path = get_or_convert_onnx_model(
-                    self.model_name,
-                    apply_quantization=apply_quantization,
-                    quantization_config=self.onnx_quantization_config
-                )
+                onnx_path = get_or_convert_onnx_model(self.model_name, apply_quantization=apply_quantization, quantization_config=self.onnx_quantization_config)
                 model = ONNXEmbeddingModel(
                     onnx_path,
                     max_seq_length=self.max_seq_length,
@@ -210,9 +206,7 @@ class EmbeddingGenerator:
         self._dimensions = self._model.get_sentence_embedding_dimension()
 
     def generate_embeddings(
-        self,
-        chunks: List[Chunk],
-        progress_callback: Optional[Callable[[int, int, str], None]] = None
+        self, chunks: List[Chunk], progress_callback: Optional[Callable[[int, int, str], None]] = None
     ) -> List[Tuple[str, str, NDArray[np.float32], datetime]]:
         """Generate embeddings for a list of document chunks.
 
@@ -237,11 +231,7 @@ class EmbeddingGenerator:
                 # Skip chunks with no content
                 processed_count += 1
                 if progress_callback:
-                    progress_callback(
-                        processed_count,
-                        total_chunk_count,
-                        f"Skipped empty chunk {processed_count}/{total_chunk_count}"
-                    )
+                    progress_callback(processed_count, total_chunk_count, f"Skipped empty chunk {processed_count}/{total_chunk_count}")
                 continue
 
             # Check cache first if enabled
@@ -260,27 +250,20 @@ class EmbeddingGenerator:
                 processed_count += 1
                 if progress_callback:
                     progress_callback(
-                        processed_count,
-                        total_chunk_count,
-                        f"Using cached embedding {processed_count}/{total_chunk_count} ({cache_hit_count} cache hits)"
+                        processed_count, total_chunk_count, f"Using cached embedding {processed_count}/{total_chunk_count} ({cache_hit_count} cache hits)"
                     )
 
         # Generate new embeddings if needed
         new_embeddings = []
         if texts_to_embed:
-            
             # Process in batches
             for i in range(0, len(texts_to_embed), self.batch_size):
-                batch_texts = texts_to_embed[i:i + self.batch_size]
-                
+                batch_texts = texts_to_embed[i : i + self.batch_size]
+
                 # Update progress before batch processing
                 if progress_callback:
-                    progress_callback(
-                        processed_count,
-                        total_chunk_count,
-                        f"Generating batch of {len(batch_texts)} embeddings..."
-                    )
-                
+                    progress_callback(processed_count, total_chunk_count, f"Generating batch of {len(batch_texts)} embeddings...")
+
                 # Process batch
                 batch_embeddings = self.model.encode(batch_texts, normalize_embeddings=True)
 
@@ -293,21 +276,19 @@ class EmbeddingGenerator:
                         self.cache.set(chunk.prefix_content, self.model_name, cast(NDArray[np.float32], embedding))
 
                     # Add to results
-                    new_embeddings.append((
-                        f"{uuid.uuid4()}",  # Generate unique ID for the embedding
-                        chunk.id,  # Reference to the chunk
-                        np.asarray(embedding, dtype=np.float32),  # The embedding vector - ensure numpy array
-                        datetime.now(),  # Timestamp
-                    ))
-                    
+                    new_embeddings.append(
+                        (
+                            f"{uuid.uuid4()}",  # Generate unique ID for the embedding
+                            chunk.id,  # Reference to the chunk
+                            np.asarray(embedding, dtype=np.float32),  # The embedding vector - ensure numpy array
+                            datetime.now(),  # Timestamp
+                        )
+                    )
+
                     # Update progress per embedding
                     processed_count += 1
                     if progress_callback:
-                        progress_callback(
-                            processed_count,
-                            total_chunk_count,
-                            f"Generated embedding {processed_count}/{total_chunk_count}"
-                        )
+                        progress_callback(processed_count, total_chunk_count, f"Generated embedding {processed_count}/{total_chunk_count}")
 
         # Collect pre-cached embeddings
         cached_embeddings = []
@@ -317,19 +298,19 @@ class EmbeddingGenerator:
                     # This chunk was in the cache
                     cached_emb = self.cache.get(chunk.prefix_content, self.model_name)
                     if cached_emb is not None:
-                        cached_embeddings.append((
-                            f"{uuid.uuid4()}",  # Generate unique ID for the embedding
-                            chunk.id,  # Reference to the chunk
-                            cached_emb,  # The embedding vector - already properly typed from get()
-                            datetime.now(),  # Timestamp
-                        ))
+                        cached_embeddings.append(
+                            (
+                                f"{uuid.uuid4()}",  # Generate unique ID for the embedding
+                                chunk.id,  # Reference to the chunk
+                                cached_emb,  # The embedding vector - already properly typed from get()
+                                datetime.now(),  # Timestamp
+                            )
+                        )
 
         # Final progress update
         if progress_callback:
             progress_callback(
-                total_chunk_count,
-                total_chunk_count,
-                f"Completed embedding generation: {len(new_embeddings)} new, {len(cached_embeddings)} cached"
+                total_chunk_count, total_chunk_count, f"Completed embedding generation: {len(new_embeddings)} new, {len(cached_embeddings)} cached"
             )
 
         # Combine new and cached embeddings

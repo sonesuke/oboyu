@@ -62,29 +62,29 @@ def _get_file_type(file_path: Path) -> str:
 
     if mime_type:
         # Return the main type
-        return mime_type.split('/')[0]
+        return mime_type.split("/")[0]
 
     # If we can't determine by extension, check file header (first few bytes)
     try:
-        with open(file_path, 'rb') as f:
+        with open(file_path, "rb") as f:
             header = f.read(512)  # Read first 512 bytes
 
             # Check for common file signatures
-            if header.startswith(b'%PDF-'):
-                return 'application/pdf'
-            if header.startswith(b'\x25\x21'):
-                return 'text/plain'  # Likely a script
-            if b'<!DOCTYPE html>' in header or b'<html' in header:
-                return 'text/html'
-            if b'<?xml' in header:
-                return 'text/xml'
+            if header.startswith(b"%PDF-"):
+                return "application/pdf"
+            if header.startswith(b"\x25\x21"):
+                return "text/plain"  # Likely a script
+            if b"<!DOCTYPE html>" in header or b"<html" in header:
+                return "text/html"
+            if b"<?xml" in header:
+                return "text/xml"
     except IOError:
         # If we can't read the file, just continue to the default return
         # This is expected for some files, so we don't need to log an error
         pass
 
     # Default to text/plain if we can't determine
-    return 'text/plain'
+    return "text/plain"
 
 
 def _extract_by_type(file_path: Path, file_type: str) -> Tuple[str, Dict[str, Any]]:
@@ -115,47 +115,47 @@ def _extract_text_file(file_path: Path) -> Tuple[str, Dict[str, Any]]:
     # Read file with size limit for efficiency
     max_size = 10 * 1024 * 1024  # 10MB limit per file
     file_size = file_path.stat().st_size
-    
+
     if file_size > max_size:
         # For large files, read only the beginning
-        with open(file_path, 'rb') as f:
+        with open(file_path, "rb") as f:
             raw_data = f.read(max_size)
     else:
         # First read the file as binary
-        with open(file_path, 'rb') as f:
+        with open(file_path, "rb") as f:
             raw_data = f.read()  # Read the entire file
 
     # Decode the content
     content = _decode_content(raw_data)
-    
+
     # Parse YAML front matter if present
     content, metadata = _parse_front_matter(content)
-    
+
     return content, metadata
 
 
 def _decode_content(raw_data: bytes) -> str:
     """Decode raw bytes to string using various encoding detection methods.
-    
+
     Args:
         raw_data: Raw bytes to decode
-        
+
     Returns:
         Decoded string
 
     """
     # Try common encodings first (much faster for Japanese content)
-    common_encodings = ['utf-8', 'shift_jis', 'euc-jp', 'iso-2022-jp']
+    common_encodings = ["utf-8", "shift_jis", "euc-jp", "iso-2022-jp"]
     for encoding in common_encodings:
         try:
             return raw_data.decode(encoding)
         except UnicodeDecodeError:
             continue
-    
+
     # For small files, use only a sample for detection (faster)
     sample_size = min(len(raw_data), 32768)  # 32KB sample for faster detection
     sample_data = raw_data[:sample_size] if len(raw_data) > sample_size else raw_data
-    
+
     # Try charset-normalizer as fallback (more accurate but slower)
     charset_results = charset_normalizer.from_bytes(sample_data).best()
     if charset_results:
@@ -168,8 +168,8 @@ def _decode_content(raw_data: bytes) -> str:
 
     # If charset-normalizer didn't work well, try chardet
     chardet_result = chardet.detect(raw_data)
-    chardet_encoding: str = chardet_result.get('encoding', 'utf-8') or 'utf-8'
-    confidence = chardet_result.get('confidence', 0.0)
+    chardet_encoding: str = chardet_result.get("encoding", "utf-8") or "utf-8"
+    confidence = chardet_result.get("confidence", 0.0)
 
     # If encoding was detected with high confidence, use it
     if chardet_encoding and confidence > 0.7:
@@ -180,32 +180,32 @@ def _decode_content(raw_data: bytes) -> str:
 
     # Try specific encodings for Japanese content
     # These are common in Japanese text files
-    for encoding in ['utf-8', 'shift-jis', 'euc-jp', 'cp932', 'iso-2022-jp']:
+    for encoding in ["utf-8", "shift-jis", "euc-jp", "cp932", "iso-2022-jp"]:
         try:
             return raw_data.decode(encoding)
         except UnicodeDecodeError:
             continue
 
     # Try common western encodings
-    for encoding in ['utf-8-sig', 'latin-1', 'windows-1252']:
+    for encoding in ["utf-8-sig", "latin-1", "windows-1252"]:
         try:
             return raw_data.decode(encoding)
         except UnicodeDecodeError:
             continue
 
     # Last resort: use UTF-8 with replacement for invalid characters
-    return raw_data.decode('utf-8', errors='replace')
+    return raw_data.decode("utf-8", errors="replace")
 
 
 def _parse_front_matter(content: str) -> Tuple[str, Dict[str, Any]]:
     """Parse YAML front matter from content if present.
-    
+
     Extracts YAML front matter and returns the content without it,
     along with the parsed metadata.
-    
+
     Args:
         content: File content that may contain YAML front matter
-        
+
     Returns:
         Tuple of (content without front matter, metadata dict)
         Metadata may contain: title, created_at, updated_at, uri
@@ -213,22 +213,22 @@ def _parse_front_matter(content: str) -> Tuple[str, Dict[str, Any]]:
     """
     # Use python-frontmatter to parse
     post = frontmatter.loads(content)
-    
+
     # Extract supported metadata fields
     metadata: Dict[str, Any] = {}
-    
+
     # Extract title
-    if 'title' in post.metadata:
-        metadata['title'] = str(post.metadata['title'])
-    
+    if "title" in post.metadata:
+        metadata["title"] = str(post.metadata["title"])
+
     # Extract dates - convert to datetime if string
-    for date_field in ['created_at', 'updated_at']:
+    for date_field in ["created_at", "updated_at"]:
         if date_field in post.metadata:
             value = post.metadata[date_field]
             if isinstance(value, str):
                 # Try to parse ISO format datetime
                 try:
-                    metadata[date_field] = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                    metadata[date_field] = datetime.fromisoformat(value.replace("Z", "+00:00"))
                 except ValueError:
                     # If parsing fails, store as string
                     metadata[date_field] = value
@@ -237,11 +237,11 @@ def _parse_front_matter(content: str) -> Tuple[str, Dict[str, Any]]:
             else:
                 # Store other types as-is
                 metadata[date_field] = value
-    
+
     # Extract URI
-    if 'uri' in post.metadata:
-        metadata['uri'] = str(post.metadata['uri'])
-    
+    if "uri" in post.metadata:
+        metadata["uri"] = str(post.metadata["uri"])
+
     # Return content without front matter and the metadata
     return post.content, metadata
 
@@ -278,17 +278,17 @@ def _detect_language(text: str) -> str:
         detected = langdetect.detect(sample)
 
         # Handle Japanese detection
-        if detected == 'ja':
-            return 'ja'
+        if detected == "ja":
+            return "ja"
 
         # Handle common languages
-        if detected in ['en', 'zh', 'ko', 'fr', 'de', 'es', 'it', 'ru']:
+        if detected in ["en", "zh", "ko", "fr", "de", "es", "it", "ru"]:
             return str(detected)
 
         # For other languages, check again for Japanese characters
         # This is a fallback for cases where langdetect might miss Japanese
         if japanese_char_count > 0:
-            return 'ja'
+            return "ja"
 
         return str(detected)
     except Exception:

@@ -81,16 +81,18 @@ def create_default_config(path: Path) -> Dict[str, Any]:
     config["indexer"]["db_path"] = str(DEFAULT_DB_PATH)
 
     # Add query engine default config
-    config.update({
-        "query": {
-            "default_mode": "hybrid",  # Default search mode
-            "vector_weight": 0.7,  # Weight for vector scores in hybrid search
-            "bm25_weight": 0.3,  # Weight for BM25 scores in hybrid search
-            "top_k": 5,  # Number of results to return
-            "snippet_length": 160,  # Character length for snippets
-            "highlight_matches": True,  # Whether to highlight matching terms
+    config.update(
+        {
+            "query": {
+                "default_mode": "hybrid",  # Default search mode
+                "vector_weight": 0.7,  # Weight for vector scores in hybrid search
+                "bm25_weight": 0.3,  # Weight for BM25 scores in hybrid search
+                "top_k": 5,  # Number of results to return
+                "snippet_length": 160,  # Character length for snippets
+                "highlight_matches": True,  # Whether to highlight matching terms
+            }
         }
-    })
+    )
 
     # Ensure directory exists
     os.makedirs(path.parent, exist_ok=True)

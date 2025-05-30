@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # Try to import quantization tools
 try:
     from onnxruntime.quantization import QuantType, quantize_dynamic
+
     QUANTIZATION_AVAILABLE = True
 except ImportError:
     QUANTIZATION_AVAILABLE = False
@@ -35,44 +36,44 @@ def quantize_model_dynamic(
     weight_type: str = "uint8",
 ) -> Path:
     """Apply dynamic quantization to an ONNX model.
-    
+
     Dynamic quantization quantizes the weights to int8 while keeping activations in fp32.
     This provides good performance improvement with minimal accuracy loss.
-    
+
     Args:
         model_path: Path to the ONNX model file
         output_path: Path for the quantized model (defaults to model_path with .quantized suffix)
         weight_type: Weight quantization type ("uint8" or "int8")
-        
+
     Returns:
         Path to the quantized model
-        
+
     Raises:
         RuntimeError: If quantization tools are not available
-        
+
     """
     if not QUANTIZATION_AVAILABLE:
         raise RuntimeError("ONNX Runtime quantization tools are not available. Please install onnxruntime-tools.")
-    
+
     model_path = Path(model_path)
     if output_path is None:
         # Default to model_quantized.onnx in the same directory
         output_path = model_path.parent / "model_quantized.onnx"
     else:
         output_path = Path(output_path)
-    
+
     # Determine quantization type
     quant_type = QuantType.QUInt8 if weight_type == "uint8" else QuantType.QInt8
-    
+
     logger.info(f"Quantizing model {model_path} to {output_path} with {weight_type} weights...")
-    
+
     try:
         quantize_dynamic(
             model_input=str(model_path),
             model_output=str(output_path),
             weight_type=quant_type,
         )
-        
+
         # Verify the quantized model exists and has reasonable size
         if output_path.exists() and output_path.stat().st_size > 0:
             original_size = model_path.stat().st_size
@@ -82,7 +83,7 @@ def quantize_model_dynamic(
             return output_path
         else:
             raise RuntimeError("Quantization failed: output file is missing or empty")
-            
+
     except Exception as e:
         logger.error(f"Quantization failed: {e}")
         # Clean up partial output if it exists
@@ -126,17 +127,15 @@ class ONNXEmbeddingModel:
             "extended": GraphOptimizationLevel.ORT_ENABLE_EXTENDED,
             "all": GraphOptimizationLevel.ORT_ENABLE_ALL,
         }
-        sess_options.graph_optimization_level = opt_level_map.get(
-            optimization_level, GraphOptimizationLevel.ORT_DISABLE_ALL
-        )
+        sess_options.graph_optimization_level = opt_level_map.get(optimization_level, GraphOptimizationLevel.ORT_DISABLE_ALL)
         sess_options.intra_op_num_threads = 4  # Optimal for most CPU architectures
 
         # Load ONNX model
         self.session = InferenceSession(str(self.model_path), sess_options)
-        
+
         # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(str(self.tokenizer_path))
-        
+
         # Get model dimensions from output shape
         output_shape = self.session.get_outputs()[0].shape
         self.dimensions = output_shape[-1] if len(output_shape) > 1 else None
@@ -162,11 +161,11 @@ class ONNXEmbeddingModel:
             sentences = [sentences]
 
         all_embeddings = []
-        
+
         # Process in batches
         for i in range(0, len(sentences), batch_size):
-            batch = sentences[i:i + batch_size]
-            
+            batch = sentences[i : i + batch_size]
+
             # Tokenize
             inputs = self.tokenizer(
                 batch,
@@ -175,27 +174,30 @@ class ONNXEmbeddingModel:
                 max_length=self.max_seq_length,
                 return_tensors="np",
             )
-            
+
             # Run inference
-            outputs = self.session.run(None, {
-                "input_ids": inputs["input_ids"],
-                "attention_mask": inputs["attention_mask"],
-            })
-            
+            outputs = self.session.run(
+                None,
+                {
+                    "input_ids": inputs["input_ids"],
+                    "attention_mask": inputs["attention_mask"],
+                },
+            )
+
             # Apply pooling
             embeddings = self._pool_embeddings(
                 outputs[0],  # token embeddings
                 inputs["attention_mask"],
             )
-            
+
             if normalize_embeddings:
                 embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
-            
+
             all_embeddings.append(embeddings)
-        
+
         # Concatenate all batches
         result = np.vstack(all_embeddings) if len(all_embeddings) > 1 else all_embeddings[0]
-        
+
         # Return single embedding if input was single sentence
         if len(sentences) == 1:
             return np.asarray(result[0], dtype=np.float32)
@@ -265,16 +267,16 @@ def convert_to_onnx(
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     logger.info(f"Converting {model_name} to ONNX format...")
-    
+
     # Load the model - force CPU to avoid MPS issues
     model = SentenceTransformer(model_name, device="cpu")
-    
+
     # Get the transformer model and ensure it's on CPU
     transformer = model[0].auto_model
     transformer = transformer.to("cpu")
-    
+
     # Prepare dummy input on CPU
     tokenizer = model.tokenizer
     dummy_input = tokenizer(
@@ -286,7 +288,7 @@ def convert_to_onnx(
     )
     # Ensure inputs are on CPU
     dummy_input = {k: v.to("cpu") for k, v in dummy_input.items()}
-    
+
     # Export to ONNX
     onnx_path = output_dir / "model.onnx"
     torch.onnx.export(
@@ -304,13 +306,13 @@ def convert_to_onnx(
             "last_hidden_state": {0: "batch_size", 1: "sequence_length"},
         },
     )
-    
+
     # Optimize if requested
     if optimize:
         logger.info("Optimizing ONNX model...")
         try:
             from onnxruntime.transformers import optimizer
-            
+
             optimized_path = output_dir / "model_optimized.onnx"
             optimizer.optimize_model(
                 str(onnx_path),
@@ -324,20 +326,20 @@ def convert_to_onnx(
                 logger.warning("Optimization failed, using non-optimized model")
         except Exception as e:
             logger.warning(f"ONNX optimization failed: {e}, using non-optimized model")
-    
+
     # Save tokenizer
     tokenizer.save_pretrained(output_dir)
-    
+
     # Apply quantization if requested and available
     if apply_quantization and QUANTIZATION_AVAILABLE:
         try:
             # Get quantization config
             quant_config = quantization_config or {}
             weight_type = quant_config.get("weight_type", "uint8")
-            
+
             # Quantize the model
             quantized_path = quantize_model_dynamic(onnx_path, weight_type=weight_type)
-            
+
             # Update path to quantized model
             onnx_path = quantized_path
         except Exception as e:
@@ -345,7 +347,7 @@ def convert_to_onnx(
             # Continue with non-quantized model
     elif apply_quantization and not QUANTIZATION_AVAILABLE:
         logger.warning("Quantization requested but tools not available. Using non-quantized model.")
-    
+
     # Save config
     config = {
         "max_seq_length": model.max_seq_length,
@@ -355,7 +357,7 @@ def convert_to_onnx(
     }
     with open(output_dir / "onnx_config.json", "w") as f:
         json.dump(config, f, indent=2)
-    
+
     logger.info(f"ONNX model saved to {onnx_path}")
     return onnx_path
 
@@ -383,13 +385,13 @@ def get_or_convert_onnx_model(
     else:
         cache_dir = Path(cache_dir)
     model_dir = cache_dir / "onnx" / model_name.replace("/", "_")
-    
+
     # Try quantized model first (if quantization is requested)
     if apply_quantization:
         onnx_path = model_dir / "model_quantized.onnx"
         if onnx_path.exists() and onnx_path.stat().st_size > 0:
             return onnx_path
-    
+
     # Try optimized model
     onnx_path = model_dir / "model_optimized.onnx"
     if onnx_path.exists() and onnx_path.stat().st_size > 0:
@@ -403,7 +405,7 @@ def get_or_convert_onnx_model(
             except Exception as e:
                 logger.warning(f"Failed to quantize existing model: {e}")
         return onnx_path
-    
+
     # Try non-optimized model
     onnx_path = model_dir / "model.onnx"
     if onnx_path.exists() and onnx_path.stat().st_size > 0:
@@ -417,7 +419,7 @@ def get_or_convert_onnx_model(
             except Exception as e:
                 logger.warning(f"Failed to quantize existing model: {e}")
         return onnx_path
-    
+
     # Convert if not found
     logger.info(f"ONNX model not found, converting {model_name}...")
     onnx_path = convert_to_onnx(
@@ -425,15 +427,15 @@ def get_or_convert_onnx_model(
         model_dir,
         optimize=False,  # Disable optimization to avoid issues
         apply_quantization=apply_quantization,
-        quantization_config=quantization_config
+        quantization_config=quantization_config,
     )
-    
+
     return onnx_path
 
 
 class ONNXCrossEncoderModel:
     """ONNX-optimized Cross-Encoder model for reranking."""
-    
+
     def __init__(
         self,
         model_path: Union[str, Path],
@@ -442,18 +444,18 @@ class ONNXCrossEncoderModel:
         optimization_level: str = "none",
     ) -> None:
         """Initialize ONNX Cross-Encoder model.
-        
+
         Args:
             model_path: Path to ONNX model file
             tokenizer_path: Path to tokenizer directory (defaults to model_path parent)
             max_seq_length: Maximum sequence length
             optimization_level: Graph optimization level ("none", "basic", "extended", "all")
-        
+
         """
         self.model_path = Path(model_path)
         self.tokenizer_path = Path(tokenizer_path) if tokenizer_path else self.model_path.parent
         self.max_seq_length = max_seq_length
-        
+
         # Set up ONNX runtime options for optimization
         sess_options = SessionOptions()
         # Map string optimization level to GraphOptimizationLevel enum
@@ -463,17 +465,15 @@ class ONNXCrossEncoderModel:
             "extended": GraphOptimizationLevel.ORT_ENABLE_EXTENDED,
             "all": GraphOptimizationLevel.ORT_ENABLE_ALL,
         }
-        sess_options.graph_optimization_level = opt_level_map.get(
-            optimization_level, GraphOptimizationLevel.ORT_DISABLE_ALL
-        )
+        sess_options.graph_optimization_level = opt_level_map.get(optimization_level, GraphOptimizationLevel.ORT_DISABLE_ALL)
         sess_options.intra_op_num_threads = 4  # Optimal for most CPU architectures
-        
+
         # Load ONNX model
         self.session = InferenceSession(str(self.model_path), sess_options)
-        
+
         # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(str(self.tokenizer_path))
-    
+
     def predict(
         self,
         queries: Union[str, List[str]],
@@ -481,32 +481,32 @@ class ONNXCrossEncoderModel:
         batch_size: int = 8,
     ) -> NDArray[np.float32]:
         """Predict relevance scores for query-document pairs.
-        
+
         Args:
             queries: Single query or list of queries
             documents: Single document or list of documents
             batch_size: Batch size for prediction
-            
+
         Returns:
             Relevance scores as numpy array
-        
+
         """
         # Handle single inputs
         if isinstance(queries, str):
             queries = [queries]
         if isinstance(documents, str):
             documents = [documents]
-        
+
         if len(queries) != len(documents):
             raise ValueError(f"Number of queries ({len(queries)}) must match number of documents ({len(documents)})")
-        
+
         all_scores = []
-        
+
         # Process in batches
         for i in range(0, len(queries), batch_size):
-            batch_queries = queries[i:i + batch_size]
-            batch_docs = documents[i:i + batch_size]
-            
+            batch_queries = queries[i : i + batch_size]
+            batch_docs = documents[i : i + batch_size]
+
             # Tokenize pairs
             inputs = self.tokenizer(
                 batch_queries,
@@ -516,20 +516,23 @@ class ONNXCrossEncoderModel:
                 max_length=self.max_seq_length,
                 return_tensors="np",
             )
-            
+
             # Run inference
-            outputs = self.session.run(None, {
-                "input_ids": inputs["input_ids"],
-                "attention_mask": inputs["attention_mask"],
-            })
-            
+            outputs = self.session.run(
+                None,
+                {
+                    "input_ids": inputs["input_ids"],
+                    "attention_mask": inputs["attention_mask"],
+                },
+            )
+
             # Extract logits
             logits = outputs[0]
-            
+
             # Apply sigmoid to get probabilities
             scores = 1 / (1 + np.exp(-logits[:, 0]))  # Take positive class logit
             all_scores.extend(scores)
-        
+
         return np.array(all_scores, dtype=np.float32)
 
 
@@ -542,7 +545,7 @@ def convert_cross_encoder_to_onnx(
     quantization_config: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """Convert a Cross-Encoder model to ONNX format.
-    
+
     Args:
         model_name: Name or path of the Cross-Encoder model
         output_dir: Directory to save ONNX model
@@ -550,16 +553,16 @@ def convert_cross_encoder_to_onnx(
         optimize: Whether to optimize the ONNX model
         apply_quantization: Whether to apply dynamic quantization (default: True)
         quantization_config: Optional quantization configuration
-        
+
     Returns:
         Path to the saved ONNX model
-    
+
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     logger.info(f"Converting Cross-Encoder {model_name} to ONNX format...")
-    
+
     # Load the model and tokenizer
     if "cross-encoder" in model_name.lower() or "reranker" in model_name.lower():
         # Use CrossEncoder class if available
@@ -578,11 +581,11 @@ def convert_cross_encoder_to_onnx(
         model = AutoModelForSequenceClassification.from_pretrained(model_name, trust_remote_code=True)
         tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
         max_length = 512
-    
+
     # Ensure model is on CPU
     model = model.to("cpu")
     model.eval()
-    
+
     # Prepare dummy input
     dummy_input = tokenizer(
         "This is a query",
@@ -594,7 +597,7 @@ def convert_cross_encoder_to_onnx(
     )
     # Ensure inputs are on CPU
     dummy_input = {k: v.to("cpu") for k, v in dummy_input.items()}
-    
+
     # Export to ONNX
     onnx_path = output_dir / "model.onnx"
     torch.onnx.export(
@@ -612,13 +615,13 @@ def convert_cross_encoder_to_onnx(
             "logits": {0: "batch_size"},
         },
     )
-    
+
     # Optimize if requested
     if optimize:
         logger.info("Optimizing ONNX model...")
         try:
             from onnxruntime.transformers import optimizer
-            
+
             optimized_path = output_dir / "model_optimized.onnx"
             optimizer.optimize_model(
                 str(onnx_path),
@@ -632,20 +635,20 @@ def convert_cross_encoder_to_onnx(
                 logger.warning("Optimization failed, using non-optimized model")
         except Exception as e:
             logger.warning(f"ONNX optimization failed: {e}, using non-optimized model")
-    
+
     # Save tokenizer
     tokenizer.save_pretrained(output_dir)
-    
+
     # Apply quantization if requested and available
     if apply_quantization and QUANTIZATION_AVAILABLE:
         try:
             # Get quantization config
             quant_config = quantization_config or {}
             weight_type = quant_config.get("weight_type", "uint8")
-            
+
             # Quantize the model
             quantized_path = quantize_model_dynamic(onnx_path, weight_type=weight_type)
-            
+
             # Update path to quantized model
             onnx_path = quantized_path
         except Exception as e:
@@ -653,7 +656,7 @@ def convert_cross_encoder_to_onnx(
             # Continue with non-quantized model
     elif apply_quantization and not QUANTIZATION_AVAILABLE:
         logger.warning("Quantization requested but tools not available. Using non-quantized model.")
-    
+
     # Save config
     config = {
         "max_seq_length": max_length,
@@ -662,7 +665,7 @@ def convert_cross_encoder_to_onnx(
     }
     with open(output_dir / "onnx_config.json", "w") as f:
         json.dump(config, f, indent=2)
-    
+
     logger.info(f"ONNX Cross-Encoder model saved to {onnx_path}")
     return onnx_path
 
@@ -674,29 +677,29 @@ def get_or_convert_cross_encoder_onnx_model(
     quantization_config: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """Get ONNX Cross-Encoder model path, converting if necessary.
-    
+
     Args:
         model_name: Name of the Cross-Encoder model
         cache_dir: Directory to cache ONNX models (defaults to XDG cache path)
         apply_quantization: Whether to apply dynamic quantization (default: True)
         quantization_config: Optional quantization configuration
-        
+
     Returns:
         Path to ONNX model file
-    
+
     """
     if cache_dir is None:
         cache_dir = EMBEDDING_CACHE_DIR / "models"
     else:
         cache_dir = Path(cache_dir)
     model_dir = cache_dir / "onnx" / model_name.replace("/", "_")
-    
+
     # Try quantized model first (if quantization is requested)
     if apply_quantization:
         onnx_path = model_dir / "model_quantized.onnx"
         if onnx_path.exists() and onnx_path.stat().st_size > 0:
             return onnx_path
-    
+
     # Try optimized model
     onnx_path = model_dir / "model_optimized.onnx"
     if onnx_path.exists() and onnx_path.stat().st_size > 0:
@@ -710,7 +713,7 @@ def get_or_convert_cross_encoder_onnx_model(
             except Exception as e:
                 logger.warning(f"Failed to quantize existing model: {e}")
         return onnx_path
-    
+
     # Try non-optimized model
     onnx_path = model_dir / "model.onnx"
     if onnx_path.exists() and onnx_path.stat().st_size > 0:
@@ -724,7 +727,7 @@ def get_or_convert_cross_encoder_onnx_model(
             except Exception as e:
                 logger.warning(f"Failed to quantize existing model: {e}")
         return onnx_path
-    
+
     # Convert if not found
     logger.info(f"ONNX Cross-Encoder model not found, converting {model_name}...")
     onnx_path = convert_cross_encoder_to_onnx(
@@ -732,7 +735,7 @@ def get_or_convert_cross_encoder_onnx_model(
         model_dir,
         optimize=False,  # Disable optimization to avoid issues
         apply_quantization=apply_quantization,
-        quantization_config=quantization_config
+        quantization_config=quantization_config,
     )
-    
+
     return onnx_path

@@ -24,7 +24,8 @@ DatabasePathOption = Annotated[
 VerboseOption = Annotated[
     bool,
     typer.Option(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         help="Enable verbose output",
     ),
 ]
@@ -33,7 +34,8 @@ VerboseOption = Annotated[
 ForceOption = Annotated[
     bool,
     typer.Option(
-        "--force", "-f",
+        "--force",
+        "-f",
         help="Force operation without confirmation",
     ),
 ]
@@ -42,7 +44,8 @@ ForceOption = Annotated[
 DebugOption = Annotated[
     bool,
     typer.Option(
-        "--debug", "-d",
+        "--debug",
+        "-d",
         help="Enable debug mode with additional logging",
     ),
 ]

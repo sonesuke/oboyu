@@ -4,7 +4,6 @@ This module provides centralized path definitions for the application,
 following the XDG Base Directory specification.
 """
 
-
 from xdg_base_dirs import (
     xdg_cache_home,
     xdg_config_home,
@@ -30,6 +29,7 @@ DEFAULT_DB_PATH = DATA_BASE_DIR / "index.db"
 # Embedding models and cache directory
 EMBEDDING_MODELS_DIR = DATA_BASE_DIR / "embedding" / "models"
 EMBEDDING_CACHE_DIR = CACHE_BASE_DIR / "embedding" / "cache"
+
 
 # Helper function to ensure all required directories exist
 def ensure_config_dirs() -> None:

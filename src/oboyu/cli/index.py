@@ -185,28 +185,26 @@ def clear(
 
     # Use hierarchical logger for clear operation
     logger = create_hierarchical_logger(console)
-    
+
     with logger.live_display():
         # Initialize indexer
         with logger.operation("Initializing Oboyu indexer..."):
             model_name = indexer_config_dict.get("embedding_model", "cl-nagoya/ruri-v3-30m")
-            load_op = logger.start_operation(
-                f"Loading embedding model ({model_name})..."
-            )
+            load_op = logger.start_operation(f"Loading embedding model ({model_name})...")
             indexer = Indexer(config=indexer_config)
             logger.complete_operation(load_op)
             logger.update_operation(load_op, f"Loading embedding model ({model_name})... ✓ Done")
-        
+
         # Clear the index
         with logger.operation("Clearing index database..."):
             clear_op = logger.start_operation("Removing all indexed data...")
             indexer.clear_index()
             logger.complete_operation(clear_op)
             logger.update_operation(clear_op, "Removing all indexed data... ✓ Done")
-        
+
         # Clean up resources
         indexer.close()
-    
+
     console.print("\nIndex database cleared successfully!")
 
 
@@ -241,16 +239,9 @@ def _handle_crawling_stage(logger: HierarchicalLogger, scan_op_id: str, current_
     """Handle crawling stage progress."""
     if total > 0 and files_found == 0:
         files_found = total
-        logger.update_operation(
-            scan_op_id,
-            "Scanning directory...",
-            details=f"Found {total} files"
-        )
+        logger.update_operation(scan_op_id, "Scanning directory...", details=f"Found {total} files")
         logger.complete_operation(scan_op_id)
-        logger.update_operation(
-            scan_op_id,
-            f"Found {total} files"
-        )
+        logger.update_operation(scan_op_id, f"Found {total} files")
         # Start processing documents operation
         current_ops["process"] = logger.start_operation("Processing documents...")
     return files_found
@@ -262,19 +253,13 @@ def _handle_processing_stage(logger: HierarchicalLogger, current_ops: dict[str, 
         if not current_ops["read"]:
             current_ops["read"] = logger.start_operation(f"Reading files... {current}/{total}")
         else:
-            logger.update_operation(
-                current_ops["read"],
-                f"Reading files... {current}/{total}"
-            )
-        
+            logger.update_operation(current_ops["read"], f"Reading files... {current}/{total}")
+
         # Mark complete on last file
         if current == total:
             if current_ops["read"]:
                 logger.complete_operation(current_ops["read"])
-                logger.update_operation(
-                    current_ops["read"],
-                    f"Reading files... ✓ {total} files processed"
-                )
+                logger.update_operation(current_ops["read"], f"Reading files... ✓ {total} files processed")
                 current_ops["read"] = None
 
 
@@ -286,7 +271,7 @@ def _handle_embedding_stage(logger: HierarchicalLogger, current_ops: dict[str, O
             logger.complete_operation(current_ops["process"])
             current_ops["process"] = None
         current_ops["embed"] = logger.start_operation("Generating embeddings...")
-    
+
     # Update batch progress
     batch_op_id = current_ops.get("batch")
     if not batch_op_id:
@@ -294,7 +279,7 @@ def _handle_embedding_stage(logger: HierarchicalLogger, current_ops: dict[str, O
         current_ops["batch"] = batch_op_id
     else:
         logger.update_operation(batch_op_id, f"Processing batch {current}/{total}...")
-    
+
     # Mark complete on last batch
     if current == total:
         if batch_op_id:
@@ -335,7 +320,7 @@ def _handle_bm25_stage(logger: HierarchicalLogger, current_ops: dict[str, Option
                 1: "Tokenizing documents... (this may take a while for Japanese text)",
                 2: "Building vocabulary...",
                 3: "Filtering low-frequency terms...",
-                4: "Storing index in database..."
+                4: "Storing index in database...",
             }.get(current, f"Building BM25 index... step {current}/{total}")
             logger.update_operation(bm25_op, progress_text)
     elif current == total:
@@ -357,7 +342,7 @@ def _handle_bm25_tokenizing_stage(logger: HierarchicalLogger, current_ops: dict[
     elif bm25_op:
         # Update progress
         logger.update_operation(bm25_op, f"Tokenizing chunks... {current}/{total}")
-        
+
         # Complete on last chunk
         if current == total:
             logger.complete_operation(bm25_op)
@@ -369,10 +354,10 @@ def _create_progress_callback(logger: HierarchicalLogger, scan_op_id: str, curre
     """Create a progress callback for the indexer."""
     files_found = 0
     last_stage = None
-    
+
     def indexer_progress_callback(stage: str, current: int, total: int) -> None:
         nonlocal files_found, last_stage
-        
+
         if stage == "crawling":
             files_found = _handle_crawling_stage(logger, scan_op_id, current_ops, total, files_found)
         elif stage == "processing":
@@ -386,9 +371,9 @@ def _create_progress_callback(logger: HierarchicalLogger, scan_op_id: str, curre
             _handle_bm25_stage(logger, current_ops, current, total)
         elif stage == "bm25_tokenizing":
             _handle_bm25_tokenizing_stage(logger, current_ops, current, total)
-        
+
         last_stage = stage
-    
+
     return indexer_progress_callback
 
 
@@ -451,7 +436,7 @@ def index(
         exclude_patterns,
         japanese_encodings,
     )
-    
+
     indexer_config_dict = _create_indexer_config(
         config_data,
         chunk_size,
@@ -473,28 +458,23 @@ def index(
 
     # Create configuration objects
     # Combine crawler and indexer configs for the IndexerConfig
-    combined_config = {
-        "crawler": crawler_config_dict,
-        "indexer": indexer_config_dict
-    }
+    combined_config = {"crawler": crawler_config_dict, "indexer": indexer_config_dict}
     indexer_config = IndexerConfig(config_dict=combined_config)
 
     # Use hierarchical logger for indexing operation
     logger = create_hierarchical_logger(console)
-    
+
     with logger.live_display():
         # Initialize indexer
         with logger.operation("Initializing Oboyu indexer..."):
             model_name = indexer_config_dict.get("embedding_model", "cl-nagoya/ruri-v3-30m")
-            load_op = logger.start_operation(
-                f"Loading embedding model ({model_name})..."
-            )
-            
+            load_op = logger.start_operation(f"Loading embedding model ({model_name})...")
+
             # Create indexer (loads model and sets up database)
             start_time = time.time()
             indexer = Indexer(config=indexer_config)
             duration = time.time() - start_time
-            
+
             logger.complete_operation(load_op)
             logger.update_operation(load_op, f"Loading embedding model ({model_name})... ✓ Done ({duration:.1f}s)")
 
@@ -506,11 +486,8 @@ def index(
         # Process each directory
         for directory in directories:
             # Start directory scanning operation
-            scan_op_id = logger.start_operation(
-                f"Scanning directory {directory}...",
-                expandable=False
-            )
-            
+            scan_op_id = logger.start_operation(f"Scanning directory {directory}...", expandable=False)
+
             # Track current operations for updates
             current_ops: Dict[str, Optional[str]] = {
                 "process": None,
@@ -519,19 +496,15 @@ def index(
                 "read": None,
                 "store": None,
                 "bm25": None,
-                "bm25_tokenize": None
+                "bm25_tokenize": None,
             }
-            
+
             # Create progress callback using helper function
             indexer_progress_callback = _create_progress_callback(logger, scan_op_id, current_ops)
-            
+
             # Index directory
-            chunks_indexed, files_processed = indexer.index_directory(
-                directory,
-                incremental=not force,
-                progress_callback=indexer_progress_callback
-            )
-            
+            chunks_indexed, files_processed = indexer.index_directory(directory, incremental=not force, progress_callback=indexer_progress_callback)
+
             # Complete any remaining operations
             for op_id in current_ops.values():
                 if op_id:
@@ -539,21 +512,18 @@ def index(
                         logger.complete_operation(op_id)
                     except Exception:  # noqa: S110
                         pass  # Operation might already be completed
-            
+
             # Add summary
-            summary_op = logger.start_operation(
-                f"Indexed {chunks_indexed} chunks from {files_processed} documents"
-            )
+            summary_op = logger.start_operation(f"Indexed {chunks_indexed} chunks from {files_processed} documents")
             logger.complete_operation(summary_op)
-            
+
             # Update totals
             total_chunks += chunks_indexed
             total_files += files_processed
 
         # Clean up resources
         indexer.close()
-    
+
     # Show summary after live display
     elapsed_time = time.time() - start_time
     console.print(f"\nIndexed {total_files} files ({total_chunks} chunks) in {elapsed_time:.1f}s")
-
