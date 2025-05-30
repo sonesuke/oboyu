@@ -47,6 +47,7 @@ class DateTimeEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
+
 class Database:
     """Manager for the vector database using DuckDB with VSS extension.
 
@@ -99,6 +100,7 @@ class Database:
         # Connections will be initialized in setup()
         self.conn: Optional[DuckDBPyConnection] = None
 
+
     def setup(self) -> None:
         """Set up the database schema and extensions."""
         # Ensure the parent directory exists
@@ -116,7 +118,7 @@ class Database:
 
         # Enable experimental persistence for HNSW indexes
         self.conn.execute("SET hnsw_enable_experimental_persistence=true")
-
+        
         # Set performance optimization pragmas
         self.conn.execute("PRAGMA threads=8")  # Increase thread count
         self.conn.execute("SET preserve_insertion_order=false")
@@ -125,6 +127,8 @@ class Database:
 
         # Create tables if they don't exist
         self._create_schema()
+
+
 
     def _create_schema(self) -> None:
         """Create database schema."""
@@ -160,32 +164,26 @@ class Database:
             )
         """)
 
-        # Drop existing index if it exists
-        self.conn.execute("DROP INDEX IF EXISTS vector_idx")
-
-        # Create HNSW index with parameters
-        # DuckDB doesn't support ? in DDL statements, use string formatting carefully
-        # These are controlled inputs, not user input
-        self.conn.execute(f"""
-            CREATE INDEX vector_idx ON embeddings
-            USING HNSW (vector)
-            WITH (
-                metric = 'cosine',
-                ef_construction = {self.ef_construction},
-                ef_search = {self.ef_search},
-                m = {self.m},
-                m0 = {self.m0}
-            )
-        """)
-
+        # Check if HNSW index exists and is valid
+        if not self._hnsw_index_exists():
+            logger.info("Creating new HNSW index...")
+            self._create_hnsw_index()
+        else:
+            logger.info("Using existing HNSW index - skipping index creation for faster startup")
+            # Optionally validate index parameters
+            if not self._validate_hnsw_index_params():
+                logger.warning("HNSW index parameters mismatch, recreating index...")
+                self.conn.execute("DROP INDEX IF EXISTS vector_idx")
+                self._create_hnsw_index()
+        
         # Create BM25 schema
         self._create_bm25_schema()
-
+    
     def _create_bm25_schema(self) -> None:
         """Create BM25-related database schema."""
         if self.conn is None:
             raise ValueError("Database connection not initialized. Call setup() first.")
-
+        
         # Create vocabulary table
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS vocabulary (
@@ -194,7 +192,7 @@ class Database:
                 collection_frequency INTEGER
             )
         """)
-
+        
         # Create inverted index table without primary key for faster bulk inserts
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS inverted_index (
@@ -204,7 +202,7 @@ class Database:
                 positions INTEGER[]  -- Array of token positions for phrase search
             )
         """)
-
+        
         # Create document statistics table
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS document_stats (
@@ -215,7 +213,7 @@ class Database:
                 FOREIGN KEY (chunk_id) REFERENCES chunks (id)
             )
         """)
-
+        
         # Create collection statistics table
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS collection_stats (
@@ -226,7 +224,7 @@ class Database:
                 last_updated TIMESTAMP
             )
         """)
-
+        
         # Create indexes for BM25 search performance
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_inverted_index_term ON inverted_index(term)")
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_inverted_index_chunk ON inverted_index(chunk_id)")
@@ -245,6 +243,7 @@ class Database:
             return
 
         self._store_chunks_duckdb(chunks)
+
 
     def store_embeddings(
         self,
@@ -279,20 +278,27 @@ class Database:
         """
         if self.conn is None:
             raise ValueError("Database connection not initialized. Call setup() first.")
-
+        
         # Store each chunk individually using standard DuckDB
         batch_data = []
         for chunk in chunks:
             # Convert metadata to JSON string
             metadata_json = json.dumps(chunk.metadata, cls=DateTimeEncoder) if chunk.metadata else None
 
-            batch_data.append(
-                (chunk.id, str(chunk.path), chunk.title, chunk.content, chunk.chunk_index, chunk.language, chunk.created_at, chunk.modified_at, metadata_json)
-            )
+            batch_data.append((
+                chunk.id,
+                str(chunk.path),
+                chunk.title,
+                chunk.content,
+                chunk.chunk_index,
+                chunk.language,
+                chunk.created_at,
+                chunk.modified_at,
+                metadata_json
+            ))
 
         # UPSERT operation
-        self.conn.executemany(
-            """
+        self.conn.executemany("""
             INSERT INTO chunks (id, path, title, content, chunk_index, language, created_at, modified_at, metadata)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (id) DO UPDATE SET
@@ -303,11 +309,10 @@ class Database:
                 language = excluded.language,
                 modified_at = excluded.modified_at,
                 metadata = excluded.metadata
-        """,
-            batch_data,
-        )
-
+        """, batch_data)
+        
         self.conn.commit()
+
 
     def _store_embeddings_duckdb(
         self,
@@ -323,26 +328,25 @@ class Database:
         """
         if self.conn is None:
             raise ValueError("Database connection not initialized. Call setup() first.")
-
+        
         # Direct batch insert
-
+        
         # Prepare batch data
         batch_data = []
         for embedding_id, chunk_id, vector, timestamp in embeddings:
             # Skip problematic embeddings with scalar shape
             if vector.shape == ():
                 continue
-
+            
             # Convert vector to list
             vector_list = vector.tolist()
             if not isinstance(vector_list, list):
                 raise ValueError(f"Expected list from vector.tolist() but got {type(vector_list)}. Vector shape: {vector.shape}")
-
+            
             batch_data.append((embedding_id, chunk_id, model_name, vector_list, timestamp))
-
+        
         # Bulk insert directly
-        self.conn.executemany(
-            """
+        self.conn.executemany("""
             INSERT INTO embeddings (id, chunk_id, model, vector, created_at)
             VALUES (?, ?, ?, ?, ?)
             ON CONFLICT (id) DO UPDATE SET
@@ -350,10 +354,8 @@ class Database:
                 model = excluded.model,
                 vector = excluded.vector,
                 created_at = excluded.created_at
-        """,
-            batch_data,
-        )
-
+        """, batch_data)
+        
         self.conn.commit()
 
     def search(
@@ -429,19 +431,17 @@ class Database:
             # Convert to similarity score where 1 is best match
             distance = float(row[7])
             similarity_score = 1.0 - (distance / 2.0)
-
-            formatted_results.append(
-                {
-                    "chunk_id": row[0],
-                    "path": row[1],
-                    "title": row[2],
-                    "content": row[3],
-                    "chunk_index": row[4],
-                    "language": row[5],
-                    "metadata": json.loads(row[6]) if row[6] else {},
-                    "score": similarity_score,  # Now higher scores are better
-                }
-            )
+            
+            formatted_results.append({
+                "chunk_id": row[0],
+                "path": row[1],
+                "title": row[2],
+                "content": row[3],
+                "chunk_index": row[4],
+                "language": row[5],
+                "metadata": json.loads(row[6]) if row[6] else {},
+                "score": similarity_score,  # Now higher scores are better
+            })
 
         return formatted_results
 
@@ -465,14 +465,11 @@ class Database:
         if self.conn is None:
             raise ValueError("Database connection not initialized. Call setup() first.")
 
-        result = self.conn.execute(
-            """
+        result = self.conn.execute("""
             SELECT id, path, title, content, chunk_index, language, created_at, modified_at, metadata
             FROM chunks
             WHERE id = ?
-        """,
-            [chunk_id],
-        ).fetchone()
+        """, [chunk_id]).fetchone()
 
         if not result:
             return None
@@ -502,31 +499,26 @@ class Database:
         if self.conn is None:
             raise ValueError("Database connection not initialized. Call setup() first.")
 
-        results = self.conn.execute(
-            """
+        results = self.conn.execute("""
             SELECT id, path, title, content, chunk_index, language, created_at, modified_at, metadata
             FROM chunks
             WHERE path = ?
             ORDER BY chunk_index
-        """,
-            [str(path)],
-        ).fetchall()
+        """, [str(path)]).fetchall()
 
         chunk_data = []
         for result in results:
-            chunk_data.append(
-                {
-                    "id": result[0],
-                    "path": result[1],
-                    "title": result[2],
-                    "content": result[3],
-                    "chunk_index": result[4],
-                    "language": result[5],
-                    "created_at": result[6],
-                    "modified_at": result[7],
-                    "metadata": json.loads(result[8]) if result[8] else {},
-                }
-            )
+            chunk_data.append({
+                "id": result[0],
+                "path": result[1],
+                "title": result[2],
+                "content": result[3],
+                "chunk_index": result[4],
+                "language": result[5],
+                "created_at": result[6],
+                "modified_at": result[7],
+                "metadata": json.loads(result[8]) if result[8] else {},
+            })
 
         return chunk_data
 
@@ -544,12 +536,9 @@ class Database:
             raise ValueError("Database connection not initialized. Call setup() first.")
 
         # First get the IDs of chunks to delete
-        chunk_ids = self.conn.execute(
-            """
+        chunk_ids = self.conn.execute("""
             SELECT id FROM chunks WHERE path = ?
-        """,
-            [str(path)],
-        ).fetchall()
+        """, [str(path)]).fetchall()
 
         if not chunk_ids:
             return 0
@@ -562,12 +551,9 @@ class Database:
             self.conn.execute("DELETE FROM embeddings WHERE chunk_id = ?", [chunk_id])
 
         # Then delete the chunks
-        result = self.conn.execute(
-            """
+        result = self.conn.execute("""
             DELETE FROM chunks WHERE path = ?
-        """,
-            [str(path)],
-        ).fetchone()
+        """, [str(path)]).fetchone()
 
         # Handle the case where result might be None
         if result is None:
@@ -606,7 +592,7 @@ class Database:
 
         # Clear BM25 index data first (inverted_index references chunks)
         self.clear_bm25_index()
-
+        
         # Delete all data from embeddings (due to foreign key constraint)
         self.conn.execute("DELETE FROM embeddings")
 
@@ -616,20 +602,7 @@ class Database:
         # Drop and recreate the HNSW index to ensure clean state
         # This is necessary because HNSW indexes can retain internal state
         # even after all data is deleted
-        self.conn.execute("DROP INDEX IF EXISTS vector_idx")
-
-        # Recreate the HNSW index with the same parameters
-        self.conn.execute(f"""
-            CREATE INDEX vector_idx ON embeddings
-            USING HNSW (vector)
-            WITH (
-                metric = 'cosine',
-                ef_construction = {self.ef_construction},
-                ef_search = {self.ef_search},
-                m = {self.m},
-                m0 = {self.m0}
-            )
-        """)
+        self.recreate_hnsw_index(force=True)
 
     def get_statistics(self) -> Dict[str, object]:
         """Retrieve statistics about the database.
@@ -651,15 +624,21 @@ class Database:
         document_count = document_count_result[0] if document_count_result is not None else 0
 
         # Get available languages
-        languages_result = self.conn.execute("SELECT DISTINCT language FROM chunks WHERE language IS NOT NULL").fetchall()
+        languages_result = self.conn.execute(
+            "SELECT DISTINCT language FROM chunks WHERE language IS NOT NULL"
+        ).fetchall()
         languages = [lang[0] for lang in languages_result if lang[0]]
 
         # Get embedding model
-        model_result = self.conn.execute("SELECT model FROM embeddings LIMIT 1").fetchone()
+        model_result = self.conn.execute(
+            "SELECT model FROM embeddings LIMIT 1"
+        ).fetchone()
         model = model_result[0] if model_result else "unknown"
 
         # Get last updated timestamp
-        last_updated_result = self.conn.execute("SELECT MAX(modified_at) FROM chunks").fetchone()
+        last_updated_result = self.conn.execute(
+            "SELECT MAX(modified_at) FROM chunks"
+        ).fetchone()
         last_updated = last_updated_result[0] if last_updated_result and last_updated_result[0] else "unknown"
 
         # Return statistics
@@ -669,7 +648,7 @@ class Database:
             "languages": languages,
             "embedding_model": model,
             "db_path": str(self.db_path),
-            "last_updated": last_updated,
+            "last_updated": last_updated
         }
 
     def store_bm25_index(
@@ -681,7 +660,7 @@ class Database:
         batch_size: int = 10000,
     ) -> None:
         """Store BM25 index data in the database with batch processing.
-
+        
         Args:
             vocabulary: Dictionary mapping terms to (doc_freq, collection_freq)
             inverted_index: Dictionary mapping terms to list of (chunk_id, term_freq, positions)
@@ -692,37 +671,38 @@ class Database:
         """
         if self.conn is None:
             raise ValueError("Database connection not initialized. Call setup() first.")
-
+        
         logger.info(f"Storing BM25 index with batch size: {batch_size}")
         logger.info(f"Vocabulary size: {len(vocabulary)}, Inverted index entries: {sum(len(postings) for postings in inverted_index.values())}")
-
+        
         # Start a transaction for bulk inserts
         self.conn.begin()
-
+        
         try:
             # Store vocabulary with batch processing
-
-            vocab_data = [(term, doc_freq, coll_freq) for term, (doc_freq, coll_freq) in vocabulary.items()]
-
+            
+            vocab_data = [
+                (term, doc_freq, coll_freq)
+                for term, (doc_freq, coll_freq) in vocabulary.items()
+            ]
+            
             if vocab_data:  # Only execute if there's data
                 logger.info(f"Storing {len(vocab_data)} vocabulary terms in batches...")
                 for i in range(0, len(vocab_data), batch_size):
-                    batch = vocab_data[i : i + batch_size]
+                    batch = vocab_data[i:i + batch_size]
                     if i > 0 and i % (batch_size * 10) == 0:
                         logger.debug(f"Vocabulary progress: {i}/{len(vocab_data)} terms")
-                    self.conn.executemany(
-                        """
+                    self.conn.executemany("""
                         INSERT INTO vocabulary (term, document_frequency, collection_frequency)
                         VALUES (?, ?, ?)
                         ON CONFLICT (term) DO UPDATE SET
                             document_frequency = excluded.document_frequency,
                             collection_frequency = excluded.collection_frequency
-                    """,
-                        batch,
-                    )
-
+                    """, batch)
+            
+            
             # Store inverted index with optimized batch size
-
+            
             # Prepare data for bulk insert
             inv_index_data = []
             for term, postings in inverted_index.items():
@@ -730,14 +710,14 @@ class Database:
                     # Store positions as integer array (None for empty positions)
                     positions_array = positions if positions else None
                     inv_index_data.append((term, chunk_id, term_freq, positions_array))
-
+            
             # Sort data by term for better insertion performance
             inv_index_data.sort(key=lambda x: (x[0], x[1]))
-
+            
             # Check if this is initial indexing (empty table)
             count_result = self.conn.execute("SELECT COUNT(*) FROM inverted_index").fetchone()
             is_initial = count_result is not None and count_result[0] == 0
-
+            
             if inv_index_data:  # Only process if there's data
                 logger.info(f"Storing {len(inv_index_data)} inverted index entries...")
                 if is_initial:
@@ -745,17 +725,14 @@ class Database:
                     # Use larger batches for better performance
                     initial_batch_size = 50000  # Larger batch size for initial indexing
                     for i in range(0, len(inv_index_data), initial_batch_size):
-                        inv_batch = inv_index_data[i : i + initial_batch_size]
+                        inv_batch = inv_index_data[i:i + initial_batch_size]
                         if i > 0 and i % (initial_batch_size * 5) == 0:
                             logger.debug(f"Inverted index progress: {i}/{len(inv_index_data)} entries")
-                        self.conn.executemany(
-                            """
+                        self.conn.executemany("""
                             INSERT INTO inverted_index (term, chunk_id, term_frequency, positions)
                             VALUES (?, ?, ?, ?)
-                        """,
-                            inv_batch,
-                        )
-
+                        """, inv_batch)
+                
                     # Create index after bulk insert for better performance
                     self.conn.execute("""
                         CREATE INDEX IF NOT EXISTS idx_inverted_index_term
@@ -769,46 +746,44 @@ class Database:
                     # For updates, use ON CONFLICT with batching
                     update_batch_size = batch_size  # Use configured batch size for updates
                     for i in range(0, len(inv_index_data), update_batch_size):
-                        inv_batch = inv_index_data[i : i + update_batch_size]
+                        inv_batch = inv_index_data[i:i + update_batch_size]
                         if i > 0 and i % (update_batch_size * 10) == 0:
                             logger.debug(f"Inverted index update progress: {i}/{len(inv_index_data)} entries")
-                        self.conn.executemany(
-                            """
+                        self.conn.executemany("""
                             INSERT INTO inverted_index (term, chunk_id, term_frequency, positions)
                             VALUES (?, ?, ?, ?)
                             ON CONFLICT (term, chunk_id) DO UPDATE SET
                                 term_frequency = excluded.term_frequency,
                                 positions = excluded.positions
-                        """,
-                            inv_batch,
-                        )
-
+                        """, inv_batch)
+            
+            
             # Store document statistics with batch processing
-
-            doc_stats_data = [(chunk_id, total_terms, unique_terms, avg_freq) for chunk_id, (total_terms, unique_terms, avg_freq) in document_stats.items()]
-
+            
+            doc_stats_data = [
+                (chunk_id, total_terms, unique_terms, avg_freq)
+                for chunk_id, (total_terms, unique_terms, avg_freq) in document_stats.items()
+            ]
+            
             if doc_stats_data:  # Only execute if there's data
                 logger.info(f"Storing {len(doc_stats_data)} document statistics...")
                 # Use same batch size as vocabulary
                 for i in range(0, len(doc_stats_data), batch_size):
-                    doc_batch = doc_stats_data[i : i + batch_size]
+                    doc_batch = doc_stats_data[i:i + batch_size]
                     if i > 0 and i % (batch_size * 10) == 0:
                         logger.debug(f"Document stats progress: {i}/{len(doc_stats_data)} documents")
-                    self.conn.executemany(
-                        """
+                    self.conn.executemany("""
                         INSERT INTO document_stats (chunk_id, total_terms, unique_terms, avg_term_frequency)
                         VALUES (?, ?, ?, ?)
                         ON CONFLICT (chunk_id) DO UPDATE SET
                             total_terms = excluded.total_terms,
                             unique_terms = excluded.unique_terms,
                             avg_term_frequency = excluded.avg_term_frequency
-                    """,
-                        doc_batch,
-                    )
-
+                    """, doc_batch)
+            
+            
             # Store collection statistics
-            self.conn.execute(
-                """
+            self.conn.execute("""
             INSERT INTO collection_stats
             (id, total_documents, total_terms, avg_document_length, last_updated)
             VALUES (1, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -817,22 +792,20 @@ class Database:
                 total_terms = excluded.total_terms,
                 avg_document_length = excluded.avg_document_length,
                 last_updated = excluded.last_updated
-            """,
-                (
-                    collection_stats.get("total_documents", 0),
-                    collection_stats.get("total_terms", 0),
-                    collection_stats.get("avg_document_length", 0.0),
-                ),
-            )
+            """, (
+                collection_stats.get("total_documents", 0),
+                collection_stats.get("total_terms", 0),
+                collection_stats.get("avg_document_length", 0.0),
+            ))
             self.conn.commit()
-
+            
         except Exception as e:
             self.conn.rollback()
             raise e
         finally:
             # Ensure any remaining data is written
             pass
-
+    
     def search_bm25(
         self,
         query_terms: List[str],
@@ -840,26 +813,26 @@ class Database:
         language: Optional[str] = None,
     ) -> List[Dict[str, object]]:
         """Search using BM25 scoring.
-
+        
         Args:
             query_terms: List of query terms
             limit: Maximum number of results to return
             language: Optional language filter
-
+            
         Returns:
             List of matching document chunks with BM25 scores
 
         """
         if self.conn is None:
             raise ValueError("Database connection not initialized. Call setup() first.")
-
+        
         if not query_terms:
             return []
-
+        
         # Build the query dynamically based on number of terms
         # This query calculates BM25 scores using the stored statistics
         terms_placeholder = ",".join(["?"] * len(query_terms))
-
+        
         # Optimized query that avoids GROUP BY on large text fields
         base_query = f"""
         WITH query_terms AS (
@@ -907,40 +880,38 @@ class Database:
         FROM chunk_scores cs
         JOIN chunks c ON cs.chunk_id = c.id
         """
-
+        
         # Add language filter if specified
         if language:
             base_query += f" WHERE c.language = '{language}'"
-
+        
         base_query += " ORDER BY cs.score DESC"
-
+        
         # Execute query
         params = query_terms + [limit]
         results = self.conn.execute(base_query, params).fetchall()
-
+        
         # Format results
         formatted_results = []
         for row in results:
-            formatted_results.append(
-                {
-                    "chunk_id": row[0],
-                    "path": row[1],
-                    "title": row[2],
-                    "content": row[3],
-                    "chunk_index": row[4],
-                    "language": row[5],
-                    "metadata": json.loads(row[6]) if row[6] else {},
-                    "score": float(row[7]),  # BM25 score
-                }
-            )
-
+            formatted_results.append({
+                "chunk_id": row[0],
+                "path": row[1],
+                "title": row[2],
+                "content": row[3],
+                "chunk_index": row[4],
+                "language": row[5],
+                "metadata": json.loads(row[6]) if row[6] else {},
+                "score": float(row[7]),  # BM25 score
+            })
+        
         return formatted_results
-
+    
     def clear_bm25_index(self) -> None:
         """Clear all BM25 index data."""
         if self.conn is None:
             raise ValueError("Database connection not initialized. Call setup() first.")
-
+        
         # Clear BM25 tables
         self.conn.execute("DELETE FROM inverted_index")
         self.conn.execute("DELETE FROM vocabulary")
@@ -948,9 +919,85 @@ class Database:
         self.conn.execute("DELETE FROM collection_stats")
         self.conn.commit()
 
+    def _hnsw_index_exists(self) -> bool:
+        """Check if HNSW index exists."""
+        if self.conn is None:
+            return False
+        
+        try:
+            # Query DuckDB's internal catalog for indexes
+            result = self.conn.execute("""
+                SELECT COUNT(*)
+                FROM duckdb_indexes
+                WHERE index_name = 'vector_idx'
+            """).fetchone()
+            return bool(result and result[0] > 0)
+        except Exception:
+            # If the query fails, assume index doesn't exist
+            return False
+    
+    def _create_hnsw_index(self) -> None:
+        """Create HNSW index with configured parameters."""
+        if self.conn is None:
+            raise ValueError("Database connection not initialized.")
+        
+        self.conn.execute(f"""
+            CREATE INDEX vector_idx ON embeddings
+            USING HNSW (vector)
+            WITH (
+                metric = 'cosine',
+                ef_construction = {self.ef_construction},
+                ef_search = {self.ef_search},
+                m = {self.m},
+                m0 = {self.m0}
+            )
+        """)
+    
+    def _validate_hnsw_index_params(self) -> bool:
+        """Validate that existing HNSW index has expected parameters.
+        
+        Returns:
+            True if parameters match, False otherwise
+        
+        Note: DuckDB may not expose all index parameters for validation.
+        This is a placeholder for when such functionality becomes available.
+        For now, assume index is valid if it exists.
+
+        """
+        # TODO: Implement parameter validation when DuckDB exposes index metadata
+        # For now, always return True to use existing index
+        return True
+    
+    def recreate_hnsw_index(self, force: bool = False) -> None:
+        """Recreate the HNSW index.
+        
+        Args:
+            force: If True, recreate even if index exists
+        
+        This should be called when:
+        - Index parameters need to be changed
+        - Index corruption is suspected
+        - After bulk data modifications
+
+        """
+        if self.conn is None:
+            raise ValueError("Database connection not initialized. Call setup() first.")
+        
+        if force or self._hnsw_index_exists():
+            logger.info("Dropping existing HNSW index...")
+            self.conn.execute("DROP INDEX IF EXISTS vector_idx")
+        
+        logger.info("Creating new HNSW index...")
+        self._create_hnsw_index()
+        
+        # Optionally compact after recreation
+        self.recompact_index()
+        logger.info("HNSW index recreation complete")
+    
     def close(self) -> None:
         """Close the database connections."""
         # Close the DuckDB connection
         if self.conn:
             self.conn.close()
             self.conn = None
+

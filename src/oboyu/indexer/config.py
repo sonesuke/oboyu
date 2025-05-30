@@ -242,7 +242,7 @@ class IndexerConfig:
         # Validate weight_type - must be one of the supported types
         if onnx_quant.get("weight_type") not in ["uint8", "int8"]:
             onnx_quant["weight_type"] = DEFAULT_ONNX_QUANTIZATION_WEIGHT_TYPE
-
+    
     def _validate_onnx_optimization_settings(self, indexer_config: Dict[str, Any]) -> None:
         """Validate ONNX optimization settings."""
         # Validate onnx_optimization_level - must be one of the supported levels
@@ -388,7 +388,7 @@ class IndexerConfig:
     def onnx_quantization_config(self) -> Dict[str, Any]:
         """Full ONNX quantization configuration."""
         return dict(self.config["indexer"]["onnx_quantization"])
-
+    
     @property
     def onnx_optimization_level(self) -> str:
         """ONNX graph optimization level."""
