@@ -34,7 +34,7 @@ class RateColumn(ProgressColumn):
 
     def __init__(self, unit: str = "items") -> None:
         """Initialize column with unit of measurement.
-        
+
         Args:
             unit: Unit name to display (default: "items")
 
@@ -44,10 +44,10 @@ class RateColumn(ProgressColumn):
 
     def render(self, task: "ProgressTask") -> Text:
         """Calculate and render the processing rate.
-        
+
         Args:
             task: The task to render the rate for
-            
+
         Returns:
             Formatted text with processing rate
 
@@ -57,15 +57,11 @@ class RateColumn(ProgressColumn):
             rate = 0.0
         else:
             rate = task.completed / elapsed
-        
+
         return Text(f"({rate:.1f} {self.unit}/sec)", style="dim")
 
 
-def create_progress_bar(
-    description: str,
-    total: Optional[int] = None,
-    unit: str = "items"
-) -> Progress:
+def create_progress_bar(description: str, total: Optional[int] = None, unit: str = "items") -> Progress:
     """Create a progress bar with a custom format.
 
     Args:
@@ -90,11 +86,7 @@ def create_progress_bar(
     )
 
 
-def create_indeterminate_progress(
-    description: str,
-    show_count: bool = False,
-    unit: str = "items"
-) -> Progress:
+def create_indeterminate_progress(description: str, show_count: bool = False, unit: str = "items") -> Progress:
     """Create an indeterminate progress indicator.
 
     Args:
@@ -106,10 +98,7 @@ def create_indeterminate_progress(
         Progress indicator
 
     """
-    columns = [
-        SpinnerColumn(),
-        TextColumn("{task.description}")
-    ]
+    columns = [SpinnerColumn(), TextColumn("{task.description}")]
 
     if show_count:
         columns.append(TextColumn(f"({{task.completed}} {unit} processed)", style="dim"))
@@ -125,14 +114,14 @@ def create_indeterminate_progress(
 
 class ProgressGroup:
     """A group of progress bars that can be updated together.
-    
+
     This class helps manage multiple related progress indicators and provides
     a way to track complex multi-stage processes with a cleaner interface.
     """
-    
+
     def __init__(self, description: str) -> None:
         """Initialize the progress group.
-        
+
         Args:
             description: Description of the overall process
 
@@ -141,7 +130,7 @@ class ProgressGroup:
         self.progress_bars: Dict[str, Progress] = {}
         self.tasks: Dict[str, TaskID] = {}
         self.active_progress: Optional[str] = None
-        
+
     def add_progress(
         self,
         name: str,
@@ -152,7 +141,7 @@ class ProgressGroup:
         show_count: bool = True,
     ) -> None:
         """Add a new progress bar to the group.
-        
+
         Args:
             name: Unique name for this progress bar
             description: Description for the progress bar
@@ -170,10 +159,10 @@ class ProgressGroup:
             progress = create_progress_bar(description, total, unit)
             self.progress_bars[name] = progress
             self.tasks[name] = progress.add_task(description, total=total, unit=unit)
-    
+
     def start(self, name: str) -> None:
         """Start displaying a specific progress bar.
-        
+
         Args:
             name: Name of the progress bar to start
 
@@ -181,7 +170,7 @@ class ProgressGroup:
         if name in self.progress_bars:
             self.active_progress = name
             self.progress_bars[name].start()
-    
+
     def update(
         self,
         name: str,
@@ -190,7 +179,7 @@ class ProgressGroup:
         description: Optional[str] = None,
     ) -> None:
         """Update a specific progress bar.
-        
+
         Args:
             name: Name of the progress bar to update
             advance: Number of items to advance by
@@ -207,10 +196,10 @@ class ProgressGroup:
                 self.progress_bars[name].update(self.tasks[name], completed=completed)
             if description is not None:
                 self.progress_bars[name].update(self.tasks[name], description=description)
-    
+
     def stop(self, name: Optional[str] = None) -> None:
         """Stop displaying a specific progress bar or the active one.
-        
+
         Args:
             name: Name of the progress bar to stop (defaults to active)
 
@@ -220,7 +209,7 @@ class ProgressGroup:
             self.progress_bars[target].stop()
             if target == self.active_progress:
                 self.active_progress = None
-    
+
     def stop_all(self) -> None:
         """Stop all progress bars in the group."""
         for name in self.progress_bars:
@@ -285,7 +274,7 @@ def format_search_results_text(
         console.print("No results found.")
         return
 
-    console.print(f"\nResults for: \"{query}\"\n")
+    console.print(f'\nResults for: "{query}"\n')
 
     # Display each result
     for result in results:

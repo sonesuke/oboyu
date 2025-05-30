@@ -11,6 +11,7 @@ from typing import Callable, Dict, Iterator, List, Optional, Set, Tuple
 
 try:
     from gitignore_parser import parse_gitignore
+
     HAS_GITIGNORE_PARSER = True
 except ImportError:
     HAS_GITIGNORE_PARSER = False
@@ -130,7 +131,7 @@ def _walk_directory(
         # List directory contents - use scandir for better performance
         # Convert to list first to avoid holding directory handle
         items = list(os.scandir(directory))
-        
+
         for item in items:
             item_path = Path(item.path)
 

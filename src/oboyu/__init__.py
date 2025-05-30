@@ -5,4 +5,3 @@ with special handling for Japanese text.
 """
 
 __version__ = "0.1.0"
-

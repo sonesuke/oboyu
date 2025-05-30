@@ -215,33 +215,26 @@ def query(
 
     # Use hierarchical logger for search operation
     logger = create_hierarchical_logger(console)
-    
+
     with logger.live_display():
         # Main search operation
-        main_op = logger.start_operation(
-            f"Search: \"{query}\"",
-            expandable=False,
-            details=f"Mode: {mode}\nTop K: {top_k}"
-        )
-        
+        main_op = logger.start_operation(f'Search: "{query}"', expandable=False, details=f"Mode: {mode}\nTop K: {top_k}")
+
         # Initialize indexer
         with logger.operation("Loading index..."):
             start_time = time.time()
             indexer = Indexer(config=indexer_config)
             duration = time.time() - start_time
             # Update the parent operation to show completion
-            logger.update_operation(
-                logger.operation_stack[-1].id,
-                f"Loading index... ✓ Ready ({duration:.1f}s)"
-            )
-        
+            logger.update_operation(logger.operation_stack[-1].id, f"Loading index... ✓ Ready ({duration:.1f}s)")
+
         # Generate query embedding (for vector and hybrid modes)
         if mode in ["vector", "hybrid"]:
             embed_op = logger.start_operation("Generating query embedding...")
             time.sleep(0.05)  # Simulated timing
             logger.complete_operation(embed_op)
             logger.update_operation(embed_op, "Generating query embedding... ✓ Done (0.05s)")
-        
+
         # Perform search
         search_start = time.time()
         search_desc = f"{mode.capitalize()} search" + (" with reranking" if rerank else "") + "..."
@@ -256,35 +249,23 @@ def query(
         )
         search_time = time.time() - search_start
         logger.complete_operation(search_op)
-        
+
         if results:
             rerank_note = " (reranked)" if rerank else ""
-            logger.update_operation(
-                search_op,
-                f"{search_desc} ✓ Found {len(results)} results{rerank_note} ({search_time:.2f}s)"
-            )
-            
+            logger.update_operation(search_op, f"{search_desc} ✓ Found {len(results)} results{rerank_note} ({search_time:.2f}s)")
+
             # Ranking results step is only shown if not reranking (since reranking does its own ranking)
             if not rerank:
                 rank_op = logger.start_operation("Ranking results...")
                 logger.complete_operation(rank_op)
-                logger.update_operation(
-                    rank_op,
-                    f"Ranking results... ✓ Top {len(results)} selected (0.01s)"
-                )
+                logger.update_operation(rank_op, f"Ranking results... ✓ Top {len(results)} selected (0.01s)")
         else:
-            logger.update_operation(
-                search_op,
-                f"{mode.capitalize()} search... No results found ({search_time:.2f}s)"
-            )
-        
+            logger.update_operation(search_op, f"{mode.capitalize()} search... No results found ({search_time:.2f}s)")
+
         # Complete main search operation
         logger.complete_operation(main_op)
         total_time = time.time() - search_start
-        logger.update_operation(
-            main_op,
-            f"Retrieved {len(results)} documents in {total_time:.2f}s"
-        )
+        logger.update_operation(main_op, f"Retrieved {len(results)} documents in {total_time:.2f}s")
 
     # Display results after hierarchical log
     if not results:
@@ -293,7 +274,7 @@ def query(
 
     # Display results with cleaner formatting
     console.print()
-    
+
     # Format and display each result
     for i, result in enumerate(results):
         formatted_result = format_search_result(result, query, show_explanation=explain)

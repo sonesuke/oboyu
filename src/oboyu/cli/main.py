@@ -199,16 +199,17 @@ def run() -> None:
     try:
         # Try to import typer's rich module and disable it
         import typer.rich_utils
+
         typer.rich_utils.FORCE_TERMINAL = False
         if hasattr(typer.rich_utils, "SHOW_ARGUMENTS"):
             typer.rich_utils.SHOW_ARGUMENTS = False
-        
+
         # Also try to disable click's rich integration
         if hasattr(click, "rich"):
             click.rich = None
     except ImportError:
         pass
-    
+
     # Custom exception handler for Click errors
     def handle_click_exception(e: click.ClickException) -> None:
         """Handle Click exceptions without Rich formatting."""
@@ -222,7 +223,7 @@ def run() -> None:
         else:
             print(f"Error: {e.message}")
         sys.exit(e.exit_code)
-    
+
     # Run the app
     try:
         app(standalone_mode=False)

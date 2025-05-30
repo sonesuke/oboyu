@@ -256,6 +256,7 @@ class TestONNXCrossEncoderReranker:
         mock_onnx_model_class.assert_called_once_with(
             model_path=mock_onnx_path,
             max_seq_length=512,
+            optimization_level="none",
         )
         assert model == mock_model
     

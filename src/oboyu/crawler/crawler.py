@@ -108,10 +108,7 @@ class Crawler:
         results: List[CrawlerResult] = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             # Submit all document processing tasks
-            future_to_doc = {
-                executor.submit(self._process_document, doc_path, doc_metadata): (doc_path, doc_metadata)
-                for doc_path, doc_metadata in new_docs
-            }
+            future_to_doc = {executor.submit(self._process_document, doc_path, doc_metadata): (doc_path, doc_metadata) for doc_path, doc_metadata in new_docs}
 
             # Collect results as they complete
             for future in concurrent.futures.as_completed(future_to_doc):
@@ -177,9 +174,9 @@ class Crawler:
 
         """
         # First, check if title is in metadata
-        if 'title' in metadata and metadata['title']:
-            return str(metadata['title'])
-        
+        if "title" in metadata and metadata["title"]:
+            return str(metadata["title"])
+
         # Try to extract a title from the first line of content
         if content and content.strip():
             first_line = content.strip().splitlines()[0].strip()

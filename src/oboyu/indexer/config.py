@@ -12,39 +12,34 @@ DEFAULT_CONFIG = {
         # Document processing settings
         "chunk_size": 1024,  # Default chunk size in characters
         "chunk_overlap": 256,  # Default overlap between chunks
-
         # Embedding settings
         "embedding_model": "cl-nagoya/ruri-v3-30m",  # Default embedding model
         "embedding_device": "cpu",  # Default device for embeddings (cpu/cuda)
         "batch_size": 128,  # Default batch size for embedding generation
         "max_seq_length": 8192,  # Maximum sequence length (Ruri v3 default is 8192)
         "use_onnx": True,  # Whether to use ONNX optimization for faster inference
-        
         # ONNX quantization settings
         "onnx_quantization": {
             "enabled": True,  # Whether to enable dynamic quantization (default: True)
             "method": "dynamic",  # Quantization method (dynamic, static, fp16)
             "weight_type": "uint8",  # Weight quantization type (uint8, int8)
         },
-
+        # ONNX optimization settings
+        "onnx_optimization_level": "none",  # Graph optimization level: none, basic, extended, all
         # Prefix scheme settings (Ruri v3's 1+3 prefix scheme)
         "document_prefix": "検索文書: ",  # Prefix for documents to be indexed
         "query_prefix": "検索クエリ: ",  # Prefix for search queries
         "topic_prefix": "トピック: ",  # Prefix for topic information
         "general_prefix": "",  # Prefix for general semantic encoding
-
         # Database settings
         # db_path must be explicitly provided by the caller
-
         # VSS (Vector Similarity Search) settings
         "ef_construction": 128,  # Index construction parameter (build-time)
         "ef_search": 64,  # Search time parameter (quality vs. speed)
         "m": 16,  # Number of bidirectional links in HNSW graph
         "m0": None,  # Level-0 connections (None means use 2*M)
-
         # Processing settings
         "max_workers": 8,  # Maximum number of worker threads for parallel processing
-        
         # Reranker settings
         "reranker_model": "cl-nagoya/ruri-v3-reranker-310m",  # Default reranker model
         "use_reranker": False,  # Whether to use reranker for search results
@@ -54,7 +49,6 @@ DEFAULT_CONFIG = {
         "reranker_batch_size": 64,  # Batch size for reranking
         "reranker_max_length": 512,  # Maximum sequence length for reranker
         "reranker_threshold": None,  # Minimum score threshold (None = no threshold)
-        
         # BM25 settings
         "bm25_k1": 1.2,  # BM25 k1 parameter (term frequency saturation)
         "bm25_b": 0.75,  # BM25 b parameter (document length normalization)
@@ -75,6 +69,7 @@ DEFAULT_USE_ONNX = True
 DEFAULT_ONNX_QUANTIZATION_ENABLED = True
 DEFAULT_ONNX_QUANTIZATION_METHOD = "dynamic"
 DEFAULT_ONNX_QUANTIZATION_WEIGHT_TYPE = "uint8"
+DEFAULT_ONNX_OPTIMIZATION_LEVEL = "none"
 DEFAULT_DOCUMENT_PREFIX = "検索文書: "
 DEFAULT_QUERY_PREFIX = "検索クエリ: "
 DEFAULT_TOPIC_PREFIX = "トピック: "
@@ -163,25 +158,28 @@ class IndexerConfig:
 
         # Validate basic settings
         self._validate_basic_settings(indexer_config)
-        
+
         # Validate embedding settings
         self._validate_embedding_settings(indexer_config)
-        
+
         # Validate ONNX quantization settings
         self._validate_onnx_quantization_settings(indexer_config)
-        
+
+        # Validate ONNX optimization settings
+        self._validate_onnx_optimization_settings(indexer_config)
+
         # Validate prefix settings
         self._validate_prefix_settings(indexer_config)
-        
+
         # Validate database settings
         self._validate_database_settings(indexer_config)
-        
+
         # Validate VSS parameters
         self._validate_vss_settings(indexer_config)
-        
+
         # Validate reranker settings
         self._validate_reranker_settings(indexer_config)
-        
+
         # Validate BM25 settings
         self._validate_bm25_settings(indexer_config)
 
@@ -218,35 +216,38 @@ class IndexerConfig:
             indexer_config["embedding_model"] = DEFAULT_EMBEDDING_MODEL
 
         # Validate embedding_device - must be 'cpu' or 'cuda'
-        if (
-            not isinstance(indexer_config.get("embedding_device"), str)
-            or indexer_config.get("embedding_device") not in ["cpu", "cuda"]
-        ):
+        if not isinstance(indexer_config.get("embedding_device"), str) or indexer_config.get("embedding_device") not in ["cpu", "cuda"]:
             indexer_config["embedding_device"] = DEFAULT_EMBEDDING_DEVICE
 
         # Validate use_onnx - must be a boolean
         if not isinstance(indexer_config.get("use_onnx"), bool):
             indexer_config["use_onnx"] = DEFAULT_USE_ONNX
-    
+
     def _validate_onnx_quantization_settings(self, indexer_config: Dict[str, Any]) -> None:
         """Validate ONNX quantization settings."""
         # Ensure onnx_quantization dict exists
         if not isinstance(indexer_config.get("onnx_quantization"), dict):
             indexer_config["onnx_quantization"] = {}
-        
+
         onnx_quant = indexer_config["onnx_quantization"]
-        
+
         # Validate enabled - must be a boolean
         if not isinstance(onnx_quant.get("enabled"), bool):
             onnx_quant["enabled"] = DEFAULT_ONNX_QUANTIZATION_ENABLED
-        
+
         # Validate method - must be one of the supported methods
         if onnx_quant.get("method") not in ["dynamic", "static", "fp16"]:
             onnx_quant["method"] = DEFAULT_ONNX_QUANTIZATION_METHOD
-        
+
         # Validate weight_type - must be one of the supported types
         if onnx_quant.get("weight_type") not in ["uint8", "int8"]:
             onnx_quant["weight_type"] = DEFAULT_ONNX_QUANTIZATION_WEIGHT_TYPE
+
+    def _validate_onnx_optimization_settings(self, indexer_config: Dict[str, Any]) -> None:
+        """Validate ONNX optimization settings."""
+        # Validate onnx_optimization_level - must be one of the supported levels
+        if indexer_config.get("onnx_optimization_level") not in ["none", "basic", "extended", "all"]:
+            indexer_config["onnx_optimization_level"] = DEFAULT_ONNX_OPTIMIZATION_LEVEL
 
     def _validate_prefix_settings(self, indexer_config: Dict[str, Any]) -> None:
         """Validate prefix settings."""
@@ -277,9 +278,7 @@ class IndexerConfig:
             indexer_config["m"] = DEFAULT_M
 
         # m0 can be None (meaning 2*M) or a positive integer
-        if indexer_config.get("m0") is not None and (
-            not isinstance(indexer_config.get("m0"), int) or indexer_config.get("m0", 0) <= 0
-        ):
+        if indexer_config.get("m0") is not None and (not isinstance(indexer_config.get("m0"), int) or indexer_config.get("m0", 0) <= 0):
             indexer_config["m0"] = DEFAULT_M0
 
     def _validate_reranker_settings(self, indexer_config: Dict[str, Any]) -> None:
@@ -287,50 +286,50 @@ class IndexerConfig:
         # Validate reranker_model - must be a non-empty string
         if not isinstance(indexer_config.get("reranker_model"), str) or not indexer_config.get("reranker_model"):
             indexer_config["reranker_model"] = DEFAULT_RERANKER_MODEL
-        
+
         # Validate use_reranker - must be a boolean
         if not isinstance(indexer_config.get("use_reranker"), bool):
             indexer_config["use_reranker"] = DEFAULT_USE_RERANKER
-        
+
         # Validate reranker_use_onnx - must be a boolean
         if not isinstance(indexer_config.get("reranker_use_onnx"), bool):
             indexer_config["reranker_use_onnx"] = DEFAULT_RERANKER_USE_ONNX
-        
+
         # Validate reranker_device - must be 'cpu' or 'cuda'
         if indexer_config.get("reranker_device") not in ["cpu", "cuda"]:
             indexer_config["reranker_device"] = DEFAULT_RERANKER_DEVICE
-        
+
         # Validate reranker_top_k_multiplier - must be a positive integer
         if not isinstance(indexer_config.get("reranker_top_k_multiplier"), int) or indexer_config.get("reranker_top_k_multiplier", 0) <= 0:
             indexer_config["reranker_top_k_multiplier"] = DEFAULT_RERANKER_TOP_K_MULTIPLIER
-        
+
         # Validate reranker_batch_size - must be a positive integer
         if not isinstance(indexer_config.get("reranker_batch_size"), int) or indexer_config.get("reranker_batch_size", 0) <= 0:
             indexer_config["reranker_batch_size"] = DEFAULT_RERANKER_BATCH_SIZE
-        
+
         # Validate reranker_max_length - must be a positive integer
         if not isinstance(indexer_config.get("reranker_max_length"), int) or indexer_config.get("reranker_max_length", 0) <= 0:
             indexer_config["reranker_max_length"] = DEFAULT_RERANKER_MAX_LENGTH
-        
+
         # Validate reranker_threshold - must be None or a float between 0 and 1
         threshold = indexer_config.get("reranker_threshold")
         if threshold is not None and (not isinstance(threshold, (int, float)) or threshold < 0 or threshold > 1):
             indexer_config["reranker_threshold"] = DEFAULT_RERANKER_THRESHOLD
-    
+
     def _validate_bm25_settings(self, indexer_config: dict[str, Any]) -> None:
         """Validate BM25 settings."""
         # Validate bm25_k1 - must be a positive float
         if not isinstance(indexer_config.get("bm25_k1"), (int, float)) or indexer_config.get("bm25_k1", 0) <= 0:
             indexer_config["bm25_k1"] = DEFAULT_BM25_K1
-        
+
         # Validate bm25_b - must be a float between 0 and 1
         if not isinstance(indexer_config.get("bm25_b"), (int, float)) or indexer_config.get("bm25_b", -1) < 0 or indexer_config.get("bm25_b", 2) > 1:
             indexer_config["bm25_b"] = DEFAULT_BM25_B
-        
+
         # Validate bm25_min_token_length - must be a positive integer
         if not isinstance(indexer_config.get("bm25_min_token_length"), int) or indexer_config.get("bm25_min_token_length", 0) <= 0:
             indexer_config["bm25_min_token_length"] = DEFAULT_BM25_MIN_TOKEN_LENGTH
-        
+
         # Validate use_japanese_tokenizer - must be a boolean
         if not isinstance(indexer_config.get("use_japanese_tokenizer"), bool):
             indexer_config["use_japanese_tokenizer"] = DEFAULT_USE_JAPANESE_TOKENIZER
@@ -369,26 +368,31 @@ class IndexerConfig:
     def use_onnx(self) -> bool:
         """Whether to use ONNX optimization for faster inference."""
         return bool(self.config["indexer"]["use_onnx"])
-    
+
     @property
     def onnx_quantization_enabled(self) -> bool:
         """Whether ONNX quantization is enabled."""
         return bool(self.config["indexer"]["onnx_quantization"]["enabled"])
-    
+
     @property
     def onnx_quantization_method(self) -> str:
         """ONNX quantization method."""
         return str(self.config["indexer"]["onnx_quantization"]["method"])
-    
+
     @property
     def onnx_quantization_weight_type(self) -> str:
         """ONNX quantization weight type."""
         return str(self.config["indexer"]["onnx_quantization"]["weight_type"])
-    
+
     @property
     def onnx_quantization_config(self) -> Dict[str, Any]:
         """Full ONNX quantization configuration."""
         return dict(self.config["indexer"]["onnx_quantization"])
+
+    @property
+    def onnx_optimization_level(self) -> str:
+        """ONNX graph optimization level."""
+        return str(self.config["indexer"]["onnx_optimization_level"])
 
     @property
     def document_prefix(self) -> str:
@@ -440,63 +444,63 @@ class IndexerConfig:
     def max_workers(self) -> int:
         """Maximum number of worker threads for parallel processing."""
         return int(self.config["indexer"]["max_workers"])
-    
+
     @property
     def reranker_model(self) -> str:
         """Reranker model name."""
         return str(self.config["indexer"]["reranker_model"])
-    
+
     @property
     def use_reranker(self) -> bool:
         """Whether to use reranker for search results."""
         return bool(self.config["indexer"]["use_reranker"])
-    
+
     @property
     def reranker_use_onnx(self) -> bool:
         """Whether to use ONNX optimization for reranker."""
         return bool(self.config["indexer"]["reranker_use_onnx"])
-    
+
     @property
     def reranker_device(self) -> str:
         """Device for reranker (cpu/cuda)."""
         return str(self.config["indexer"]["reranker_device"])
-    
+
     @property
     def reranker_top_k_multiplier(self) -> int:
         """Multiplier for initial retrieval."""
         return int(self.config["indexer"]["reranker_top_k_multiplier"])
-    
+
     @property
     def reranker_batch_size(self) -> int:
         """Batch size for reranking."""
         return int(self.config["indexer"]["reranker_batch_size"])
-    
+
     @property
     def reranker_max_length(self) -> int:
         """Maximum sequence length for reranker."""
         return int(self.config["indexer"]["reranker_max_length"])
-    
+
     @property
     def reranker_threshold(self) -> Optional[float]:
         """Minimum score threshold for reranker."""
         threshold = self.config["indexer"]["reranker_threshold"]
         return float(threshold) if threshold is not None else None
-    
+
     @property
     def bm25_k1(self) -> float:
         """BM25 k1 parameter."""
         return float(self.config["indexer"]["bm25_k1"])
-    
+
     @property
     def bm25_b(self) -> float:
         """BM25 b parameter."""
         return float(self.config["indexer"]["bm25_b"])
-    
+
     @property
     def bm25_min_token_length(self) -> int:
         """Minimum token length for BM25."""
         return int(self.config["indexer"]["bm25_min_token_length"])
-    
+
     @property
     def use_japanese_tokenizer(self) -> bool:
         """Whether to use Japanese tokenizer."""
