@@ -927,8 +927,8 @@ class Database:
         try:
             # Query DuckDB's internal catalog for indexes
             result = self.conn.execute("""
-                SELECT COUNT(*) 
-                FROM duckdb_indexes 
+                SELECT COUNT(*)
+                FROM duckdb_indexes
                 WHERE index_name = 'vector_idx'
             """).fetchone()
             return bool(result and result[0] > 0)
