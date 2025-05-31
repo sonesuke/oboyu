@@ -228,7 +228,7 @@ class Indexer:
                 ]
                 
                 # Store or update metadata
-                self.database.db_manager.execute("""
+                self.database.db_manager.connection.execute("""
                     INSERT OR REPLACE INTO file_metadata (
                         path, last_processed_at, file_modified_at, file_size,
                         content_hash, chunk_count, processing_status, error_message,
@@ -758,7 +758,7 @@ class Indexer:
         
         # Delete file metadata
         try:
-            self.database.db_manager.execute("""
+            self.database.db_manager.connection.execute("""
                 DELETE FROM file_metadata
                 WHERE path = ?
             """, [str(path)])
@@ -851,15 +851,14 @@ class Indexer:
             # Set crawler to only process new and modified files
             files_to_process = set(changes.new_files + changes.modified_files)
             
-            # Create a custom filter for the crawler
-            original_filter = crawler._filter_files
-            def modified_filter(paths: List[Path]) -> List[Path]:
-                # First apply original filters
-                filtered = original_filter(paths)
-                # Then only keep files we want to process
-                return [p for p in filtered if p in files_to_process]
+            # Add files to process to crawler's processed files to skip others
+            # First, clear the processed files set
+            crawler._processed_files = set()
             
-            crawler._filter_files = modified_filter
+            # Then add all files that should NOT be processed
+            all_paths = set(paths_only)
+            files_to_skip = all_paths - files_to_process
+            crawler._processed_files.update(files_to_skip)
             
             # Report completion of change detection
             if progress_callback:
@@ -912,7 +911,7 @@ class Indexer:
         
         # Clear file metadata
         try:
-            self.database.db_manager.execute("DELETE FROM file_metadata")
+            self.database.db_manager.connection.execute("DELETE FROM file_metadata")
         except Exception as e:
             logging.getLogger(__name__).error(f"Failed to clear file metadata: {e}")
 

@@ -123,7 +123,7 @@ class FileChangeDetector:
         
         """
         try:
-            results = self.db.db_manager.execute("""
+            results = self.db.db_manager.connection.execute("""
                 SELECT path, last_processed_at, file_modified_at, file_size, content_hash
                 FROM file_metadata
                 WHERE processing_status = 'completed'
@@ -272,7 +272,7 @@ class FileChangeDetector:
         try:
             # Update processing status for specified files
             for path in file_paths:
-                self.db.db_manager.execute("""
+                self.db.db_manager.connection.execute("""
                     UPDATE file_metadata
                     SET processing_status = 'pending'
                     WHERE path = ?
@@ -291,7 +291,7 @@ class FileChangeDetector:
         
         """
         try:
-            results = self.db.db_manager.execute("""
+            results = self.db.db_manager.connection.execute("""
                 SELECT processing_status, COUNT(*) as count
                 FROM file_metadata
                 GROUP BY processing_status
@@ -319,7 +319,7 @@ class FileChangeDetector:
         try:
             # Remove file metadata
             for path in deleted_files:
-                self.db.db_manager.execute("""
+                self.db.db_manager.connection.execute("""
                     DELETE FROM file_metadata
                     WHERE path = ?
                 """, [str(path)])
