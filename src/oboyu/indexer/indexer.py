@@ -318,8 +318,14 @@ class Indexer:
                         processed_count += 1
                         current_time = time.time()
                         
-                        # Report progress more frequently for better UX
-                        if processed_count == 1 or current_time - last_progress_time > 0.5 or processed_count % 5 == 0:
+                        # Report progress for very smooth user feedback
+                        report_progress = (
+                            processed_count == 1 or  # First file
+                            processed_count == len(documents) or  # Last file
+                            (current_time - last_progress_time > 0.75) or  # Every 0.75 seconds
+                            (processed_count % max(len(documents) // 40, 3) == 0)  # Every 2.5% or 3 files
+                        )
+                        if report_progress:
                             if progress_callback:
                                 progress_callback("processing", processed_count, len(documents))
                             last_progress_time = current_time
@@ -330,7 +336,13 @@ class Indexer:
                         processed_count += 1
                         current_time = time.time()
                         
-                        if processed_count == 1 or current_time - last_progress_time > 0.5 or processed_count % 5 == 0:
+                        report_progress = (
+                            processed_count == 1 or  # First file
+                            processed_count == len(documents) or  # Last file
+                            (current_time - last_progress_time > 0.75) or  # Every 0.75 seconds
+                            (processed_count % max(len(documents) // 40, 3) == 0)  # Every 2.5% or 3 files
+                        )
+                        if report_progress:
                             if progress_callback:
                                 progress_callback("processing", processed_count, len(documents))
                             last_progress_time = current_time
@@ -779,7 +791,7 @@ class Indexer:
         change_detection_strategy: str = "smart",
         cleanup_deleted: bool = True,
         progress_callback: Optional[Callable[[str, int, int], None]] = None
-    ) -> tuple[int, int]:
+    ) -> tuple[int, int, Dict[str, int]]:
         """Index documents in a directory using the integrated crawler.
 
         Args:
@@ -794,7 +806,7 @@ class Indexer:
                               (stage, current, total)
 
         Returns:
-            Tuple of (number of chunks indexed, number of files processed)
+            Tuple of (number of chunks indexed, number of files processed, differential stats)
 
         """
         from oboyu.crawler.config import load_default_config
@@ -813,6 +825,18 @@ class Indexer:
             max_workers=crawler_config.max_workers,
         )
         
+        # Initialize differential stats tracking
+        differential_stats = {
+            "total_files_discovered": 0,
+            "new_files": 0,
+            "modified_files": 0,
+            "deleted_files": 0,
+            "unchanged_files": 0,
+            "files_processed": 0,
+            "files_skipped": 0,
+            "chunks_from_skipped_files": 0,
+        }
+        
         # Report change detection phase
         if progress_callback and incremental:
             progress_callback("detecting_changes", 0, 1)
@@ -830,10 +854,44 @@ class Indexer:
             
             # Detect changes using specified strategy (extract just paths from tuples)
             paths_only = [path for path, metadata in discovered_paths]
+            differential_stats["total_files_discovered"] = len(paths_only)
+            
             changes = self.change_detector.detect_changes(
                 paths_only,
                 strategy=change_detection_strategy
             )
+            
+            # Update differential stats
+            differential_stats["new_files"] = len(changes.new_files)
+            differential_stats["modified_files"] = len(changes.modified_files)
+            differential_stats["deleted_files"] = len(changes.deleted_files)
+            differential_stats["unchanged_files"] = (
+                differential_stats["total_files_discovered"] - 
+                differential_stats["new_files"] - 
+                differential_stats["modified_files"]
+            )
+            
+            # Get chunk counts for skipped files from database
+            if differential_stats["unchanged_files"] > 0:
+                try:
+                    # Query database for chunk counts of unchanged files
+                    unchanged_paths = set(paths_only) - set(changes.new_files) - set(changes.modified_files)
+                    if unchanged_paths:
+                        placeholders = ','.join(['?' for _ in unchanged_paths])
+                        query = f"""
+                            SELECT COALESCE(SUM(chunk_count), 0) as total_chunks
+                            FROM file_metadata 
+                            WHERE path IN ({placeholders})
+                        """
+                        result = self.database.db_manager.connection.execute(
+                            query, [str(p) for p in unchanged_paths]
+                        ).fetchone()
+                        if result and result[0]:
+                            differential_stats["chunks_from_skipped_files"] = int(result[0])
+                except Exception as e:
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Could not retrieve chunk counts for unchanged files: {e}")
+                    differential_stats["chunks_from_skipped_files"] = 0
             
             # Handle deleted files if requested
             if cleanup_deleted and changes.deleted_files:
@@ -850,6 +908,7 @@ class Indexer:
             
             # Set crawler to only process new and modified files
             files_to_process = set(changes.new_files + changes.modified_files)
+            differential_stats["files_processed"] = len(files_to_process)
             
             # Add files to process to crawler's processed files to skip others
             # First, clear the processed files set
@@ -858,21 +917,49 @@ class Indexer:
             # Then add all files that should NOT be processed
             all_paths = set(paths_only)
             files_to_skip = all_paths - files_to_process
+            differential_stats["files_skipped"] = len(files_to_skip)
             crawler._processed_files.update(files_to_skip)
             
             # Report completion of change detection
             if progress_callback:
                 progress_callback("detecting_changes", 1, 1)
                 
-            # Log change summary
+            # Log detailed change summary with efficiency metrics
             logger = logging.getLogger(__name__)
-            logger.info(
+            skipped_chunks = differential_stats["chunks_from_skipped_files"]
+            total_files = differential_stats["total_files_discovered"]
+            skipped_files = differential_stats["files_skipped"]
+            
+            logger.debug(
                 f"Change detection complete: {len(changes.new_files)} new, "
-                f"{len(changes.modified_files)} modified, {len(changes.deleted_files)} deleted"
+                f"{len(changes.modified_files)} modified, {len(changes.deleted_files)} deleted, "
+                f"{skipped_files} unchanged"
             )
+            
+            if skipped_files > 0:
+                efficiency_pct = (skipped_files / total_files * 100) if total_files > 0 else 0
+                logger.debug(
+                    f"Differential update efficiency: {efficiency_pct:.1f}% files skipped "
+                    f"({skipped_chunks} chunks avoided reprocessing)"
+                )
         else:
             # For non-incremental, don't track processed files
             crawler._processed_files = set()
+            
+            # For non-incremental, still discover files to get total count
+            try:
+                discovered_paths = discover_documents(
+                    Path(directory),
+                    patterns=crawler_config.include_patterns,
+                    exclude_patterns=crawler_config.exclude_patterns,
+                    max_depth=crawler_config.depth,
+                    follow_symlinks=crawler_config.follow_symlinks,
+                )
+                differential_stats["total_files_discovered"] = len(discovered_paths)
+                differential_stats["files_processed"] = len(discovered_paths)
+            except Exception:
+                # If discovery fails, we'll count during crawling
+                pass
 
         # Crawl directory - with progress callback
         results = crawler.crawl(Path(directory), progress_callback)
@@ -883,7 +970,7 @@ class Indexer:
         # Index results with progress callback
         chunks_indexed = self.index_documents(results, progress_callback)
 
-        return chunks_indexed, files_processed
+        return chunks_indexed, files_processed, differential_stats
 
     def batch_index(self, batch_size: int = 100) -> None:
         """Index in batches to control memory usage.

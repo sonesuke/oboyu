@@ -132,6 +132,7 @@ class HierarchicalLogger:
                 self.operations.append(operation)
 
             self.operation_stack.append(operation)
+            # Initial display for new operations
             self._refresh_display()
             return op_id
 
@@ -158,7 +159,13 @@ class HierarchicalLogger:
             if details:
                 operation.details = details
             operation.metadata.update(metadata)
-            self._refresh_display()
+            # Refresh display with throttling to reduce flickering
+            current_time = time.time()
+            if not hasattr(self, '_last_refresh_time'):
+                self._last_refresh_time = 0
+            if current_time - self._last_refresh_time > 0.5:  # Throttle to every 0.5 seconds
+                self._refresh_display()
+                self._last_refresh_time = current_time
 
     def complete_operation(self, op_id: Optional[str] = None, error: bool = False) -> None:
         """Mark an operation as complete.
@@ -182,6 +189,7 @@ class HierarchicalLogger:
                 if self.operation_stack and self.operation_stack[-1].id == operation.id:
                     self.operation_stack.pop()
 
+                # Always refresh on completion to show final status
                 self._refresh_display()
 
     def _find_operation(self, op_id: str) -> Optional[OperationNode]:
@@ -260,7 +268,7 @@ class HierarchicalLogger:
         self.live = Live(
             "",
             console=self.console,
-            refresh_per_second=10,
+            refresh_per_second=4,  # Higher refresh rate for smooth updates
             transient=False,
         )
         with self.live:

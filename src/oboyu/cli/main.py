@@ -57,8 +57,10 @@ def callback(
     if verbose:
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     else:
-        # Set to WARNING level to suppress INFO and DEBUG messages
-        logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
+        # Set to ERROR level to suppress INFO, DEBUG, and WARNING messages
+        logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
+        # Disable lower level logs from all loggers
+        logging.getLogger().setLevel(logging.ERROR)
     
     # Use ConfigManager for unified configuration handling
     config_manager = ConfigManager(config)

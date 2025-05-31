@@ -12,6 +12,7 @@ from typing_extensions import Annotated
 
 from oboyu.cli.base import BaseCommand
 from oboyu.cli.progress import create_indexer_progress_callback
+from oboyu.cli.simple_progress import create_simple_progress_callback
 from oboyu.common.config import ConfigManager
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.indexer import Indexer
@@ -379,6 +380,13 @@ def index(
             help="Verify file integrity using content hashes (slower but more accurate)",
         ),
     ] = False,
+    quiet_progress: Annotated[
+        bool,
+        typer.Option(
+            "--quiet-progress", "-q",
+            help="Minimal progress output to avoid screen flickering",
+        ),
+    ] = False,
 ) -> None:
     """Index documents for search.
 
@@ -441,8 +449,11 @@ def index(
             # Start directory scanning operation
             scan_op_id = base_command.logger.start_operation(f"Scanning directory {directory}...", expandable=False)
 
-            # Create progress callback using helper function
-            indexer_progress_callback = create_indexer_progress_callback(base_command.logger, scan_op_id)
+            # Create progress callback using hierarchical display (or None for quiet mode)
+            if quiet_progress:
+                indexer_progress_callback = None
+            else:
+                indexer_progress_callback = create_indexer_progress_callback(base_command.logger, scan_op_id)
             
             # Determine change detection strategy
             detection_strategy = change_detection or indexer_config.change_detection_strategy
@@ -453,7 +464,7 @@ def index(
             should_cleanup = cleanup_deleted if cleanup_deleted is not None else indexer_config.cleanup_deleted_files
 
             # Index directory with enhanced options
-            chunks_indexed, files_processed = indexer.index_directory(
+            chunks_indexed, files_processed, diff_stats = indexer.index_directory(
                 directory,
                 incremental=not force,
                 change_detection_strategy=detection_strategy,
@@ -461,8 +472,26 @@ def index(
                 progress_callback=indexer_progress_callback
             )
 
-            # Add summary
-            summary_op = base_command.logger.start_operation(f"Indexed {chunks_indexed} chunks from {files_processed} documents")
+            # Add detailed summary with differential stats
+            if not force and diff_stats.get("total_files_discovered", 0) > 0:
+                # Show differential update efficiency
+                total_discovered = diff_stats["total_files_discovered"]
+                files_skipped = diff_stats.get("files_skipped", 0)
+                chunks_skipped = diff_stats.get("chunks_from_skipped_files", 0)
+                deleted_files = diff_stats.get("deleted_files", 0)
+                
+                efficiency_pct = (files_skipped / total_discovered * 100) if total_discovered > 0 else 0
+                
+                summary_text = f"Indexed {chunks_indexed} chunks from {files_processed} documents"
+                if files_skipped > 0:
+                    summary_text += f" ({efficiency_pct:.1f}% files skipped, {chunks_skipped} chunks avoided)"
+                if deleted_files > 0:
+                    summary_text += f" ({deleted_files} deleted files cleaned up)"
+                
+                summary_op = base_command.logger.start_operation(summary_text)
+            else:
+                summary_op = base_command.logger.start_operation(f"Indexed {chunks_indexed} chunks from {files_processed} documents")
+            
             base_command.logger.complete_operation(summary_op)
 
             # Update totals

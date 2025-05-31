@@ -15,7 +15,7 @@ DEFAULT_CONFIG = {
         # Embedding settings
         "embedding_model": "cl-nagoya/ruri-v3-30m",  # Default embedding model
         "embedding_device": "cpu",  # Default device for embeddings (cpu/cuda)
-        "batch_size": 128,  # Default batch size for embedding generation
+        "batch_size": 64,  # Default batch size for embedding generation
         "max_seq_length": 8192,  # Maximum sequence length (Ruri v3 default is 8192)
         "use_onnx": True,  # Whether to use ONNX optimization for faster inference
         # ONNX quantization settings
@@ -25,7 +25,7 @@ DEFAULT_CONFIG = {
             "weight_type": "uint8",  # Weight quantization type (uint8, int8)
         },
         # ONNX optimization settings
-        "onnx_optimization_level": "basic",  # Graph optimization level: none, basic, extended, all
+        "onnx_optimization_level": "extended",  # Graph optimization level: none, basic, extended, all
         # Prefix scheme settings (Ruri v3's 1+3 prefix scheme)
         "document_prefix": "検索文書: ",  # Prefix for documents to be indexed
         "query_prefix": "検索クエリ: ",  # Prefix for search queries
@@ -39,7 +39,7 @@ DEFAULT_CONFIG = {
         "m": 16,  # Number of bidirectional links in HNSW graph
         "m0": None,  # Level-0 connections (None means use 2*M)
         # Processing settings
-        "max_workers": 8,  # Maximum number of worker threads for parallel processing
+        "max_workers": 2,  # Maximum number of worker threads for parallel processing
         # Reranker settings
         "reranker_model": "cl-nagoya/ruri-reranker-small",  # Lightweight Japanese reranker
         # Alternative heavy model: "cl-nagoya/ruri-v3-reranker-310m"
@@ -73,14 +73,14 @@ DEFAULT_CHUNK_SIZE = 1024
 DEFAULT_CHUNK_OVERLAP = 256
 DEFAULT_EMBEDDING_MODEL = "cl-nagoya/ruri-v3-30m"
 DEFAULT_EMBEDDING_DEVICE = "cpu"
-DEFAULT_BATCH_SIZE = 128
+DEFAULT_BATCH_SIZE = 64
 DEFAULT_MAX_SEQ_LENGTH = 8192
 DEFAULT_USE_ONNX = True
 # ONNX quantization defaults
 DEFAULT_ONNX_QUANTIZATION_ENABLED = True
 DEFAULT_ONNX_QUANTIZATION_METHOD = "dynamic"
 DEFAULT_ONNX_QUANTIZATION_WEIGHT_TYPE = "uint8"
-DEFAULT_ONNX_OPTIMIZATION_LEVEL = "none"
+DEFAULT_ONNX_OPTIMIZATION_LEVEL = "extended"
 DEFAULT_DOCUMENT_PREFIX = "検索文書: "
 DEFAULT_QUERY_PREFIX = "検索クエリ: "
 DEFAULT_TOPIC_PREFIX = "トピック: "
@@ -90,7 +90,7 @@ DEFAULT_EF_CONSTRUCTION = 128
 DEFAULT_EF_SEARCH = 64
 DEFAULT_M = 16
 DEFAULT_M0 = None
-DEFAULT_MAX_WORKERS = 8
+DEFAULT_MAX_WORKERS = 2
 # Reranker defaults
 DEFAULT_RERANKER_MODEL = "cl-nagoya/ruri-reranker-small"
 DEFAULT_USE_RERANKER = False

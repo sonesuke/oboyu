@@ -178,7 +178,7 @@ class DatabaseManager:
             force_recreate: Whether to drop and recreate all tables
 
         """
-        logger.info("Initializing database schema...")
+        logger.debug("Initializing database schema...")
         
         try:
             if force_recreate:
@@ -193,7 +193,7 @@ class DatabaseManager:
             # Setup indexes
             self.index_manager.setup_all_indexes(self.hnsw_params)
             
-            logger.info("Database initialization completed")
+            logger.debug("Database initialization completed")
             
         except Exception as e:
             logger.error(f"Database initialization failed: {e}")

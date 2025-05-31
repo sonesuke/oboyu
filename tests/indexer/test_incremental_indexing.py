@@ -158,7 +158,7 @@ class TestIncrementalIndexing:
                 mock_crawler_instance.crawl.side_effect = crawl_side_effect
                 
                 # Index directory incrementally
-                chunks_indexed, files_processed = indexer.index_directory(
+                chunks_indexed, files_processed, diff_stats = indexer.index_directory(
                     test_dir,
                     incremental=True
                 )
@@ -167,6 +167,10 @@ class TestIncrementalIndexing:
                 assert files_processed == 1
                 assert test_file1 in processed_files
                 assert test_file2 not in processed_files
+                
+                # Verify differential stats
+                assert diff_stats["files_processed"] == 1
+                assert diff_stats["files_skipped"] == 1
     
     def test_deleted_file_cleanup(self, indexer_config, mock_components, tmp_path):
         """Test that deleted files are cleaned up during incremental indexing."""
@@ -196,7 +200,7 @@ class TestIncrementalIndexing:
                 mock_crawler_instance.crawl.return_value = []  # No new files
                 
                 # Index directory with cleanup enabled
-                chunks_indexed, files_processed = indexer.index_directory(
+                chunks_indexed, files_processed, diff_stats = indexer.index_directory(
                     test_dir,
                     incremental=True,
                     cleanup_deleted=True
@@ -241,15 +245,15 @@ class TestIncrementalIndexing:
                 mock_crawler_instance.crawl.return_value = []
                 
                 # Test timestamp strategy
-                indexer.index_directory(test_dir, incremental=True, change_detection_strategy="timestamp")
+                _, _, _ = indexer.index_directory(test_dir, incremental=True, change_detection_strategy="timestamp")
                 assert "timestamp" in strategies_tested
                 
                 # Test hash strategy
-                indexer.index_directory(test_dir, incremental=True, change_detection_strategy="hash")
+                _, _, _ = indexer.index_directory(test_dir, incremental=True, change_detection_strategy="hash")
                 assert "hash" in strategies_tested
                 
                 # Test smart strategy (default)
-                indexer.index_directory(test_dir, incremental=True)
+                _, _, _ = indexer.index_directory(test_dir, incremental=True)
                 assert "smart" in strategies_tested
     
     def test_clear_index_clears_file_metadata(self, indexer_config, mock_components):
@@ -302,7 +306,7 @@ class TestIncrementalIndexing:
                 mock_crawler_instance.crawl.return_value = []
                 
                 # Index with incremental=False (force)
-                indexer.index_directory(test_dir, incremental=False)
+                _, _, _ = indexer.index_directory(test_dir, incremental=False)
                 
                 # Change detection should not be called when forcing
                 assert not change_detect_called
