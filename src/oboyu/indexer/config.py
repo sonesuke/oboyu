@@ -25,7 +25,7 @@ DEFAULT_CONFIG = {
             "weight_type": "uint8",  # Weight quantization type (uint8, int8)
         },
         # ONNX optimization settings
-        "onnx_optimization_level": "none",  # Graph optimization level: none, basic, extended, all
+        "onnx_optimization_level": "basic",  # Graph optimization level: none, basic, extended, all
         # Prefix scheme settings (Ruri v3's 1+3 prefix scheme)
         "document_prefix": "検索文書: ",  # Prefix for documents to be indexed
         "query_prefix": "検索クエリ: ",  # Prefix for search queries
@@ -43,10 +43,10 @@ DEFAULT_CONFIG = {
         # Reranker settings
         "reranker_model": "cl-nagoya/ruri-v3-reranker-310m",  # Default reranker model
         "use_reranker": False,  # Whether to use reranker for search results
-        "reranker_use_onnx": True,  # Whether to use ONNX optimization for reranker
+        "reranker_use_onnx": False,  # Whether to use ONNX optimization for reranker (PyTorch is faster for most cases)
         "reranker_device": "cpu",  # Device for reranker (cpu/cuda)
         "reranker_top_k_multiplier": 2,  # Multiplier for initial retrieval (2x final top_k)
-        "reranker_batch_size": 64,  # Batch size for reranking
+        "reranker_batch_size": 16,  # Batch size for reranking (reduced for better latency)
         "reranker_max_length": 512,  # Maximum sequence length for reranker
         "reranker_threshold": None,  # Minimum score threshold (None = no threshold)
         # BM25 settings

@@ -321,28 +321,34 @@ class TestCreateReranker:
     
     def test_create_onnx_reranker(self) -> None:
         """Test creating ONNX reranker."""
+        from oboyu.indexer.optimized_reranker import OptimizedONNXReranker
+        
         reranker = create_reranker(
             model_name="test-model",
             use_onnx=True,
             device="cpu",
         )
-        assert isinstance(reranker, ONNXCrossEncoderReranker)
+        assert isinstance(reranker, OptimizedONNXReranker)
     
     def test_create_pytorch_reranker(self) -> None:
         """Test creating PyTorch reranker."""
+        from oboyu.indexer.fast_pytorch_reranker import FastPyTorchReranker
+        
         reranker = create_reranker(
             model_name="test-model",
             use_onnx=False,
             device="cpu",
         )
-        assert isinstance(reranker, CrossEncoderReranker)
+        assert isinstance(reranker, FastPyTorchReranker)
     
     def test_create_pytorch_reranker_for_cuda(self) -> None:
         """Test creating PyTorch reranker for CUDA."""
-        # ONNX is only used for CPU
+        from oboyu.indexer.optimized_reranker import OptimizedONNXReranker
+        
+        # ONNX is used for both CPU and CUDA now
         reranker = create_reranker(
             model_name="test-model",
             use_onnx=True,
             device="cuda",
         )
-        assert isinstance(reranker, CrossEncoderReranker)
+        assert isinstance(reranker, OptimizedONNXReranker)

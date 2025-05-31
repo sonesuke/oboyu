@@ -6,7 +6,7 @@ This module provides the Crawler class for discovering and processing documents.
 import concurrent.futures
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Callable, Dict, List, Optional, Set
 
 from oboyu.crawler.discovery import discover_documents
 from oboyu.crawler.extractor import extract_content
@@ -72,11 +72,12 @@ class Crawler:
         # Keep track of processed files to avoid duplicates
         self._processed_files: Set[Path] = set()
 
-    def crawl(self, directory: Path) -> List[CrawlerResult]:
+    def crawl(self, directory: Path, progress_callback: Optional[Callable[[str, int, int], None]] = None) -> List[CrawlerResult]:
         """Crawl a directory for documents.
 
         Args:
             directory: Directory path to crawl
+            progress_callback: Optional callback for progress updates (stage, current, total)
 
         Returns:
             List of processed document results
@@ -106,20 +107,61 @@ class Crawler:
 
         # Process documents in parallel using ThreadPoolExecutor
         results: List[CrawlerResult] = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            # Submit all document processing tasks
-            future_to_doc = {executor.submit(self._process_document, doc_path, doc_metadata): (doc_path, doc_metadata) for doc_path, doc_metadata in new_docs}
+        total_docs = len(new_docs)
+        completed_docs = 0
+        
+        # Report initial progress
+        if progress_callback:
+            progress_callback("crawling", 0, total_docs)
+        
+        import threading
+        import time
+        last_progress_time = time.time()
+        
+        # Flag to stop periodic updates
+        stop_periodic_updates = threading.Event()
+        
+        # Function to send periodic progress updates even during long processing
+        def periodic_progress_updater() -> None:
+            while not stop_periodic_updates.wait(3.0):  # Update every 3 seconds
+                if progress_callback:
+                    progress_callback("crawling", completed_docs, total_docs)
+        
+        # Start periodic updater in background
+        update_thread = threading.Thread(target=periodic_progress_updater, daemon=True)
+        update_thread.start()
+        
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                # Submit all document processing tasks
+                future_to_doc = {
+                    executor.submit(self._process_document, doc_path, doc_metadata): (doc_path, doc_metadata)
+                    for doc_path, doc_metadata in new_docs
+                }
 
-            # Collect results as they complete
-            for future in concurrent.futures.as_completed(future_to_doc):
-                doc_path, _ = future_to_doc[future]
-                try:
-                    result = future.result()
-                    if result:
-                        results.append(result)
-                except Exception as e:
-                    # Log the error and continue
-                    print(f"Error processing {doc_path}: {e}")
+                # Collect results as they complete with periodic progress updates
+                for future in concurrent.futures.as_completed(future_to_doc):
+                    doc_path, _ = future_to_doc[future]
+                    try:
+                        result = future.result()
+                        if result:
+                            results.append(result)
+                    except Exception as e:
+                        # Log the error and continue
+                        print(f"Error processing {doc_path}: {e}")
+                    
+                    # Report progress
+                    completed_docs += 1
+                    current_time = time.time()
+                    
+                    # Report more frequently: every completion or every 2 seconds
+                    if progress_callback and (completed_docs == 1 or current_time - last_progress_time >= 2.0 or completed_docs % 10 == 0):
+                        progress_callback("crawling", completed_docs, total_docs)
+                        last_progress_time = current_time
+        finally:
+            # Stop the periodic updater
+            stop_periodic_updates.set()
+            update_thread.join(timeout=1.0)
 
         return results
 

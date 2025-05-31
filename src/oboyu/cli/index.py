@@ -233,16 +233,34 @@ def _create_crawler_config(
     return dict(crawler_config_dict)
 
 
-def _handle_crawling_stage(logger: HierarchicalLogger, scan_op_id: str, current_ops: dict[str, Optional[str]], total: int, files_found: int) -> int:
+def _handle_crawling_stage(
+    logger: HierarchicalLogger,
+    scan_op_id: str,
+    current_ops: dict[str, Optional[str]],
+    current: int,
+    total: int,
+    files_found: int,
+) -> int:
     """Handle crawling stage progress."""
-    if total > 0 and files_found == 0:
-        files_found = total
-        entry_word = "entry" if total == 1 else "entries"
-        logger.update_operation(scan_op_id, "Scanning directory...", details=f"Found {total} {entry_word}")
-        logger.complete_operation(scan_op_id)
-        logger.update_operation(scan_op_id, f"Found {total} {entry_word}")
-        # Start processing documents operation
-        current_ops["process"] = logger.start_operation("Processing documents...")
+    if total > 0:
+        if files_found == 0:
+            # First time seeing the total - initialize
+            files_found = total
+            entry_word = "entry" if total == 1 else "entries"
+            logger.update_operation(scan_op_id, f"Processing {total} {entry_word}...")
+        
+        # Update progress during crawling
+        if current > 0:
+            entry_word = "entry" if total == 1 else "entries"
+            progress_pct = (current / total * 100) if total > 0 else 0
+            logger.update_operation(scan_op_id, f"Processing {entry_word}... {current}/{total} ({progress_pct:.0f}%)")
+            
+        # Complete when all files are processed
+        if current >= total:
+            logger.complete_operation(scan_op_id)
+            # Start processing documents operation for next stage
+            current_ops["process"] = logger.start_operation("Processing documents...")
+            
     return files_found
 
 
@@ -454,7 +472,7 @@ def _create_progress_callback(logger: HierarchicalLogger, scan_op_id: str, curre
         # Remove debug logging
 
         if stage == "crawling":
-            files_found = _handle_crawling_stage(logger, scan_op_id, current_ops, total, files_found)
+            files_found = _handle_crawling_stage(logger, scan_op_id, current_ops, current, total, files_found)
         elif stage == "processing":
             _handle_processing_stage(logger, current_ops, current, total)
         elif stage == "embedding":

@@ -9,7 +9,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -162,7 +162,6 @@ class Indexer:
         new_docs = self._filter_processed_documents(crawler_results)
         if not new_docs:
             return 0
-
         # Process documents into chunks
         all_chunks = self._process_documents_with_progress(new_docs, progress_callback)
         if not all_chunks:
@@ -221,6 +220,10 @@ class Indexer:
         all_chunks: List[Chunk] = []
         processed_count = 0
 
+        # Report initial processing start immediately with activity indicator
+        if progress_callback:
+            progress_callback("processing", 0, len(documents))
+
         # Use the shared ThreadPoolExecutor for parallel processing with better resource management
         import time
         last_progress_time = time.time()
@@ -235,9 +238,18 @@ class Indexer:
             batch_end = min(batch_start + batch_size, len(documents))
             batch_documents = documents[batch_start:batch_end]
             
+            # Report progress at batch start - always report to show immediate activity
+            if progress_callback:
+                progress_callback("processing", processed_count, len(documents))
+            
             # Use ThreadPoolExecutor for this batch
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_concurrent) as batch_executor:
+                # Submit all documents in this batch
                 future_to_doc = {batch_executor.submit(self._process_document, doc): doc for doc in batch_documents}
+                
+                # Report that we've submitted the batch for processing
+                if progress_callback:
+                    progress_callback("processing", processed_count, len(documents))
                 
                 # Collect results for this batch
                 for future in concurrent.futures.as_completed(future_to_doc):
@@ -252,7 +264,7 @@ class Indexer:
                         current_time = time.time()
                         
                         # Report progress more frequently for better UX
-                        if processed_count == 1 or current_time - last_progress_time > 1.0 or processed_count % 10 == 0:
+                        if processed_count == 1 or current_time - last_progress_time > 0.5 or processed_count % 5 == 0:
                             if progress_callback:
                                 progress_callback("processing", processed_count, len(documents))
                             last_progress_time = current_time
@@ -263,9 +275,9 @@ class Indexer:
                         processed_count += 1
                         current_time = time.time()
                         
-                        if processed_count == 1 or current_time - last_progress_time > 1.0 or processed_count % 10 == 0:
+                        if processed_count == 1 or current_time - last_progress_time > 0.5 or processed_count % 5 == 0:
                             if progress_callback:
-                                progress_callback("processing_error", processed_count, len(documents))
+                                progress_callback("processing", processed_count, len(documents))
                             last_progress_time = current_time
 
         # Ensure final progress is reported
@@ -641,7 +653,7 @@ class Indexer:
 
             logger = logging.getLogger(__name__)
             rerank_start = time.time()
-            logger.info(f"Starting reranking of {len(search_results)} results...")
+            logger.debug(f"Starting reranking of {len(search_results)} results...")
             search_results = self.reranker.rerank(
                 query=query,
                 results=search_results,
@@ -649,7 +661,7 @@ class Indexer:
                 threshold=self.config.reranker_threshold,
             )
             rerank_time = time.time() - rerank_start
-            logger.info(f"Reranking completed in {rerank_time:.2f}s, returned {len(search_results)} results")
+            logger.debug(f"Reranking completed in {rerank_time:.2f}s, returned {len(search_results)} results")
         else:
             # If not reranking, just limit the results
             search_results = search_results[:limit]
@@ -710,16 +722,8 @@ class Indexer:
         if incremental:
             crawler._processed_files = self._processed_files.copy()
 
-        # Report starting crawler
-        if progress_callback:
-            progress_callback("crawling", 0, 1)
-
-        # Crawl directory - no verbosity
-        results = crawler.crawl(Path(directory))
-
-        # Report crawling complete
-        if progress_callback:
-            progress_callback("crawling", 1, 1)
+        # Crawl directory - with progress callback
+        results = crawler.crawl(Path(directory), progress_callback)
 
         # Count the number of files processed
         files_processed = len(results)
@@ -851,6 +855,15 @@ class Indexer:
 
         sorted_results = sorted(all_results.values(), key=get_score, reverse=True)
         return sorted_results[:limit]
+
+    def get_statistics(self) -> Dict[str, Any]:
+        """Get statistics about the indexed data.
+
+        Returns:
+            Dictionary containing statistics
+
+        """
+        return self.database.get_statistics()
 
     def close(self) -> None:
         """Close the indexer and its resources."""
