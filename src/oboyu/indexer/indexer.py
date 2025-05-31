@@ -124,7 +124,7 @@ class Indexer:
             },
             use_stopwords=True,  # Enable stopword filtering
             min_doc_frequency=2,  # Filter terms appearing in less than 2 documents
-            store_positions=True,  # Enable position storage for phrase search
+            store_positions=False,  # Disable position storage for faster indexing
         )
 
         # Initialize reranker if enabled
@@ -430,13 +430,24 @@ class Indexer:
         vocabulary = {}
         filtered_terms = set()
         min_doc_freq = self.bm25_indexer.min_doc_frequency
-
-        for term, doc_freq in self.bm25_indexer.document_frequencies.items():
+        
+        # Report vocabulary building progress
+        if progress_callback:
+            progress_callback("bm25_indexing", 2, 5)
+        
+        total_terms = len(self.bm25_indexer.document_frequencies)
+        for i, (term, doc_freq) in enumerate(self.bm25_indexer.document_frequencies.items()):
             if doc_freq >= min_doc_freq:
                 coll_freq = self.bm25_indexer.collection_frequencies[term]
                 vocabulary[term] = (doc_freq, coll_freq)
             else:
                 filtered_terms.add(term)
+                
+            # Report progress every 10000 terms or at completion
+            if (i + 1) % 10000 == 0 or i == total_terms - 1:
+                if progress_callback:
+                    # Use a custom stage for vocabulary building progress
+                    progress_callback("bm25_vocabulary", i + 1, total_terms)
 
         # Prepare document statistics
         document_stats = {}
@@ -463,29 +474,38 @@ class Indexer:
         }
 
         # Filter inverted index to exclude low-frequency terms
-        filtered_inverted_index = {}
-        for term, postings in self.bm25_indexer.inverted_index.items():
-            if term not in filtered_terms:
-                filtered_inverted_index[term] = postings
-
-        # Report vocabulary building
-        if progress_callback:
-            progress_callback("bm25_indexing", 2, 5)
-
-        # Report filtering low-frequency terms
+        # Report filtering progress
         if progress_callback:
             progress_callback("bm25_indexing", 3, 5)
+            
+        filtered_inverted_index = {}
+        total_index_terms = len(self.bm25_indexer.inverted_index)
+        for i, (term, postings) in enumerate(self.bm25_indexer.inverted_index.items()):
+            if term not in filtered_terms:
+                filtered_inverted_index[term] = postings
+                
+            # Report progress every 5000 terms or at completion
+            if (i + 1) % 5000 == 0 or i == total_index_terms - 1:
+                if progress_callback:
+                    # Use a custom stage for filtering progress
+                    progress_callback("bm25_filtering", i + 1, total_index_terms)
 
         # Report preparing to store
         if progress_callback:
             progress_callback("bm25_indexing", 4, 5)
 
+        # Create progress callback for database storage
+        def storage_progress(stage: str, current: int, total: int) -> None:
+            if progress_callback:
+                progress_callback(f"bm25_storing_{stage}", current, total)
+        
         # Store BM25 index in database
         self.database.store_bm25_index(
             vocabulary=vocabulary,
             inverted_index=filtered_inverted_index,
             document_stats=document_stats,
             collection_stats=collection_stats,
+            progress_callback=storage_progress,
         )
 
         # Report BM25 indexing complete

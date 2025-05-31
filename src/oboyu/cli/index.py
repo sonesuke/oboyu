@@ -458,6 +458,176 @@ def _handle_bm25_tokenizing_stage(
             timing_info.pop("bm25_start_time", None)
 
 
+def _handle_bm25_vocabulary_stage(
+    logger: HierarchicalLogger,
+    current_ops: dict[str, Optional[str]],
+    current: int,
+    total: int,
+    timing_info: dict[str, float],
+) -> None:
+    """Handle BM25 vocabulary building progress."""
+    import time
+    
+    vocab_op = current_ops.get("bm25_vocabulary")
+    
+    # Initialize timing info if not present
+    if "vocab_start_time" not in timing_info:
+        timing_info["vocab_start_time"] = time.time()
+    
+    # Only create a new operation if one doesn't exist
+    if not vocab_op:
+        vocab_op = logger.start_operation(f"Building vocabulary... 0/{total}")
+        current_ops["bm25_vocabulary"] = vocab_op
+    
+    # Update progress if we have an active operation
+    if vocab_op:
+        elapsed = time.time() - timing_info["vocab_start_time"]
+        if current > 0 and elapsed > 0:
+            rate = current / elapsed
+            rate_str = f" ({rate:.0f} terms/sec)" if rate > 0 else ""
+        else:
+            rate_str = ""
+        
+        progress_pct = (current / total * 100) if total > 0 else 0
+        logger.update_operation(vocab_op, f"Building vocabulary... {current}/{total} ({progress_pct:.0f}%){rate_str}")
+
+        # Complete when finished
+        if current == total:
+            logger.complete_operation(vocab_op)
+            current_ops["bm25_vocabulary"] = None
+            timing_info.pop("vocab_start_time", None)
+
+
+def _handle_bm25_filtering_stage(
+    logger: HierarchicalLogger,
+    current_ops: dict[str, Optional[str]],
+    current: int,
+    total: int,
+    timing_info: dict[str, float],
+) -> None:
+    """Handle BM25 term filtering progress."""
+    import time
+    
+    filter_op = current_ops.get("bm25_filtering")
+    
+    # Initialize timing info if not present
+    if "filter_start_time" not in timing_info:
+        timing_info["filter_start_time"] = time.time()
+    
+    # Only create a new operation if one doesn't exist
+    if not filter_op:
+        filter_op = logger.start_operation(f"Filtering low-frequency terms... 0/{total}")
+        current_ops["bm25_filtering"] = filter_op
+    
+    # Update progress if we have an active operation
+    if filter_op:
+        elapsed = time.time() - timing_info["filter_start_time"]
+        if current > 0 and elapsed > 0:
+            rate = current / elapsed
+            rate_str = f" ({rate:.0f} terms/sec)" if rate > 0 else ""
+        else:
+            rate_str = ""
+        
+        progress_pct = (current / total * 100) if total > 0 else 0
+        logger.update_operation(filter_op, f"Filtering low-frequency terms... {current}/{total} ({progress_pct:.0f}%){rate_str}")
+
+        # Complete when finished
+        if current == total:
+            logger.complete_operation(filter_op)
+            current_ops["bm25_filtering"] = None
+            timing_info.pop("filter_start_time", None)
+
+
+def _handle_bm25_storing_stage(
+    logger: HierarchicalLogger,
+    current_ops: dict[str, Optional[str]],
+    storage_stage: str,
+    current: int,
+    total: int,
+    timing_info: dict[str, float],
+) -> None:
+    """Handle BM25 database storage progress."""
+    import time
+    
+    stage_key = f"bm25_store_{storage_stage}"
+    store_op = current_ops.get(stage_key)
+    
+    # Initialize timing info if not present
+    timing_key = f"store_{storage_stage}_start_time"
+    if timing_key not in timing_info:
+        timing_info[timing_key] = time.time()
+    
+    # Stage display names
+    stage_names = {
+        "vocabulary": "vocabulary terms",
+        "inverted_index": "inverted index entries",
+        "document_stats": "document statistics",
+    }
+    
+    stage_name = stage_names.get(storage_stage, storage_stage)
+    
+    # Only create a new operation if one doesn't exist
+    if not store_op:
+        store_op = logger.start_operation(f"Storing {stage_name}... 0/{total}")
+        current_ops[stage_key] = store_op
+    
+    # Update progress if we have an active operation
+    if store_op:
+        elapsed = time.time() - timing_info[timing_key]
+        if current > 0 and elapsed > 0:
+            rate = current / elapsed
+            rate_str = f" ({rate:.0f}/sec)" if rate > 0 else ""
+        else:
+            rate_str = ""
+        
+        progress_pct = (current / total * 100) if total > 0 else 0
+        logger.update_operation(store_op, f"Storing {stage_name}... {current}/{total} ({progress_pct:.0f}%){rate_str}")
+
+        # Complete when finished
+        if current == total:
+            logger.complete_operation(store_op)
+            current_ops[stage_key] = None
+            timing_info.pop(timing_key, None)
+
+
+def _handle_bm25_index_creation_stage(
+    logger: HierarchicalLogger,
+    current_ops: dict[str, Optional[str]],
+    current: int,
+    total: int,
+    timing_info: dict[str, float],
+) -> None:
+    """Handle BM25 database index creation progress."""
+    import time
+    
+    index_op = current_ops.get("bm25_creating_indexes")
+    
+    # Initialize timing info if not present
+    if "index_create_start_time" not in timing_info:
+        timing_info["index_create_start_time"] = time.time()
+    
+    # Only create a new operation if one doesn't exist
+    if not index_op:
+        index_op = logger.start_operation(f"Creating database indexes... 0/{total}")
+        current_ops["bm25_creating_indexes"] = index_op
+    
+    # Update progress if we have an active operation
+    if index_op:
+        index_names = ["term index", "term-chunk index"]
+        index_name = index_names[current - 1] if current <= len(index_names) else f"index {current}"
+        
+        if current < total:
+            logger.update_operation(index_op, f"Creating database indexes... {index_name} ({current}/{total})")
+        else:
+            logger.update_operation(index_op, f"Creating database indexes... completed ({current}/{total})")
+
+        # Complete when finished
+        if current == total:
+            logger.complete_operation(index_op)
+            current_ops["bm25_creating_indexes"] = None
+            timing_info.pop("index_create_start_time", None)
+
+
 def _create_progress_callback(logger: HierarchicalLogger, scan_op_id: str, current_ops: dict[str, Optional[str]]) -> Callable[[str, int, int], None]:
     """Create a progress callback for the indexer."""
     files_found = 0
@@ -485,6 +655,15 @@ def _create_progress_callback(logger: HierarchicalLogger, scan_op_id: str, curre
             _handle_bm25_stage(logger, current_ops, current, total)
         elif stage == "bm25_tokenizing":
             _handle_bm25_tokenizing_stage(logger, current_ops, current, total, timing_info)
+        elif stage == "bm25_vocabulary":
+            _handle_bm25_vocabulary_stage(logger, current_ops, current, total, timing_info)
+        elif stage == "bm25_filtering":
+            _handle_bm25_filtering_stage(logger, current_ops, current, total, timing_info)
+        elif stage.startswith("bm25_storing_"):
+            storage_stage = stage.replace("bm25_storing_", "")
+            _handle_bm25_storing_stage(logger, current_ops, storage_stage, current, total, timing_info)
+        elif stage == "bm25_storing_creating_indexes":
+            _handle_bm25_index_creation_stage(logger, current_ops, current, total, timing_info)
 
         last_stage = stage
 

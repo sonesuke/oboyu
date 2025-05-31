@@ -66,7 +66,7 @@ class BM25Indexer:
         # Store tokenizer config for parallel processing
         self.tokenizer_config = {"language": language, "min_token_length": min_token_length, "use_stopwords": use_stopwords}
         # Index structures
-        self.inverted_index: Dict[str, List[Tuple[str, int, List[int]]]] = defaultdict(list)
+        self.inverted_index: Dict[str, List[Tuple[str, int, Optional[List[int]]]]] = defaultdict(list)
         self.document_frequencies: Dict[str, int] = defaultdict(int)
         self.collection_frequencies: Dict[str, int] = defaultdict(int)
         self.document_lengths: Dict[str, int] = {}
@@ -138,7 +138,7 @@ class BM25Indexer:
             # Update inverted index
             for term, freq in term_frequencies.items():
                 # Skip position tracking for now (significant performance impact)
-                positions: List[int] = [] if not self.store_positions else []
+                positions: Optional[List[int]] = [] if self.store_positions else None
 
                 # Add to inverted index
                 self.inverted_index[term].append((chunk.id, freq, positions))

@@ -23,7 +23,7 @@ import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import duckdb
 import numpy as np
@@ -658,6 +658,7 @@ class Database:
         document_stats: Dict[str, Tuple[int, int, float]],
         collection_stats: Dict[str, Union[int, float]],
         batch_size: int = 10000,
+        progress_callback: Optional[Callable[[str, int, int], None]] = None,
     ) -> None:
         """Store BM25 index data in the database with batch processing.
         
@@ -667,6 +668,7 @@ class Database:
             document_stats: Dictionary mapping chunk_id to (total_terms, unique_terms, avg_term_freq)
             collection_stats: Dictionary with collection-level statistics
             batch_size: Number of records to process in each batch (default: 10000)
+            progress_callback: Optional callback function for progress reporting
 
         """
         if self.conn is None:
@@ -674,6 +676,22 @@ class Database:
         
         logger.info(f"Storing BM25 index with batch size: {batch_size}")
         logger.info(f"Vocabulary size: {len(vocabulary)}, Inverted index entries: {sum(len(postings) for postings in inverted_index.values())}")
+        
+        # Optimize DuckDB settings for bulk inserts
+        logger.info("Optimizing database settings for bulk operations...")
+        try:
+            self.conn.execute("SET memory_limit='6GB'")
+            self.conn.execute("SET threads=8")  # Use more threads for parallel processing
+            self.conn.execute("SET max_memory='6GB'")
+            logger.info("Applied memory and thread optimizations")
+        except Exception as e:
+            logger.warning(f"Could not apply some database optimizations: {e}")
+            # Try more conservative settings
+            try:
+                self.conn.execute("SET threads=4")
+                logger.info("Applied conservative thread settings")
+            except Exception:
+                logger.warning("Could not apply thread optimizations")
         
         # Start a transaction for bulk inserts
         self.conn.begin()
@@ -688,17 +706,54 @@ class Database:
             
             if vocab_data:  # Only execute if there's data
                 logger.info(f"Storing {len(vocab_data)} vocabulary terms in batches...")
-                for i in range(0, len(vocab_data), batch_size):
-                    batch = vocab_data[i:i + batch_size]
-                    if i > 0 and i % (batch_size * 10) == 0:
-                        logger.debug(f"Vocabulary progress: {i}/{len(vocab_data)} terms")
-                    self.conn.executemany("""
-                        INSERT INTO vocabulary (term, document_frequency, collection_frequency)
-                        VALUES (?, ?, ?)
-                        ON CONFLICT (term) DO UPDATE SET
-                            document_frequency = excluded.document_frequency,
-                            collection_frequency = excluded.collection_frequency
-                    """, batch)
+                if progress_callback:
+                    progress_callback("vocabulary", 0, len(vocab_data))
+                
+                # Check if vocabulary table is empty for bulk insert optimization
+                vocab_count_result = self.conn.execute("SELECT COUNT(*) FROM vocabulary").fetchone()
+                vocab_is_initial = vocab_count_result is not None and vocab_count_result[0] == 0
+                
+                if vocab_is_initial and len(vocab_data) > 1000:
+                    # Use bulk VALUES insert for initial vocabulary (much faster)
+                    vocab_batch_size = 25000  # Smaller batch for vocabulary
+                    for i in range(0, len(vocab_data), vocab_batch_size):
+                        batch = vocab_data[i:i + vocab_batch_size]
+                        if i > 0 and i % vocab_batch_size == 0:
+                            logger.debug(f"Vocabulary progress: {i}/{len(vocab_data)} terms")
+                        
+                        # Build bulk VALUES clause
+                        values_list = []
+                        for term, doc_freq, coll_freq in batch:
+                            term_escaped = term.replace("'", "''") if term else ''
+                            values_list.append(f"('{term_escaped}', {doc_freq}, {coll_freq})")
+                        
+                        values_clause = ",".join(values_list)
+                        bulk_query = f"""
+                            INSERT INTO vocabulary (term, document_frequency, collection_frequency)
+                            VALUES {values_clause}
+                        """
+                        self.conn.execute(bulk_query)
+                        
+                        # Report progress after each batch
+                        if progress_callback:
+                            progress_callback("vocabulary", min(i + vocab_batch_size, len(vocab_data)), len(vocab_data))
+                else:
+                    # Use executemany for updates or small datasets
+                    for i in range(0, len(vocab_data), batch_size):
+                        batch = vocab_data[i:i + batch_size]
+                        if i > 0 and i % (batch_size * 10) == 0:
+                            logger.debug(f"Vocabulary progress: {i}/{len(vocab_data)} terms")
+                        self.conn.executemany("""
+                            INSERT INTO vocabulary (term, document_frequency, collection_frequency)
+                            VALUES (?, ?, ?)
+                            ON CONFLICT (term) DO UPDATE SET
+                                document_frequency = excluded.document_frequency,
+                                collection_frequency = excluded.collection_frequency
+                        """, batch)
+                        
+                        # Report progress after each batch
+                        if progress_callback:
+                            progress_callback("vocabulary", min(i + batch_size, len(vocab_data)), len(vocab_data))
             
             
             # Store inverted index with optimized batch size
@@ -707,12 +762,11 @@ class Database:
             inv_index_data = []
             for term, postings in inverted_index.items():
                 for chunk_id, term_freq, positions in postings:
-                    # Store positions as integer array (None for empty positions)
-                    positions_array = positions if positions else None
-                    inv_index_data.append((term, chunk_id, term_freq, positions_array))
+                    # Store positions as integer array (None when positions not stored)
+                    inv_index_data.append((term, chunk_id, term_freq, positions))
             
-            # Sort data by term for better insertion performance
-            inv_index_data.sort(key=lambda x: (x[0], x[1]))
+            # Skip sorting for bulk insert - sorting 1M+ entries is expensive
+            # inv_index_data.sort(key=lambda x: (x[0], x[1]))
             
             # Check if this is initial indexing (empty table)
             count_result = self.conn.execute("SELECT COUNT(*) FROM inverted_index").fetchone()
@@ -720,42 +774,135 @@ class Database:
             
             if inv_index_data:  # Only process if there's data
                 logger.info(f"Storing {len(inv_index_data)} inverted index entries...")
+                if progress_callback:
+                    progress_callback("inverted_index", 0, len(inv_index_data))
+                    
                 if is_initial:
-                    # For initial indexing, use simple INSERT for speed
-                    # Use larger batches for better performance
-                    initial_batch_size = 50000  # Larger batch size for initial indexing
+                    # For initial indexing, use bulk VALUES INSERT for maximum speed
+                    # For initial indexing, use bulk VALUES INSERT for maximum speed
+                    initial_batch_size = 50000  # Smaller batch for bulk VALUES to avoid query limits
+                    
                     for i in range(0, len(inv_index_data), initial_batch_size):
                         inv_batch = inv_index_data[i:i + initial_batch_size]
-                        if i > 0 and i % (initial_batch_size * 5) == 0:
+                        if i > 0 and i % initial_batch_size == 0:
                             logger.debug(f"Inverted index progress: {i}/{len(inv_index_data)} entries")
-                        self.conn.executemany("""
+                        
+                        # Build bulk VALUES clause for much faster insertion
+                        values_list = []
+                        for term, chunk_id, term_freq, positions in inv_batch:
+                            # Escape single quotes in strings
+                            term_escaped = term.replace("'", "''") if term else ''
+                            chunk_id_escaped = chunk_id.replace("'", "''") if chunk_id else ''
+                            
+                            # Handle positions array - can be None or empty list
+                            if positions is None or len(positions) == 0:
+                                pos_str = "NULL"
+                            else:
+                                pos_str = "[" + ",".join(map(str, positions)) + "]"
+                            
+                            values_list.append(f"('{term_escaped}', '{chunk_id_escaped}', {term_freq}, {pos_str})")
+                        
+                        # Execute bulk insert with VALUES clause
+                        values_clause = ",".join(values_list)
+                        bulk_query = f"""
                             INSERT INTO inverted_index (term, chunk_id, term_frequency, positions)
-                            VALUES (?, ?, ?, ?)
-                        """, inv_batch)
+                            VALUES {values_clause}
+                        """
+                        self.conn.execute(bulk_query)
+                        
+                        
+                        # Report progress after each batch
+                        if progress_callback:
+                            progress_callback("inverted_index", min(i + initial_batch_size, len(inv_index_data)), len(inv_index_data))
+                    
                 
                     # Create index after bulk insert for better performance
+                    logger.info("Creating database indexes for search optimization...")
+                    if progress_callback:
+                        progress_callback("creating_indexes", 0, 2)
+                    
                     self.conn.execute("""
                         CREATE INDEX IF NOT EXISTS idx_inverted_index_term
                         ON inverted_index(term)
                     """)
+                    if progress_callback:
+                        progress_callback("creating_indexes", 1, 2)
+                    
                     self.conn.execute("""
                         CREATE UNIQUE INDEX IF NOT EXISTS idx_inverted_index_term_chunk
                         ON inverted_index(term, chunk_id)
                     """)
+                    if progress_callback:
+                        progress_callback("creating_indexes", 2, 2)
                 else:
-                    # For updates, use ON CONFLICT with batching
-                    update_batch_size = batch_size  # Use configured batch size for updates
-                    for i in range(0, len(inv_index_data), update_batch_size):
-                        inv_batch = inv_index_data[i:i + update_batch_size]
-                        if i > 0 and i % (update_batch_size * 10) == 0:
-                            logger.debug(f"Inverted index update progress: {i}/{len(inv_index_data)} entries")
-                        self.conn.executemany("""
-                            INSERT INTO inverted_index (term, chunk_id, term_frequency, positions)
-                            VALUES (?, ?, ?, ?)
-                            ON CONFLICT (term, chunk_id) DO UPDATE SET
-                                term_frequency = excluded.term_frequency,
-                                positions = excluded.positions
-                        """, inv_batch)
+                    # For updates, consider using faster approaches
+                    # For updates, use optimized strategy for large datasets
+                    
+                    # Strategy: Delete existing entries first, then bulk insert
+                    # This is much faster than ON CONFLICT for large updates
+                    if len(inv_index_data) > 100000:  # For large updates
+                        
+                        # Get unique chunk_ids being updated
+                        chunk_ids = set(chunk_id for _, chunk_id, _, _ in inv_index_data)
+                        chunk_id_list = "', '".join(cid.replace("'", "''") for cid in chunk_ids)
+                        
+                        # Delete existing entries for these chunks
+                        self.conn.execute(f"DELETE FROM inverted_index WHERE chunk_id IN ('{chunk_id_list}')")
+                        
+                        # Now use bulk INSERT (no conflicts possible)
+                        bulk_batch_size = 50000
+                        for i in range(0, len(inv_index_data), bulk_batch_size):
+                            inv_batch = inv_index_data[i:i + bulk_batch_size]
+                            
+                            # Build bulk VALUES clause
+                            values_list = []
+                            for term, chunk_id, term_freq, positions in inv_batch:
+                                term_escaped = term.replace("'", "''") if term else ''
+                                chunk_id_escaped = chunk_id.replace("'", "''") if chunk_id else ''
+                                
+                                if positions is None or len(positions) == 0:
+                                    pos_str = "NULL"
+                                else:
+                                    pos_str = "[" + ",".join(map(str, positions)) + "]"
+                                
+                                values_list.append(f"('{term_escaped}', '{chunk_id_escaped}', {term_freq}, {pos_str})")
+                            
+                            # Execute bulk insert
+                            values_clause = ",".join(values_list)
+                            bulk_query = f"""
+                                INSERT INTO inverted_index (term, chunk_id, term_frequency, positions)
+                                VALUES {values_clause}
+                            """
+                            self.conn.execute(bulk_query)
+                            
+                            
+                            # Report progress
+                            if progress_callback:
+                                progress_callback("inverted_index", min(i + bulk_batch_size, len(inv_index_data)), len(inv_index_data))
+                        
+                        
+                    else:
+                        # For smaller updates, use traditional ON CONFLICT
+                        update_batch_size = batch_size  # Use configured batch size for updates
+                        
+                        for i in range(0, len(inv_index_data), update_batch_size):
+                            inv_batch = inv_index_data[i:i + update_batch_size]
+                            if i > 0 and i % (update_batch_size * 10) == 0:
+                                logger.debug(f"Inverted index update progress: {i}/{len(inv_index_data)} entries")
+                            
+                            self.conn.executemany("""
+                                INSERT INTO inverted_index (term, chunk_id, term_frequency, positions)
+                                VALUES (?, ?, ?, ?)
+                                ON CONFLICT (term, chunk_id) DO UPDATE SET
+                                    term_frequency = excluded.term_frequency,
+                                    positions = excluded.positions
+                            """, inv_batch)
+                            
+                            
+                            # Report progress after each batch
+                            if progress_callback:
+                                progress_callback("inverted_index", min(i + update_batch_size, len(inv_index_data)), len(inv_index_data))
+                        
             
             
             # Store document statistics with batch processing
@@ -767,19 +914,55 @@ class Database:
             
             if doc_stats_data:  # Only execute if there's data
                 logger.info(f"Storing {len(doc_stats_data)} document statistics...")
-                # Use same batch size as vocabulary
-                for i in range(0, len(doc_stats_data), batch_size):
-                    doc_batch = doc_stats_data[i:i + batch_size]
-                    if i > 0 and i % (batch_size * 10) == 0:
-                        logger.debug(f"Document stats progress: {i}/{len(doc_stats_data)} documents")
-                    self.conn.executemany("""
-                        INSERT INTO document_stats (chunk_id, total_terms, unique_terms, avg_term_frequency)
-                        VALUES (?, ?, ?, ?)
-                        ON CONFLICT (chunk_id) DO UPDATE SET
-                            total_terms = excluded.total_terms,
-                            unique_terms = excluded.unique_terms,
-                            avg_term_frequency = excluded.avg_term_frequency
-                    """, doc_batch)
+                if progress_callback:
+                    progress_callback("document_stats", 0, len(doc_stats_data))
+                
+                # Check if document_stats table is empty for bulk insert optimization
+                doc_stats_count_result = self.conn.execute("SELECT COUNT(*) FROM document_stats").fetchone()
+                doc_stats_is_initial = doc_stats_count_result is not None and doc_stats_count_result[0] == 0
+                
+                if doc_stats_is_initial and len(doc_stats_data) > 1000:
+                    # Use bulk VALUES insert for initial document stats (much faster)
+                    doc_stats_batch_size = 25000  # Large batch for document stats
+                    for i in range(0, len(doc_stats_data), doc_stats_batch_size):
+                        doc_batch = doc_stats_data[i:i + doc_stats_batch_size]
+                        if i > 0 and i % doc_stats_batch_size == 0:
+                            logger.debug(f"Document stats progress: {i}/{len(doc_stats_data)} documents")
+                        
+                        # Build bulk VALUES clause
+                        values_list = []
+                        for chunk_id, total_terms, unique_terms, avg_freq in doc_batch:
+                            chunk_id_escaped = chunk_id.replace("'", "''") if chunk_id else ''
+                            values_list.append(f"('{chunk_id_escaped}', {total_terms}, {unique_terms}, {avg_freq})")
+                        
+                        values_clause = ",".join(values_list)
+                        bulk_query = f"""
+                            INSERT INTO document_stats (chunk_id, total_terms, unique_terms, avg_term_frequency)
+                            VALUES {values_clause}
+                        """
+                        self.conn.execute(bulk_query)
+                        
+                        # Report progress after each batch
+                        if progress_callback:
+                            progress_callback("document_stats", min(i + doc_stats_batch_size, len(doc_stats_data)), len(doc_stats_data))
+                else:
+                    # Use executemany for updates or small datasets
+                    for i in range(0, len(doc_stats_data), batch_size):
+                        doc_batch = doc_stats_data[i:i + batch_size]
+                        if i > 0 and i % (batch_size * 10) == 0:
+                            logger.debug(f"Document stats progress: {i}/{len(doc_stats_data)} documents")
+                        self.conn.executemany("""
+                            INSERT INTO document_stats (chunk_id, total_terms, unique_terms, avg_term_frequency)
+                            VALUES (?, ?, ?, ?)
+                            ON CONFLICT (chunk_id) DO UPDATE SET
+                                total_terms = excluded.total_terms,
+                                unique_terms = excluded.unique_terms,
+                                avg_term_frequency = excluded.avg_term_frequency
+                        """, doc_batch)
+                        
+                        # Report progress after each batch
+                        if progress_callback:
+                            progress_callback("document_stats", min(i + batch_size, len(doc_stats_data)), len(doc_stats_data))
             
             
             # Store collection statistics
