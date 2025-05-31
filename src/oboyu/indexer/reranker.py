@@ -313,18 +313,21 @@ def create_reranker(
         Reranker instance
 
     """
-    if use_onnx and device == "cpu":
-        return ONNXCrossEncoderReranker(
+    if use_onnx:
+        # Use optimized sentence-transformers ONNX backend
+        from oboyu.indexer.optimized_reranker import OptimizedONNXReranker
+        
+        return OptimizedONNXReranker(
             model_name=model_name,
             device=device,
             batch_size=batch_size,
             max_length=max_length,
-            cache_dir=cache_dir,
-            quantization_config=quantization_config,
-            optimization_level=optimization_level,
         )
     else:
-        return CrossEncoderReranker(
+        # Use fast PyTorch reranker for better performance
+        from oboyu.indexer.fast_pytorch_reranker import FastPyTorchReranker
+        
+        return FastPyTorchReranker(
             model_name=model_name,
             device=device,
             batch_size=batch_size,

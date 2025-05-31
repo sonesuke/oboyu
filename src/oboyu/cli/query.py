@@ -3,6 +3,7 @@
 This module provides the command-line interface for querying indexed documents.
 """
 
+import logging
 import subprocess
 import time
 from pathlib import Path
@@ -426,6 +427,50 @@ class InteractiveQuerySession:
             self.console.print(f"❌ Could not retrieve statistics: [red]{e}[/red]")
 
 
+def _warmup_embedding_model(indexer: Indexer) -> None:
+    """Warmup the embedding model with a dummy query.
+
+    Args:
+        indexer: The indexer instance
+
+    """
+    try:
+        if hasattr(indexer, 'embedding_generator') and indexer.embedding_generator is not None:
+            indexer.embedding_generator.generate_query_embedding("warmup query")
+    except Exception as e:
+        # Ignore warmup errors - model will be loaded on first actual use
+        logging.debug(f"Embedding model warmup failed (will be loaded on first use): {e}")
+
+
+def _warmup_reranker(indexer: Indexer) -> None:
+    """Warmup the reranker with a dummy query.
+
+    Args:
+        indexer: The indexer instance
+
+    """
+    if hasattr(indexer, 'reranker') and indexer.reranker is not None:
+        try:
+            from oboyu.indexer.indexer import SearchResult
+            dummy_results = [
+                SearchResult(
+                    chunk_id="warmup",
+                    path="/warmup",
+                    title="Warmup",
+                    content="This is a warmup query for the reranker",
+                    chunk_index=0,
+                    language="ja",
+                    metadata={},
+                    score=1.0,
+                )
+            ]
+            # Perform warmup reranking
+            indexer.reranker.rerank("warmup", dummy_results, top_k=1)
+        except Exception as e:
+            # Ignore warmup errors - model will be loaded on first actual use
+            logging.debug(f"Reranker warmup failed (will be loaded on first use): {e}")
+
+
 def format_search_result(result: SearchResult, query: str, show_explanation: bool = False) -> Text:
     """Format a search result for display using cleaner hierarchical format.
 
@@ -550,14 +595,18 @@ def query(
             
             # Load embedding model if needed
             if mode in ["vector", "hybrid"]:
-                embed_op = logger.start_operation("Loading embedding model...")
-                # The model will be loaded on first use
+                model_name = indexer_config_dict.get("embedding_model", "cl-nagoya/ruri-v3-30m")
+                embed_op = logger.start_operation(f"Loading embedding model ({model_name})...")
+                # Warmup the embedding model with a dummy query
+                _warmup_embedding_model(indexer)
                 logger.complete_operation(embed_op)
                 
             # Load reranker if enabled
             if rerank:
-                rerank_op = logger.start_operation("Loading reranker model...")
-                # The reranker will be loaded on first use
+                reranker_model = indexer_config_dict.get("reranker_model", "cl-nagoya/ruri-v3-reranker-310m")
+                rerank_op = logger.start_operation(f"Loading reranker model ({reranker_model})...")
+                # Warmup the reranker with a dummy query to ensure it's fully loaded
+                _warmup_reranker(indexer)
                 logger.complete_operation(rerank_op)
                 
             logger.complete_operation(main_op)

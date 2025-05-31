@@ -128,7 +128,12 @@ class ONNXEmbeddingModel:
             "all": GraphOptimizationLevel.ORT_ENABLE_ALL,
         }
         sess_options.graph_optimization_level = opt_level_map.get(optimization_level, GraphOptimizationLevel.ORT_DISABLE_ALL)
-        sess_options.intra_op_num_threads = 4  # Optimal for most CPU architectures
+        # Use all available CPU cores for better performance
+        import os
+        num_threads = os.cpu_count() or 4
+        sess_options.intra_op_num_threads = num_threads
+        sess_options.inter_op_num_threads = 1  # Single thread for operation scheduling
+        logger.info(f"ONNX session configured with {num_threads} intra-op threads, optimization level: {optimization_level}")
 
         # Load ONNX model
         self.session = InferenceSession(str(self.model_path), sess_options)
@@ -466,7 +471,12 @@ class ONNXCrossEncoderModel:
             "all": GraphOptimizationLevel.ORT_ENABLE_ALL,
         }
         sess_options.graph_optimization_level = opt_level_map.get(optimization_level, GraphOptimizationLevel.ORT_DISABLE_ALL)
-        sess_options.intra_op_num_threads = 4  # Optimal for most CPU architectures
+        # Use all available CPU cores for better performance
+        import os
+        num_threads = os.cpu_count() or 4
+        sess_options.intra_op_num_threads = num_threads
+        sess_options.inter_op_num_threads = 1  # Single thread for operation scheduling
+        logger.info(f"ONNX session configured with {num_threads} intra-op threads, optimization level: {optimization_level}")
 
         # Load ONNX model
         self.session = InferenceSession(str(self.model_path), sess_options)
