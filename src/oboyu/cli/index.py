@@ -12,7 +12,7 @@ from typing_extensions import Annotated
 
 from oboyu.cli.formatters import console
 from oboyu.cli.hierarchical_logger import HierarchicalLogger, create_hierarchical_logger
-from oboyu.common.paths import DEFAULT_DB_PATH
+from oboyu.common.config import ConfigManager
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.indexer import Indexer
 
@@ -155,22 +155,16 @@ def clear(
     This command removes all indexed documents and their embeddings from the database
     while preserving the database schema and structure.
     """
-    # Get global options from context
-    config_data = ctx.obj.get("config_data", {}) if ctx.obj else {}
-
-    # Create indexer configuration
-    indexer_config_dict = config_data.get("indexer", {})
-
-    # Handle database path explicitly, with clear precedence
-    if db_path is not None:
-        indexer_config_dict["db_path"] = str(db_path)
-        console.print(f"Using database: {db_path}")
-    elif "db_path" in indexer_config_dict:
-        console.print(f"Using database: {indexer_config_dict['db_path']}")
-    else:
-        # Use the default path from central definition
-        indexer_config_dict["db_path"] = str(DEFAULT_DB_PATH)
-        console.print(f"Using database: {DEFAULT_DB_PATH}")
+    # Get configuration manager from context
+    config_manager = ctx.obj.get("config_manager") if ctx.obj else ConfigManager()
+    
+    # Get indexer configuration
+    indexer_config_dict = config_manager.get_section("indexer")
+    
+    # Resolve database path using ConfigManager
+    resolved_db_path = config_manager.resolve_db_path(db_path, indexer_config_dict)
+    indexer_config_dict["db_path"] = str(resolved_db_path)
+    console.print(f"Using database: {resolved_db_path}")
 
     # Create configuration object
     indexer_config = IndexerConfig(config_dict={"indexer": indexer_config_dict})
@@ -207,7 +201,7 @@ def clear(
 
 
 def _create_crawler_config(
-    config_data: dict[str, Any],
+    config_manager: ConfigManager,
     recursive: Optional[bool],
     max_depth: Optional[int],
     include_patterns: Optional[List[str]],
@@ -215,7 +209,7 @@ def _create_crawler_config(
     japanese_encodings: Optional[List[str]],
 ) -> dict[str, Any]:
     """Create crawler configuration from config data and command-line options."""
-    crawler_config_dict = config_data.get("crawler", {})
+    crawler_config_dict = config_manager.get_section("crawler")
 
     # Override with command-line options
     if recursive is not None:
@@ -671,28 +665,37 @@ def _create_progress_callback(logger: HierarchicalLogger, scan_op_id: str, curre
 
 
 def _create_indexer_config(
-    config_data: dict[str, Any],
+    config_manager: ConfigManager,
     chunk_size: Optional[int],
     chunk_overlap: Optional[int],
     embedding_model: Optional[str],
     db_path: Optional[Path],
 ) -> dict[str, Any]:
     """Create indexer configuration from config data and command-line options."""
-    indexer_config_dict = config_data.get("indexer", {})
-
-    # Override with command-line options
+    # Use merge_cli_overrides for proper precedence handling
+    cli_overrides = {}
+    
     if chunk_size is not None:
-        indexer_config_dict["chunk_size"] = chunk_size
+        cli_overrides["chunk_size"] = chunk_size
     if chunk_overlap is not None:
-        indexer_config_dict["chunk_overlap"] = chunk_overlap
+        cli_overrides["chunk_overlap"] = chunk_overlap
     if embedding_model is not None:
-        indexer_config_dict["embedding_model"] = embedding_model
+        cli_overrides["embedding_model"] = embedding_model
+    if db_path is not None:
+        cli_overrides["db_path"] = str(db_path)
+        
+    indexer_config_dict = config_manager.merge_cli_overrides("indexer", cli_overrides)
+    
+    # Ensure db_path is set
+    if "db_path" not in indexer_config_dict:
+        resolved_db_path = config_manager.resolve_db_path(None, indexer_config_dict)
+        indexer_config_dict["db_path"] = str(resolved_db_path)
 
-    # Handle database path
+    # Handle database_path alias (some code may use database_path instead of db_path)
     if db_path:
         indexer_config_dict["database_path"] = str(db_path)
     elif "database_path" not in indexer_config_dict:
-        indexer_config_dict["database_path"] = str(DEFAULT_DB_PATH)
+        indexer_config_dict["database_path"] = indexer_config_dict.get("db_path", str(config_manager.resolve_db_path(None, indexer_config_dict)))
 
     return dict(indexer_config_dict)
 
@@ -717,12 +720,12 @@ def index(
 
     This command indexes documents in the specified directories, making them searchable.
     """
-    # Get global options from context
-    config_data = ctx.obj.get("config_data", {}) if ctx.obj else {}
+    # Get configuration manager from context
+    config_manager = ctx.obj.get("config_manager") if ctx.obj else ConfigManager()
 
     # Create configurations using helper functions
     crawler_config_dict = _create_crawler_config(
-        config_data,
+        config_manager,
         recursive,
         max_depth,
         include_patterns,
@@ -731,23 +734,15 @@ def index(
     )
 
     indexer_config_dict = _create_indexer_config(
-        config_data,
+        config_manager,
         chunk_size,
         chunk_overlap,
         embedding_model,
         db_path,
     )
 
-    # Handle database path explicitly if needed (already handled in helper)
-    if db_path is not None:
-        indexer_config_dict["db_path"] = str(db_path)
-        console.print(f"Using database: {db_path}")
-    elif "db_path" in indexer_config_dict:
-        console.print(f"Using database: {indexer_config_dict['db_path']}")
-    else:
-        # Use the default path from central definition
-        indexer_config_dict["db_path"] = str(DEFAULT_DB_PATH)
-        console.print(f"Using database: {DEFAULT_DB_PATH}")
+    # Display database path
+    console.print(f"Using database: {indexer_config_dict['db_path']}")
 
     # Create configuration objects
     # Combine crawler and indexer configs for the IndexerConfig

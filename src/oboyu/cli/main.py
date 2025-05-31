@@ -19,11 +19,11 @@ from rich.console import Console
 from typing_extensions import Annotated
 
 from oboyu import __version__
-from oboyu.cli.config import load_config
 from oboyu.cli.index import app as index_app
 from oboyu.cli.mcp import app as mcp_app
 from oboyu.cli.query import app as query_app
-from oboyu.common.paths import DEFAULT_DB_PATH, ensure_config_dirs
+from oboyu.common.config import ConfigManager
+from oboyu.common.paths import ensure_config_dirs
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.indexer import Indexer
 
@@ -106,24 +106,17 @@ def callback(
         # Set to WARNING level to suppress INFO and DEBUG messages
         logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
     
-    # Store configuration and verbosity in context
-    ctx.obj = {"verbose": verbose, "config": config, "db_path": db_path}
-
-    # Load configuration if specified
-    if config:
-        ctx.obj["config_data"] = load_config(config)
-
-    # Initialize config_data if not already present
-    if "config_data" not in ctx.obj:
-        ctx.obj["config_data"] = {}
-
-    # Initialize indexer config if not already present
-    if "indexer" not in ctx.obj["config_data"]:
-        ctx.obj["config_data"]["indexer"] = {}
-
-    # Apply database path from CLI option if specified
-    if db_path:
-        ctx.obj["config_data"]["indexer"]["db_path"] = str(db_path)
+    # Use ConfigManager for unified configuration handling
+    config_manager = ConfigManager(config)
+    
+    # Store configuration manager and options in context
+    ctx.obj = {
+        "verbose": verbose,
+        "config_manager": config_manager,
+        "config": config,
+        "db_path": db_path,
+        "config_data": config_manager.load_config()
+    }
 
 
 @app.command()
@@ -143,22 +136,16 @@ def clear(
     This command removes all indexed documents and their embeddings from the database
     while preserving the database schema and structure.
     """
-    # Get global options from context
-    config_data = ctx.obj.get("config_data", {}) if ctx.obj else {}
-
-    # Create indexer configuration
-    indexer_config_dict = config_data.get("indexer", {})
-
-    # Handle database path explicitly, with clear precedence
-    if db_path is not None:
-        indexer_config_dict["db_path"] = str(db_path)
-        console.print(f"Using database: {db_path}")
-    elif "db_path" in indexer_config_dict:
-        console.print(f"Using database: {indexer_config_dict['db_path']}")
-    else:
-        # Use the default path from central definition
-        indexer_config_dict["db_path"] = str(DEFAULT_DB_PATH)
-        console.print(f"Using database: {DEFAULT_DB_PATH}")
+    # Get configuration manager from context
+    config_manager = ctx.obj.get("config_manager") if ctx.obj else ConfigManager()
+    
+    # Get indexer configuration
+    indexer_config_dict = config_manager.get_section("indexer")
+    
+    # Resolve database path using ConfigManager
+    resolved_db_path = config_manager.resolve_db_path(db_path, indexer_config_dict)
+    indexer_config_dict["db_path"] = str(resolved_db_path)
+    console.print(f"Using database: {resolved_db_path}")
 
     # Create configuration object
     indexer_config = IndexerConfig(config_dict={"indexer": indexer_config_dict})

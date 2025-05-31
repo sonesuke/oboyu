@@ -1,16 +1,16 @@
 """Configuration handling for Oboyu CLI.
 
 This module provides utilities for loading and managing configuration for the CLI.
+This is now a thin wrapper around the unified ConfigManager.
 """
 
-import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import yaml
 from rich.console import Console
 
-from oboyu.common.paths import DEFAULT_CONFIG_PATH, DEFAULT_DB_PATH
+from oboyu.common.config import ConfigManager
 
 # Console for output
 console = Console()
@@ -30,32 +30,32 @@ def load_config(config_path: Optional[Union[str, Path]] = None) -> Dict[str, Any
         ValueError: If the configuration file is invalid
 
     """
-    # Use default path if not specified
-    if config_path is None:
-        config_path = DEFAULT_CONFIG_PATH
-
-    # Convert to Path object
-    path = Path(config_path)
-
-    # Verify file exists
-    if not path.exists():
-        # Create default configuration if using default path
-        if path == DEFAULT_CONFIG_PATH:
-            return create_default_config(path)
-        raise FileNotFoundError(f"Configuration file not found: {path}")
-
-    # Load configuration
+    # Convert to Path if string
+    if isinstance(config_path, str):
+        config_path = Path(config_path)
+    
+    # Use ConfigManager for loading
+    manager = ConfigManager(config_path)
+    
+    # If config file doesn't exist
+    if not manager.config_path.exists():
+        # For default path, create it
+        if config_path is None:
+            create_default_config(manager.config_path)
+        else:
+            # For explicit path, raise error as before
+            raise FileNotFoundError(f"Configuration file not found: {manager.config_path}")
+        
+    # Check if file is valid YAML
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-
-        # Verify configuration is a dictionary
-        if not isinstance(config, dict):
-            raise ValueError("Configuration file must be a valid YAML dictionary")
-
-        return config
+        with open(manager.config_path) as f:
+            test_load = yaml.safe_load(f)
+            if not isinstance(test_load, dict):
+                raise ValueError("Configuration file must be a valid YAML dictionary")
     except yaml.YAMLError as e:
         raise ValueError(f"Invalid YAML in configuration file: {e}")
+        
+    return manager.load_config()
 
 
 def create_default_config(path: Path) -> Dict[str, Any]:
@@ -68,41 +68,15 @@ def create_default_config(path: Path) -> Dict[str, Any]:
         Default configuration dictionary
 
     """
-    # Import here to avoid circular imports
-    from oboyu.crawler.config import DEFAULT_CONFIG as CRAWLER_DEFAULT_CONFIG
-    from oboyu.indexer.config import DEFAULT_CONFIG as INDEXER_DEFAULT_CONFIG
-
-    # Combine default configurations
-    config = {}
-    config.update(CRAWLER_DEFAULT_CONFIG)
-    config.update(INDEXER_DEFAULT_CONFIG)
-
-    # Set default database path (using centralized path definition)
-    config["indexer"]["db_path"] = str(DEFAULT_DB_PATH)
-
-    # Add query engine default config
-    config.update(
-        {
-            "query": {
-                "default_mode": "hybrid",  # Default search mode
-                "vector_weight": 0.7,  # Weight for vector scores in hybrid search
-                "bm25_weight": 0.3,  # Weight for BM25 scores in hybrid search
-                "top_k": 5,  # Number of results to return
-                "snippet_length": 160,  # Character length for snippets
-                "highlight_matches": True,  # Whether to highlight matching terms
-            }
-        }
-    )
-
-    # Ensure directory exists
-    os.makedirs(path.parent, exist_ok=True)
-
-    # Write configuration to file
+    # Use ConfigManager to create default config
+    manager = ConfigManager(path)
+    config_data = manager.load_config()  # This will use defaults
+    
+    # Save the default configuration
     try:
-        with open(path, "w", encoding="utf-8") as f:
-            yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+        manager.save_config(config_data)
         console.print(f"Created default configuration at {path}")
     except Exception as e:
         console.print(f"Warning: Could not create default configuration: {e}", style="yellow")
 
-    return config
+    return config_data
