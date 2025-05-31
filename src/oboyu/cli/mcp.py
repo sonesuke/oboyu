@@ -11,7 +11,6 @@ from rich.console import Console
 from typing_extensions import Annotated
 
 from oboyu.cli.base import BaseCommand
-from oboyu.cli.common_options import DatabasePathOption, DebugOption, VerboseOption
 from oboyu.mcp.context import db_path_global, mcp
 
 # Create Typer app

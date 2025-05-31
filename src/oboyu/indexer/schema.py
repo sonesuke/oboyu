@@ -178,6 +178,32 @@ class DatabaseSchema:
             dependencies=[]
         )
     
+    def get_file_metadata_table(self) -> TableDefinition:
+        """Get file metadata table for tracking indexed files."""
+        return TableDefinition(
+            name="file_metadata",
+            sql="""
+                CREATE TABLE IF NOT EXISTS file_metadata (
+                    path VARCHAR PRIMARY KEY,
+                    last_processed_at TIMESTAMP NOT NULL,
+                    file_modified_at TIMESTAMP NOT NULL,
+                    file_size BIGINT NOT NULL,
+                    content_hash VARCHAR,                    -- SHA-256 hash of file content
+                    chunk_count INTEGER NOT NULL DEFAULT 0,  -- Number of chunks created from file
+                    processing_status VARCHAR DEFAULT 'completed',  -- 'completed', 'error', 'in_progress'
+                    error_message TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """.strip(),
+            indexes=[
+                "CREATE INDEX IF NOT EXISTS idx_file_metadata_status ON file_metadata(processing_status)",
+                "CREATE INDEX IF NOT EXISTS idx_file_metadata_modified ON file_metadata(file_modified_at)",
+                "CREATE INDEX IF NOT EXISTS idx_file_metadata_processed ON file_metadata(last_processed_at)",
+            ],
+            dependencies=[]
+        )
+    
     def get_schema_version_table(self) -> TableDefinition:
         """Get schema version table for migration tracking."""
         return TableDefinition(
@@ -209,6 +235,7 @@ class DatabaseSchema:
             self.get_inverted_index_table(),
             self.get_document_stats_table(),
             self.get_collection_stats_table(),
+            self.get_file_metadata_table(),
         ]
         
         # Sort by dependencies to ensure proper creation order
@@ -350,14 +377,28 @@ class DatabaseSchema:
 SCHEMA_MIGRATIONS: Dict[str, SchemaVersion] = {
     "1.1.0": SchemaVersion(
         version="1.1.0",
-        description="Add full-text search support",
+        description="Add file metadata tracking for differential updates",
         migration_sql=[
-            "ALTER TABLE chunks ADD COLUMN search_text TEXT",
-            "CREATE INDEX IF NOT EXISTS idx_chunks_search_text ON chunks(search_text)",
+            """
+            CREATE TABLE IF NOT EXISTS file_metadata (
+                path VARCHAR PRIMARY KEY,
+                last_processed_at TIMESTAMP NOT NULL,
+                file_modified_at TIMESTAMP NOT NULL,
+                file_size BIGINT NOT NULL,
+                content_hash VARCHAR,
+                chunk_count INTEGER NOT NULL DEFAULT 0,
+                processing_status VARCHAR DEFAULT 'completed',
+                error_message TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_file_metadata_status ON file_metadata(processing_status)",
+            "CREATE INDEX IF NOT EXISTS idx_file_metadata_modified ON file_metadata(file_modified_at)",
+            "CREATE INDEX IF NOT EXISTS idx_file_metadata_processed ON file_metadata(last_processed_at)",
         ],
         rollback_sql=[
-            "DROP INDEX IF EXISTS idx_chunks_search_text",
-            "ALTER TABLE chunks DROP COLUMN IF EXISTS search_text",
+            "DROP TABLE IF EXISTS file_metadata",
         ]
     ),
     # Future migrations can be added here

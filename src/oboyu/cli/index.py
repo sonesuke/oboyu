@@ -12,6 +12,7 @@ from typing_extensions import Annotated
 
 from oboyu.cli.base import BaseCommand
 from oboyu.cli.progress import create_indexer_progress_callback
+from oboyu.cli.simple_progress import create_simple_progress_callback
 from oboyu.common.config import ConfigManager
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.indexer import Indexer
@@ -74,6 +75,207 @@ def clear(
     """
     base_command = BaseCommand(ctx)
     base_command.handle_clear_operation(db_path=str(db_path) if db_path else None, force=force)
+
+
+@manage_app.command(name="status")
+def status(
+    ctx: typer.Context,
+    directories: DirectoryOption,
+    db_path: Optional[Path] = None,
+    detailed: Annotated[
+        bool,
+        typer.Option("--detailed", "-d", help="Show detailed file-by-file status"),
+    ] = False,
+) -> None:
+    """Show indexing status for specified directories.
+    
+    This command shows which files are indexed, modified, or new in the specified directories.
+    """
+    base_command = BaseCommand(ctx)
+    config_manager = base_command.get_config_manager()
+    
+    # Create indexer config
+    indexer_config_dict = _create_indexer_config(
+        config_manager,
+        None,  # chunk_size
+        None,  # chunk_overlap
+        None,  # embedding_model
+        db_path,
+    )
+    
+    # Display database path
+    base_command.print_database_path(indexer_config_dict['db_path'])
+    
+    # Create indexer
+    combined_config = {"indexer": indexer_config_dict}
+    indexer_config = IndexerConfig(config_dict=combined_config)
+    indexer = Indexer(config=indexer_config)
+    
+    try:
+        from oboyu.crawler.config import load_default_config
+        from oboyu.crawler.discovery import discover_documents
+        
+        crawler_config = load_default_config()
+        
+        for directory in directories:
+            base_command.console.print(f"\n[bold]Status for {directory}:[/bold]")
+            
+            # Discover all documents
+            discovered_paths = discover_documents(
+                Path(directory),
+                patterns=crawler_config.include_patterns,
+                exclude_patterns=crawler_config.exclude_patterns,
+                max_depth=crawler_config.depth,
+                follow_symlinks=crawler_config.follow_symlinks,
+            )
+            
+            # Detect changes (extract just paths from tuples)
+            paths_only = [path for path, metadata in discovered_paths]
+            changes = indexer.change_detector.detect_changes(
+                paths_only,
+                strategy=indexer_config.change_detection_strategy
+            )
+            
+            # Get processing stats
+            stats = indexer.change_detector.get_processing_stats()
+            
+            # Display summary
+            base_command.console.print(f"  New files: {len(changes.new_files)}")
+            base_command.console.print(f"  Modified files: {len(changes.modified_files)}")
+            base_command.console.print(f"  Deleted files: {len(changes.deleted_files)}")
+            base_command.console.print(f"  Total indexed: {stats.get('completed', 0)}")
+            
+            if detailed:
+                if changes.new_files:
+                    base_command.console.print("\n  [green]New files:[/green]")
+                    for f in sorted(changes.new_files)[:10]:  # Show first 10
+                        base_command.console.print(f"    + {f}")
+                    if len(changes.new_files) > 10:
+                        base_command.console.print(f"    ... and {len(changes.new_files) - 10} more")
+                
+                if changes.modified_files:
+                    base_command.console.print("\n  [yellow]Modified files:[/yellow]")
+                    for f in sorted(changes.modified_files)[:10]:  # Show first 10
+                        base_command.console.print(f"    ~ {f}")
+                    if len(changes.modified_files) > 10:
+                        base_command.console.print(f"    ... and {len(changes.modified_files) - 10} more")
+                
+                if changes.deleted_files:
+                    base_command.console.print("\n  [red]Deleted files:[/red]")
+                    for f in sorted(changes.deleted_files)[:10]:  # Show first 10
+                        base_command.console.print(f"    - {f}")
+                    if len(changes.deleted_files) > 10:
+                        base_command.console.print(f"    ... and {len(changes.deleted_files) - 10} more")
+    
+    finally:
+        indexer.close()
+
+
+@manage_app.command(name="diff")
+def diff(
+    ctx: typer.Context,
+    directories: DirectoryOption,
+    db_path: Optional[Path] = None,
+    change_detection: Annotated[
+        Optional[str],
+        typer.Option(
+            "--change-detection",
+            help="Strategy for detecting changes: timestamp, hash, or smart (default: smart)",
+        ),
+    ] = None,
+) -> None:
+    """Show what would be updated if indexing were run now.
+    
+    This is a dry-run that shows which files would be added, updated, or removed
+    without actually performing any indexing.
+    """
+    base_command = BaseCommand(ctx)
+    config_manager = base_command.get_config_manager()
+    
+    # Create indexer config
+    indexer_config_dict = _create_indexer_config(
+        config_manager,
+        None,  # chunk_size
+        None,  # chunk_overlap
+        None,  # embedding_model
+        db_path,
+    )
+    
+    # Display database path
+    base_command.print_database_path(indexer_config_dict['db_path'])
+    
+    # Create indexer
+    combined_config = {"indexer": indexer_config_dict}
+    indexer_config = IndexerConfig(config_dict=combined_config)
+    indexer = Indexer(config=indexer_config)
+    
+    try:
+        from oboyu.crawler.config import load_default_config
+        from oboyu.crawler.discovery import discover_documents
+        
+        crawler_config = load_default_config()
+        detection_strategy = change_detection or indexer_config.change_detection_strategy
+        
+        total_new = 0
+        total_modified = 0
+        total_deleted = 0
+        
+        for directory in directories:
+            base_command.console.print(f"\n[bold]Diff for {directory}:[/bold]")
+            
+            # Discover all documents
+            discovered_paths = discover_documents(
+                Path(directory),
+                patterns=crawler_config.include_patterns,
+                exclude_patterns=crawler_config.exclude_patterns,
+                max_depth=crawler_config.depth,
+                follow_symlinks=crawler_config.follow_symlinks,
+            )
+            
+            # Detect changes (extract just paths from tuples)
+            paths_only = [path for path, metadata in discovered_paths]
+            changes = indexer.change_detector.detect_changes(
+                paths_only,
+                strategy=detection_strategy
+            )
+            
+            # Update totals
+            total_new += len(changes.new_files)
+            total_modified += len(changes.modified_files)
+            total_deleted += len(changes.deleted_files)
+            
+            # Display changes
+            if changes.new_files:
+                base_command.console.print(f"\n  [green]Files to be added ({len(changes.new_files)}):[/green]")
+                for f in sorted(changes.new_files):
+                    base_command.console.print(f"    + {f}")
+            
+            if changes.modified_files:
+                base_command.console.print(f"\n  [yellow]Files to be updated ({len(changes.modified_files)}):[/yellow]")
+                for f in sorted(changes.modified_files):
+                    base_command.console.print(f"    ~ {f}")
+            
+            if changes.deleted_files:
+                base_command.console.print(f"\n  [red]Files to be removed ({len(changes.deleted_files)}):[/red]")
+                for f in sorted(changes.deleted_files):
+                    base_command.console.print(f"    - {f}")
+            
+            if not changes.has_changes():
+                base_command.console.print("  [dim]No changes detected[/dim]")
+        
+        # Show summary
+        base_command.console.print("\n[bold]Summary:[/bold]")
+        base_command.console.print(f"  Total files to add: {total_new}")
+        base_command.console.print(f"  Total files to update: {total_modified}")
+        base_command.console.print(f"  Total files to remove: {total_deleted}")
+        
+        if total_new + total_modified + total_deleted == 0:
+            base_command.console.print("\n[green]✓[/green] Index is up to date")
+        else:
+            base_command.console.print(f"\n[yellow]![/yellow] Index needs updating ({total_new + total_modified + total_deleted} changes)")
+    
+    finally:
+        indexer.close()
 
 
 def _create_crawler_config(
@@ -157,10 +359,40 @@ def index(
     chunk_overlap: Optional[int] = None,
     embedding_model: Optional[str] = None,
     db_path: Optional[Path] = None,
+    change_detection: Annotated[
+        Optional[str],
+        typer.Option(
+            "--change-detection",
+            help="Strategy for detecting changes: timestamp, hash, or smart (default: smart)",
+        ),
+    ] = None,
+    cleanup_deleted: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--cleanup-deleted/--no-cleanup-deleted",
+            help="Remove deleted files from index during incremental update",
+        ),
+    ] = None,
+    verify_integrity: Annotated[
+        bool,
+        typer.Option(
+            "--verify-integrity",
+            help="Verify file integrity using content hashes (slower but more accurate)",
+        ),
+    ] = False,
+    quiet_progress: Annotated[
+        bool,
+        typer.Option(
+            "--quiet-progress", "-q",
+            help="Minimal progress output to avoid screen flickering",
+        ),
+    ] = False,
 ) -> None:
     """Index documents for search.
 
     This command indexes documents in the specified directories, making them searchable.
+    When run without --force, it performs incremental indexing by default, only processing
+    new or modified files.
     """
     # Create base command for common functionality
     base_command = BaseCommand(ctx)
@@ -217,14 +449,49 @@ def index(
             # Start directory scanning operation
             scan_op_id = base_command.logger.start_operation(f"Scanning directory {directory}...", expandable=False)
 
-            # Create progress callback using helper function
-            indexer_progress_callback = create_indexer_progress_callback(base_command.logger, scan_op_id)
+            # Create progress callback using hierarchical display (or None for quiet mode)
+            if quiet_progress:
+                indexer_progress_callback = None
+            else:
+                indexer_progress_callback = create_indexer_progress_callback(base_command.logger, scan_op_id)
+            
+            # Determine change detection strategy
+            detection_strategy = change_detection or indexer_config.change_detection_strategy
+            if verify_integrity:
+                detection_strategy = "hash"  # Force hash-based detection for integrity verification
+            
+            # Determine cleanup behavior
+            should_cleanup = cleanup_deleted if cleanup_deleted is not None else indexer_config.cleanup_deleted_files
 
-            # Index directory
-            chunks_indexed, files_processed = indexer.index_directory(directory, incremental=not force, progress_callback=indexer_progress_callback)
+            # Index directory with enhanced options
+            chunks_indexed, files_processed, diff_stats = indexer.index_directory(
+                directory,
+                incremental=not force,
+                change_detection_strategy=detection_strategy,
+                cleanup_deleted=should_cleanup,
+                progress_callback=indexer_progress_callback
+            )
 
-            # Add summary
-            summary_op = base_command.logger.start_operation(f"Indexed {chunks_indexed} chunks from {files_processed} documents")
+            # Add detailed summary with differential stats
+            if not force and diff_stats.get("total_files_discovered", 0) > 0:
+                # Show differential update efficiency
+                total_discovered = diff_stats["total_files_discovered"]
+                files_skipped = diff_stats.get("files_skipped", 0)
+                chunks_skipped = diff_stats.get("chunks_from_skipped_files", 0)
+                deleted_files = diff_stats.get("deleted_files", 0)
+                
+                efficiency_pct = (files_skipped / total_discovered * 100) if total_discovered > 0 else 0
+                
+                summary_text = f"Indexed {chunks_indexed} chunks from {files_processed} documents"
+                if files_skipped > 0:
+                    summary_text += f" ({efficiency_pct:.1f}% files skipped, {chunks_skipped} chunks avoided)"
+                if deleted_files > 0:
+                    summary_text += f" ({deleted_files} deleted files cleaned up)"
+                
+                summary_op = base_command.logger.start_operation(summary_text)
+            else:
+                summary_op = base_command.logger.start_operation(f"Indexed {chunks_indexed} chunks from {files_processed} documents")
+            
             base_command.logger.complete_operation(summary_op)
 
             # Update totals

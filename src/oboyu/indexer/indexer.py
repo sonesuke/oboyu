@@ -16,6 +16,7 @@ from numpy.typing import NDArray
 
 from oboyu.crawler.crawler import CrawlerResult
 from oboyu.indexer.bm25_indexer import BM25Indexer
+from oboyu.indexer.change_detector import FileChangeDetector
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.database import Database
 from oboyu.indexer.embedding import EmbeddingGenerator
@@ -142,6 +143,9 @@ class Indexer:
 
         # Keep track of processed files
         self._processed_files: Set[Path] = set()
+        
+        # Initialize file change detector for persistent tracking
+        self.change_detector = FileChangeDetector(self.database)
 
         # Create a ThreadPoolExecutor that we'll reuse
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.config.max_workers)
@@ -181,9 +185,60 @@ class Indexer:
 
         # Recompact index if needed
         self._recompact_index_if_needed(all_chunks, progress_callback)
+        
+        # Store file metadata for processed documents
+        self._store_file_metadata(new_docs, all_chunks)
 
         return len(all_chunks)
 
+    def _store_file_metadata(self, documents: List[CrawlerResult], chunks: List[Chunk]) -> None:
+        """Store metadata for processed files.
+        
+        Args:
+            documents: Documents that were processed
+            chunks: Chunks generated from the documents
+            
+        """
+        from collections import defaultdict
+        
+        # Count chunks per file
+        chunks_per_file = defaultdict(int)
+        for chunk in chunks:
+            chunks_per_file[chunk.path] += 1
+        
+        # Store metadata for each processed file
+        for doc in documents:
+            try:
+                file_path = doc.path
+                file_stats = file_path.stat()
+                
+                # Calculate content hash
+                content_hash = FileChangeDetector.calculate_file_hash(file_path)
+                
+                # Prepare metadata
+                metadata_values = [
+                    str(file_path),  # path
+                    datetime.now().isoformat(),  # last_processed_at
+                    datetime.fromtimestamp(file_stats.st_mtime).isoformat(),  # file_modified_at
+                    file_stats.st_size,  # file_size
+                    content_hash,  # content_hash
+                    chunks_per_file.get(file_path, 0),  # chunk_count
+                    'completed',  # processing_status
+                    None,  # error_message
+                ]
+                
+                # Store or update metadata
+                self.database.db_manager.connection.execute("""
+                    INSERT OR REPLACE INTO file_metadata (
+                        path, last_processed_at, file_modified_at, file_size,
+                        content_hash, chunk_count, processing_status, error_message,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """, metadata_values)
+                
+            except Exception as e:
+                logging.getLogger(__name__).error(f"Failed to store metadata for {doc.path}: {e}")
+    
     def _filter_processed_documents(self, crawler_results: List[CrawlerResult]) -> List[CrawlerResult]:
         """Filter out already processed documents.
 
@@ -263,8 +318,14 @@ class Indexer:
                         processed_count += 1
                         current_time = time.time()
                         
-                        # Report progress more frequently for better UX
-                        if processed_count == 1 or current_time - last_progress_time > 0.5 or processed_count % 5 == 0:
+                        # Report progress for very smooth user feedback
+                        report_progress = (
+                            processed_count == 1 or  # First file
+                            processed_count == len(documents) or  # Last file
+                            (current_time - last_progress_time > 0.75) or  # Every 0.75 seconds
+                            (processed_count % max(len(documents) // 40, 3) == 0)  # Every 2.5% or 3 files
+                        )
+                        if report_progress:
                             if progress_callback:
                                 progress_callback("processing", processed_count, len(documents))
                             last_progress_time = current_time
@@ -275,7 +336,13 @@ class Indexer:
                         processed_count += 1
                         current_time = time.time()
                         
-                        if processed_count == 1 or current_time - last_progress_time > 0.5 or processed_count % 5 == 0:
+                        report_progress = (
+                            processed_count == 1 or  # First file
+                            processed_count == len(documents) or  # Last file
+                            (current_time - last_progress_time > 0.75) or  # Every 0.75 seconds
+                            (processed_count % max(len(documents) // 40, 3) == 0)  # Every 2.5% or 3 files
+                        )
+                        if report_progress:
                             if progress_callback:
                                 progress_callback("processing", processed_count, len(documents))
                             last_progress_time = current_time
@@ -700,6 +767,15 @@ class Indexer:
         """
         # Delete from database
         deleted_count = self.database.delete_chunks_by_path(path)
+        
+        # Delete file metadata
+        try:
+            self.database.db_manager.connection.execute("""
+                DELETE FROM file_metadata
+                WHERE path = ?
+            """, [str(path)])
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Failed to delete file metadata for {path}: {e}")
 
         # Remove from processed files tracking
         path_obj = Path(path)
@@ -709,22 +785,33 @@ class Indexer:
         return deleted_count
 
     def index_directory(
-        self, directory: Union[str, Path], incremental: bool = True, progress_callback: Optional[Callable[[str, int, int], None]] = None
-    ) -> tuple[int, int]:
+        self,
+        directory: Union[str, Path],
+        incremental: bool = True,
+        change_detection_strategy: str = "smart",
+        cleanup_deleted: bool = True,
+        progress_callback: Optional[Callable[[str, int, int], None]] = None
+    ) -> tuple[int, int, Dict[str, int]]:
         """Index documents in a directory using the integrated crawler.
 
         Args:
             directory: Directory to index
-            incremental: Whether to only index new files
+            incremental: Whether to only index new/modified files
+            change_detection_strategy: Strategy for detecting changes:
+                - "timestamp": Use file modification time only
+                - "hash": Use content hash comparison
+                - "smart": Combine timestamp + size + hash
+            cleanup_deleted: Whether to remove deleted files from index
             progress_callback: Optional callback for progress updates
                               (stage, current, total)
 
         Returns:
-            Tuple of (number of chunks indexed, number of files processed)
+            Tuple of (number of chunks indexed, number of files processed, differential stats)
 
         """
         from oboyu.crawler.config import load_default_config
         from oboyu.crawler.crawler import Crawler
+        from oboyu.crawler.discovery import discover_documents
 
         # Initialize crawler with default configuration
         crawler_config = load_default_config()
@@ -737,10 +824,142 @@ class Indexer:
             japanese_encodings=crawler_config.japanese_encodings,
             max_workers=crawler_config.max_workers,
         )
+        
+        # Initialize differential stats tracking
+        differential_stats = {
+            "total_files_discovered": 0,
+            "new_files": 0,
+            "modified_files": 0,
+            "deleted_files": 0,
+            "unchanged_files": 0,
+            "files_processed": 0,
+            "files_skipped": 0,
+            "chunks_from_skipped_files": 0,
+        }
+        
+        # Report change detection phase
+        if progress_callback and incremental:
+            progress_callback("detecting_changes", 0, 1)
 
-        # If incremental indexing, initialize crawler's processed files
+        # If incremental indexing, use change detector
         if incremental:
-            crawler._processed_files = self._processed_files.copy()
+            # Discover all documents in directory
+            discovered_paths = discover_documents(
+                Path(directory),
+                patterns=crawler_config.include_patterns,
+                exclude_patterns=crawler_config.exclude_patterns,
+                max_depth=crawler_config.depth,
+                follow_symlinks=crawler_config.follow_symlinks,
+            )
+            
+            # Detect changes using specified strategy (extract just paths from tuples)
+            paths_only = [path for path, metadata in discovered_paths]
+            differential_stats["total_files_discovered"] = len(paths_only)
+            
+            changes = self.change_detector.detect_changes(
+                paths_only,
+                strategy=change_detection_strategy
+            )
+            
+            # Update differential stats
+            differential_stats["new_files"] = len(changes.new_files)
+            differential_stats["modified_files"] = len(changes.modified_files)
+            differential_stats["deleted_files"] = len(changes.deleted_files)
+            differential_stats["unchanged_files"] = (
+                differential_stats["total_files_discovered"] - 
+                differential_stats["new_files"] - 
+                differential_stats["modified_files"]
+            )
+            
+            # Get chunk counts for skipped files from database
+            if differential_stats["unchanged_files"] > 0:
+                try:
+                    # Query database for chunk counts of unchanged files
+                    unchanged_paths = set(paths_only) - set(changes.new_files) - set(changes.modified_files)
+                    if unchanged_paths:
+                        placeholders = ','.join(['?' for _ in unchanged_paths])
+                        query = f"""
+                            SELECT COALESCE(SUM(chunk_count), 0) as total_chunks
+                            FROM file_metadata 
+                            WHERE path IN ({placeholders})
+                        """
+                        result = self.database.db_manager.connection.execute(
+                            query, [str(p) for p in unchanged_paths]
+                        ).fetchone()
+                        if result and result[0]:
+                            differential_stats["chunks_from_skipped_files"] = int(result[0])
+                except Exception as e:
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Could not retrieve chunk counts for unchanged files: {e}")
+                    differential_stats["chunks_from_skipped_files"] = 0
+            
+            # Handle deleted files if requested
+            if cleanup_deleted and changes.deleted_files:
+                if progress_callback:
+                    progress_callback("cleaning_deleted", 0, len(changes.deleted_files))
+                    
+                for i, deleted_file in enumerate(changes.deleted_files):
+                    self.delete_document(deleted_file)
+                    if progress_callback:
+                        progress_callback("cleaning_deleted", i + 1, len(changes.deleted_files))
+                
+                # Also cleanup from change detector
+                self.change_detector.cleanup_deleted_files(changes.deleted_files)
+            
+            # Set crawler to only process new and modified files
+            files_to_process = set(changes.new_files + changes.modified_files)
+            differential_stats["files_processed"] = len(files_to_process)
+            
+            # Add files to process to crawler's processed files to skip others
+            # First, clear the processed files set
+            crawler._processed_files = set()
+            
+            # Then add all files that should NOT be processed
+            all_paths = set(paths_only)
+            files_to_skip = all_paths - files_to_process
+            differential_stats["files_skipped"] = len(files_to_skip)
+            crawler._processed_files.update(files_to_skip)
+            
+            # Report completion of change detection
+            if progress_callback:
+                progress_callback("detecting_changes", 1, 1)
+                
+            # Log detailed change summary with efficiency metrics
+            logger = logging.getLogger(__name__)
+            skipped_chunks = differential_stats["chunks_from_skipped_files"]
+            total_files = differential_stats["total_files_discovered"]
+            skipped_files = differential_stats["files_skipped"]
+            
+            logger.debug(
+                f"Change detection complete: {len(changes.new_files)} new, "
+                f"{len(changes.modified_files)} modified, {len(changes.deleted_files)} deleted, "
+                f"{skipped_files} unchanged"
+            )
+            
+            if skipped_files > 0:
+                efficiency_pct = (skipped_files / total_files * 100) if total_files > 0 else 0
+                logger.debug(
+                    f"Differential update efficiency: {efficiency_pct:.1f}% files skipped "
+                    f"({skipped_chunks} chunks avoided reprocessing)"
+                )
+        else:
+            # For non-incremental, don't track processed files
+            crawler._processed_files = set()
+            
+            # For non-incremental, still discover files to get total count
+            try:
+                discovered_paths = discover_documents(
+                    Path(directory),
+                    patterns=crawler_config.include_patterns,
+                    exclude_patterns=crawler_config.exclude_patterns,
+                    max_depth=crawler_config.depth,
+                    follow_symlinks=crawler_config.follow_symlinks,
+                )
+                differential_stats["total_files_discovered"] = len(discovered_paths)
+                differential_stats["files_processed"] = len(discovered_paths)
+            except Exception:
+                # If discovery fails, we'll count during crawling
+                pass
 
         # Crawl directory - with progress callback
         results = crawler.crawl(Path(directory), progress_callback)
@@ -751,7 +970,7 @@ class Indexer:
         # Index results with progress callback
         chunks_indexed = self.index_documents(results, progress_callback)
 
-        return chunks_indexed, files_processed
+        return chunks_indexed, files_processed, differential_stats
 
     def batch_index(self, batch_size: int = 100) -> None:
         """Index in batches to control memory usage.
@@ -776,6 +995,12 @@ class Indexer:
 
         # Reset processed files tracking
         self._processed_files.clear()
+        
+        # Clear file metadata
+        try:
+            self.database.db_manager.connection.execute("DELETE FROM file_metadata")
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Failed to clear file metadata: {e}")
 
     def _combine_search_results(
         self, vector_results: List[Dict[str, object]], bm25_results: List[Dict[str, object]], vector_weight: float, bm25_weight: float, limit: int

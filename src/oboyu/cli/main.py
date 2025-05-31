@@ -6,8 +6,6 @@ a Japanese-enhanced semantic search system for local documents.
 
 import os
 import sys
-from pathlib import Path
-from typing import Optional
 
 # Disable Rich's error formatting for all Typer output
 os.environ["_TYPER_STANDARD_TRACEBACK"] = "1"
@@ -16,7 +14,6 @@ os.environ["_TYPER_COMPLETE_SHOW_ERRORS"] = "0"
 import click
 import typer
 from rich.console import Console
-from typing_extensions import Annotated
 
 from oboyu import __version__
 from oboyu.cli.common_options import ConfigOption, DatabasePathOption, VerboseOption
@@ -60,8 +57,10 @@ def callback(
     if verbose:
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     else:
-        # Set to WARNING level to suppress INFO and DEBUG messages
-        logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
+        # Set to ERROR level to suppress INFO, DEBUG, and WARNING messages
+        logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
+        # Disable lower level logs from all loggers
+        logging.getLogger().setLevel(logging.ERROR)
     
     # Use ConfigManager for unified configuration handling
     config_manager = ConfigManager(config)

@@ -237,11 +237,11 @@ class EmbeddingGenerator:
                     progress_callback(
                         processed_count,
                         total_chunk_count,
-                        f"Generating embeddings... batch {batch_idx + 1}/{total_batches} ({len(batch_texts)} texts, cache hit rate: {cache_rate:.0f}%)"
+                        f"Generating embeddings... batch {batch_idx + 1}/{total_batches} (batch size: {len(batch_texts)}, cache: {cache_rate:.0f}%)"
                     )
 
                 # Process batch
-                batch_embeddings = self.model.encode(batch_texts, normalize_embeddings=True, show_progress_bar=False)
+                batch_embeddings = self.model.encode(batch_texts, normalize_embeddings=True)
 
                 for j, embedding in enumerate(batch_embeddings):
                     idx_in_batch = i + j
@@ -274,8 +274,14 @@ class EmbeddingGenerator:
                     processed_count += 1
                     current_time = time.time()
                     
-                    # Report progress if 1 second has passed or at every 10th item
-                    if current_time - last_progress_time > 1.0 or (processed_count % 10 == 0):
+                    # Report progress for very smooth user feedback
+                    report_progress = (
+                        processed_count == 1 or  # First item
+                        processed_count == total_chunk_count or  # Last item
+                        (current_time - last_progress_time > 1.0) or  # Every 1 second
+                        (processed_count % max(total_chunk_count // 80, 25) == 0)  # Every 1.25% or 25 items
+                    )
+                    if report_progress:
                         if progress_callback:
                             # Calculate processing rate
                             elapsed = current_time - batch_start_time
@@ -330,7 +336,7 @@ class EmbeddingGenerator:
                 return cached_embedding
 
         # Generate the embedding
-        embedding = self.model.encode(prefixed_query, normalize_embeddings=True, show_progress_bar=False)
+        embedding = self.model.encode(prefixed_query, normalize_embeddings=True)
 
         # Convert tensor to numpy array if needed
         torch = _import_torch()

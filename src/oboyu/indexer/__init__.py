@@ -5,6 +5,7 @@ generating embeddings, and managing the vector database for semantic search.
 It provides specialized handling for Japanese content with the Ruri v3 model.
 """
 
+from oboyu.indexer.change_detector import ChangeResult, FileChangeDetector
 from oboyu.indexer.config import IndexerConfig, load_config_from_file, load_default_config
 from oboyu.indexer.database import Database
 from oboyu.indexer.embedding import EmbeddingGenerator
@@ -17,6 +18,8 @@ __all__ = [
     "Database",
     "DocumentProcessor",
     "EmbeddingGenerator",
+    "FileChangeDetector",
+    "ChangeResult",
     "load_default_config",
     "load_config_from_file",
 ]

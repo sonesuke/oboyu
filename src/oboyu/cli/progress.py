@@ -125,10 +125,19 @@ class ProgressPipeline:
         if not stage.operation_id:
             self.start_stage(stage_name)
 
-        # Format progress message
-        if stage.operation_id:
+        # Frequent updates for smooth real-time feedback
+        should_update = (
+            current == 1 or  # First item
+            (current >= total) or  # Completion
+            (stage.elapsed > 1.0 and current % max(total // 40, 25) == 0) or  # Every 2.5% or 25 items after 1s
+            (time.time() - getattr(stage, '_last_update_time', 0) > 1.5)  # Every 1.5 seconds max
+        )
+
+        # Format progress message only when updating
+        if stage.operation_id and should_update:
             message = self._format_progress_message(stage)
             self.logger.update_operation(stage.operation_id, message)
+            stage._last_update_time = time.time()
 
         # Auto-complete when reaching total
         if stage.total and current >= stage.total:
