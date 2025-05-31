@@ -124,7 +124,7 @@ class Indexer:
             },
             use_stopwords=True,  # Enable stopword filtering
             min_doc_frequency=2,  # Filter terms appearing in less than 2 documents
-            store_positions=True,  # Enable position storage for phrase search
+            store_positions=False,  # Disable position storage for faster indexing
         )
 
         # Initialize reranker if enabled

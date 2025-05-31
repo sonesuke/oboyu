@@ -590,6 +590,44 @@ def _handle_bm25_storing_stage(
             timing_info.pop(timing_key, None)
 
 
+def _handle_bm25_index_creation_stage(
+    logger: HierarchicalLogger,
+    current_ops: dict[str, Optional[str]],
+    current: int,
+    total: int,
+    timing_info: dict[str, float],
+) -> None:
+    """Handle BM25 database index creation progress."""
+    import time
+    
+    index_op = current_ops.get("bm25_creating_indexes")
+    
+    # Initialize timing info if not present
+    if "index_create_start_time" not in timing_info:
+        timing_info["index_create_start_time"] = time.time()
+    
+    # Only create a new operation if one doesn't exist
+    if not index_op:
+        index_op = logger.start_operation(f"Creating database indexes... 0/{total}")
+        current_ops["bm25_creating_indexes"] = index_op
+    
+    # Update progress if we have an active operation
+    if index_op:
+        index_names = ["term index", "term-chunk index"]
+        index_name = index_names[current - 1] if current <= len(index_names) else f"index {current}"
+        
+        if current < total:
+            logger.update_operation(index_op, f"Creating database indexes... {index_name} ({current}/{total})")
+        else:
+            logger.update_operation(index_op, f"Creating database indexes... completed ({current}/{total})")
+
+        # Complete when finished
+        if current == total:
+            logger.complete_operation(index_op)
+            current_ops["bm25_creating_indexes"] = None
+            timing_info.pop("index_create_start_time", None)
+
+
 def _create_progress_callback(logger: HierarchicalLogger, scan_op_id: str, current_ops: dict[str, Optional[str]]) -> Callable[[str, int, int], None]:
     """Create a progress callback for the indexer."""
     files_found = 0
@@ -624,6 +662,8 @@ def _create_progress_callback(logger: HierarchicalLogger, scan_op_id: str, curre
         elif stage.startswith("bm25_storing_"):
             storage_stage = stage.replace("bm25_storing_", "")
             _handle_bm25_storing_stage(logger, current_ops, storage_stage, current, total, timing_info)
+        elif stage == "bm25_storing_creating_indexes":
+            _handle_bm25_index_creation_stage(logger, current_ops, current, total, timing_info)
 
         last_stage = stage
 
