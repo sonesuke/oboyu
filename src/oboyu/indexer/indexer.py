@@ -16,6 +16,7 @@ from numpy.typing import NDArray
 
 from oboyu.crawler.crawler import CrawlerResult
 from oboyu.indexer.bm25_indexer import BM25Indexer
+from oboyu.indexer.change_detector import FileChangeDetector
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.database import Database
 from oboyu.indexer.embedding import EmbeddingGenerator
@@ -142,6 +143,9 @@ class Indexer:
 
         # Keep track of processed files
         self._processed_files: Set[Path] = set()
+        
+        # Initialize file change detector for persistent tracking
+        self.change_detector = FileChangeDetector(self.database)
 
         # Create a ThreadPoolExecutor that we'll reuse
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.config.max_workers)
@@ -181,9 +185,60 @@ class Indexer:
 
         # Recompact index if needed
         self._recompact_index_if_needed(all_chunks, progress_callback)
+        
+        # Store file metadata for processed documents
+        self._store_file_metadata(new_docs, all_chunks)
 
         return len(all_chunks)
 
+    def _store_file_metadata(self, documents: List[CrawlerResult], chunks: List[Chunk]) -> None:
+        """Store metadata for processed files.
+        
+        Args:
+            documents: Documents that were processed
+            chunks: Chunks generated from the documents
+            
+        """
+        from collections import defaultdict
+        
+        # Count chunks per file
+        chunks_per_file = defaultdict(int)
+        for chunk in chunks:
+            chunks_per_file[chunk.path] += 1
+        
+        # Store metadata for each processed file
+        for doc in documents:
+            try:
+                file_path = doc.path
+                file_stats = file_path.stat()
+                
+                # Calculate content hash
+                content_hash = FileChangeDetector.calculate_file_hash(file_path)
+                
+                # Prepare metadata
+                metadata_values = [
+                    str(file_path),  # path
+                    datetime.now().isoformat(),  # last_processed_at
+                    datetime.fromtimestamp(file_stats.st_mtime).isoformat(),  # file_modified_at
+                    file_stats.st_size,  # file_size
+                    content_hash,  # content_hash
+                    chunks_per_file.get(file_path, 0),  # chunk_count
+                    'completed',  # processing_status
+                    None,  # error_message
+                ]
+                
+                # Store or update metadata
+                self.database.db_manager.execute("""
+                    INSERT OR REPLACE INTO file_metadata (
+                        path, last_processed_at, file_modified_at, file_size,
+                        content_hash, chunk_count, processing_status, error_message,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """, metadata_values)
+                
+            except Exception as e:
+                logging.getLogger(__name__).error(f"Failed to store metadata for {doc.path}: {e}")
+    
     def _filter_processed_documents(self, crawler_results: List[CrawlerResult]) -> List[CrawlerResult]:
         """Filter out already processed documents.
 
@@ -700,6 +755,15 @@ class Indexer:
         """
         # Delete from database
         deleted_count = self.database.delete_chunks_by_path(path)
+        
+        # Delete file metadata
+        try:
+            self.database.db_manager.execute("""
+                DELETE FROM file_metadata
+                WHERE path = ?
+            """, [str(path)])
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Failed to delete file metadata for {path}: {e}")
 
         # Remove from processed files tracking
         path_obj = Path(path)
@@ -709,13 +773,23 @@ class Indexer:
         return deleted_count
 
     def index_directory(
-        self, directory: Union[str, Path], incremental: bool = True, progress_callback: Optional[Callable[[str, int, int], None]] = None
+        self,
+        directory: Union[str, Path],
+        incremental: bool = True,
+        change_detection_strategy: str = "smart",
+        cleanup_deleted: bool = True,
+        progress_callback: Optional[Callable[[str, int, int], None]] = None
     ) -> tuple[int, int]:
         """Index documents in a directory using the integrated crawler.
 
         Args:
             directory: Directory to index
-            incremental: Whether to only index new files
+            incremental: Whether to only index new/modified files
+            change_detection_strategy: Strategy for detecting changes:
+                - "timestamp": Use file modification time only
+                - "hash": Use content hash comparison
+                - "smart": Combine timestamp + size + hash
+            cleanup_deleted: Whether to remove deleted files from index
             progress_callback: Optional callback for progress updates
                               (stage, current, total)
 
@@ -725,6 +799,7 @@ class Indexer:
         """
         from oboyu.crawler.config import load_default_config
         from oboyu.crawler.crawler import Crawler
+        from oboyu.crawler.discovery import discover_documents
 
         # Initialize crawler with default configuration
         crawler_config = load_default_config()
@@ -737,10 +812,67 @@ class Indexer:
             japanese_encodings=crawler_config.japanese_encodings,
             max_workers=crawler_config.max_workers,
         )
+        
+        # Report change detection phase
+        if progress_callback and incremental:
+            progress_callback("detecting_changes", 0, 1)
 
-        # If incremental indexing, initialize crawler's processed files
+        # If incremental indexing, use change detector
         if incremental:
-            crawler._processed_files = self._processed_files.copy()
+            # Discover all documents in directory
+            discovered_paths = discover_documents(
+                Path(directory),
+                depth=crawler_config.depth,
+                include_patterns=crawler_config.include_patterns,
+                exclude_patterns=crawler_config.exclude_patterns,
+                follow_symlinks=crawler_config.follow_symlinks,
+            )
+            
+            # Detect changes using specified strategy
+            changes = self.change_detector.detect_changes(
+                list(discovered_paths),
+                strategy=change_detection_strategy
+            )
+            
+            # Handle deleted files if requested
+            if cleanup_deleted and changes.deleted_files:
+                if progress_callback:
+                    progress_callback("cleaning_deleted", 0, len(changes.deleted_files))
+                    
+                for i, deleted_file in enumerate(changes.deleted_files):
+                    self.delete_document(deleted_file)
+                    if progress_callback:
+                        progress_callback("cleaning_deleted", i + 1, len(changes.deleted_files))
+                
+                # Also cleanup from change detector
+                self.change_detector.cleanup_deleted_files(changes.deleted_files)
+            
+            # Set crawler to only process new and modified files
+            files_to_process = set(changes.new_files + changes.modified_files)
+            
+            # Create a custom filter for the crawler
+            original_filter = crawler._filter_files
+            def modified_filter(paths: List[Path]) -> List[Path]:
+                # First apply original filters
+                filtered = original_filter(paths)
+                # Then only keep files we want to process
+                return [p for p in filtered if p in files_to_process]
+            
+            crawler._filter_files = modified_filter
+            
+            # Report completion of change detection
+            if progress_callback:
+                progress_callback("detecting_changes", 1, 1)
+                
+            # Log change summary
+            logger = logging.getLogger(__name__)
+            logger.info(
+                f"Change detection complete: {len(changes.new_files)} new, "
+                f"{len(changes.modified_files)} modified, {len(changes.deleted_files)} deleted"
+            )
+        else:
+            # For non-incremental, don't track processed files
+            crawler._processed_files = set()
 
         # Crawl directory - with progress callback
         results = crawler.crawl(Path(directory), progress_callback)
@@ -776,6 +908,12 @@ class Indexer:
 
         # Reset processed files tracking
         self._processed_files.clear()
+        
+        # Clear file metadata
+        try:
+            self.database.db_manager.execute("DELETE FROM file_metadata")
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Failed to clear file metadata: {e}")
 
     def _combine_search_results(
         self, vector_results: List[Dict[str, object]], bm25_results: List[Dict[str, object]], vector_weight: float, bm25_weight: float, limit: int

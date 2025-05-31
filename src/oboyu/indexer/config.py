@@ -55,6 +55,16 @@ DEFAULT_CONFIG = {
         "bm25_b": 0.75,  # BM25 b parameter (document length normalization)
         "bm25_min_token_length": 2,  # Minimum token length for BM25
         "use_japanese_tokenizer": True,  # Use Japanese morphological analyzer
+        # Incremental indexing settings
+        "incremental": {
+            "enabled": True,  # Whether incremental indexing is enabled by default
+            "change_detection_strategy": "smart",  # Default strategy: timestamp, hash, smart
+            "hash_algorithm": "sha256",  # Hash algorithm for content comparison
+            "track_file_metadata": True,  # Whether to track file metadata in database
+            "cleanup_deleted_files": True,  # Whether to cleanup deleted files during incremental
+            "batch_size_for_change_detection": 1000,  # Batch size for change detection
+            "max_files_for_hash_checking": 10000,  # Max files before falling back to timestamp only
+        },
     }
 }
 
@@ -95,6 +105,14 @@ DEFAULT_BM25_K1 = 1.2
 DEFAULT_BM25_B = 0.75
 DEFAULT_BM25_MIN_TOKEN_LENGTH = 2
 DEFAULT_USE_JAPANESE_TOKENIZER = True
+# Incremental indexing defaults
+DEFAULT_INCREMENTAL_ENABLED = True
+DEFAULT_CHANGE_DETECTION_STRATEGY = "smart"
+DEFAULT_HASH_ALGORITHM = "sha256"
+DEFAULT_TRACK_FILE_METADATA = True
+DEFAULT_CLEANUP_DELETED_FILES = True
+DEFAULT_BATCH_SIZE_FOR_CHANGE_DETECTION = 1000
+DEFAULT_MAX_FILES_FOR_HASH_CHECKING = 10000
 
 
 class IndexerConfig:
@@ -183,6 +201,9 @@ class IndexerConfig:
 
         # Validate BM25 settings
         self._validate_bm25_settings(indexer_config)
+        
+        # Validate incremental indexing settings
+        self._validate_incremental_settings(indexer_config)
 
     def _validate_basic_settings(self, indexer_config: Dict[str, Any]) -> None:
         """Validate basic indexer settings."""
@@ -334,6 +355,44 @@ class IndexerConfig:
         # Validate use_japanese_tokenizer - must be a boolean
         if not isinstance(indexer_config.get("use_japanese_tokenizer"), bool):
             indexer_config["use_japanese_tokenizer"] = DEFAULT_USE_JAPANESE_TOKENIZER
+    
+    def _validate_incremental_settings(self, indexer_config: Dict[str, Any]) -> None:
+        """Validate incremental indexing settings."""
+        # Ensure incremental dict exists
+        if "incremental" not in indexer_config:
+            indexer_config["incremental"] = {}
+        
+        incremental_config = indexer_config["incremental"]
+        
+        # Validate enabled - must be a boolean
+        if not isinstance(incremental_config.get("enabled"), bool):
+            incremental_config["enabled"] = DEFAULT_INCREMENTAL_ENABLED
+        
+        # Validate change_detection_strategy - must be one of allowed values
+        valid_strategies = ["timestamp", "hash", "smart"]
+        if incremental_config.get("change_detection_strategy") not in valid_strategies:
+            incremental_config["change_detection_strategy"] = DEFAULT_CHANGE_DETECTION_STRATEGY
+        
+        # Validate hash_algorithm - must be a valid hash algorithm
+        valid_algorithms = ["sha256", "sha512", "md5"]
+        if incremental_config.get("hash_algorithm") not in valid_algorithms:
+            incremental_config["hash_algorithm"] = DEFAULT_HASH_ALGORITHM
+        
+        # Validate track_file_metadata - must be a boolean
+        if not isinstance(incremental_config.get("track_file_metadata"), bool):
+            incremental_config["track_file_metadata"] = DEFAULT_TRACK_FILE_METADATA
+        
+        # Validate cleanup_deleted_files - must be a boolean
+        if not isinstance(incremental_config.get("cleanup_deleted_files"), bool):
+            incremental_config["cleanup_deleted_files"] = DEFAULT_CLEANUP_DELETED_FILES
+        
+        # Validate batch_size_for_change_detection - must be a positive integer
+        if not isinstance(incremental_config.get("batch_size_for_change_detection"), int) or incremental_config.get("batch_size_for_change_detection", 0) <= 0:
+            incremental_config["batch_size_for_change_detection"] = DEFAULT_BATCH_SIZE_FOR_CHANGE_DETECTION
+        
+        # Validate max_files_for_hash_checking - must be a positive integer
+        if not isinstance(incremental_config.get("max_files_for_hash_checking"), int) or incremental_config.get("max_files_for_hash_checking", 0) <= 0:
+            incremental_config["max_files_for_hash_checking"] = DEFAULT_MAX_FILES_FOR_HASH_CHECKING
 
     @property
     def chunk_size(self) -> int:
@@ -506,6 +565,47 @@ class IndexerConfig:
     def use_japanese_tokenizer(self) -> bool:
         """Whether to use Japanese tokenizer."""
         return bool(self.config["indexer"]["use_japanese_tokenizer"])
+    
+    # Incremental indexing properties
+    @property
+    def incremental_enabled(self) -> bool:
+        """Whether incremental indexing is enabled."""
+        return bool(self.config["indexer"]["incremental"]["enabled"])
+    
+    @property
+    def change_detection_strategy(self) -> str:
+        """Strategy for detecting file changes."""
+        return str(self.config["indexer"]["incremental"]["change_detection_strategy"])
+    
+    @property
+    def hash_algorithm(self) -> str:
+        """Hash algorithm for content comparison."""
+        return str(self.config["indexer"]["incremental"]["hash_algorithm"])
+    
+    @property
+    def track_file_metadata(self) -> bool:
+        """Whether to track file metadata in database."""
+        return bool(self.config["indexer"]["incremental"]["track_file_metadata"])
+    
+    @property
+    def cleanup_deleted_files(self) -> bool:
+        """Whether to cleanup deleted files during incremental indexing."""
+        return bool(self.config["indexer"]["incremental"]["cleanup_deleted_files"])
+    
+    @property
+    def batch_size_for_change_detection(self) -> int:
+        """Batch size for change detection processing."""
+        return int(self.config["indexer"]["incremental"]["batch_size_for_change_detection"])
+    
+    @property
+    def max_files_for_hash_checking(self) -> int:
+        """Maximum files before falling back to timestamp-only checking."""
+        return int(self.config["indexer"]["incremental"]["max_files_for_hash_checking"])
+    
+    @property
+    def incremental_config(self) -> Dict[str, Any]:
+        """Full incremental indexing configuration."""
+        return dict(self.config["indexer"]["incremental"])
 
 
 def load_default_config(db_path: str) -> IndexerConfig:
