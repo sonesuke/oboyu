@@ -133,7 +133,7 @@ class ONNXEmbeddingModel:
         num_threads = os.cpu_count() or 4
         sess_options.intra_op_num_threads = num_threads
         sess_options.inter_op_num_threads = 1  # Single thread for operation scheduling
-        logger.info(f"ONNX session configured with {num_threads} intra-op threads, optimization level: {optimization_level}")
+        logger.debug(f"ONNX session configured with {num_threads} intra-op threads, optimization level: {optimization_level}")
 
         # Load ONNX model
         self.session = InferenceSession(str(self.model_path), sess_options)
@@ -273,7 +273,7 @@ def convert_to_onnx(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"Converting {model_name} to ONNX format...")
+    logger.debug(f"Converting {model_name} to ONNX format...")
 
     # Load the model - force CPU to avoid MPS issues
     model = SentenceTransformer(model_name, device="cpu")
@@ -426,7 +426,7 @@ def get_or_convert_onnx_model(
         return onnx_path
 
     # Convert if not found
-    logger.info(f"ONNX model not found, converting {model_name}...")
+    logger.debug(f"ONNX model not found, converting {model_name}...")
     onnx_path = convert_to_onnx(
         model_name,
         model_dir,
@@ -476,7 +476,7 @@ class ONNXCrossEncoderModel:
         num_threads = os.cpu_count() or 4
         sess_options.intra_op_num_threads = num_threads
         sess_options.inter_op_num_threads = 1  # Single thread for operation scheduling
-        logger.info(f"ONNX session configured with {num_threads} intra-op threads, optimization level: {optimization_level}")
+        logger.debug(f"ONNX session configured with {num_threads} intra-op threads, optimization level: {optimization_level}")
 
         # Load ONNX model
         self.session = InferenceSession(str(self.model_path), sess_options)
@@ -571,7 +571,7 @@ def convert_cross_encoder_to_onnx(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"Converting Cross-Encoder {model_name} to ONNX format...")
+    logger.debug(f"Converting Cross-Encoder {model_name} to ONNX format...")
 
     # Load the model and tokenizer
     if "cross-encoder" in model_name.lower() or "reranker" in model_name.lower():
@@ -739,7 +739,7 @@ def get_or_convert_cross_encoder_onnx_model(
         return onnx_path
 
     # Convert if not found
-    logger.info(f"ONNX Cross-Encoder model not found, converting {model_name}...")
+    logger.debug(f"ONNX Cross-Encoder model not found, converting {model_name}...")
     onnx_path = convert_cross_encoder_to_onnx(
         model_name,
         model_dir,

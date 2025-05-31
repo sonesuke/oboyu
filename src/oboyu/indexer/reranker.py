@@ -199,13 +199,13 @@ class ONNXCrossEncoderReranker(BaseReranker):
         self.quantization_config = quantization_config or {"enabled": True, "weight_type": "uint8"}
         self.optimization_level = optimization_level
         self._tokenizer: Optional[Any] = None
-        logger.info(f"Initializing ONNX CrossEncoder reranker with model: {model_name}")
+        logger.debug(f"Initializing ONNX CrossEncoder reranker with model: {model_name}")
 
     @property
     def model(self) -> Any:  # noqa: ANN401
         """Lazy load the ONNX model and tokenizer."""
         if self._model is None:
-            logger.info(f"Loading ONNX CrossEncoder model: {self.model_name}")
+            logger.debug(f"Loading ONNX CrossEncoder model: {self.model_name}")
             from oboyu.indexer.onnx_converter import ONNXCrossEncoderModel
 
             # Get or convert ONNX model
@@ -223,7 +223,7 @@ class ONNXCrossEncoderReranker(BaseReranker):
                 max_seq_length=self.max_length,
                 optimization_level=self.optimization_level,
             )
-            logger.info("ONNX CrossEncoder model loaded successfully")
+            logger.debug("ONNX CrossEncoder model loaded successfully")
         return self._model
 
     def rerank(
@@ -258,10 +258,10 @@ class ONNXCrossEncoderReranker(BaseReranker):
         import time
 
         predict_start = time.time()
-        logger.info(f"ONNX predict starting with {len(documents)} documents, batch_size={self.batch_size}")
+        logger.debug(f"ONNX predict starting with {len(documents)} documents, batch_size={self.batch_size}")
         scores = self.model.predict(queries, documents, batch_size=self.batch_size)
         predict_time = time.time() - predict_start
-        logger.info(f"ONNX predict completed in {predict_time:.2f}s")
+        logger.debug(f"ONNX predict completed in {predict_time:.2f}s")
 
         # Create reranked results
         reranked_results: List[RerankedResult] = []
