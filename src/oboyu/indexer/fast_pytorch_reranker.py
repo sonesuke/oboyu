@@ -31,13 +31,13 @@ class FastPyTorchReranker(BaseReranker):
 
         """
         super().__init__(model_name, device, batch_size, max_length)
-        logger.info(f"Initializing fast PyTorch reranker with model: {model_name}")
+        logger.debug(f"Initializing fast PyTorch reranker with model: {model_name}")
 
     @property
     def model(self) -> Any:  # noqa: ANN401
         """Lazy load the CrossEncoder with PyTorch backend."""
         if self._model is None:
-            logger.info(f"Loading CrossEncoder with PyTorch backend: {self.model_name}")
+            logger.debug(f"Loading CrossEncoder with PyTorch backend: {self.model_name}")
             import torch
             from sentence_transformers import CrossEncoder
 
@@ -63,11 +63,11 @@ class FastPyTorchReranker(BaseReranker):
             if hasattr(torch.jit, 'optimize_for_inference'):
                 try:
                     self._model.model = torch.jit.optimize_for_inference(self._model.model)
-                    logger.info("Applied PyTorch JIT optimization for inference")
+                    logger.debug("Applied PyTorch JIT optimization for inference")
                 except Exception as e:
                     logger.debug(f"Could not apply JIT optimization: {e}")
             
-            logger.info("CrossEncoder with PyTorch backend loaded successfully")
+            logger.debug("CrossEncoder with PyTorch backend loaded successfully")
         return self._model
 
     def rerank(
@@ -101,10 +101,10 @@ class FastPyTorchReranker(BaseReranker):
         import time
         
         predict_start = time.time()
-        logger.info(f"PyTorch predict starting with {len(pairs)} documents")
+        logger.debug(f"PyTorch predict starting with {len(pairs)} documents")
         scores = self.model.predict(pairs, batch_size=self.batch_size, show_progress_bar=False)
         predict_time = time.time() - predict_start
-        logger.info(f"PyTorch predict completed in {predict_time:.2f}s")
+        logger.debug(f"PyTorch predict completed in {predict_time:.2f}s")
 
         # Create reranked results
         reranked_results: List[RerankedResult] = []

@@ -641,7 +641,7 @@ class Indexer:
 
             logger = logging.getLogger(__name__)
             rerank_start = time.time()
-            logger.info(f"Starting reranking of {len(search_results)} results...")
+            logger.debug(f"Starting reranking of {len(search_results)} results...")
             search_results = self.reranker.rerank(
                 query=query,
                 results=search_results,
@@ -649,7 +649,7 @@ class Indexer:
                 threshold=self.config.reranker_threshold,
             )
             rerank_time = time.time() - rerank_start
-            logger.info(f"Reranking completed in {rerank_time:.2f}s, returned {len(search_results)} results")
+            logger.debug(f"Reranking completed in {rerank_time:.2f}s, returned {len(search_results)} results")
         else:
             # If not reranking, just limit the results
             search_results = search_results[:limit]

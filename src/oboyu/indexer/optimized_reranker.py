@@ -31,13 +31,13 @@ class OptimizedONNXReranker(BaseReranker):
 
         """
         super().__init__(model_name, device, batch_size, max_length)
-        logger.info(f"Initializing optimized ONNX reranker with model: {model_name}")
+        logger.debug(f"Initializing optimized ONNX reranker with model: {model_name}")
 
     @property
     def model(self) -> Any:  # noqa: ANN401
         """Lazy load the CrossEncoder with ONNX backend."""
         if self._model is None:
-            logger.info(f"Loading CrossEncoder with ONNX backend: {self.model_name}")
+            logger.debug(f"Loading CrossEncoder with ONNX backend: {self.model_name}")
             import os
 
             # Check if we already have an ONNX model cached
@@ -51,9 +51,9 @@ class OptimizedONNXReranker(BaseReranker):
                     cache_dir=None,  # Use default cache
                     local_files_only=False,
                 )
-                logger.info(f"Found pre-exported ONNX model at: {onnx_path}")
+                logger.debug(f"Found pre-exported ONNX model at: {onnx_path}")
             except Exception:
-                logger.info("No pre-exported ONNX model found, will export during first use")
+                logger.debug("No pre-exported ONNX model found, will export during first use")
 
             # Use ONNX backend for better performance
             try:
@@ -71,7 +71,7 @@ class OptimizedONNXReranker(BaseReranker):
                         }
                     },
                 )
-                logger.info("CrossEncoder with ONNX backend loaded successfully")
+                logger.debug("CrossEncoder with ONNX backend loaded successfully")
             except Exception as e:
                 logger.warning(f"Failed to load ONNX backend, falling back to PyTorch: {e}")
                 # Fallback to PyTorch if ONNX fails
@@ -82,7 +82,7 @@ class OptimizedONNXReranker(BaseReranker):
                     max_length=self.max_length,
                     trust_remote_code=True,
                 )
-                logger.info("Fallback to PyTorch backend loaded successfully")
+                logger.debug("Fallback to PyTorch backend loaded successfully")
         return self._model
 
     def rerank(
@@ -116,10 +116,10 @@ class OptimizedONNXReranker(BaseReranker):
         import time
         
         predict_start = time.time()
-        logger.info(f"ONNX (optimized) predict starting with {len(pairs)} documents")
+        logger.debug(f"ONNX (optimized) predict starting with {len(pairs)} documents")
         scores = self.model.predict(pairs, batch_size=self.batch_size)
         predict_time = time.time() - predict_start
-        logger.info(f"ONNX (optimized) predict completed in {predict_time:.2f}s")
+        logger.debug(f"ONNX (optimized) predict completed in {predict_time:.2f}s")
 
         # Create reranked results
         reranked_results: List[RerankedResult] = []

@@ -159,18 +159,18 @@ class InteractiveQuerySession:
             auto_suggest=AutoSuggestFromHistory(),
             completer=WordCompleter(
                 [
-                    "help",
-                    "exit",
-                    "quit",
-                    "q",
-                    "mode",
-                    "topk",
-                    "top-k",
-                    "weights",
-                    "rerank",
-                    "settings",
-                    "clear",
-                    "stats",
+                    "/help",
+                    "/exit",
+                    "/quit",
+                    "/q",
+                    "/mode",
+                    "/topk",
+                    "/top-k",
+                    "/weights",
+                    "/rerank",
+                    "/settings",
+                    "/clear",
+                    "/stats",
                     "vector",
                     "bm25",
                     "hybrid",
@@ -193,7 +193,7 @@ class InteractiveQuerySession:
             f"Reranker: {reranker_status}"
         )
         self.console.print("\n✅ Ready for search!")
-        self.console.print("Type your search query (or 'help' for commands, 'exit' to quit):\n")
+        self.console.print("Type your search query (or '/help' for commands, '/exit' to quit):\n")
         
         # Main REPL loop
         while True:
@@ -230,12 +230,7 @@ class InteractiveQuerySession:
             True if text is a command, False otherwise
 
         """
-        commands = [
-            "help", "exit", "quit", "q", "mode", "topk", "top-k",
-            "weights", "rerank", "settings", "clear", "stats"
-        ]
-        first_word = text.split()[0].lower()
-        return first_word in commands
+        return text.strip().startswith("/")
         
     def _process_command(self, command: str) -> bool:
         """Process an interactive command.
@@ -247,7 +242,14 @@ class InteractiveQuerySession:
             True to continue session, False to exit
 
         """
-        parts = command.lower().split()
+        # Remove leading '/' and split
+        command_text = command[1:].strip() if command.startswith('/') else command.strip()
+        parts = command_text.lower().split()
+        
+        if not parts:
+            self.console.print("❌ Empty command. Type '/help' for available commands")
+            return True
+            
         cmd = parts[0]
         
         if cmd in ["exit", "quit", "q"]:
@@ -317,8 +319,8 @@ class InteractiveQuerySession:
                     f"❌ Invalid option: [red]{parts[1]}[/red]. Use 'on' or 'off'"
                 )
         else:
-            self.console.print(f"❌ Unknown command: [red]{command}[/red]")
-            self.console.print("Type 'help' for available commands")
+            self.console.print(f"❌ Unknown command: [red]/{cmd}[/red]")
+            self.console.print("Type '/help' for available commands")
             
         return True
         
@@ -376,24 +378,24 @@ class InteractiveQuerySession:
   <query>              - Search for documents matching the query
 
 [yellow]Commands:[/yellow]
-  help                 - Show this help message
-  exit, quit, q        - Exit interactive mode
-  clear                - Clear the screen
-  settings             - Show current settings
-  stats                - Show index statistics
+  /help                - Show this help message
+  /exit, /quit, /q     - Exit interactive mode
+  /clear               - Clear the screen
+  /settings            - Show current settings
+  /stats               - Show index statistics
 
 [yellow]Configuration:[/yellow]
-  mode <mode>          - Change search mode (vector, bm25, hybrid)
-  topk <number>        - Change number of results (e.g., topk 10)
-  weights <v> <b>      - Change hybrid weights (e.g., weights 0.8 0.2)
-  rerank on/off        - Enable/disable reranker
+  /mode <mode>         - Change search mode (vector, bm25, hybrid)
+  /topk <number>       - Change number of results (e.g., /topk 10)
+  /weights <v> <b>     - Change hybrid weights (e.g., /weights 0.8 0.2)
+  /rerank on/off       - Enable/disable reranker
 
 [yellow]Examples:[/yellow]
   > machine learning algorithms
-  > mode vector
-  > topk 10
-  > weights 0.8 0.2
-  > rerank on
+  > /mode vector
+  > /topk 10
+  > /weights 0.8 0.2
+  > /rerank on
 """
         self.console.print(help_text)
         

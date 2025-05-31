@@ -76,50 +76,51 @@ class TestInteractiveQuerySession:
 
     def test_is_command(self, interactive_session):
         """Test command detection."""
-        assert interactive_session._is_command("help")
-        assert interactive_session._is_command("exit")
-        assert interactive_session._is_command("mode vector")
-        assert interactive_session._is_command("topk 10")
+        assert interactive_session._is_command("/help")
+        assert interactive_session._is_command("/exit")
+        assert interactive_session._is_command("/mode vector")
+        assert interactive_session._is_command("/topk 10")
+        assert not interactive_session._is_command("help")  # without slash
         assert not interactive_session._is_command("machine learning")
         assert not interactive_session._is_command("search query")
 
     def test_process_command_exit(self, interactive_session):
         """Test exit commands."""
-        assert not interactive_session._process_command("exit")
-        assert not interactive_session._process_command("quit")
-        assert not interactive_session._process_command("q")
+        assert not interactive_session._process_command("/exit")
+        assert not interactive_session._process_command("/quit")
+        assert not interactive_session._process_command("/q")
 
     def test_process_command_mode(self, interactive_session):
         """Test mode change command."""
-        assert interactive_session._process_command("mode vector")
+        assert interactive_session._process_command("/mode vector")
         assert interactive_session.config["mode"] == "vector"
         
-        assert interactive_session._process_command("mode bm25")
+        assert interactive_session._process_command("/mode bm25")
         assert interactive_session.config["mode"] == "bm25"
         
-        assert interactive_session._process_command("mode hybrid")
+        assert interactive_session._process_command("/mode hybrid")
         assert interactive_session.config["mode"] == "hybrid"
 
     def test_process_command_topk(self, interactive_session):
         """Test top-k change command."""
-        assert interactive_session._process_command("topk 10")
+        assert interactive_session._process_command("/topk 10")
         assert interactive_session.config["top_k"] == 10
         
-        assert interactive_session._process_command("top-k 20")
+        assert interactive_session._process_command("/top-k 20")
         assert interactive_session.config["top_k"] == 20
 
     def test_process_command_weights(self, interactive_session):
         """Test weights change command."""
-        assert interactive_session._process_command("weights 0.8 0.2")
+        assert interactive_session._process_command("/weights 0.8 0.2")
         assert interactive_session.config["vector_weight"] == 0.8
         assert interactive_session.config["bm25_weight"] == 0.2
 
     def test_process_command_rerank(self, interactive_session):
         """Test rerank toggle command."""
-        assert interactive_session._process_command("rerank on")
+        assert interactive_session._process_command("/rerank on")
         assert interactive_session.config["use_reranker"] is True
         
-        assert interactive_session._process_command("rerank off")
+        assert interactive_session._process_command("/rerank off")
         assert interactive_session.config["use_reranker"] is False
 
     def test_process_query(self, interactive_session, mock_indexer):
@@ -144,25 +145,25 @@ class TestInteractiveQuerySession:
     @patch("subprocess.run")
     def test_clear_command(self, mock_run, interactive_session):
         """Test clear screen command."""
-        interactive_session._process_command("clear")
+        interactive_session._process_command("/clear")
         mock_run.assert_called_once_with(["/usr/bin/clear"], check=False)
 
     def test_invalid_commands(self, interactive_session):
         """Test handling of invalid commands."""
         # Invalid mode
-        assert interactive_session._process_command("mode invalid")
+        assert interactive_session._process_command("/mode invalid")
         assert interactive_session.config["mode"] == "hybrid"  # Should not change
         
         # Invalid topk
-        assert interactive_session._process_command("topk abc")
+        assert interactive_session._process_command("/topk abc")
         assert interactive_session.config["top_k"] == 5  # Should not change
         
         # Invalid weights
-        assert interactive_session._process_command("weights 1.5 0.5")
+        assert interactive_session._process_command("/weights 1.5 0.5")
         assert interactive_session.config["vector_weight"] == 0.7  # Should not change
         
         # Invalid rerank
-        assert interactive_session._process_command("rerank maybe")
+        assert interactive_session._process_command("/rerank maybe")
         assert interactive_session.config["use_reranker"] is False  # Should not change
 
 
@@ -197,8 +198,8 @@ def test_interactive_session_run():
             session.session = PromptSession(input=pipe_input, output=DummyOutput())
             
             # Send commands to the session
-            pipe_input.send_text("mode vector\n")
-            pipe_input.send_text("exit\n")
+            pipe_input.send_text("/mode vector\n")
+            pipe_input.send_text("/exit\n")
             
             # Run the session (it should exit after processing the commands)
             session.run()

@@ -101,13 +101,13 @@ class CrossEncoderReranker(BaseReranker):
     ) -> None:
         """Initialize the CrossEncoder reranker with lazy loading."""
         super().__init__(model_name, device, batch_size, max_length)
-        logger.info(f"Initializing CrossEncoder reranker with model: {model_name}")
+        logger.debug(f"Initializing CrossEncoder reranker with model: {model_name}")
 
     @property
     def model(self) -> Any:  # noqa: ANN401
         """Lazy load the CrossEncoder model."""
         if self._model is None:
-            logger.info(f"Loading CrossEncoder model: {self.model_name}")
+            logger.debug(f"Loading CrossEncoder model: {self.model_name}")
             CrossEncoder = _import_cross_encoder()
             self._model = CrossEncoder(
                 self.model_name,
@@ -115,7 +115,7 @@ class CrossEncoderReranker(BaseReranker):
                 max_length=self.max_length,
                 trust_remote_code=True,
             )
-            logger.info("CrossEncoder model loaded successfully")
+            logger.debug("CrossEncoder model loaded successfully")
         return self._model
 
     def rerank(
