@@ -12,7 +12,6 @@ from typing_extensions import Annotated
 
 from oboyu.cli.base import BaseCommand
 from oboyu.cli.progress import create_indexer_progress_callback
-from oboyu.cli.simple_progress import create_simple_progress_callback
 from oboyu.common.config import ConfigManager
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.indexer import Indexer
