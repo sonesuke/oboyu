@@ -132,7 +132,7 @@ class DatabaseManager:
             # Apply performance settings
             self._apply_performance_settings()
             
-            logger.info(f"Connected to database: {self.db_path}")
+            logger.debug(f"Connected to database: {self.db_path}")
             
         except Exception as e:
             logger.error(f"Failed to connect to database: {e}")

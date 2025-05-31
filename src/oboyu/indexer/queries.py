@@ -22,6 +22,17 @@ from numpy.typing import NDArray
 from oboyu.indexer.processor import Chunk
 
 
+# Custom JSON encoder for datetime objects
+class DateTimeEncoder(json.JSONEncoder):
+    """JSON encoder that handles datetime objects."""
+
+    def default(self, obj: object) -> object:
+        """Convert datetime objects to ISO format strings."""
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
+
+
 @dataclass
 class ChunkData:
     """Type-safe data structure for chunk database operations."""
@@ -107,7 +118,7 @@ class QueryBuilder:
 
         """
         # Convert metadata to JSON string if present
-        metadata_json = json.dumps(chunk_data.metadata) if chunk_data.metadata else None
+        metadata_json = json.dumps(chunk_data.metadata, cls=DateTimeEncoder) if chunk_data.metadata else None
         
         sql = """
             INSERT INTO chunks (id, path, title, content, chunk_index, language, created_at, modified_at, metadata)
@@ -139,7 +150,7 @@ class QueryBuilder:
             Tuple of (sql, parameters)
 
         """
-        metadata_json = json.dumps(chunk_data.metadata) if chunk_data.metadata else None
+        metadata_json = json.dumps(chunk_data.metadata, cls=DateTimeEncoder) if chunk_data.metadata else None
         
         sql = """
             INSERT INTO chunks (id, path, title, content, chunk_index, language, created_at, modified_at, metadata)

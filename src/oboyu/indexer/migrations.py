@@ -336,7 +336,7 @@ class MigrationManager:
         pending_migrations = self.get_pending_migrations()
         
         if not pending_migrations:
-            logger.info("No pending migrations to apply")
+            logger.debug("No pending migrations to apply")
             return True
         
         # Filter migrations by target version if specified

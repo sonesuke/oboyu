@@ -99,7 +99,7 @@ class IndexManager:
             hnsw_params: Optional HNSW index parameters
 
         """
-        logger.info("Setting up database indexes...")
+        logger.debug("Setting up database indexes...")
         
         # Store HNSW parameters for later use
         if hnsw_params:
@@ -140,7 +140,7 @@ class IndexManager:
         try:
             # Check if index already exists
             if not force and self.hnsw_index_exists():
-                logger.info("HNSW index already exists - skipping creation")
+                logger.debug("HNSW index already exists - skipping creation")
                 return True
             
             # Drop existing index if forcing recreation
