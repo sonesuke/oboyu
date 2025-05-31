@@ -37,7 +37,7 @@ repos:
       always_run: true
     - id: pytest
       name: pytest
-      entry: uv run pytest --cov=src
+      entry: uv run pytest -m "not slow" -k "not integration" --cov=src
       language: system
       pass_filenames: false
       always_run: true

@@ -213,7 +213,7 @@ class Indexer:
             List of document chunks
 
         """
-        # Report starting document processing
+        # Report starting document processing immediately
         if progress_callback:
             progress_callback("processing", 0, len(documents))
 
@@ -221,28 +221,57 @@ class Indexer:
         all_chunks: List[Chunk] = []
         processed_count = 0
 
-        # Use the shared ThreadPoolExecutor for parallel processing
-        future_to_doc = {self._executor.submit(self._process_document, doc): doc for doc in documents}
+        # Use the shared ThreadPoolExecutor for parallel processing with better resource management
+        import time
+        last_progress_time = time.time()
+        
+        # Limit the number of concurrent tasks to prevent overwhelming the system
+        max_concurrent = min(self.config.max_workers, 4)  # Limit to 4 concurrent tasks
+        
+        # Process documents in smaller batches to avoid memory issues
+        batch_size = max_concurrent * 2  # Process 2x workers at a time
+        
+        for batch_start in range(0, len(documents), batch_size):
+            batch_end = min(batch_start + batch_size, len(documents))
+            batch_documents = documents[batch_start:batch_end]
+            
+            # Use ThreadPoolExecutor for this batch
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_concurrent) as batch_executor:
+                future_to_doc = {batch_executor.submit(self._process_document, doc): doc for doc in batch_documents}
+                
+                # Collect results for this batch
+                for future in concurrent.futures.as_completed(future_to_doc):
+                    doc = future_to_doc[future]
+                    try:
+                        chunks = future.result()
+                        if chunks:
+                            all_chunks.extend(chunks)
 
-        # Collect chunks as they complete
-        for future in concurrent.futures.as_completed(future_to_doc):
-            doc = future_to_doc[future]
-            try:
-                chunks = future.result()
-                if chunks:
-                    all_chunks.extend(chunks)
+                        # Update progress with file info
+                        processed_count += 1
+                        current_time = time.time()
+                        
+                        # Report progress more frequently for better UX
+                        if processed_count == 1 or current_time - last_progress_time > 1.0 or processed_count % 10 == 0:
+                            if progress_callback:
+                                progress_callback("processing", processed_count, len(documents))
+                            last_progress_time = current_time
+                            
+                    except Exception as e:
+                        logging.error(f"Error processing {doc.path}: {e}")
+                        # Still count as processed for progress tracking
+                        processed_count += 1
+                        current_time = time.time()
+                        
+                        if processed_count == 1 or current_time - last_progress_time > 1.0 or processed_count % 10 == 0:
+                            if progress_callback:
+                                progress_callback("processing_error", processed_count, len(documents))
+                            last_progress_time = current_time
 
-                # Update progress
-                processed_count += 1
-                if progress_callback:
-                    progress_callback("processing", processed_count, len(documents))
-            except Exception as e:
-                logging.error(f"Error processing {doc.path}: {e}")
-                # Still count as processed for progress tracking
-                processed_count += 1
-                if progress_callback:
-                    progress_callback("processing_error", processed_count, len(documents))
-
+        # Ensure final progress is reported
+        if progress_callback and processed_count > 0:
+            progress_callback("processing", processed_count, len(documents))
+            
         return all_chunks
 
     def _store_chunks_with_progress(self, chunks: List[Chunk], progress_callback: Optional[Callable[[str, int, int], None]]) -> None:
@@ -253,16 +282,31 @@ class Indexer:
             progress_callback: Progress callback function
 
         """
-        # Report storing chunks
+        if not chunks:
+            return
+            
+        # Calculate total data size for progress reporting
+        # total_size = sum(len(chunk.content.encode('utf-8')) for chunk in chunks)
+        # size_mb = total_size / (1024 * 1024)
+        
+        # Report storing chunks with size info
         if progress_callback:
-            progress_callback("storing", 0, 1)
+            progress_callback("storing", 0, len(chunks))
 
-        # Store chunks in database
-        self.database.store_chunks(chunks)
+        # Store chunks in database in batches for better progress reporting
+        batch_size = 100  # Process in batches of 100 chunks
+        for i in range(0, len(chunks), batch_size):
+            batch = chunks[i:i + batch_size]
+            self.database.store_chunks(batch)
+            
+            # Report progress
+            if progress_callback:
+                processed = min(i + batch_size, len(chunks))
+                progress_callback("storing", processed, len(chunks))
 
-        # Report chunk storage complete
+        # Report chunk storage complete with stats
         if progress_callback:
-            progress_callback("storing", 1, 1)
+            progress_callback("storing", len(chunks), len(chunks))
 
     def _generate_embeddings_with_progress(
         self, chunks: List[Chunk], progress_callback: Optional[Callable[[str, int, int], None]]
@@ -299,16 +343,31 @@ class Indexer:
             progress_callback: Progress callback function
 
         """
-        # Report storing embeddings
+        if not embeddings:
+            return
+            
+        # Calculate embedding data size
+        # embedding_size = len(embeddings) * self.config.embedding_dimensions * 4  # 4 bytes per float32
+        # size_mb = embedding_size / (1024 * 1024)
+        
+        # Report storing embeddings with size info
         if progress_callback:
-            progress_callback("storing_embeddings", 0, 1)
+            progress_callback("storing_embeddings", 0, len(embeddings))
 
-        # Store embeddings
-        self.database.store_embeddings(embeddings, self.config.embedding_model)
+        # Store embeddings in batches for better progress reporting
+        batch_size = 500  # Process in batches of 500 embeddings
+        for i in range(0, len(embeddings), batch_size):
+            batch = embeddings[i:i + batch_size]
+            self.database.store_embeddings(batch, self.config.embedding_model)
+            
+            # Report progress
+            if progress_callback:
+                processed = min(i + batch_size, len(embeddings))
+                progress_callback("storing_embeddings", processed, len(embeddings))
 
-        # Report embeddings stored
+        # Report embeddings stored with stats
         if progress_callback:
-            progress_callback("storing_embeddings", 1, 1)
+            progress_callback("storing_embeddings", len(embeddings), len(embeddings))
 
     def _recompact_index_if_needed(self, chunks: List[Chunk], progress_callback: Optional[Callable[[str, int, int], None]]) -> None:
         """Recompact index if needed with progress reporting.
@@ -440,6 +499,7 @@ class Indexer:
                 metadata=doc.metadata,
             )
         except Exception as e:
+            import logging
             logging.error(f"Error processing document {doc.path}: {e}")
             return []
 

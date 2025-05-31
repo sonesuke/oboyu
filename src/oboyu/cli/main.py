@@ -98,6 +98,14 @@ def callback(
     verbose: VerboseOption = False,
 ) -> None:
     """Set up global options for the CLI."""
+    # Configure logging based on verbosity level
+    import logging
+    if verbose:
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    else:
+        # Set to WARNING level to suppress INFO and DEBUG messages
+        logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
+    
     # Store configuration and verbosity in context
     ctx.obj = {"verbose": verbose, "config": config, "db_path": db_path}
 
@@ -163,29 +171,23 @@ def clear(
             console.print("Operation cancelled.")
             return
 
-    # Import and use progress indicator for better UX
-    from oboyu.cli.formatters import create_indeterminate_progress
+    # Use hierarchical logger for clear operation
+    from oboyu.cli.hierarchical_logger import create_hierarchical_logger
+    logger = create_hierarchical_logger(console)
 
-    # Show progress during indexer initialization
-    with create_indeterminate_progress("Initializing...") as init_progress:
-        init_task = init_progress.add_task("Loading embedding model and setting up database...", total=None)
-
-        # Create indexer (this loads the model and sets up the database)
+    with logger.live_display():
+        # Initialize indexer
+        init_op = logger.start_operation("Initializing Oboyu indexer...")
         indexer = Indexer(config=indexer_config)
-
-        # Mark initialization as complete
-        init_progress.update(init_task, description="✓ Initialization complete")
-
-    # Clear the index with progress indicator
-    console.print("Clearing index database...")
-    with create_indeterminate_progress("Clearing...") as clear_progress:
-        clear_task = clear_progress.add_task("Removing indexed data...", total=None)
+        logger.complete_operation(init_op)
 
         # Clear the index
+        clear_op = logger.start_operation("Clearing index database...")
         indexer.clear_index()
+        logger.complete_operation(clear_op)
 
-        # Mark clearing as complete
-        clear_progress.update(clear_task, description="✓ Database cleared")
+        # Clean up resources
+        indexer.close()
 
     console.print("\nIndex database cleared successfully!")
 

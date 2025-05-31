@@ -20,8 +20,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Type checking: `uv run mypy`
 
 ### Testing
+- Run fast tests (recommended for development): `uv run pytest -m "not slow" -k "not integration"`
 - Run all tests with coverage: `uv run pytest --cov=src`
 - Run a specific test: `uv run pytest tests/test_file.py::test_function`
+- Run slow tests only: `uv run pytest -m "slow"`
+- Run integration tests only: `uv run pytest -k "integration"`
+
+**Note**: Slow tests include actual ML model loading and large dataset processing, taking 15+ seconds. Use fast test suite for regular development.
 
 ### Code Analysis with Repomix in Claude Code
 When analyzing this codebase with Claude Code's repomix tool:

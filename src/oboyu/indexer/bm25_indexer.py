@@ -98,11 +98,23 @@ class BM25Indexer:
         # Process chunks with caching for better performance
         # Cache term frequencies to avoid re-tokenizing identical content
         term_freq_cache: Dict[int, Dict[str, int]] = {}
+        
+        import time
+        last_progress_time = time.time()
+        # start_time = time.time()
 
         for idx, chunk in enumerate(chunks):
-            # Report progress more frequently for better user feedback
-            if progress_callback and idx % 5 == 0:  # Report every 5 chunks instead of 10
+            current_time = time.time()
+            # Report progress dynamically based on time elapsed and chunk count
+            # Report every 3 seconds OR every 2% of chunks (whichever comes first) to reduce noise
+            progress_interval = max(1, total_chunks // 50)  # At least every 2% or every chunk for small sets
+            if progress_callback and (
+                current_time - last_progress_time > 3.0 or
+                idx % progress_interval == 0 or
+                idx == 0
+            ):
                 progress_callback(idx, total_chunks)
+                last_progress_time = current_time
 
             # Check if we've already tokenized identical content (using hash)
             content_hash = hash(chunk.content)

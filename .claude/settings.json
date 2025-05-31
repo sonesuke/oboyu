@@ -9,6 +9,8 @@
       "Bash(gh issue create:*)",
       "Bash(mkdir:*)",
       "Bash(uv run pytest:*)",
+      "Bash(uv run mypy:*)",
+      "Bash(uv run ruff:*)",
       "Bash(uv run:*)",
       "Bash(uv pip show:*)",
       "Bash(git checkout:*)",
@@ -24,7 +26,9 @@
       "Bash(find:*)",
       "Bash(rg:*)",
       "Bash(sed:*)",
-      "Bash(git rebase:*)"
+      "Bash(git rebase:*)",
+      "Bash(gtimeout:*)",
+      "Bash(git status:*)"
     ],
     "deny": []
   }

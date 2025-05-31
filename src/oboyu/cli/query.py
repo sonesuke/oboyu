@@ -221,22 +221,17 @@ def query(
         main_op = logger.start_operation(f'Search: "{query}"', expandable=False, details=f"Mode: {mode}\nTop K: {top_k}")
 
         # Initialize indexer
-        with logger.operation("Loading index..."):
-            start_time = time.time()
-            indexer = Indexer(config=indexer_config)
-            duration = time.time() - start_time
-            # Update the parent operation to show completion
-            logger.update_operation(logger.operation_stack[-1].id, f"Loading index... ✓ Ready ({duration:.1f}s)")
+        load_op = logger.start_operation("Loading index...")
+        indexer = Indexer(config=indexer_config)
+        logger.complete_operation(load_op)
 
         # Generate query embedding (for vector and hybrid modes)
         if mode in ["vector", "hybrid"]:
             embed_op = logger.start_operation("Generating query embedding...")
             time.sleep(0.05)  # Simulated timing
             logger.complete_operation(embed_op)
-            logger.update_operation(embed_op, "Generating query embedding... ✓ Done (0.05s)")
 
         # Perform search
-        search_start = time.time()
         search_desc = f"{mode.capitalize()} search" + (" with reranking" if rerank else "") + "..."
         search_op = logger.start_operation(search_desc)
         results = indexer.search(
@@ -247,25 +242,22 @@ def query(
             vector_weight=vector_weight if vector_weight is not None else 0.7,
             bm25_weight=bm25_weight if bm25_weight is not None else 0.3,
         )
-        search_time = time.time() - search_start
-        logger.complete_operation(search_op)
-
+        
         if results:
             rerank_note = " (reranked)" if rerank else ""
-            logger.update_operation(search_op, f"{search_desc} ✓ Found {len(results)} results{rerank_note} ({search_time:.2f}s)")
+            logger.update_operation(search_op, f"{search_desc} Found {len(results)} results{rerank_note}")
 
             # Ranking results step is only shown if not reranking (since reranking does its own ranking)
             if not rerank:
                 rank_op = logger.start_operation("Ranking results...")
                 logger.complete_operation(rank_op)
-                logger.update_operation(rank_op, f"Ranking results... ✓ Top {len(results)} selected (0.01s)")
         else:
-            logger.update_operation(search_op, f"{mode.capitalize()} search... No results found ({search_time:.2f}s)")
+            logger.update_operation(search_op, f"{mode.capitalize()} search... No results found")
+            
+        logger.complete_operation(search_op)
 
         # Complete main search operation
         logger.complete_operation(main_op)
-        total_time = time.time() - search_start
-        logger.update_operation(main_op, f"Retrieved {len(results)} documents in {total_time:.2f}s")
 
     # Display results after hierarchical log
     if not results:

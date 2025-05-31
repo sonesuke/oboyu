@@ -14,8 +14,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 
 import numpy as np
 from numpy.typing import NDArray
-from sentence_transformers import SentenceTransformer
-from torch import Tensor
 
 from oboyu.common.paths import EMBEDDING_CACHE_DIR, EMBEDDING_MODELS_DIR
 from oboyu.indexer.onnx_converter import ONNXEmbeddingModel, get_or_convert_onnx_model
@@ -24,8 +22,24 @@ from oboyu.indexer.processor import Chunk
 # Global model cache to avoid reloading models in the same process
 _MODEL_CACHE = {}
 
-# Silence SentenceTransformer logging (INFO level is too verbose)
-logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
+# Lazy loading helper functions
+def _import_sentence_transformers() -> type:
+    """Lazy import of sentence_transformers to improve startup time."""
+    try:
+        from sentence_transformers import SentenceTransformer
+        # Silence SentenceTransformer logging (INFO level is too verbose)
+        logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
+        return SentenceTransformer
+    except ImportError as e:
+        raise ImportError("sentence_transformers is required for embedding generation. Install with: pip install sentence_transformers") from e
+
+def _import_torch() -> Any:  # noqa: ANN401
+    """Lazy import of torch to improve startup time."""
+    try:
+        import torch
+        return torch
+    except ImportError as e:
+        raise ImportError("torch is required for embedding generation. Install with: pip install torch") from e
 
 
 class EmbeddingCache:
@@ -197,6 +211,7 @@ class EmbeddingGenerator:
                 )
             else:
                 # Load the model (with model_dir as cache directory)
+                SentenceTransformer = _import_sentence_transformers()
                 model = SentenceTransformer(self.model_name, device=self.device, cache_folder=str(self.model_dir))
                 model.max_seq_length = self.max_seq_length
             _MODEL_CACHE[self._cache_key] = model
@@ -205,7 +220,7 @@ class EmbeddingGenerator:
         # Set dimensions after loading
         self._dimensions = self._model.get_sentence_embedding_dimension()
 
-    def generate_embeddings(
+    def generate_embeddings(  # noqa: C901
         self, chunks: List[Chunk], progress_callback: Optional[Callable[[int, int, str], None]] = None
     ) -> List[Tuple[str, str, NDArray[np.float32], datetime]]:
         """Generate embeddings for a list of document chunks.
@@ -256,20 +271,38 @@ class EmbeddingGenerator:
         # Generate new embeddings if needed
         new_embeddings = []
         if texts_to_embed:
+            import time
+            last_progress_time = time.time()
             
             # Process in batches
-            for i in range(0, len(texts_to_embed), self.batch_size):
+            total_batches = (len(texts_to_embed) + self.batch_size - 1) // self.batch_size
+            for batch_idx, i in enumerate(range(0, len(texts_to_embed), self.batch_size)):
                 batch_texts = texts_to_embed[i : i + self.batch_size]
+                batch_start_time = time.time()
 
-                # Update progress before batch processing
+                # Update progress before batch processing with more context
                 if progress_callback:
-                    progress_callback(processed_count, total_chunk_count, f"Generating batch of {len(batch_texts)} embeddings...")
+                    cache_rate = (cache_hit_count / processed_count * 100) if processed_count > 0 else 0
+                    progress_callback(
+                        processed_count,
+                        total_chunk_count,
+                        f"Generating embeddings... batch {batch_idx + 1}/{total_batches} ({len(batch_texts)} texts, cache hit rate: {cache_rate:.0f}%)"
+                    )
 
                 # Process batch
                 batch_embeddings = self.model.encode(batch_texts, normalize_embeddings=True)
 
                 for j, embedding in enumerate(batch_embeddings):
-                    chunk_idx = chunk_indices[i + j]
+                    idx_in_batch = i + j
+                    if idx_in_batch >= len(chunk_indices):
+                        import logging
+                        logging.error(f"Index out of range: idx_in_batch={idx_in_batch}, len(chunk_indices)={len(chunk_indices)}")
+                        continue
+                    chunk_idx = chunk_indices[idx_in_batch]
+                    if chunk_idx >= len(chunks):
+                        import logging
+                        logging.error(f"Chunk index out of range: chunk_idx={chunk_idx}, len(chunks)={len(chunks)}")
+                        continue
                     chunk = chunks[chunk_idx]
 
                     # Cache the embedding if enabled
@@ -286,10 +319,19 @@ class EmbeddingGenerator:
                         )
                     )
 
-                    # Update progress per embedding
+                    # Update progress per embedding with time-based reporting
                     processed_count += 1
-                    if progress_callback:
-                        progress_callback(processed_count, total_chunk_count, f"Generated embedding {processed_count}/{total_chunk_count}")
+                    current_time = time.time()
+                    
+                    # Report progress if 1 second has passed or at every 10th item
+                    if current_time - last_progress_time > 1.0 or (processed_count % 10 == 0):
+                        if progress_callback:
+                            # Calculate processing rate
+                            elapsed = current_time - batch_start_time
+                            rate = (j + 1) / elapsed if elapsed > 0 else 0
+                            status = f"Generated embedding {processed_count}/{total_chunk_count} ({rate:.1f} embeddings/sec)"
+                            progress_callback(processed_count, total_chunk_count, status)
+                        last_progress_time = current_time
 
         # Collect pre-cached embeddings
         cached_embeddings = []
@@ -340,7 +382,8 @@ class EmbeddingGenerator:
         embedding = self.model.encode(prefixed_query, normalize_embeddings=True)
 
         # Convert tensor to numpy array if needed
-        if isinstance(embedding, Tensor):
+        torch = _import_torch()
+        if isinstance(embedding, torch.Tensor):
             embedding_array = cast(NDArray[np.float32], embedding.cpu().numpy())
         else:
             embedding_array = cast(NDArray[np.float32], embedding)

@@ -96,6 +96,7 @@ def test_batch_processing_small_dataset(temp_db: Database, sample_chunks: List[C
     assert doc_count == len(doc_stats)
 
 
+@pytest.mark.slow
 def test_batch_processing_large_dataset(temp_db: Database, sample_chunks: List[Chunk]) -> None:
     """Test batch processing with large dataset."""
     # Store all chunks
@@ -143,6 +144,7 @@ def test_batch_processing_large_dataset(temp_db: Database, sample_chunks: List[C
     assert all(isinstance(pos, int) for pos in result[0])
 
 
+@pytest.mark.slow
 def test_batch_processing_memory_efficiency(temp_db: Database, sample_chunks: List[Chunk]) -> None:
     """Test that batch processing doesn't load all data into memory at once."""
     # Store chunks
