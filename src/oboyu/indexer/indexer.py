@@ -9,7 +9,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -851,6 +851,15 @@ class Indexer:
 
         sorted_results = sorted(all_results.values(), key=get_score, reverse=True)
         return sorted_results[:limit]
+
+    def get_statistics(self) -> Dict[str, Any]:
+        """Get statistics about the indexed data.
+
+        Returns:
+            Dictionary containing statistics
+
+        """
+        return self.database.get_statistics()
 
     def close(self) -> None:
         """Close the indexer and its resources."""

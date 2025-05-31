@@ -92,6 +92,12 @@ oboyu query "search term" --mode vector
 
 # Get more results
 oboyu query "search term" --top-k 10
+
+# Start interactive search session
+oboyu query --interactive
+
+# Interactive mode with specific settings
+oboyu query --interactive --mode hybrid --use-reranker
 ```
 
 Options:
@@ -101,3 +107,53 @@ Options:
 - `--explain`, `-e`: Show detailed explanation of results
 - `--json`: Output results in JSON format
 - `--db-path`: Path to database file
+- `--interactive`, `-i`: Start interactive search session for continuous queries
+- `--rerank/--no-rerank`: Enable or disable reranking of search results
+- `--vector-weight`: Weight for vector scores in hybrid search (0.0-1.0)
+- `--bm25-weight`: Weight for BM25 scores in hybrid search (0.0-1.0)
+
+#### Interactive Mode
+
+The interactive mode allows you to perform multiple searches without reloading the models and database. This is particularly useful when using the reranker, which has a significant initialization time.
+
+**Interactive Commands:**
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `<query>` | Search for documents | `machine learning algorithms` |
+| `help` | Show available commands | `help` |
+| `exit`, `quit`, `q` | Exit interactive mode | `exit` |
+| `mode <mode>` | Change search mode | `mode vector` |
+| `topk <number>` | Change number of results | `topk 10` |
+| `weights <v> <b>` | Change hybrid weights | `weights 0.8 0.2` |
+| `rerank on/off` | Toggle reranker | `rerank on` |
+| `settings` | Show current settings | `settings` |
+| `clear` | Clear screen | `clear` |
+| `stats` | Show index statistics | `stats` |
+
+**Example Interactive Session:**
+
+```bash
+$ oboyu query --interactive --use-reranker
+
+🔍 Oboyu Interactive Search
+📊 Mode: hybrid | Top-K: 5 | Vector: 0.7 | BM25: 0.3 | Reranker: enabled
+
+✅ Ready for search!
+Type your search query (or 'help' for commands, 'exit' to quit):
+
+> machine learning algorithms
+🔍 Searching...
+📊 Found 3 results in 0.12 seconds
+
+[Results displayed here...]
+
+> mode vector
+✅ Search mode changed to: vector
+
+> topk 10
+✅ Top-K changed to: 10
+
+> exit
+👋 Goodbye!
+```
