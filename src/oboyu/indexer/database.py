@@ -23,7 +23,7 @@ import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import duckdb
 import numpy as np
@@ -658,6 +658,7 @@ class Database:
         document_stats: Dict[str, Tuple[int, int, float]],
         collection_stats: Dict[str, Union[int, float]],
         batch_size: int = 10000,
+        progress_callback: Optional[Callable[[str, int, int], None]] = None,
     ) -> None:
         """Store BM25 index data in the database with batch processing.
         
@@ -667,6 +668,7 @@ class Database:
             document_stats: Dictionary mapping chunk_id to (total_terms, unique_terms, avg_term_freq)
             collection_stats: Dictionary with collection-level statistics
             batch_size: Number of records to process in each batch (default: 10000)
+            progress_callback: Optional callback function for progress reporting
 
         """
         if self.conn is None:
@@ -688,6 +690,9 @@ class Database:
             
             if vocab_data:  # Only execute if there's data
                 logger.info(f"Storing {len(vocab_data)} vocabulary terms in batches...")
+                if progress_callback:
+                    progress_callback("vocabulary", 0, len(vocab_data))
+                    
                 for i in range(0, len(vocab_data), batch_size):
                     batch = vocab_data[i:i + batch_size]
                     if i > 0 and i % (batch_size * 10) == 0:
@@ -699,6 +704,10 @@ class Database:
                             document_frequency = excluded.document_frequency,
                             collection_frequency = excluded.collection_frequency
                     """, batch)
+                    
+                    # Report progress after each batch
+                    if progress_callback:
+                        progress_callback("vocabulary", min(i + batch_size, len(vocab_data)), len(vocab_data))
             
             
             # Store inverted index with optimized batch size
@@ -756,6 +765,10 @@ class Database:
                                 term_frequency = excluded.term_frequency,
                                 positions = excluded.positions
                         """, inv_batch)
+                        
+                        # Report progress after each batch
+                        if progress_callback:
+                            progress_callback("inverted_index", min(i + update_batch_size, len(inv_index_data)), len(inv_index_data))
             
             
             # Store document statistics with batch processing
@@ -767,6 +780,9 @@ class Database:
             
             if doc_stats_data:  # Only execute if there's data
                 logger.info(f"Storing {len(doc_stats_data)} document statistics...")
+                if progress_callback:
+                    progress_callback("document_stats", 0, len(doc_stats_data))
+                    
                 # Use same batch size as vocabulary
                 for i in range(0, len(doc_stats_data), batch_size):
                     doc_batch = doc_stats_data[i:i + batch_size]
@@ -780,6 +796,10 @@ class Database:
                             unique_terms = excluded.unique_terms,
                             avg_term_frequency = excluded.avg_term_frequency
                     """, doc_batch)
+                    
+                    # Report progress after each batch
+                    if progress_callback:
+                        progress_callback("document_stats", min(i + batch_size, len(doc_stats_data)), len(doc_stats_data))
             
             
             # Store collection statistics
