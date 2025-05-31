@@ -26,9 +26,16 @@ The document discovery subsystem implements:
 - Change detection for incremental updates
 
 ```python
-def discover_documents(directory, patterns, exclude_patterns, max_depth, respect_gitignore=True):
-    # Implementation details
-    # Returns list of document paths with metadata
+def discover_documents(
+    root_directory: Path,
+    patterns: List[str],
+    exclude_patterns: List[str],
+    max_depth: int = 10,
+    follow_symlinks: bool = False,
+    respect_gitignore: bool = True
+) -> List[Tuple[Path, Dict[str, Any]]]:
+    """Discover documents matching patterns with metadata."""
+    # Returns list of (path, metadata) tuples
 ```
 
 ### Content Extraction
@@ -41,9 +48,35 @@ The content extraction subsystem handles:
 - Language detection with emphasis on Japanese identification
 
 ```python
-def extract_content(file_path):
-    # Implementation details
-    # Returns normalized document content and detected language
+def extract_content(
+    file_path: Path,
+    encoding: Optional[str] = None,
+    japanese_encodings: List[str] = ["utf-8", "shift-jis", "euc-jp"]
+) -> Tuple[str, str, Dict[str, Any]]:
+    """Extract and normalize content from a file.
+    
+    Returns:
+        Tuple of (content, detected_language, metadata)
+    """
+```
+
+### Crawler Result Structure
+
+The main `Crawler` class processes documents and returns structured results:
+
+```python
+@dataclass
+class CrawlerResult:
+    """Result of a document crawl operation."""
+    
+    path: Path                    # Path to the document
+    title: str                    # Document title (from filename or content)
+    content: str                  # Normalized document content
+    language: str                 # Detected language code
+    metadata: Dict[str, object]   # Additional metadata
+    
+    def to_chunk_data(self) -> Dict[str, Any]:
+        """Convert to format suitable for indexer."""
 ```
 
 ### Japanese Text Processing

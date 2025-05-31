@@ -11,9 +11,8 @@
 
 With specialized support for Japanese language documents, Oboyu excels at processing content in both Japanese and English, making it an ideal solution for multilingual document collections.
 
-The system provides both command-line interface for direct queries and an MCP server mode for network-accessible document search. While Oboyu works with any text-based documents, it is particularly optimized for Japanese language content, making it unique among semantic search tools.
+The system provides both a comprehensive command-line interface for direct queries and an MCP server mode for AI assistant integration. While Oboyu works with any text-based documents, it is particularly optimized for Japanese language content, making it unique among semantic search tools.
 
-![Oboyu Concept](docs/images/oboyu_concept.png)
 
 ## Key Features
 
@@ -219,23 +218,51 @@ See the [configuration documentation](docs/configuration.md) for complete detail
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please see our [Development Guide](docs/development.md) for detailed instructions.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### Quick Start for Contributors
+
+1. **Fork the repository** and clone your fork
+2. **Install dependencies**: `uv sync`
+3. **Run tests**: `uv run pytest -m "not slow"`
+4. **Make your changes** with tests and documentation
+5. **Submit a pull request** with clear description
+
+### Development Commands
+
+```bash
+# Install dependencies
+uv sync
+
+# Run fast tests
+uv run pytest -m "not slow" -k "not integration"
+
+# Format and lint code
+uv run ruff check --fix
+
+# Type checking
+uv run mypy
+```
+
+For comprehensive development guidelines, testing procedures, and architecture information, see the [Development Guide](docs/development.md).
 
 ## Documentation
 
-- [Configuration Options](docs/configuration.md)
-- [CLI Commands](docs/cli.md)
-- [API Reference](docs/api.md)
-- [Japanese Support Details](docs/japanese.md)
-- [Architecture Overview](docs/architecture.md)
-- [MCP Server Guide](docs/mcp_server.md)
-- [Reranker Guide](docs/reranker.md)
+### User Guides
+- [CLI Commands](docs/cli.md) - Complete command-line interface reference
+- [Configuration Options](docs/configuration.md) - YAML configuration and settings
+- [Japanese Language Support](docs/japanese.md) - Specialized Japanese text processing
+- [MCP Server Integration](docs/mcp_server.md) - AI assistant integration guide
+- [Reranker Guide](docs/reranker.md) - Advanced reranking for better accuracy
+
+### Technical Documentation
+- [Architecture Overview](docs/architecture.md) - System design and components
+- [Query Engine](docs/query_engine.md) - Search algorithms and modes
+- [Indexer](docs/indexer.md) - Document processing and embedding generation
+- [Crawler](docs/crawler.md) - Document discovery and extraction
+
+### Development
+- [Development Guide](docs/development.md) - Setup, testing, and contribution guidelines
 
 ## License
 

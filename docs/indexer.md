@@ -26,13 +26,43 @@ The Document Processor handles:
 - Prefix handling for Ruri v3 embedding model
 
 ```python
-def process_document(path, content, title, language, metadata=None):
-    # Split content into chunks
-    chunks = _chunk_text(content)
-    # Apply prefix to each chunk
-    prefixed_chunks = [f"検索文書: {chunk}" for chunk in chunks]
-    # Returns document chunks ready for indexing
-    return chunks_with_metadata
+@dataclass
+class Chunk:
+    """Represents a document chunk for indexing."""
+    
+    id: str
+    path: str
+    title: str
+    content: str
+    chunk_index: int
+    language: str
+    metadata: Dict[str, object]
+
+class DocumentProcessor:
+    """Processes documents into indexable chunks."""
+    
+    def process_document(
+        self, 
+        path: str, 
+        content: str, 
+        title: str, 
+        language: str,
+        metadata: Optional[Dict[str, object]] = None
+    ) -> List[Chunk]:
+        """Process document into chunks with Ruri v3 prefixes."""
+        chunks = self._chunk_text(content)
+        return [
+            Chunk(
+                id=f"{path}:{i}",
+                path=path,
+                title=title,
+                content=f"検索文書: {chunk}",  # Ruri v3 prefix
+                chunk_index=i,
+                language=language,
+                metadata=metadata or {}
+            )
+            for i, chunk in enumerate(chunks)
+        ]
 ```
 
 ### Japanese Processor
@@ -45,13 +75,141 @@ The Japanese Processor provides specialized handling for Japanese text:
 - Encoding detection and handling
 
 ```python
-def process_japanese_text(text, encoding="utf-8"):
-    # Normalize Japanese text
-    normalized = _normalize_japanese(text)
-    # Standardize line endings
-    standardized = _standardize_line_endings(normalized)
-    # Returns processed Japanese text
-    return standardized
+def process_japanese_text(text: str, encoding: str = "utf-8") -> str:
+    """Process Japanese text with normalization."""
+    # Unicode normalization (NFKC)
+    normalized = unicodedata.normalize("NFKC", text)
+    # Character width normalization
+    normalized = _normalize_width(normalized)
+    return normalized
+```
+
+### Change Detection
+
+The indexer implements intelligent change detection for incremental updates:
+
+```python
+class FileChangeDetector:
+    """Detects changes in files for incremental indexing."""
+    
+    def detect_changes(
+        self,
+        file_paths: List[Path],
+        strategy: str = "smart"
+    ) -> ChangeDetectionResult:
+        """Detect new, modified, and deleted files.
+        
+        Strategies:
+        - timestamp: Fast, uses modification time
+        - hash: Accurate, uses content hash  
+        - smart: Balanced approach using both
+        """
+```
+
+### Reranker Integration
+
+The indexer supports advanced reranking for improved search accuracy:
+
+```python
+class Indexer:
+    """Main indexer with reranking support."""
+    
+    def search(
+        self,
+        query: str,
+        limit: int = 5,
+        mode: str = "hybrid",
+        use_reranker: bool = True,
+        vector_weight: float = 0.7,
+        bm25_weight: float = 0.3
+    ) -> List[SearchResult]:
+        """Search with optional reranking."""
+        # Initial retrieval (3x limit for reranking)
+        initial_results = self._hybrid_search(
+            query, limit * 3, vector_weight, bm25_weight
+        )
+        
+        if use_reranker and self.reranker:
+            # Rerank for better accuracy
+            return self.reranker.rerank(query, initial_results, limit)
+        
+        return initial_results[:limit]
+```
+
+### ONNX Optimization
+
+Automatic model optimization for faster inference:
+
+```python
+class EmbeddingGenerator:
+    """Embedding generation with ONNX optimization."""
+    
+    def __init__(self, model_name: str, use_onnx: bool = True):
+        self.model_name = model_name
+        if use_onnx:
+            # Automatic ONNX conversion for 2-4x speedup
+            self.model = self._load_onnx_model()
+        else:
+            self.model = self._load_pytorch_model()
+```
+
+## Modular Architecture
+
+The indexer follows a modular design with clear separation of concerns:
+
+### Core Services
+
+```python
+# Database service for data management
+class DatabaseService:
+    """Manages database operations and schema."""
+    
+# Embedding service for vector generation  
+class EmbeddingService:
+    """Handles embedding model loading and inference."""
+    
+# Tokenizer service for text processing
+class TokenizerService:
+    """Provides Japanese and multilingual tokenization."""
+    
+# Reranker service for result improvement
+class RerankerService:
+    """Manages reranker models and scoring."""
+```
+
+### Search Engines
+
+```python
+# Specialized search implementations
+class VectorSearch:
+    """Vector similarity search using embeddings."""
+    
+class BM25Search:  
+    """Keyword-based search using BM25 algorithm."""
+    
+class HybridSearch:
+    """Combines vector and BM25 with configurable weights."""
+```
+
+### Configuration System
+
+The indexer uses a modular configuration system:
+
+```python
+@dataclass 
+class IndexerConfig:
+    """Main indexer configuration."""
+    
+    model: ModelConfig           # Embedding and reranker models
+    search: SearchConfig         # Search algorithm settings  
+    processing: ProcessingConfig # Text processing options
+```
+
+This modular approach enables:
+- **Independent testing** of each component
+- **Flexible model swapping** without code changes
+- **Performance optimization** at the service level
+- **Easy extension** with new search algorithms
 ```
 
 ### BM25 Indexer

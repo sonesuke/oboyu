@@ -20,7 +20,31 @@ Oboyu is built around three primary components, each with distinct responsibilit
 2. **Indexer**: Processes documents and builds search indexes
 3. **Query Engine**: Handles search requests and returns relevant results
 
-![Oboyu Component Architecture](images/oboyu_components.png)
+## Component Overview
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│     Crawler     │────│     Indexer     │────│  Query Engine   │
+│                 │    │                 │    │                 │
+│ • Discovery     │    │ • Processing    │    │ • Vector Search │
+│ • Extraction    │    │ • Embedding     │    │ • BM25 Search   │
+│ • Japanese      │    │ • Storage       │    │ • Hybrid Search │
+│   Processing    │    │ • Change        │    │ • Reranking     │
+│                 │    │   Detection     │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+          │                       │                       │
+          ▼                       ▼                       ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        DuckDB Database                         │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────────────────┐ │
+│  │ file_metadata│ │    chunks    │ │      embeddings          │ │
+│  │              │ │              │ │                          │ │
+│  │ • path       │ │ • content    │ │ • vector                 │ │
+│  │ • metadata   │ │ • language   │ │ • similarity search      │ │
+│  │ • checksums  │ │ • metadata   │ │   (VSS extension)        │ │
+│  └──────────────┘ └──────────────┘ └──────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ## Data Flow
 
@@ -35,20 +59,85 @@ Document Sources → Crawler → Indexer → Database
 
 ## Technology Stack
 
-- **Core Language**: Python for cross-platform compatibility and rapid development
-- **Database**: DuckDB for serverless operation with vector and text search capabilities
-- **Embedding Models**: Multilingual models with Japanese language optimization
-- **Japanese Processing**: Specialized tokenizers for Japanese text handling
+- **Core Language**: Python 3.8+ for cross-platform compatibility
+- **Database**: DuckDB with VSS extension for vector similarity search and full-text indexing
+- **Embedding Models**: Ruri v3 (cl-nagoya/ruri-v3-30m) with Japanese optimization
+- **Reranker Models**: Ruri Cross-Encoder (cl-nagoya/ruri-reranker-small) for result refinement
+- **Japanese Processing**: MeCab morphological analyzer via fugashi library
+- **Search Algorithms**: Vector search (HNSW), BM25, and hybrid approaches
+- **ONNX Optimization**: Automatic model conversion for 2-4x inference speedup
+- **CLI Framework**: Typer with Rich for interactive command-line interface
+- **MCP Integration**: Model Context Protocol server for AI assistant integration
 
 ## Database Schema Overview
 
-Oboyu uses a carefully designed database schema with separate tables for:
+Oboyu uses a carefully designed DuckDB schema optimized for semantic search:
 
-- Documents (metadata and content)
-- Chunks (document segments)
-- Embeddings (vector representations)
+### Core Tables
 
-This separation allows for flexible indexing and search strategies.
+- **`file_metadata`**: File information, checksums, processing metadata
+- **`chunks`**: Document segments with content, language detection, and metadata
+- **`embeddings`**: Vector representations with VSS extension for similarity search
+
+### BM25 Search Tables  
+
+- **`vocabulary`**: Term vocabulary with IDF scores
+- **`inverted_index`**: Term-to-document mappings with TF scores
+- **`document_stats`**: Document length and term count statistics
+- **`collection_stats`**: Collection-wide statistics for BM25 scoring
+
+### Meta Tables
+
+- **`schema_version`**: Database schema versioning for safe migrations
+
+### Key Features
+
+- **VSS Extension**: Vector similarity search with HNSW indexing
+- **Full-Text Search**: Native DuckDB FTS for exact term matching
+- **Incremental Updates**: Change detection prevents redundant processing
+- **Schema Migrations**: Version-controlled database schema evolution
+- **Transaction Safety**: ACID compliance for reliable updates
+
+## Interface Architecture
+
+### Command-Line Interface
+
+Oboyu provides a rich CLI with multiple interaction modes:
+
+- **Single Commands**: Direct file indexing and one-shot queries
+- **Interactive Mode**: Persistent REPL for continuous searching with session state
+- **Management Commands**: Index status checking, differential updates, clearing
+
+### MCP Server Mode
+
+The Model Context Protocol (MCP) server enables AI assistant integration:
+
+- **Transport Options**: stdio, Server-Sent Events (SSE), streamable-http
+- **Tool Exposure**: Search, indexing, index management via standardized protocol
+- **Session Management**: Persistent database connections for multiple queries
+- **Error Handling**: Robust error reporting and recovery
+
+### API Layers
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    User Interfaces                         │
+├─────────────────────┬─────────────────────┬─────────────────┤
+│    CLI Commands     │  Interactive Mode   │   MCP Server    │
+├─────────────────────┼─────────────────────┼─────────────────┤
+│ • index             │ • /search           │ • search_tool   │
+│ • query             │ • /mode             │ • index_tool    │
+│ • clear             │ • /settings         │ • clear_tool    │
+│ • mcp               │ • /stats            │ • status_tool   │
+└─────────────────────┴─────────────────────┴─────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Core Engine                            │
+├─────────────────────┬─────────────────────┬─────────────────┤
+│     Crawler         │      Indexer        │  Query Engine   │
+└─────────────────────┴─────────────────────┴─────────────────┘
+```
 
 ## Configuration System
 

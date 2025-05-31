@@ -4,56 +4,88 @@ This directory contains a comprehensive benchmark suite for Oboyu, designed to m
 
 ## Overview
 
-The benchmark suite provides two main evaluation areas:
+The benchmark suite provides three main evaluation areas:
 
 1. **Speed Benchmarks** (`speed/`): Measure indexing and search performance
-2. **RAG Accuracy Benchmarks** (`rag_accuracy/`): Evaluate retrieval accuracy for Japanese document search
+2. **Accuracy Benchmarks** (`accuracy/`): Evaluate retrieval accuracy for RAG performance
+3. **Reranker Benchmarks** (`reranker/`): Test reranker model effectiveness
 
 ## Quick Start
 
-### Running Speed Benchmarks
+### Unified Benchmark Runner (Recommended)
+
+The easiest way to run benchmarks is using the unified runner:
 
 ```bash
-# Run speed benchmark with small dataset (default)
-uv run python bench/speed/run_speed_benchmark.py
+# Run all benchmarks quickly (reduced scope)
+uv run python bench/run_benchmarks.py all --quick
 
-# Run speed benchmark with specific datasets
+# Run only speed benchmarks
+uv run python bench/run_benchmarks.py speed --datasets small medium
+
+# Run only accuracy evaluation
+uv run python bench/run_benchmarks.py accuracy --datasets synthetic
+
+# Run comprehensive evaluation (full scope)
+uv run python bench/run_benchmarks.py all --comprehensive
+
+# Run reranker-specific benchmarks
+uv run python bench/run_benchmarks.py reranker --models small large
+```
+
+### Individual Benchmark Modules
+
+You can also run benchmarks individually for more control:
+
+```bash
+# Speed benchmarks
 uv run python bench/speed/run_speed_benchmark.py --datasets small medium
+
+# Accuracy evaluation
+uv run python bench/accuracy/benchmark_rag_accuracy.py --datasets synthetic miracl-ja
+
+# Reranker evaluation
+uv run python bench/reranker/benchmark_reranking.py --models cl-nagoya/ruri-reranker-small
+
+# Analyze results
+uv run python bench/speed/analyze.py --latest 5
 ```
 
-### Running RAG Accuracy Benchmarks
+### Unified Runner Options
+
+The `run_benchmarks.py` script provides several useful options:
 
 ```bash
-# Run accuracy evaluation on all JMTEB datasets
-uv run python bench/benchmark_rag_accuracy.py --datasets miracl-ja mldr-ja jagovfaqs-22k jacwir
+# Show help for all options
+uv run python bench/run_benchmarks.py --help
 
-# Run accuracy evaluation with specific search modes
-uv run python bench/benchmark_rag_accuracy.py --datasets miracl-ja --search-modes vector hybrid
-```
+# Quick benchmarks (reduced scope for faster execution)
+uv run python bench/run_benchmarks.py all --quick
 
-### Analyzing Results
+# Comprehensive benchmarks (full scope for thorough evaluation)  
+uv run python bench/run_benchmarks.py all --comprehensive
 
-```bash
-# Analyze the latest speed benchmark results
-uv run python bench/speed/run_speed_benchmark.py --analyze-only
+# Verbose output for debugging
+uv run python bench/run_benchmarks.py speed --verbose
 
-# Compare specific speed benchmark runs
-uv run python bench/speed/analyze.py --compare <run_id_1> <run_id_2>
-
-# Generate accuracy report from existing results
-uv run python bench/benchmark_rag_accuracy.py --report-only
+# Custom output directory
+uv run python bench/run_benchmarks.py accuracy --output-dir /custom/path
 ```
 
 ## Directory Structure
 
 ```
 bench/
-├── __init__.py                    # Package initialization
+├── __init__.py                    # Package initialization with exports
 ├── README.md                      # This file
+├── run_benchmarks.py              # Unified benchmark runner (main entry point)
 ├── config.py                      # Shared configuration
-├── utils.py                       # Common utilities
+├── utils.py                       # Common utilities  
 ├── logger.py                      # Shared logging utilities
-├── benchmark_rag_accuracy.py      # RAG accuracy benchmark runner
+├── core/                          # Shared core functionality
+│   ├── __init__.py               # Core module exports
+│   ├── benchmark_base.py         # Base benchmark class
+│   └── metrics.py                # Unified metrics calculation
 ├── speed/                         # Speed benchmarks
 │   ├── __init__.py               # Speed module initialization
 │   ├── run_speed_benchmark.py    # Main speed benchmark runner
@@ -65,13 +97,19 @@ bench/
 │   ├── results.py                # Results management
 │   ├── generate_queries.py       # Query generation
 │   └── generate_test_data.py     # Test data generation
-├── rag_accuracy/                  # RAG accuracy evaluation
-│   ├── __init__.py               # RAG accuracy module initialization
-│   ├── rag_evaluator.py          # Core RAG evaluation logic
-│   ├── dataset_manager.py        # JMTEB dataset management
-│   ├── metrics_calculator.py     # IR metrics calculation
-│   ├── reranker_evaluator.py     # Reranking evaluation
-│   └── results_analyzer.py       # Results analysis and reporting
+├── accuracy/                      # Accuracy evaluation (renamed from rag_accuracy)
+│   ├── __init__.py               # Accuracy module exports
+│   ├── benchmark_rag_accuracy.py # Main accuracy benchmark runner
+│   └── rag_accuracy/             # RAG evaluation implementation
+│       ├── __init__.py           # RAG accuracy module initialization
+│       ├── rag_evaluator.py      # Core RAG evaluation logic
+│       ├── dataset_manager.py    # JMTEB dataset management
+│       ├── metrics_calculator.py # IR metrics calculation
+│       ├── reranker_evaluator.py # Reranking evaluation
+│       └── results_analyzer.py   # Results analysis and reporting
+├── reranker/                      # Reranker-specific benchmarks (new)
+│   ├── __init__.py               # Reranker module exports
+│   └── benchmark_reranking.py    # Reranker evaluation benchmarks
 ├── config/                        # Configuration files
 │   └── rag_eval_config.yaml      # RAG evaluation configuration
 ├── data/                          # Test datasets (generated)
@@ -83,11 +121,11 @@ bench/
 │   ├── english_queries.json
 │   └── mixed_queries.json
 └── results/                       # Benchmark results and reports
-    ├── rag_accuracy_*.json        # RAG accuracy results
-    ├── rag_report_*.txt           # RAG accuracy reports
-    ├── benchmark_run_*.json       # Speed benchmark results
-    ├── summary_*.json             # Speed benchmark summaries
-    └── report_*.txt               # Speed benchmark reports
+    ├── speed_*.json              # Speed benchmark results
+    ├── accuracy_*.json           # Accuracy benchmark results  
+    ├── reranker_*.json           # Reranker benchmark results
+    ├── *_report_*.txt            # Human-readable reports
+    └── *_summary_*.json          # Summary files for CI/CD
 ```
 
 ## Speed Benchmarks
@@ -145,23 +183,26 @@ The RAG accuracy evaluation framework measures retrieval quality using standard 
 - **Hit Rate**: Percentage of queries with at least one relevant result
 - **F1@K**: Harmonic mean of precision and recall at K
 
-### Running RAG Evaluations
+### Running Accuracy Evaluations
 
 ```bash
-# Evaluate all datasets with all search modes
-uv run python bench/benchmark_rag_accuracy.py
+# Run via unified runner (recommended)
+uv run python bench/run_benchmarks.py accuracy --datasets synthetic miracl-ja
+
+# Or run directly
+uv run python bench/accuracy/benchmark_rag_accuracy.py
 
 # Evaluate specific datasets
-uv run python bench/benchmark_rag_accuracy.py --datasets miracl-ja mldr-ja
+uv run python bench/accuracy/benchmark_rag_accuracy.py --datasets miracl-ja mldr-ja
 
 # Evaluate with specific search modes and top-k values
-uv run python bench/benchmark_rag_accuracy.py --search-modes vector hybrid --top-k-values 1 5 10
+uv run python bench/accuracy/benchmark_rag_accuracy.py --search-modes vector hybrid --top-k-values 1 5 10
 
 # Generate report from existing results
-uv run python bench/benchmark_rag_accuracy.py --report-only
+uv run python bench/accuracy/benchmark_rag_accuracy.py --report-only
 
 # Compare with previous results for regression detection
-uv run python bench/benchmark_rag_accuracy.py --compare-with bench/results/rag_accuracy_20250101_120000.json
+uv run python bench/accuracy/benchmark_rag_accuracy.py --compare-with bench/results/accuracy_20250101_120000.json
 ```
 
 ## Speed Benchmarks
@@ -305,24 +346,28 @@ BENCHMARK_CONFIG = {
 ### Basic Integration
 
 ```bash
-# Run benchmark and check for regressions
-uv run python bench/run_speed_benchmark.py --datasets small
-uv run python bench/analyze.py --latest 2 --regression-threshold 0.1
+# Run quick benchmark suite and check for regressions
+uv run python bench/run_benchmarks.py all --quick
+uv run python bench/speed/analyze.py --latest 2 --regression-threshold 0.1
 ```
 
 ### GitHub Actions Example
 
 ```yaml
-- name: Run Performance Benchmark
-  run: uv run python bench/run_speed_benchmark.py --datasets small
+- name: Run Quick Performance Benchmark
+  run: uv run python bench/run_benchmarks.py all --quick
   
-- name: Check for Regressions
+- name: Check for Speed Regressions
   run: |
-    uv run python bench/analyze.py --latest 2 --regression-threshold 0.1
+    uv run python bench/speed/analyze.py --latest 2 --regression-threshold 0.1
     if [ $? -ne 0 ]; then
       echo "Performance regression detected!"
       exit 1
     fi
+
+- name: Run Accuracy Benchmark (Weekly)
+  if: github.event_name == 'schedule'
+  run: uv run python bench/run_benchmarks.py accuracy --comprehensive
 ```
 
 ## Troubleshooting
@@ -336,12 +381,12 @@ uv run python bench/analyze.py --latest 2 --regression-threshold 0.1
 
 2. **"Dataset not found"**
    ```bash
-   uv run python -m bench.generate_test_data all
+   uv run python bench/speed/generate_test_data.py all
    ```
 
 3. **"Query file not found"**
    ```bash
-   uv run python -m bench.generate_queries
+   uv run python bench/speed/generate_queries.py
    ```
 
 4. **Memory issues with large dataset**
@@ -352,7 +397,11 @@ uv run python bench/analyze.py --latest 2 --regression-threshold 0.1
 
 Enable verbose output:
 ```bash
-uv run python bench/run_speed_benchmark.py --datasets small --verbose
+# For unified runner
+uv run python bench/run_benchmarks.py speed --datasets small --verbose
+
+# For individual benchmarks
+uv run python bench/speed/run_speed_benchmark.py --datasets small --verbose
 ```
 
 ## RAG Accuracy Evaluation
@@ -366,20 +415,20 @@ The RAG accuracy evaluation suite measures Oboyu's effectiveness as a complete R
 **Important**: The RAG accuracy benchmark requires the Ruri v3 embedding model (~90MB) to be downloaded on first run. Ensure you have a stable internet connection.
 
 ```bash
+# Run via unified runner (recommended)
+uv run python bench/run_benchmarks.py accuracy --datasets synthetic
+
 # Run with synthetic dataset (quick test)
-uv run python bench/benchmark_rag_accuracy.py --datasets synthetic
+uv run python bench/accuracy/benchmark_rag_accuracy.py --datasets synthetic
 
-# Run with Japanese evaluation datasets
-uv run python bench/benchmark_rag_accuracy.py --datasets miracl-ja mldr-ja jagovfaqs-22k
+# Run with Japanese evaluation datasets  
+uv run python bench/accuracy/benchmark_rag_accuracy.py --datasets miracl-ja mldr-ja jagovfaqs-22k
 
-# Evaluate specific search modes (currently only vector is implemented)
-uv run python bench/benchmark_rag_accuracy.py --search-modes vector
+# Evaluate specific search modes
+uv run python bench/accuracy/benchmark_rag_accuracy.py --search-modes vector hybrid
 
-# Include reranking evaluation (for planned feature)
-uv run python bench/benchmark_rag_accuracy.py --evaluate-reranking
-
-# Test components without full indexing
-uv run python bench/test_rag_minimal.py
+# Include reranking evaluation
+uv run python bench/accuracy/benchmark_rag_accuracy.py --evaluate-reranking
 ```
 
 ### RAG Evaluation Datasets
@@ -417,13 +466,13 @@ uv run python bench/benchmark_rag_accuracy.py --datasets custom --custom-dataset
 
 ```bash
 # Generate report from existing results
-uv run python bench/benchmark_rag_accuracy.py --report-only
+uv run python bench/accuracy/benchmark_rag_accuracy.py --report-only
 
 # Compare with previous run
-uv run python bench/benchmark_rag_accuracy.py --compare-with bench/results/rag_accuracy_20250101_120000.json
+uv run python bench/accuracy/benchmark_rag_accuracy.py --compare-with bench/results/accuracy_20250101_120000.json
 
 # Set custom regression threshold (default: 10%)
-uv run python bench/benchmark_rag_accuracy.py --compare-with previous.json --regression-threshold 0.05
+uv run python bench/accuracy/benchmark_rag_accuracy.py --compare-with previous.json --regression-threshold 0.05
 ```
 
 ### Configuration
