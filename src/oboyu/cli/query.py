@@ -23,10 +23,8 @@ from typing_extensions import Annotated
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from oboyu.cli.base import BaseCommand
-from oboyu.cli.hierarchical_logger import create_hierarchical_logger
-from oboyu.common.config import ConfigManager
 from oboyu.common.paths import DEFAULT_DB_PATH
-from oboyu.indexer.config import DEFAULT_RERANKER_MODEL, IndexerConfig
+from oboyu.indexer.config import DEFAULT_RERANKER_MODEL
 from oboyu.indexer.indexer import Indexer, SearchResult
 
 # Create Typer app

@@ -822,15 +822,16 @@ class Indexer:
             # Discover all documents in directory
             discovered_paths = discover_documents(
                 Path(directory),
-                depth=crawler_config.depth,
-                include_patterns=crawler_config.include_patterns,
+                patterns=crawler_config.include_patterns,
                 exclude_patterns=crawler_config.exclude_patterns,
+                max_depth=crawler_config.depth,
                 follow_symlinks=crawler_config.follow_symlinks,
             )
             
-            # Detect changes using specified strategy
+            # Detect changes using specified strategy (extract just paths from tuples)
+            paths_only = [path for path, metadata in discovered_paths]
             changes = self.change_detector.detect_changes(
-                list(discovered_paths),
+                paths_only,
                 strategy=change_detection_strategy
             )
             

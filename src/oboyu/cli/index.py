@@ -122,15 +122,16 @@ def status(
             # Discover all documents
             discovered_paths = discover_documents(
                 Path(directory),
-                depth=crawler_config.depth,
-                include_patterns=crawler_config.include_patterns,
+                patterns=crawler_config.include_patterns,
                 exclude_patterns=crawler_config.exclude_patterns,
+                max_depth=crawler_config.depth,
                 follow_symlinks=crawler_config.follow_symlinks,
             )
             
-            # Detect changes
+            # Detect changes (extract just paths from tuples)
+            paths_only = [path for path, metadata in discovered_paths]
             changes = indexer.change_detector.detect_changes(
-                list(discovered_paths),
+                paths_only,
                 strategy=indexer_config.change_detection_strategy
             )
             
@@ -224,15 +225,16 @@ def diff(
             # Discover all documents
             discovered_paths = discover_documents(
                 Path(directory),
-                depth=crawler_config.depth,
-                include_patterns=crawler_config.include_patterns,
+                patterns=crawler_config.include_patterns,
                 exclude_patterns=crawler_config.exclude_patterns,
+                max_depth=crawler_config.depth,
                 follow_symlinks=crawler_config.follow_symlinks,
             )
             
-            # Detect changes
+            # Detect changes (extract just paths from tuples)
+            paths_only = [path for path, metadata in discovered_paths]
             changes = indexer.change_detector.detect_changes(
-                list(discovered_paths),
+                paths_only,
                 strategy=detection_strategy
             )
             
