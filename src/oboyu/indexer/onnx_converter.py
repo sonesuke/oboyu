@@ -16,8 +16,6 @@ from onnxruntime import GraphOptimizationLevel, InferenceSession, SessionOptions
 from sentence_transformers import CrossEncoder, SentenceTransformer
 from transformers import AutoModelForSequenceClassification, AutoTokenizer  # type: ignore[attr-defined]
 
-from oboyu.common.paths import EMBEDDING_CACHE_DIR
-
 logger = logging.getLogger(__name__)
 
 # Try to import quantization tools
@@ -385,57 +383,16 @@ def get_or_convert_onnx_model(
         Path to ONNX model file
 
     """
-    if cache_dir is None:
-        cache_dir = EMBEDDING_CACHE_DIR / "models"
-    else:
-        cache_dir = Path(cache_dir)
-    model_dir = cache_dir / "onnx" / model_name.replace("/", "_")
-
-    # Try quantized model first (if quantization is requested)
-    if apply_quantization:
-        onnx_path = model_dir / "model_quantized.onnx"
-        if onnx_path.exists() and onnx_path.stat().st_size > 0:
-            return onnx_path
-
-    # Try optimized model
-    onnx_path = model_dir / "model_optimized.onnx"
-    if onnx_path.exists() and onnx_path.stat().st_size > 0:
-        # If quantization is requested but quantized model not found, try to quantize existing model
-        if apply_quantization and QUANTIZATION_AVAILABLE:
-            try:
-                quant_config = quantization_config or {}
-                weight_type = quant_config.get("weight_type", "uint8")
-                quantized_path = quantize_model_dynamic(onnx_path, weight_type=weight_type)
-                return quantized_path
-            except Exception as e:
-                logger.warning(f"Failed to quantize existing model: {e}")
-        return onnx_path
-
-    # Try non-optimized model
-    onnx_path = model_dir / "model.onnx"
-    if onnx_path.exists() and onnx_path.stat().st_size > 0:
-        # If quantization is requested but quantized model not found, try to quantize existing model
-        if apply_quantization and QUANTIZATION_AVAILABLE:
-            try:
-                quant_config = quantization_config or {}
-                weight_type = quant_config.get("weight_type", "uint8")
-                quantized_path = quantize_model_dynamic(onnx_path, weight_type=weight_type)
-                return quantized_path
-            except Exception as e:
-                logger.warning(f"Failed to quantize existing model: {e}")
-        return onnx_path
-
-    # Convert if not found
-    logger.debug(f"ONNX model not found, converting {model_name}...")
-    onnx_path = convert_to_onnx(
+    # Use the unified ONNXModelCache from model_manager
+    from oboyu.common.model_manager import ONNXModelCache
+    
+    return ONNXModelCache.get_or_convert_onnx_model(
         model_name,
-        model_dir,
-        optimize=False,  # Disable optimization to avoid issues
+        "embedding",
+        cache_dir=Path(cache_dir) if cache_dir else None,
         apply_quantization=apply_quantization,
         quantization_config=quantization_config,
     )
-
-    return onnx_path
 
 
 class ONNXCrossEncoderModel:
@@ -698,54 +655,13 @@ def get_or_convert_cross_encoder_onnx_model(
         Path to ONNX model file
 
     """
-    if cache_dir is None:
-        cache_dir = EMBEDDING_CACHE_DIR / "models"
-    else:
-        cache_dir = Path(cache_dir)
-    model_dir = cache_dir / "onnx" / model_name.replace("/", "_")
-
-    # Try quantized model first (if quantization is requested)
-    if apply_quantization:
-        onnx_path = model_dir / "model_quantized.onnx"
-        if onnx_path.exists() and onnx_path.stat().st_size > 0:
-            return onnx_path
-
-    # Try optimized model
-    onnx_path = model_dir / "model_optimized.onnx"
-    if onnx_path.exists() and onnx_path.stat().st_size > 0:
-        # If quantization is requested but quantized model not found, try to quantize existing model
-        if apply_quantization and QUANTIZATION_AVAILABLE:
-            try:
-                quant_config = quantization_config or {}
-                weight_type = quant_config.get("weight_type", "uint8")
-                quantized_path = quantize_model_dynamic(onnx_path, weight_type=weight_type)
-                return quantized_path
-            except Exception as e:
-                logger.warning(f"Failed to quantize existing model: {e}")
-        return onnx_path
-
-    # Try non-optimized model
-    onnx_path = model_dir / "model.onnx"
-    if onnx_path.exists() and onnx_path.stat().st_size > 0:
-        # If quantization is requested but quantized model not found, try to quantize existing model
-        if apply_quantization and QUANTIZATION_AVAILABLE:
-            try:
-                quant_config = quantization_config or {}
-                weight_type = quant_config.get("weight_type", "uint8")
-                quantized_path = quantize_model_dynamic(onnx_path, weight_type=weight_type)
-                return quantized_path
-            except Exception as e:
-                logger.warning(f"Failed to quantize existing model: {e}")
-        return onnx_path
-
-    # Convert if not found
-    logger.debug(f"ONNX Cross-Encoder model not found, converting {model_name}...")
-    onnx_path = convert_cross_encoder_to_onnx(
+    # Use the unified ONNXModelCache from model_manager
+    from oboyu.common.model_manager import ONNXModelCache
+    
+    return ONNXModelCache.get_or_convert_onnx_model(
         model_name,
-        model_dir,
-        optimize=False,  # Disable optimization to avoid issues
+        "reranker",
+        cache_dir=Path(cache_dir) if cache_dir else None,
         apply_quantization=apply_quantization,
         quantization_config=quantization_config,
     )
-
-    return onnx_path

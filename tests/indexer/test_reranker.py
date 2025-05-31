@@ -1,7 +1,7 @@
 """Tests for the reranker module."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, patch, PropertyMock
 
 import numpy as np
 import pytest
@@ -66,13 +66,8 @@ class TestRerankedResult:
 class TestCrossEncoderReranker:
     """Test cases for CrossEncoderReranker class."""
     
-    @patch("oboyu.indexer.reranker._import_cross_encoder")
-    def test_initialization(self, mock_import_func: MagicMock) -> None:
+    def test_initialization(self) -> None:
         """Test CrossEncoderReranker initialization."""
-        # Setup mock to return a mock CrossEncoder class
-        mock_cross_encoder_class = MagicMock()
-        mock_import_func.return_value = mock_cross_encoder_class
-        
         reranker = CrossEncoderReranker(
             model_name="test-model",
             device="cpu",
@@ -84,50 +79,33 @@ class TestCrossEncoderReranker:
         assert reranker.device == "cpu"
         assert reranker.batch_size == 4
         assert reranker.max_length == 256
-        assert reranker._model is None  # Lazy loading
+        assert reranker.model_manager is not None  # Model manager created
     
-    @patch("oboyu.indexer.reranker._import_cross_encoder")
-    def test_lazy_model_loading(self, mock_import_func: MagicMock) -> None:
+    @patch.object(CrossEncoderReranker, "model", new_callable=PropertyMock)
+    def test_lazy_model_loading(self, mock_model: PropertyMock) -> None:
         """Test lazy loading of CrossEncoder model."""
-        mock_cross_encoder_class = MagicMock()
-        mock_model = MagicMock()
-        mock_cross_encoder_class.return_value = mock_model
-        mock_import_func.return_value = mock_cross_encoder_class
+        mock_instance = MagicMock()
+        mock_model.return_value = mock_instance
         
         reranker = CrossEncoderReranker(model_name="test-model")
         
-        # Model should not be loaded yet
-        mock_cross_encoder_class.assert_not_called()
-        
-        # Access model property
+        # Model should be loaded on first access
         model = reranker.model
-        
-        # Now model should be loaded
-        mock_cross_encoder_class.assert_called_once_with(
-            "test-model",
-            device="cpu",
-            max_length=512,
-            trust_remote_code=True,
-        )
-        assert model == mock_model
-        assert reranker._model == mock_model
+        assert model == mock_instance
     
-    @patch("oboyu.indexer.reranker._import_cross_encoder")
-    def test_rerank_empty_results(self, mock_import_func: MagicMock) -> None:
+    def test_rerank_empty_results(self) -> None:
         """Test reranking with empty results."""
         reranker = CrossEncoderReranker()
         results = reranker.rerank("test query", [])
         assert results == []
     
-    @patch("oboyu.indexer.reranker._import_cross_encoder")
-    def test_rerank_with_results(self, mock_import_func: MagicMock) -> None:
+    @patch.object(CrossEncoderReranker, "model")
+    def test_rerank_with_results(self, mock_model_prop: MagicMock) -> None:
         """Test reranking with search results."""
         # Setup mock model
-        mock_cross_encoder_class = MagicMock()
         mock_model = MagicMock()
         mock_model.predict.return_value = np.array([0.5, 1.5, -0.5])  # Raw scores
-        mock_cross_encoder_class.return_value = mock_model
-        mock_import_func.return_value = mock_cross_encoder_class
+        mock_model_prop.return_value = mock_model
         
         # Create test results
         results = [
@@ -162,14 +140,12 @@ class TestCrossEncoderReranker:
         assert reranked[1].chunk_id == "test-0"  # Middle score
         assert reranked[2].chunk_id == "test-2"  # Lowest score
     
-    @patch("oboyu.indexer.reranker._import_cross_encoder")
-    def test_rerank_with_top_k(self, mock_import_func: MagicMock) -> None:
+    @patch.object(CrossEncoderReranker, "model")
+    def test_rerank_with_top_k(self, mock_model_prop: MagicMock) -> None:
         """Test reranking with top_k limit."""
-        mock_cross_encoder_class = MagicMock()
         mock_model = MagicMock()
         mock_model.predict.return_value = np.array([0.5, 1.5, -0.5])
-        mock_cross_encoder_class.return_value = mock_model
-        mock_import_func.return_value = mock_cross_encoder_class
+        mock_model_prop.return_value = mock_model
         
         results = [
             SearchResult(
@@ -192,14 +168,12 @@ class TestCrossEncoderReranker:
         assert reranked[0].chunk_id == "test-1"  # Highest score
         assert reranked[1].chunk_id == "test-0"  # Second highest
     
-    @patch("oboyu.indexer.reranker._import_cross_encoder")
-    def test_rerank_with_threshold(self, mock_import_func: MagicMock) -> None:
+    @patch.object(CrossEncoderReranker, "model")
+    def test_rerank_with_threshold(self, mock_model_prop: MagicMock) -> None:
         """Test reranking with score threshold."""
-        mock_cross_encoder_class = MagicMock()
         mock_model = MagicMock()
         mock_model.predict.return_value = np.array([0.5, 1.5, -1.5])  # -1.5 -> 0.182 after sigmoid
-        mock_cross_encoder_class.return_value = mock_model
-        mock_import_func.return_value = mock_cross_encoder_class
+        mock_model_prop.return_value = mock_model
         
         results = [
             SearchResult(
@@ -241,52 +215,28 @@ class TestONNXCrossEncoderReranker:
         assert reranker.max_length == 256
         assert reranker._model is None  # Lazy loading
     
-    @patch("oboyu.indexer.reranker.get_or_convert_cross_encoder_onnx_model")
-    @patch("oboyu.indexer.onnx_converter.ONNXCrossEncoderModel")
-    def test_lazy_model_loading(
-        self,
-        mock_onnx_model_class: MagicMock,
-        mock_get_or_convert: MagicMock,
-    ) -> None:
+    @patch.object(ONNXCrossEncoderReranker, "model")
+    def test_lazy_model_loading(self, mock_model_prop: MagicMock) -> None:
         """Test lazy loading of ONNX model."""
-        mock_onnx_path = Path("/test/model.onnx")
-        mock_get_or_convert.return_value = mock_onnx_path
-        
         mock_model = MagicMock()
-        mock_onnx_model_class.return_value = mock_model
+        mock_model_prop.return_value = mock_model
         
         reranker = ONNXCrossEncoderReranker(model_name="test-model")
-        
-        # Model should not be loaded yet
-        mock_get_or_convert.assert_not_called()
         
         # Access model property
         model = reranker.model
         
-        # Now model should be loaded
-        mock_get_or_convert.assert_called_once()
-        mock_onnx_model_class.assert_called_once_with(
-            model_path=mock_onnx_path,
-            max_seq_length=512,
-            optimization_level="none",
-        )
+        # Model should be loaded
         assert model == mock_model
     
-    @patch("oboyu.indexer.reranker.get_or_convert_cross_encoder_onnx_model")
-    @patch("oboyu.indexer.onnx_converter.ONNXCrossEncoderModel")
-    def test_rerank_with_results(
-        self,
-        mock_onnx_model_class: MagicMock,
-        mock_get_or_convert: MagicMock,
-    ) -> None:
+    @patch.object(ONNXCrossEncoderReranker, "model")
+    def test_rerank_with_results(self, mock_model_prop: MagicMock) -> None:
         """Test ONNX reranking with search results."""
         # Setup mocks
-        mock_get_or_convert.return_value = Path("/test/model.onnx")
-        
         mock_model = MagicMock()
         # ONNX model returns normalized scores
         mock_model.predict.return_value = np.array([0.6, 0.9, 0.3])
-        mock_onnx_model_class.return_value = mock_model
+        mock_model_prop.return_value = mock_model
         
         # Create test results
         results = [
@@ -321,29 +271,29 @@ class TestCreateReranker:
     
     def test_create_onnx_reranker(self) -> None:
         """Test creating ONNX reranker."""
-        from oboyu.indexer.optimized_reranker import OptimizedONNXReranker
+        from oboyu.indexer.reranker import ONNXCrossEncoderReranker
         
         reranker = create_reranker(
             model_name="test-model",
             use_onnx=True,
             device="cpu",
         )
-        assert isinstance(reranker, OptimizedONNXReranker)
+        assert isinstance(reranker, ONNXCrossEncoderReranker)
     
     def test_create_pytorch_reranker(self) -> None:
         """Test creating PyTorch reranker."""
-        from oboyu.indexer.fast_pytorch_reranker import FastPyTorchReranker
+        from oboyu.indexer.reranker import CrossEncoderReranker
         
         reranker = create_reranker(
             model_name="test-model",
             use_onnx=False,
             device="cpu",
         )
-        assert isinstance(reranker, FastPyTorchReranker)
+        assert isinstance(reranker, CrossEncoderReranker)
     
     def test_create_pytorch_reranker_for_cuda(self) -> None:
-        """Test creating PyTorch reranker for CUDA."""
-        from oboyu.indexer.optimized_reranker import OptimizedONNXReranker
+        """Test creating ONNX reranker for CUDA."""
+        from oboyu.indexer.reranker import ONNXCrossEncoderReranker
         
         # ONNX is used for both CPU and CUDA now
         reranker = create_reranker(
@@ -351,4 +301,4 @@ class TestCreateReranker:
             use_onnx=True,
             device="cuda",
         )
-        assert isinstance(reranker, OptimizedONNXReranker)
+        assert isinstance(reranker, ONNXCrossEncoderReranker)

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, List, Optional
 if TYPE_CHECKING:
     from oboyu.indexer.indexer import SearchResult
 
+from oboyu.common.model_manager import RerankerModelManager
 from oboyu.indexer.reranker import BaseReranker, RerankedResult
 
 logger = logging.getLogger(__name__)
@@ -32,43 +33,19 @@ class FastPyTorchReranker(BaseReranker):
         """
         super().__init__(model_name, device, batch_size, max_length)
         logger.debug(f"Initializing fast PyTorch reranker with model: {model_name}")
+        
+        # Create model manager for unified model loading with PyTorch backend
+        self.model_manager = RerankerModelManager(
+            model_name=model_name,
+            device=device,
+            use_onnx=False,  # Use PyTorch for this fast version
+            max_length=max_length,
+        )
 
     @property
     def model(self) -> Any:  # noqa: ANN401
         """Lazy load the CrossEncoder with PyTorch backend."""
-        if self._model is None:
-            logger.debug(f"Loading CrossEncoder with PyTorch backend: {self.model_name}")
-            import torch
-            from sentence_transformers import CrossEncoder
-
-            # Optimize PyTorch for inference
-            try:
-                if hasattr(torch.backends, 'mkldnn') and hasattr(torch.backends.mkldnn, 'is_available'):
-                    if torch.backends.mkldnn.is_available():  # type: ignore[no-untyped-call]
-                        torch.backends.mkldnn.enabled = True  # type: ignore[assignment]
-            except Exception as e:
-                logger.debug(f"PyTorch MKLDNN optimization failed: {e}")
-
-            # Use PyTorch backend which is often faster than ONNX for CPU inference
-            self._model = CrossEncoder(
-                self.model_name,
-                backend="torch",
-                device=self.device,
-                max_length=self.max_length,
-                trust_remote_code=True,
-            )
-            
-            # Optimize the model for inference
-            self._model.model.eval()
-            if hasattr(torch.jit, 'optimize_for_inference'):
-                try:
-                    self._model.model = torch.jit.optimize_for_inference(self._model.model)
-                    logger.debug("Applied PyTorch JIT optimization for inference")
-                except Exception as e:
-                    logger.debug(f"Could not apply JIT optimization: {e}")
-            
-            logger.debug("CrossEncoder with PyTorch backend loaded successfully")
-        return self._model
+        return self.model_manager.model
 
     def rerank(
         self,
