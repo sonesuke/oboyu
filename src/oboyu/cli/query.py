@@ -23,6 +23,7 @@ from typing_extensions import Annotated
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from oboyu.cli.hierarchical_logger import create_hierarchical_logger
+from oboyu.common.config import ConfigManager
 from oboyu.common.paths import DEFAULT_DB_PATH
 from oboyu.indexer.config import DEFAULT_RERANKER_MODEL, IndexerConfig
 from oboyu.indexer.indexer import Indexer, SearchResult
@@ -547,40 +548,35 @@ def query(
     elif query is None:
         console.print("❌ Error: Query argument is required (or use --interactive)", style="red")
         raise typer.Exit(1)
-    # Get global options from context
-    config_data = ctx.obj.get("config_data", {}) if ctx.obj else {}
+    # Get configuration manager from context
+    config_manager = ctx.obj.get("config_manager") if ctx.obj else ConfigManager()
 
     # Get query engine configuration
-    query_config = config_data.get("query", {})
+    query_config = config_manager.get_section("query")
 
     # Override with command-line options
+    cli_overrides = {}
     if top_k is not None:
-        query_config["top_k"] = top_k
-    else:
-        top_k = query_config.get("top_k", 5)
-
+        cli_overrides["top_k"] = top_k
     if vector_weight is not None:
-        query_config["vector_weight"] = vector_weight
-
+        cli_overrides["vector_weight"] = vector_weight
     if bm25_weight is not None:
-        query_config["bm25_weight"] = bm25_weight
+        cli_overrides["bm25_weight"] = bm25_weight
+    if rerank is not None:
+        cli_overrides["rerank"] = rerank
+        
+    query_config = config_manager.merge_cli_overrides("query", cli_overrides)
+    
+    # Get top_k value for use later
+    top_k = query_config.get("top_k", 5)
 
-    # Create indexer configuration
-    indexer_config_dict = config_data.get("indexer", {})
+    # Get indexer configuration
+    indexer_config_dict = config_manager.get_section("indexer")
 
-    # Handle database path explicitly, with clear precedence:
-    # 1. Command-line option (highest priority)
-    # 2. Config file value
-    # 3. Default from central path definition (lowest priority)
-    if db_path is not None:
-        indexer_config_dict["db_path"] = str(db_path)
-        console.print(f"Using database: {db_path}")
-    elif "db_path" in indexer_config_dict:
-        console.print(f"Using database: {indexer_config_dict['db_path']}")
-    else:
-        # Use the default path from central definition
-        indexer_config_dict["db_path"] = str(DEFAULT_DB_PATH)
-        console.print(f"Using database: {DEFAULT_DB_PATH}")
+    # Resolve database path using ConfigManager
+    resolved_db_path = config_manager.resolve_db_path(db_path, indexer_config_dict)
+    indexer_config_dict["db_path"] = str(resolved_db_path)
+    console.print(f"Using database: {resolved_db_path}")
 
     # Create indexer configuration object
     indexer_config = IndexerConfig(config_dict={"indexer": indexer_config_dict})

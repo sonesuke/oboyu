@@ -11,7 +11,7 @@ from typing_extensions import Annotated
 
 from oboyu.cli.common_options import DatabasePathOption, DebugOption, VerboseOption
 from oboyu.cli.hierarchical_logger import create_hierarchical_logger
-from oboyu.common.paths import DEFAULT_DB_PATH
+from oboyu.common.config import ConfigManager
 from oboyu.mcp.context import db_path_global, mcp
 
 # Create Typer app
@@ -63,26 +63,21 @@ def main(
     valid_transports: list[Literal["stdio", "sse", "streamable-http"]] = ["stdio", "sse", "streamable-http"]
     if transport not in valid_transports:
         raise typer.BadParameter(f"Transport must be one of: {', '.join(valid_transports)}")
-    # Get global options from context
-    config_data = ctx.obj.get("config_data", {}) if ctx.obj else {}
+    # Get configuration manager from context
+    config_manager = ctx.obj.get("config_manager") if ctx.obj else ConfigManager()
 
-    # Handle database path explicitly
-    indexer_config_dict = config_data.get("indexer", {}).copy()
-    if db_path:
-        indexer_config_dict["db_path"] = str(db_path)
-        if verbose:
-            console.print(f"Using database: {db_path}")
-    elif "db_path" in indexer_config_dict:
-        if verbose:
-            console.print(f"Using database: {indexer_config_dict['db_path']}")
-    else:
-        # Use default path
-        indexer_config_dict["db_path"] = str(DEFAULT_DB_PATH)
-        if verbose:
-            console.print(f"Using database: {DEFAULT_DB_PATH}")
+    # Get indexer configuration
+    indexer_config_dict = config_manager.get_section("indexer")
+    
+    # Resolve database path using ConfigManager
+    resolved_db_path = config_manager.resolve_db_path(db_path, indexer_config_dict)
+    indexer_config_dict["db_path"] = str(resolved_db_path)
+    
+    if verbose:
+        console.print(f"Using database: {resolved_db_path}")
 
     # Store DB path in a global variable that our tools can access
-    db_path_global.value = indexer_config_dict.get("db_path")
+    db_path_global.value = str(resolved_db_path)
 
     # Use hierarchical logger for MCP server startup
     if verbose:
