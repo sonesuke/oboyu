@@ -79,7 +79,7 @@ def test_create_default_config() -> None:
         # Check specific values
         assert loaded_config["crawler"]["depth"] == 10
         assert "*.txt" in loaded_config["crawler"]["include_patterns"]
-        assert loaded_config["indexer"]["chunk_size"] == 1024
+        assert loaded_config["indexer"]["chunk_size"] == 300
         assert loaded_config["query"]["top_k"] == 10
         
         # Note: db_path is not in the indexer defaults - it must be explicitly provided

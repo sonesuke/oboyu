@@ -167,8 +167,8 @@ def main() -> None:
         config_dict={
             "indexer": {
                 "db_path": str(db_path),
-                "chunk_size": BENCHMARK_CONFIG.get("indexing", {}).get("chunk_size", 1024),
-                "chunk_overlap": BENCHMARK_CONFIG.get("indexing", {}).get("chunk_overlap", 256),
+                "chunk_size": BENCHMARK_CONFIG.get("indexing", {}).get("chunk_size", 300),
+                "chunk_overlap": BENCHMARK_CONFIG.get("indexing", {}).get("chunk_overlap", 75),
             }
         }
     )

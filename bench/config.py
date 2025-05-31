@@ -138,8 +138,8 @@ OBOYU_CONFIG = {
         "max_workers": 4
     },
     "indexer": {
-        "chunk_size": 1024,
-        "chunk_overlap": 256,
+        "chunk_size": 300,
+        "chunk_overlap": 75,
         "embedding_model": "cl-nagoya/ruri-v3-30m",
         "embedding_device": "cpu",
         "batch_size": 8
