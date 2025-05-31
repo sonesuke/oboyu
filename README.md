@@ -22,7 +22,7 @@ The system provides both command-line interface for direct queries and an MCP se
 - **Japanese Language Excellence**: First-class support for Japanese text with built-in specialized tokenization and encoding detection
 - **Semantic Search**: Retrieve the most relevant documents using vector embeddings with the Ruri v3 model
 - **Multiple Search Modes**: Choose between vector, BM25, or hybrid search depending on your needs
-- **Advanced Reranking**: Improve search accuracy with Ruri Cross-Encoder reranker models for enhanced RAG performance
+- **Advanced Reranking**: Improve search accuracy with lightweight Ruri Cross-Encoder reranker (default: ruri-reranker-small)
 - **ONNX Optimization**: 2-4x faster inference with automatic ONNX conversion for both embedding and reranker models
 - **Document-Focused Results**: Get top matching documents with URIs, titles, and relevant snippets
 - **Rich Command-Line Interface**: Powerful CLI with extensive options and colorized output
@@ -49,6 +49,24 @@ Oboyu requires several dependencies that are automatically installed:
 3. **duckdb**: Required for storing and retrieving the vector search database.
 
 > **Note**: On the first run, Oboyu will download the Ruri v3 model (~90MB) and its required components from the Hugging Face model hub.
+
+### System Requirements
+
+**Minimum Requirements:**
+- CPU: Any modern x86_64 or ARM64 processor
+- Memory: 2GB RAM (for embedding model + lightweight reranker)
+- Storage: 500MB free space (for models and cache)
+
+**Recommended Requirements:**
+- CPU: Multi-core processor (4+ cores)
+- Memory: 4GB+ RAM
+- Storage: 2GB+ free space
+
+**Memory Usage by Component:**
+- Ruri v3 embedding model: ~300MB
+- Lightweight reranker (default): ~400MB
+- Heavy reranker (optional): ~1.2GB
+- DuckDB + indexes: Variable based on document count
 
 #### SentencePiece Installation
 
@@ -134,7 +152,7 @@ indexer:
   db_path: "oboyu.db"
   # Reranker settings
   use_reranker: true
-  reranker_model: "cl-nagoya/ruri-v3-reranker-310m"
+  reranker_model: "cl-nagoya/ruri-reranker-small"
   reranker_use_onnx: true
   reranker_top_k_multiplier: 3
   reranker_score_threshold: 0.5

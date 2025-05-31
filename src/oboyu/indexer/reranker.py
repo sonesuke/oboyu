@@ -47,7 +47,7 @@ class BaseReranker:
 
     def __init__(
         self,
-        model_name: str = "cl-nagoya/ruri-v3-reranker-310m",
+        model_name: str = "cl-nagoya/ruri-reranker-small",
         device: str = "cpu",
         batch_size: int = 8,
         max_length: int = 512,
@@ -94,7 +94,7 @@ class CrossEncoderReranker(BaseReranker):
 
     def __init__(
         self,
-        model_name: str = "cl-nagoya/ruri-v3-reranker-310m",
+        model_name: str = "cl-nagoya/ruri-reranker-small",
         device: str = "cpu",
         batch_size: int = 8,
         max_length: int = 512,
@@ -185,7 +185,7 @@ class ONNXCrossEncoderReranker(BaseReranker):
 
     def __init__(
         self,
-        model_name: str = "cl-nagoya/ruri-v3-reranker-310m",
+        model_name: str = "cl-nagoya/ruri-reranker-small",
         device: str = "cpu",
         batch_size: int = 8,
         max_length: int = 512,
@@ -288,7 +288,7 @@ class ONNXCrossEncoderReranker(BaseReranker):
 
 
 def create_reranker(
-    model_name: str = "cl-nagoya/ruri-v3-reranker-310m",
+    model_name: str = "cl-nagoya/ruri-reranker-small",
     use_onnx: bool = True,
     device: str = "cpu",
     batch_size: int = 8,

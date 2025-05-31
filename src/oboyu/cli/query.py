@@ -24,7 +24,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from oboyu.cli.hierarchical_logger import create_hierarchical_logger
 from oboyu.common.paths import DEFAULT_DB_PATH
-from oboyu.indexer.config import IndexerConfig
+from oboyu.indexer.config import DEFAULT_RERANKER_MODEL, IndexerConfig
 from oboyu.indexer.indexer import Indexer, SearchResult
 
 # Create Typer app
@@ -609,7 +609,7 @@ def query(
                 
             # Load reranker if enabled
             if rerank:
-                reranker_model = indexer_config_dict.get("reranker_model", "cl-nagoya/ruri-v3-reranker-310m")
+                reranker_model = indexer_config_dict.get("reranker_model", DEFAULT_RERANKER_MODEL)
                 rerank_op = logger.start_operation(f"Loading reranker model ({reranker_model})...")
                 # Warmup the reranker with a dummy query to ensure it's fully loaded
                 _warmup_reranker(indexer)
