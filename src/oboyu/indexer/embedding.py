@@ -6,7 +6,6 @@ using the Ruri v3 model with specialized handling for Japanese content.
 
 import hashlib
 import json
-import logging
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -15,23 +14,10 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 import numpy as np
 from numpy.typing import NDArray
 
+from oboyu.common.model_manager import EmbeddingModelManager
 from oboyu.common.paths import EMBEDDING_CACHE_DIR, EMBEDDING_MODELS_DIR
-from oboyu.indexer.onnx_converter import ONNXEmbeddingModel, get_or_convert_onnx_model
 from oboyu.indexer.processor import Chunk
 
-# Global model cache to avoid reloading models in the same process
-_MODEL_CACHE = {}
-
-# Lazy loading helper functions
-def _import_sentence_transformers() -> type:
-    """Lazy import of sentence_transformers to improve startup time."""
-    try:
-        from sentence_transformers import SentenceTransformer
-        # Silence SentenceTransformer logging (INFO level is too verbose)
-        logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
-        return SentenceTransformer
-    except ImportError as e:
-        raise ImportError("sentence_transformers is required for embedding generation. Install with: pip install sentence_transformers") from e
 
 def _import_torch() -> Any:  # noqa: ANN401
     """Lazy import of torch to improve startup time."""
@@ -152,21 +138,9 @@ class EmbeddingGenerator:
             The model is loaded lazily on first use to improve startup performance.
 
         """
-        # Store configuration for lazy loading
-        self.use_onnx = use_onnx and device == "cpu"  # ONNX is most beneficial for CPU
-        self.device = device
-        self.model_dir = model_dir
-        self.onnx_quantization_config = onnx_quantization_config or {"enabled": True, "weight_type": "uint8"}
-        self.onnx_optimization_level = onnx_optimization_level
-        self._model: Optional[Any] = None  # Lazy-loaded model
-
-        # Include quantization in cache key if enabled
-        quant_suffix = ""
-        if self.use_onnx and self.onnx_quantization_config.get("enabled", True):
-            quant_suffix = f"_quant_{self.onnx_quantization_config.get('weight_type', 'uint8')}"
-        self._cache_key = f"{model_name}_{device}_{max_seq_length}_{'onnx' if self.use_onnx else 'torch'}{quant_suffix}"
-
+        # Store configuration
         self.model_name = model_name
+        self.device = device
         self.batch_size = batch_size
         self.query_prefix = query_prefix
         self.max_seq_length = max_seq_length
@@ -176,49 +150,26 @@ class EmbeddingGenerator:
         if use_cache:
             self.cache = EmbeddingCache(cache_dir)
 
-        # Dimensions for this model (will be set when model is loaded)
-        self._dimensions: Optional[int] = None
+        # Create model manager for unified model loading
+        self.model_manager = EmbeddingModelManager(
+            model_name=model_name,
+            device=device,
+            use_onnx=use_onnx,
+            max_seq_length=max_seq_length,
+            cache_dir=model_dir,
+            quantization_config=onnx_quantization_config,
+            optimization_level=onnx_optimization_level,
+        )
 
     @property
     def model(self) -> Any:  # noqa: ANN401
         """Get the model, loading it lazily if not already loaded."""
-        if self._model is None:
-            self._load_model()
-        return self._model
+        return self.model_manager.model
 
     @property
     def dimensions(self) -> int:
         """Get the embedding dimensions, loading the model if necessary."""
-        if self._dimensions is None:
-            # Trigger model loading to get dimensions
-            _ = self.model
-        return self._dimensions or 256  # Fallback for type safety
-
-    def _load_model(self) -> None:
-        """Load the model (ONNX or PyTorch) and cache it."""
-        # Use global model cache to avoid reloading models in the same process
-        if self._cache_key not in _MODEL_CACHE:
-            model: Any  # Type hint to allow both model types
-            if self.use_onnx:
-                # Load or convert to ONNX model
-                # ONNX models are cached separately in XDG cache directory
-                apply_quantization = self.onnx_quantization_config.get("enabled", True)
-                onnx_path = get_or_convert_onnx_model(self.model_name, apply_quantization=apply_quantization, quantization_config=self.onnx_quantization_config)
-                model = ONNXEmbeddingModel(
-                    onnx_path,
-                    max_seq_length=self.max_seq_length,
-                    optimization_level=self.onnx_optimization_level,
-                )
-            else:
-                # Load the model (with model_dir as cache directory)
-                SentenceTransformer = _import_sentence_transformers()
-                model = SentenceTransformer(self.model_name, device=self.device, cache_folder=str(self.model_dir))
-                model.max_seq_length = self.max_seq_length
-            _MODEL_CACHE[self._cache_key] = model
-
-        self._model = _MODEL_CACHE[self._cache_key]
-        # Set dimensions after loading
-        self._dimensions = self._model.get_sentence_embedding_dimension()
+        return self.model_manager.get_dimensions()
 
     def generate_embeddings(  # noqa: C901
         self, chunks: List[Chunk], progress_callback: Optional[Callable[[int, int, str], None]] = None

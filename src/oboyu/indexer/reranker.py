@@ -11,22 +11,12 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
 
-from oboyu.common.paths import EMBEDDING_CACHE_DIR
+from oboyu.common.model_manager import RerankerModelManager
 
 if TYPE_CHECKING:
     from oboyu.indexer.indexer import SearchResult
-from oboyu.indexer.onnx_converter import get_or_convert_cross_encoder_onnx_model
 
 logger = logging.getLogger(__name__)
-
-
-def _import_cross_encoder() -> Any:  # noqa: ANN401
-    """Lazy import of CrossEncoder to improve startup time."""
-    try:
-        from sentence_transformers import CrossEncoder
-        return CrossEncoder
-    except ImportError as e:
-        raise ImportError("sentence_transformers is required for reranking. Install with: pip install sentence_transformers") from e
 
 
 @dataclass
@@ -102,21 +92,19 @@ class CrossEncoderReranker(BaseReranker):
         """Initialize the CrossEncoder reranker with lazy loading."""
         super().__init__(model_name, device, batch_size, max_length)
         logger.debug(f"Initializing CrossEncoder reranker with model: {model_name}")
+        
+        # Create model manager for unified model loading
+        self.model_manager = RerankerModelManager(
+            model_name=model_name,
+            device=device,
+            use_onnx=False,  # This is the PyTorch version
+            max_length=max_length,
+        )
 
     @property
     def model(self) -> Any:  # noqa: ANN401
         """Lazy load the CrossEncoder model."""
-        if self._model is None:
-            logger.debug(f"Loading CrossEncoder model: {self.model_name}")
-            CrossEncoder = _import_cross_encoder()
-            self._model = CrossEncoder(
-                self.model_name,
-                device=self.device,
-                max_length=self.max_length,
-                trust_remote_code=True,
-            )
-            logger.debug("CrossEncoder model loaded successfully")
-        return self._model
+        return self.model_manager.model
 
     def rerank(
         self,
@@ -195,36 +183,23 @@ class ONNXCrossEncoderReranker(BaseReranker):
     ) -> None:
         """Initialize the ONNX CrossEncoder reranker with lazy loading."""
         super().__init__(model_name, device, batch_size, max_length)
-        self.cache_dir = cache_dir or EMBEDDING_CACHE_DIR / "models"
-        self.quantization_config = quantization_config or {"enabled": True, "weight_type": "uint8"}
-        self.optimization_level = optimization_level
-        self._tokenizer: Optional[Any] = None
         logger.debug(f"Initializing ONNX CrossEncoder reranker with model: {model_name}")
+        
+        # Create model manager for unified model loading
+        self.model_manager = RerankerModelManager(
+            model_name=model_name,
+            device=device,
+            use_onnx=True,
+            max_length=max_length,
+            cache_dir=cache_dir,
+            quantization_config=quantization_config or {"enabled": True, "weight_type": "uint8"},
+            optimization_level=optimization_level,
+        )
 
     @property
     def model(self) -> Any:  # noqa: ANN401
         """Lazy load the ONNX model and tokenizer."""
-        if self._model is None:
-            logger.debug(f"Loading ONNX CrossEncoder model: {self.model_name}")
-            from oboyu.indexer.onnx_converter import ONNXCrossEncoderModel
-
-            # Get or convert ONNX model
-            apply_quantization = self.quantization_config.get("enabled", True)
-            onnx_path = get_or_convert_cross_encoder_onnx_model(
-                self.model_name,
-                self.cache_dir,
-                apply_quantization=apply_quantization,
-                quantization_config=self.quantization_config,
-            )
-
-            # Load ONNX model
-            self._model = ONNXCrossEncoderModel(
-                model_path=onnx_path,
-                max_seq_length=self.max_length,
-                optimization_level=self.optimization_level,
-            )
-            logger.debug("ONNX CrossEncoder model loaded successfully")
-        return self._model
+        return self.model_manager.model
 
     def rerank(
         self,
@@ -314,20 +289,17 @@ def create_reranker(
 
     """
     if use_onnx:
-        # Use optimized sentence-transformers ONNX backend
-        from oboyu.indexer.optimized_reranker import OptimizedONNXReranker
-        
-        return OptimizedONNXReranker(
+        return ONNXCrossEncoderReranker(
             model_name=model_name,
             device=device,
             batch_size=batch_size,
             max_length=max_length,
+            cache_dir=cache_dir,
+            quantization_config=quantization_config,
+            optimization_level=optimization_level,
         )
     else:
-        # Use fast PyTorch reranker for better performance
-        from oboyu.indexer.fast_pytorch_reranker import FastPyTorchReranker
-        
-        return FastPyTorchReranker(
+        return CrossEncoderReranker(
             model_name=model_name,
             device=device,
             batch_size=batch_size,

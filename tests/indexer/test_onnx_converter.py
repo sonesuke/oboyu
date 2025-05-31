@@ -259,7 +259,6 @@ class TestONNXConversion:
         mock_convert.assert_called_once_with(
             model_name, 
             cache_dir / "onnx" / "test_model", 
-            optimize=False,
             apply_quantization=True,
             quantization_config=None
         )
@@ -402,7 +401,6 @@ class TestONNXQuantization:
         mock_convert.assert_called_once_with(
             model_name,
             cache_dir / "onnx" / "test_model",
-            optimize=False,
             apply_quantization=True,
             quantization_config=quant_config
         )

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, List, Optional
 if TYPE_CHECKING:
     from oboyu.indexer.indexer import SearchResult
 
+from oboyu.common.model_manager import RerankerModelManager
 from oboyu.indexer.reranker import BaseReranker, RerankedResult
 
 logger = logging.getLogger(__name__)
@@ -32,58 +33,19 @@ class OptimizedONNXReranker(BaseReranker):
         """
         super().__init__(model_name, device, batch_size, max_length)
         logger.debug(f"Initializing optimized ONNX reranker with model: {model_name}")
+        
+        # Create model manager for unified model loading with ONNX backend preference
+        self.model_manager = RerankerModelManager(
+            model_name=model_name,
+            device=device,
+            use_onnx=True,  # Prefer ONNX for this optimized version
+            max_length=max_length,
+        )
 
     @property
     def model(self) -> Any:  # noqa: ANN401
         """Lazy load the CrossEncoder with ONNX backend."""
-        if self._model is None:
-            logger.debug(f"Loading CrossEncoder with ONNX backend: {self.model_name}")
-            import os
-
-            # Check if we already have an ONNX model cached
-            from huggingface_hub import hf_hub_download
-            from sentence_transformers import CrossEncoder
-            try:
-                # Try to download pre-exported ONNX model
-                onnx_path = hf_hub_download(
-                    repo_id=self.model_name,
-                    filename="model.onnx",
-                    cache_dir=None,  # Use default cache
-                    local_files_only=False,
-                )
-                logger.debug(f"Found pre-exported ONNX model at: {onnx_path}")
-            except Exception:
-                logger.debug("No pre-exported ONNX model found, will export during first use")
-
-            # Use ONNX backend for better performance
-            try:
-                self._model = CrossEncoder(
-                    self.model_name,
-                    backend="onnx",
-                    device=self.device,
-                    max_length=self.max_length,
-                    trust_remote_code=True,
-                    model_kwargs={
-                        "provider": "CPUExecutionProvider" if self.device == "cpu" else "CUDAExecutionProvider",
-                        "session_options": {
-                            "intra_op_num_threads": os.cpu_count() or 4,
-                            "inter_op_num_threads": 1,
-                        }
-                    },
-                )
-                logger.debug("CrossEncoder with ONNX backend loaded successfully")
-            except Exception as e:
-                logger.warning(f"Failed to load ONNX backend, falling back to PyTorch: {e}")
-                # Fallback to PyTorch if ONNX fails
-                self._model = CrossEncoder(
-                    self.model_name,
-                    backend="torch",
-                    device=self.device,
-                    max_length=self.max_length,
-                    trust_remote_code=True,
-                )
-                logger.debug("Fallback to PyTorch backend loaded successfully")
-        return self._model
+        return self.model_manager.model
 
     def rerank(
         self,
