@@ -241,7 +241,7 @@ class EmbeddingGenerator:
                     )
 
                 # Process batch
-                batch_embeddings = self.model.encode(batch_texts, normalize_embeddings=True)
+                batch_embeddings = self.model.encode(batch_texts, normalize_embeddings=True, show_progress_bar=False)
 
                 for j, embedding in enumerate(batch_embeddings):
                     idx_in_batch = i + j
@@ -330,7 +330,7 @@ class EmbeddingGenerator:
                 return cached_embedding
 
         # Generate the embedding
-        embedding = self.model.encode(prefixed_query, normalize_embeddings=True)
+        embedding = self.model.encode(prefixed_query, normalize_embeddings=True, show_progress_bar=False)
 
         # Convert tensor to numpy array if needed
         torch = _import_torch()

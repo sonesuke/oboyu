@@ -10,8 +10,7 @@ from typing import Any, List, Optional
 import typer
 from typing_extensions import Annotated
 
-from oboyu.cli.formatters import console
-from oboyu.cli.hierarchical_logger import HierarchicalLogger
+from oboyu.cli.base import BaseCommand
 from oboyu.cli.progress import create_indexer_progress_callback
 from oboyu.common.config import ConfigManager
 from oboyu.indexer.config import IndexerConfig
@@ -32,7 +31,7 @@ manage_app = typer.Typer(
 )
 app.add_typer(manage_app, name="manage", help="Manage the index database")
 
-# Define command options
+# Define command-specific options not in common_options
 DirectoryOption = Annotated[
     List[Path],
     typer.Argument(
@@ -41,52 +40,6 @@ DirectoryOption = Annotated[
         file_okay=False,
         dir_okay=True,
         readable=True,
-    ),
-]
-
-RecursiveOption = Annotated[
-    Optional[bool],
-    typer.Option(
-        "--recursive/--no-recursive",
-        "-r/-nr",
-        help="Process directories recursively",
-    ),
-]
-
-IncludePatternsOption = Annotated[
-    Optional[List[str]],
-    typer.Option(
-        "--include-patterns",
-        "-i",
-        help="File patterns to include (e.g., '*.txt,*.md')",
-    ),
-]
-
-ExcludePatternsOption = Annotated[
-    Optional[List[str]],
-    typer.Option(
-        "--exclude-patterns",
-        "-e",
-        help="File patterns to exclude (e.g., '*/node_modules/*')",
-    ),
-]
-
-MaxDepthOption = Annotated[
-    Optional[int],
-    typer.Option(
-        "--max-depth",
-        "-d",
-        help="Maximum recursion depth",
-        min=1,
-    ),
-]
-
-ForceOption = Annotated[
-    bool,
-    typer.Option(
-        "--force",
-        "-f",
-        help="Force re-index of all documents",
     ),
 ]
 
@@ -107,98 +60,20 @@ JapaneseEncodingsOption = Annotated[
     ),
 ]
 
-ChunkSizeOption = Annotated[
-    Optional[int],
-    typer.Option(
-        "--chunk-size",
-        help="Chunk size in characters",
-        min=64,
-    ),
-]
-
-ChunkOverlapOption = Annotated[
-    Optional[int],
-    typer.Option(
-        "--chunk-overlap",
-        help="Chunk overlap in characters",
-        min=0,
-    ),
-]
-
-EmbeddingModelOption = Annotated[
-    Optional[str],
-    typer.Option(
-        "--embedding-model",
-        help="Embedding model to use",
-    ),
-]
-
-DatabasePathOption = Annotated[
-    Optional[Path],
-    typer.Option(
-        "--db-path",
-        help="Path to database file",
-        file_okay=True,
-        dir_okay=False,
-        writable=True,
-    ),
-]
-
 
 @manage_app.command(name="clear")
 def clear(
     ctx: typer.Context,
-    db_path: DatabasePathOption = None,
-    force: ForceOption = False,
+    db_path: Optional[Path] = None,
+    force: bool = False,
 ) -> None:
     """Clear all data from the index database.
 
     This command removes all indexed documents and their embeddings from the database
     while preserving the database schema and structure.
     """
-    # Get configuration manager from context
-    config_manager = ctx.obj.get("config_manager") if ctx.obj else ConfigManager()
-    
-    # Get indexer configuration
-    indexer_config_dict = config_manager.get_section("indexer")
-    
-    # Resolve database path using ConfigManager
-    resolved_db_path = config_manager.resolve_db_path(db_path, indexer_config_dict)
-    indexer_config_dict["db_path"] = str(resolved_db_path)
-    console.print(f"Using database: {resolved_db_path}")
-
-    # Create configuration object
-    indexer_config = IndexerConfig(config_dict={"indexer": indexer_config_dict})
-
-    # Confirm before clearing if not forced
-    if not force:
-        console.print("Warning: This will remove all indexed documents and search data.")
-        confirm = typer.confirm("Are you sure you want to continue?")
-        if not confirm:
-            console.print("Operation cancelled.")
-            return
-
-    # Use hierarchical logger for clear operation
-    logger = HierarchicalLogger(console)
-
-    with logger.live_display():
-        # Initialize indexer
-        init_op = logger.start_operation("Initializing Oboyu indexer...")
-        model_name = indexer_config_dict.get("embedding_model", "cl-nagoya/ruri-v3-30m")
-        load_op = logger.start_operation(f"Loading embedding model ({model_name})...")
-        indexer = Indexer(config=indexer_config)
-        logger.complete_operation(load_op)
-        logger.complete_operation(init_op)
-
-        # Clear the index
-        clear_op = logger.start_operation("Clearing index database...")
-        indexer.clear_index()
-        logger.complete_operation(clear_op)
-
-        # Clean up resources
-        indexer.close()
-
-    console.print("\nIndex database cleared successfully!")
+    base_command = BaseCommand(ctx)
+    base_command.handle_clear_operation(db_path=str(db_path) if db_path else None, force=force)
 
 
 def _create_crawler_config(
@@ -271,24 +146,27 @@ def _create_indexer_config(
 def index(
     ctx: typer.Context,
     directories: DirectoryOption,
-    recursive: RecursiveOption = True,
-    include_patterns: IncludePatternsOption = None,
-    exclude_patterns: ExcludePatternsOption = None,
-    max_depth: MaxDepthOption = None,
-    force: ForceOption = False,
-    encoding_detection: EncodingDetectionOption = True,
-    japanese_encodings: JapaneseEncodingsOption = None,
-    chunk_size: ChunkSizeOption = None,
-    chunk_overlap: ChunkOverlapOption = None,
-    embedding_model: EmbeddingModelOption = None,
-    db_path: DatabasePathOption = None,
+    recursive: Optional[bool] = True,
+    include_patterns: Optional[List[str]] = None,
+    exclude_patterns: Optional[List[str]] = None,
+    max_depth: Optional[int] = None,
+    force: bool = False,
+    encoding_detection: bool = True,
+    japanese_encodings: Optional[List[str]] = None,
+    chunk_size: Optional[int] = None,
+    chunk_overlap: Optional[int] = None,
+    embedding_model: Optional[str] = None,
+    db_path: Optional[Path] = None,
 ) -> None:
     """Index documents for search.
 
     This command indexes documents in the specified directories, making them searchable.
     """
+    # Create base command for common functionality
+    base_command = BaseCommand(ctx)
+    
     # Get configuration manager from context
-    config_manager = ctx.obj.get("config_manager") if ctx.obj else ConfigManager()
+    config_manager = base_command.get_config_manager()
 
     # Create configurations using helper functions
     crawler_config_dict = _create_crawler_config(
@@ -309,7 +187,7 @@ def index(
     )
 
     # Display database path
-    console.print(f"Using database: {indexer_config_dict['db_path']}")
+    base_command.print_database_path(indexer_config_dict['db_path'])
 
     # Create configuration objects
     # Combine crawler and indexer configs for the IndexerConfig
@@ -317,19 +195,17 @@ def index(
     indexer_config = IndexerConfig(config_dict=combined_config)
 
     # Use hierarchical logger for indexing operation
-    logger = HierarchicalLogger(console)
-
-    with logger.live_display():
+    with base_command.logger.live_display():
         # Initialize indexer with nested loading operation
-        init_op = logger.start_operation("Initializing Oboyu indexer...")
+        init_op = base_command.logger.start_operation("Initializing Oboyu indexer...")
         model_name = indexer_config_dict.get("embedding_model", "cl-nagoya/ruri-v3-30m")
-        load_op = logger.start_operation(f"Loading embedding model ({model_name})...")
+        load_op = base_command.logger.start_operation(f"Loading embedding model ({model_name})...")
 
         # Create indexer (loads model and sets up database)
         indexer = Indexer(config=indexer_config)
 
-        logger.complete_operation(load_op)
-        logger.complete_operation(init_op)
+        base_command.logger.complete_operation(load_op)
+        base_command.logger.complete_operation(init_op)
 
         # Track totals
         total_chunks = 0
@@ -339,17 +215,17 @@ def index(
         # Process each directory
         for directory in directories:
             # Start directory scanning operation
-            scan_op_id = logger.start_operation(f"Scanning directory {directory}...", expandable=False)
+            scan_op_id = base_command.logger.start_operation(f"Scanning directory {directory}...", expandable=False)
 
             # Create progress callback using helper function
-            indexer_progress_callback = create_indexer_progress_callback(logger, scan_op_id)
+            indexer_progress_callback = create_indexer_progress_callback(base_command.logger, scan_op_id)
 
             # Index directory
             chunks_indexed, files_processed = indexer.index_directory(directory, incremental=not force, progress_callback=indexer_progress_callback)
 
             # Add summary
-            summary_op = logger.start_operation(f"Indexed {chunks_indexed} chunks from {files_processed} documents")
-            logger.complete_operation(summary_op)
+            summary_op = base_command.logger.start_operation(f"Indexed {chunks_indexed} chunks from {files_processed} documents")
+            base_command.logger.complete_operation(summary_op)
 
             # Update totals
             total_chunks += chunks_indexed
@@ -360,4 +236,4 @@ def index(
 
     # Show summary after live display
     elapsed_time = time.time() - start_time
-    console.print(f"\nIndexed {total_files} files ({total_chunks} chunks) in {elapsed_time:.1f}s")
+    base_command.console.print(f"\nIndexed {total_files} files ({total_chunks} chunks) in {elapsed_time:.1f}s")

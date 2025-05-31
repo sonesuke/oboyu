@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 from typer.testing import CliRunner
 
-from oboyu.cli.main import app
+from oboyu.cli.index import manage_app
 
 runner = CliRunner()
 
@@ -15,7 +15,7 @@ runner = CliRunner()
 @pytest.fixture
 def mock_indexer():
     """Fixture for mocking the Indexer class."""
-    with patch("oboyu.cli.main.Indexer") as mock_indexer_class:
+    with patch("oboyu.cli.base.Indexer") as mock_indexer_class:
         mock_indexer = mock_indexer_class.return_value
         yield mock_indexer
 
@@ -26,7 +26,7 @@ def test_clear_command(mock_indexer):
     ctx = {"config_data": {"indexer": {"db_path": "test.db"}}}
     
     # Run the command with force option to bypass confirmation
-    result = runner.invoke(app, ["clear", "--force"], obj=ctx)
+    result = runner.invoke(manage_app, ["clear", "--force"], obj=ctx)
     
     # Check the command succeeded
     assert result.exit_code == 0
@@ -44,7 +44,7 @@ def test_clear_command_confirmation_yes(mock_indexer):
     ctx = {"config_data": {"indexer": {"db_path": "test.db"}}}
     
     # Run the command with confirmation (simulate user entering 'y')
-    result = runner.invoke(app, ["clear"], input="y\n", obj=ctx)
+    result = runner.invoke(manage_app, ["clear"], input="y\n", obj=ctx)
     
     # Check the command succeeded
     assert result.exit_code == 0
@@ -62,7 +62,7 @@ def test_clear_command_confirmation_no(mock_indexer):
     ctx = {"config_data": {"indexer": {"db_path": "test.db"}}}
     
     # Run the command with confirmation (simulate user entering 'n')
-    result = runner.invoke(app, ["clear"], input="n\n", obj=ctx)
+    result = runner.invoke(manage_app, ["clear"], input="n\n", obj=ctx)
     
     # Check the command succeeded
     assert result.exit_code == 0
@@ -86,7 +86,7 @@ def test_clear_command_with_db_path(mock_indexer):
         ctx = {"config_data": {}}
         
         # Run the command with db_path and force options
-        result = runner.invoke(app, ["clear", "--db-path", str(db_path), "--force"], obj=ctx)
+        result = runner.invoke(manage_app, ["clear", "--db-path", str(db_path), "--force"], obj=ctx)
         
         # Check the command succeeded
         assert result.exit_code == 0

@@ -20,12 +20,10 @@ Key components:
 import json
 import logging
 import shutil
-import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-import duckdb
 import numpy as np
 from duckdb import DuckDBPyConnection
 from numpy.typing import NDArray
@@ -34,7 +32,7 @@ from oboyu.indexer.config import DEFAULT_BATCH_SIZE
 from oboyu.indexer.database_manager import DatabaseManager
 from oboyu.indexer.index_manager import HNSWIndexParams
 from oboyu.indexer.processor import Chunk
-from oboyu.indexer.queries import ChunkData, EmbeddingData, QueryBuilder
+from oboyu.indexer.queries import EmbeddingData, QueryBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +122,7 @@ class Database:
             return self.db_manager.connection
         return getattr(self, '_conn', None)
     
-    @conn.setter  
+    @conn.setter
     def conn(self, value: Optional[DuckDBPyConnection]) -> None:
         """Set database connection (for backward compatibility)."""
         # Store for backward compatibility, but prefer using db_manager
