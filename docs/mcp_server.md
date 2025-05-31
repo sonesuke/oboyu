@@ -36,8 +36,8 @@ The MCP server command supports several options:
 | Option | Description |
 |--------|-------------|
 | `--db-path PATH` | Path to the database file (default: `~/.oboyu/index.db`) |
-| `--transport, -t TYPE` | Transport mechanism: stdio, http, websocket (default: stdio) |
-| `--port, -p NUMBER` | Port number for HTTP or WebSocket transport (required if using those transports) |
+| `--transport, -t TYPE` | Transport mechanism: stdio, sse, streamable-http (default: stdio) |
+| `--port, -p NUMBER` | Port number for SSE or streamable-http transport (required for non-stdio transports) |
 | `--verbose, -v` | Enable verbose output |
 | `--debug, -d` | Enable debug mode with additional logging |
 
@@ -49,10 +49,16 @@ Start the MCP server with stdio transport (default):
 oboyu mcp
 ```
 
-Start the MCP server with HTTP transport on port 8000:
+Start the MCP server with streamable-http transport on port 8000:
 
 ```bash
-oboyu mcp --transport http --port 8000
+oboyu mcp --transport streamable-http --port 8000
+```
+
+Start the MCP server with SSE transport on port 8001:
+
+```bash
+oboyu mcp --transport sse --port 8001
 ```
 
 Start the MCP server with a specific database path:
