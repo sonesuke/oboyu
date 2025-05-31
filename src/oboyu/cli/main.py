@@ -19,13 +19,12 @@ from rich.console import Console
 from typing_extensions import Annotated
 
 from oboyu import __version__
+from oboyu.cli.common_options import ConfigOption, DatabasePathOption, VerboseOption
 from oboyu.cli.index import app as index_app
 from oboyu.cli.mcp import app as mcp_app
 from oboyu.cli.query import app as query_app
 from oboyu.common.config import ConfigManager
 from oboyu.common.paths import ensure_config_dirs
-from oboyu.indexer.config import IndexerConfig
-from oboyu.indexer.indexer import Indexer
 
 # Create Typer app
 app = typer.Typer(
@@ -46,48 +45,6 @@ console = Console()
 app.add_typer(index_app, name="index", help="Index documents for search")
 app.add_typer(query_app, name="query", help="Search indexed documents")
 app.add_typer(mcp_app, name="mcp", help="Run an MCP server for AI assistant integration")
-
-# Define global options
-ConfigOption = Annotated[
-    Optional[Path],
-    typer.Option(
-        "--config",
-        "-c",
-        help="Path to configuration file",
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
-    ),
-]
-
-DatabasePathOption = Annotated[
-    Optional[Path],
-    typer.Option(
-        "--db-path",
-        help="Path to database file",
-        file_okay=True,
-        dir_okay=False,
-    ),
-]
-
-VerboseOption = Annotated[
-    bool,
-    typer.Option(
-        "--verbose",
-        "-v",
-        help="Enable verbose output",
-    ),
-]
-
-ForceOption = Annotated[
-    bool,
-    typer.Option(
-        "--force",
-        "-f",
-        help="Force operation without confirmation",
-    ),
-]
 
 
 @app.callback()
@@ -125,58 +82,6 @@ def version() -> None:
     console.print(f"Oboyu version: {__version__}")
 
 
-@app.command()
-def clear(
-    ctx: typer.Context,
-    db_path: DatabasePathOption = None,
-    force: ForceOption = False,
-) -> None:
-    """Clear all data from the index database.
-
-    This command removes all indexed documents and their embeddings from the database
-    while preserving the database schema and structure.
-    """
-    # Get configuration manager from context
-    config_manager = ctx.obj.get("config_manager") if ctx.obj else ConfigManager()
-    
-    # Get indexer configuration
-    indexer_config_dict = config_manager.get_section("indexer")
-    
-    # Resolve database path using ConfigManager
-    resolved_db_path = config_manager.resolve_db_path(db_path, indexer_config_dict)
-    indexer_config_dict["db_path"] = str(resolved_db_path)
-    console.print(f"Using database: {resolved_db_path}")
-
-    # Create configuration object
-    indexer_config = IndexerConfig(config_dict={"indexer": indexer_config_dict})
-
-    # Confirm before clearing if not forced
-    if not force:
-        console.print("Warning: This will remove all indexed documents and search data.")
-        confirm = typer.confirm("Are you sure you want to continue?")
-        if not confirm:
-            console.print("Operation cancelled.")
-            return
-
-    # Use hierarchical logger for clear operation
-    from oboyu.cli.hierarchical_logger import create_hierarchical_logger
-    logger = create_hierarchical_logger(console)
-
-    with logger.live_display():
-        # Initialize indexer
-        init_op = logger.start_operation("Initializing Oboyu indexer...")
-        indexer = Indexer(config=indexer_config)
-        logger.complete_operation(init_op)
-
-        # Clear the index
-        clear_op = logger.start_operation("Clearing index database...")
-        indexer.clear_index()
-        logger.complete_operation(clear_op)
-
-        # Clean up resources
-        indexer.close()
-
-    console.print("\nIndex database cleared successfully!")
 
 
 def run() -> None:

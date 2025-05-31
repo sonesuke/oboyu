@@ -22,6 +22,7 @@ from typing_extensions import Annotated
 # Disable tokenizer parallelism to avoid forking warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+from oboyu.cli.base import BaseCommand
 from oboyu.cli.hierarchical_logger import create_hierarchical_logger
 from oboyu.common.config import ConfigManager
 from oboyu.common.paths import DEFAULT_DB_PATH
@@ -38,97 +39,11 @@ app = typer.Typer(
 # Create console for rich output
 console = Console()
 
-# Define command options
+# Define command-specific options not in common_options
 QueryOption = Annotated[
     Optional[str],
     typer.Argument(
         help="Search query text",
-    ),
-]
-
-ModeOption = Annotated[
-    str,
-    typer.Option(
-        "--mode",
-        "-m",
-        help="Search mode (vector, bm25, hybrid)",
-    ),
-]
-
-TopKOption = Annotated[
-    Optional[int],
-    typer.Option(
-        "--top-k",
-        "-k",
-        help="Number of results to return",
-        min=1,
-    ),
-]
-
-ExplainOption = Annotated[
-    bool,
-    typer.Option(
-        "--explain",
-        "-e",
-        help="Show detailed match explanation",
-    ),
-]
-
-FormatOption = Annotated[
-    str,
-    typer.Option(
-        "--format",
-        "-f",
-        help="Output format (text, json)",
-    ),
-]
-
-VectorWeightOption = Annotated[
-    Optional[float],
-    typer.Option(
-        "--vector-weight",
-        help="Weight for vector scores in hybrid search",
-        min=0.0,
-        max=1.0,
-    ),
-]
-
-BM25WeightOption = Annotated[
-    Optional[float],
-    typer.Option(
-        "--bm25-weight",
-        help="Weight for BM25 scores in hybrid search",
-        min=0.0,
-        max=1.0,
-    ),
-]
-
-DatabasePathOption = Annotated[
-    Optional[Path],
-    typer.Option(
-        "--db-path",
-        help="Path to database file",
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
-    ),
-]
-
-RerankOption = Annotated[
-    Optional[bool],
-    typer.Option(
-        "--rerank/--no-rerank",
-        help="Enable or disable reranking of search results",
-    ),
-]
-
-InteractiveOption = Annotated[
-    bool,
-    typer.Option(
-        "--interactive",
-        "-i",
-        help="Start interactive search session for continuous queries",
     ),
 ]
 
@@ -526,30 +441,34 @@ def format_search_result(result: SearchResult, query: str, show_explanation: boo
 @app.callback(invoke_without_command=True)
 def query(
     ctx: typer.Context,
-    query: QueryOption = None,
-    mode: ModeOption = "hybrid",
-    top_k: TopKOption = None,
-    explain: ExplainOption = False,
-    format: FormatOption = "text",
-    vector_weight: VectorWeightOption = None,
-    bm25_weight: BM25WeightOption = None,
-    db_path: DatabasePathOption = None,
-    rerank: RerankOption = None,
-    interactive: InteractiveOption = False,
+    query: Optional[str] = None,
+    mode: str = "hybrid",
+    top_k: Optional[int] = None,
+    explain: bool = False,
+    format: str = "text",
+    vector_weight: Optional[float] = None,
+    bm25_weight: Optional[float] = None,
+    db_path: Optional[Path] = None,
+    rerank: Optional[bool] = None,
+    interactive: bool = False,
 ) -> None:
     """Search indexed documents.
 
     This command searches the index for documents matching the query.
     """
+    # Create base command for common functionality
+    base_command = BaseCommand(ctx)
+    
     # Check if interactive mode requested
     if interactive:
         if query is not None:
-            console.print("⚠️  Warning: Query argument ignored in interactive mode", style="yellow")
+            base_command.console.print("⚠️  Warning: Query argument ignored in interactive mode", style="yellow")
     elif query is None:
-        console.print("❌ Error: Query argument is required (or use --interactive)", style="red")
+        base_command.console.print("❌ Error: Query argument is required (or use --interactive)", style="red")
         raise typer.Exit(1)
-    # Get configuration manager from context
-    config_manager = ctx.obj.get("config_manager") if ctx.obj else ConfigManager()
+    
+    # Get configuration manager
+    config_manager = base_command.get_config_manager()
 
     # Get query engine configuration
     query_config = config_manager.get_section("query")
@@ -568,64 +487,56 @@ def query(
     query_config = config_manager.merge_cli_overrides("query", cli_overrides)
     
     # Get top_k value for use later
-    top_k = query_config.get("top_k", 5)
+    top_k_value = query_config.get("top_k", 5)
 
-    # Get indexer configuration
-    indexer_config_dict = config_manager.get_section("indexer")
-
-    # Resolve database path using ConfigManager
-    resolved_db_path = config_manager.resolve_db_path(db_path, indexer_config_dict)
-    indexer_config_dict["db_path"] = str(resolved_db_path)
-    console.print(f"Using database: {resolved_db_path}")
-
-    # Create indexer configuration object
-    indexer_config = IndexerConfig(config_dict={"indexer": indexer_config_dict})
-
-    # Use hierarchical logger for search operation
-    logger = create_hierarchical_logger(console)
+    # Create indexer configuration
+    indexer_config = base_command.create_indexer_config(db_path=str(db_path) if db_path else None)
+    
+    # Show database path
+    base_command.print_database_path(str(indexer_config.db_path))
 
     # Handle interactive mode
     if interactive:
         # Initialize indexer with loading messages
-        with logger.live_display():
-            main_op = logger.start_operation("Starting interactive search session", expandable=False)
+        with base_command.logger.live_display():
+            main_op = base_command.logger.start_operation("Starting interactive search session", expandable=False)
             
             # Initialize indexer
-            load_op = logger.start_operation("Loading index...")
+            load_op = base_command.logger.start_operation("Loading index...")
             indexer = Indexer(config=indexer_config)
-            logger.complete_operation(load_op)
+            base_command.logger.complete_operation(load_op)
             
             # Load embedding model if needed
             if mode in ["vector", "hybrid"]:
-                model_name = indexer_config_dict.get("embedding_model", "cl-nagoya/ruri-v3-30m")
-                embed_op = logger.start_operation(f"Loading embedding model ({model_name})...")
+                model_name = indexer_config.embedding_model
+                embed_op = base_command.logger.start_operation(f"Loading embedding model ({model_name})...")
                 # Warmup the embedding model with a dummy query
                 _warmup_embedding_model(indexer)
-                logger.complete_operation(embed_op)
+                base_command.logger.complete_operation(embed_op)
                 
             # Load reranker if enabled
             if rerank:
-                reranker_model = indexer_config_dict.get("reranker_model", DEFAULT_RERANKER_MODEL)
-                rerank_op = logger.start_operation(f"Loading reranker model ({reranker_model})...")
+                reranker_model = indexer_config.reranker_model or DEFAULT_RERANKER_MODEL
+                rerank_op = base_command.logger.start_operation(f"Loading reranker model ({reranker_model})...")
                 # Warmup the reranker with a dummy query to ensure it's fully loaded
                 _warmup_reranker(indexer)
-                logger.complete_operation(rerank_op)
+                base_command.logger.complete_operation(rerank_op)
                 
-            logger.complete_operation(main_op)
+            base_command.logger.complete_operation(main_op)
         
         # Prepare initial configuration for interactive session
         session_config = {
             "mode": mode,
-            "top_k": top_k,
+            "top_k": top_k_value,
             "explain": explain,
             "vector_weight": vector_weight if vector_weight is not None else 0.7,
             "bm25_weight": bm25_weight if bm25_weight is not None else 0.3,
             "use_reranker": rerank if rerank is not None else False,
-            "db_path": indexer_config_dict.get("db_path", DEFAULT_DB_PATH),
+            "db_path": str(indexer_config.db_path),
         }
         
         # Start interactive session
-        session = InteractiveQuerySession(indexer, session_config, console)
+        session = InteractiveQuerySession(indexer, session_config, base_command.console)
         session.run()
         return
 
@@ -633,27 +544,27 @@ def query(
     # query is guaranteed to be not None here due to the check above
     if query is None:  # This should never happen, but for type safety
         raise typer.Exit(1)
-    with logger.live_display():
+    with base_command.logger.live_display():
         # Main search operation
-        main_op = logger.start_operation(f'Search: "{query}"', expandable=False, details=f"Mode: {mode}\nTop K: {top_k}")
+        main_op = base_command.logger.start_operation(f'Search: "{query}"', expandable=False, details=f"Mode: {mode}\nTop K: {top_k_value}")
 
         # Initialize indexer
-        load_op = logger.start_operation("Loading index...")
+        load_op = base_command.logger.start_operation("Loading index...")
         indexer = Indexer(config=indexer_config)
-        logger.complete_operation(load_op)
+        base_command.logger.complete_operation(load_op)
 
         # Generate query embedding (for vector and hybrid modes)
         if mode in ["vector", "hybrid"]:
-            embed_op = logger.start_operation("Generating query embedding...")
+            embed_op = base_command.logger.start_operation("Generating query embedding...")
             time.sleep(0.05)  # Simulated timing
-            logger.complete_operation(embed_op)
+            base_command.logger.complete_operation(embed_op)
 
         # Perform search
         search_desc = f"{mode.capitalize()} search" + (" with reranking" if rerank else "") + "..."
-        search_op = logger.start_operation(search_desc)
+        search_op = base_command.logger.start_operation(search_desc)
         results = indexer.search(
             query,
-            limit=top_k,
+            limit=top_k_value,
             mode=mode,
             use_reranker=rerank,
             vector_weight=vector_weight if vector_weight is not None else 0.7,
@@ -662,31 +573,31 @@ def query(
         
         if results:
             rerank_note = " (reranked)" if rerank else ""
-            logger.update_operation(search_op, f"{search_desc} Found {len(results)} results{rerank_note}")
+            base_command.logger.update_operation(search_op, f"{search_desc} Found {len(results)} results{rerank_note}")
 
             # Ranking results step is only shown if not reranking (since reranking does its own ranking)
             if not rerank:
-                rank_op = logger.start_operation("Ranking results...")
-                logger.complete_operation(rank_op)
+                rank_op = base_command.logger.start_operation("Ranking results...")
+                base_command.logger.complete_operation(rank_op)
         else:
-            logger.update_operation(search_op, f"{mode.capitalize()} search... No results found")
+            base_command.logger.update_operation(search_op, f"{mode.capitalize()} search... No results found")
             
-        logger.complete_operation(search_op)
+        base_command.logger.complete_operation(search_op)
 
         # Complete main search operation
-        logger.complete_operation(main_op)
+        base_command.logger.complete_operation(main_op)
 
     # Display results after hierarchical log
     if not results:
-        console.print("\nNo results found.")
+        base_command.console.print("\nNo results found.")
         return
 
     # Display results with cleaner formatting
-    console.print()
+    base_command.console.print()
 
     # Format and display each result
     for i, result in enumerate(results):
         formatted_result = format_search_result(result, query, show_explanation=explain)
-        console.print(formatted_result)
+        base_command.console.print(formatted_result)
         if i < len(results) - 1:
-            console.print("")  # Add spacing between results
+            base_command.console.print("")  # Add spacing between results
