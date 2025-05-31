@@ -3,7 +3,6 @@
 This module provides helper functions for the CLI.
 """
 
-import locale
 import re
 
 from rich.console import Console
@@ -117,28 +116,3 @@ def format_snippet(text: str, query: str, length: int = 160, highlight: bool = T
     return snippet
 
 
-def get_system_locale() -> str:
-    """Get the system locale.
-
-    Returns:
-        System locale string
-
-    """
-    try:
-        # Get system locale
-        current_locale = locale.getlocale()[0]
-        return current_locale or "en_US"
-    except Exception:
-        # Default to English if detection fails
-        return "en_US"
-
-
-def is_japanese_locale() -> bool:
-    """Check if system locale is Japanese.
-
-    Returns:
-        True if system locale is Japanese, False otherwise
-
-    """
-    current_locale = get_system_locale().lower()
-    return current_locale.startswith("ja")

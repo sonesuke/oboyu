@@ -866,8 +866,8 @@ class Indexer:
             differential_stats["modified_files"] = len(changes.modified_files)
             differential_stats["deleted_files"] = len(changes.deleted_files)
             differential_stats["unchanged_files"] = (
-                differential_stats["total_files_discovered"] - 
-                differential_stats["new_files"] - 
+                differential_stats["total_files_discovered"] -
+                differential_stats["new_files"] -
                 differential_stats["modified_files"]
             )
             

@@ -43,6 +43,7 @@ class SimpleProgressDisplay:
             stage: Current stage name
             current: Current progress
             total: Total items
+
         """
         now = time.time()
         
@@ -82,6 +83,7 @@ class SimpleProgressDisplay:
         
         Args:
             message: Optional completion message
+
         """
         if message:
             sys.stderr.write(f"\r{message}\n")
@@ -95,6 +97,7 @@ def create_simple_progress_callback() -> callable:
     
     Returns:
         Progress callback function
+
     """
     display = SimpleProgressDisplay()
     return display.update
