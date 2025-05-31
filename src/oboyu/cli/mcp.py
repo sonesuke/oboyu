@@ -90,35 +90,33 @@ def main(
 
         with logger.live_display():
             # Start MCP server operation
-            with logger.operation("Starting Oboyu MCP Server..."):
-                # Load configuration
-                config_op = logger.start_operation("Loading configuration...")
-                logger.complete_operation(config_op)
-                logger.update_operation(config_op, f"Loading configuration... ✓ {indexer_config_dict.get('db_path', '~/.oboyu/oboyu.db')}")
+            server_op = logger.start_operation("Starting Oboyu MCP Server...")
+            
+            # Load configuration
+            config_op = logger.start_operation("Loading configuration...")
+            logger.complete_operation(config_op)
 
-                # Initialize database
-                db_op = logger.start_operation("Initializing database...")
-                # Simulated - actual init happens when first query is made
-                logger.complete_operation(db_op)
-                logger.update_operation(db_op, "Initializing database... ✓ 1,847 chunks available")
+            # Initialize database
+            db_op = logger.start_operation("Initializing database...")
+            # Simulated - actual init happens when first query is made
+            logger.complete_operation(db_op)
 
-                # Load embedding model
-                model_op = logger.start_operation("Loading embedding model...")
-                model_name = "cl-nagoya/ruri-v3-30m"
-                logger.complete_operation(model_op)
-                logger.update_operation(model_op, f"Loading embedding model... ✓ {model_name} ready")
+            # Load embedding model
+            model_op = logger.start_operation("Loading embedding model...")
+            logger.complete_operation(model_op)
 
-                # Start transport
-                transport_op = logger.start_operation(f"Starting {transport} transport...")
-                logger.complete_operation(transport_op)
-                logger.update_operation(transport_op, f"Starting {transport} transport... ✓ Server ready on {transport}")
+            # Start transport
+            transport_op = logger.start_operation(f"Starting {transport} transport...")
+            logger.complete_operation(transport_op)
+            
+            logger.complete_operation(server_op)
 
-                # Add listening operation
-                logger.start_operation(
-                    "Listening for MCP requests... (ctrl+c to stop)",
-                    expandable=True,
-                    details=f"Transport: {transport}\nDatabase: {indexer_config_dict.get('db_path')}\nPort: {port if port else 'N/A'}",
-                )
+            # Add listening operation
+            logger.start_operation(
+                "Listening for MCP requests... (ctrl+c to stop)",
+                expandable=True,
+                details=f"Transport: {transport}\nDatabase: {indexer_config_dict.get('db_path')}\nPort: {port if port else 'N/A'}",
+            )
 
     # Run the server
     try:

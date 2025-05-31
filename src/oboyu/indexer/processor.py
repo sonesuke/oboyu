@@ -180,8 +180,12 @@ class DocumentProcessor:
 
         chunks = []
         start = 0
+        iteration_count = 0
+        max_iterations = 10000  # Safety limit to prevent infinite loops
 
-        while start < len(text):
+        while start < len(text) and iteration_count < max_iterations:
+            iteration_count += 1
+            
             # Get chunk of specified size
             end = start + self.chunk_size
 
@@ -214,8 +218,18 @@ class DocumentProcessor:
                 chunks.append(chunk)
 
             # Move start position for next chunk, considering overlap
+            old_start = start
             start = end - self.chunk_overlap if end < len(text) else len(text)
+            
+            # Safety check to prevent infinite loops
+            if start <= old_start and iteration_count > 1:
+                import logging
+                logging.error(f"_chunk_text: Potential infinite loop detected! start={start}, old_start={old_start}")
+                start = old_start + max(1, self.chunk_size // 2)  # Force progress
 
+        if iteration_count >= max_iterations:
+            import logging
+            logging.error(f"_chunk_text: Hit maximum iteration limit {max_iterations}")
         return chunks
 
     def _add_prefix(self, text: str) -> str:

@@ -80,6 +80,7 @@ class TestEmbeddingGenerator:
     These tests will download the actual model (cl-nagoya/ruri-v3-30m) on first run.
     """
 
+    @pytest.mark.slow
     def test_generate_embeddings(self, shared_embedding_generator) -> None:
         """Test generating embeddings for chunks."""
         # Use shared generator to avoid repeated model loading
@@ -126,6 +127,7 @@ class TestEmbeddingGenerator:
             assert embedding[2].shape[0] == generator.dimensions  # embedding dimensions
             assert isinstance(embedding[3], datetime)  # timestamp
 
+    @pytest.mark.slow
     def test_generate_query_embedding(self, shared_embedding_generator) -> None:
         """Test generating embedding for a search query."""
         # Use shared generator to avoid repeated model loading
@@ -146,13 +148,15 @@ class TestEmbeddingGeneratorMocked:
 
     def test_generate_embeddings_with_cache(self) -> None:
         """Test embedding generation with cache."""
-        # Mock SentenceTransformer
-        with patch("oboyu.indexer.embedding.SentenceTransformer") as mock_model_class:
+        # Mock SentenceTransformer via the lazy import function
+        with patch("oboyu.indexer.embedding._import_sentence_transformers") as mock_import:
             # Set up the mock model
             mock_model = MagicMock()
             mock_model.get_sentence_embedding_dimension.return_value = 384
             mock_model.encode.return_value = np.array([[0.1] * 384, [0.2] * 384], dtype=np.float32)
+            mock_model_class = MagicMock()
             mock_model_class.return_value = mock_model
+            mock_import.return_value = mock_model_class
             
             # Create temporary cache directory
             with tempfile.TemporaryDirectory() as temp_dir:

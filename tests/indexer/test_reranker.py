@@ -66,9 +66,13 @@ class TestRerankedResult:
 class TestCrossEncoderReranker:
     """Test cases for CrossEncoderReranker class."""
     
-    @patch("oboyu.indexer.reranker.CrossEncoder")
-    def test_initialization(self, mock_cross_encoder_class: MagicMock) -> None:
+    @patch("oboyu.indexer.reranker._import_cross_encoder")
+    def test_initialization(self, mock_import_func: MagicMock) -> None:
         """Test CrossEncoderReranker initialization."""
+        # Setup mock to return a mock CrossEncoder class
+        mock_cross_encoder_class = MagicMock()
+        mock_import_func.return_value = mock_cross_encoder_class
+        
         reranker = CrossEncoderReranker(
             model_name="test-model",
             device="cpu",
@@ -82,11 +86,13 @@ class TestCrossEncoderReranker:
         assert reranker.max_length == 256
         assert reranker._model is None  # Lazy loading
     
-    @patch("oboyu.indexer.reranker.CrossEncoder")
-    def test_lazy_model_loading(self, mock_cross_encoder_class: MagicMock) -> None:
+    @patch("oboyu.indexer.reranker._import_cross_encoder")
+    def test_lazy_model_loading(self, mock_import_func: MagicMock) -> None:
         """Test lazy loading of CrossEncoder model."""
+        mock_cross_encoder_class = MagicMock()
         mock_model = MagicMock()
         mock_cross_encoder_class.return_value = mock_model
+        mock_import_func.return_value = mock_cross_encoder_class
         
         reranker = CrossEncoderReranker(model_name="test-model")
         
@@ -106,20 +112,22 @@ class TestCrossEncoderReranker:
         assert model == mock_model
         assert reranker._model == mock_model
     
-    @patch("oboyu.indexer.reranker.CrossEncoder")
-    def test_rerank_empty_results(self, mock_cross_encoder_class: MagicMock) -> None:
+    @patch("oboyu.indexer.reranker._import_cross_encoder")
+    def test_rerank_empty_results(self, mock_import_func: MagicMock) -> None:
         """Test reranking with empty results."""
         reranker = CrossEncoderReranker()
         results = reranker.rerank("test query", [])
         assert results == []
     
-    @patch("oboyu.indexer.reranker.CrossEncoder")
-    def test_rerank_with_results(self, mock_cross_encoder_class: MagicMock) -> None:
+    @patch("oboyu.indexer.reranker._import_cross_encoder")
+    def test_rerank_with_results(self, mock_import_func: MagicMock) -> None:
         """Test reranking with search results."""
         # Setup mock model
+        mock_cross_encoder_class = MagicMock()
         mock_model = MagicMock()
         mock_model.predict.return_value = np.array([0.5, 1.5, -0.5])  # Raw scores
         mock_cross_encoder_class.return_value = mock_model
+        mock_import_func.return_value = mock_cross_encoder_class
         
         # Create test results
         results = [
@@ -154,12 +162,14 @@ class TestCrossEncoderReranker:
         assert reranked[1].chunk_id == "test-0"  # Middle score
         assert reranked[2].chunk_id == "test-2"  # Lowest score
     
-    @patch("oboyu.indexer.reranker.CrossEncoder")
-    def test_rerank_with_top_k(self, mock_cross_encoder_class: MagicMock) -> None:
+    @patch("oboyu.indexer.reranker._import_cross_encoder")
+    def test_rerank_with_top_k(self, mock_import_func: MagicMock) -> None:
         """Test reranking with top_k limit."""
+        mock_cross_encoder_class = MagicMock()
         mock_model = MagicMock()
         mock_model.predict.return_value = np.array([0.5, 1.5, -0.5])
         mock_cross_encoder_class.return_value = mock_model
+        mock_import_func.return_value = mock_cross_encoder_class
         
         results = [
             SearchResult(
@@ -182,12 +192,14 @@ class TestCrossEncoderReranker:
         assert reranked[0].chunk_id == "test-1"  # Highest score
         assert reranked[1].chunk_id == "test-0"  # Second highest
     
-    @patch("oboyu.indexer.reranker.CrossEncoder")
-    def test_rerank_with_threshold(self, mock_cross_encoder_class: MagicMock) -> None:
+    @patch("oboyu.indexer.reranker._import_cross_encoder")
+    def test_rerank_with_threshold(self, mock_import_func: MagicMock) -> None:
         """Test reranking with score threshold."""
+        mock_cross_encoder_class = MagicMock()
         mock_model = MagicMock()
         mock_model.predict.return_value = np.array([0.5, 1.5, -1.5])  # -1.5 -> 0.182 after sigmoid
         mock_cross_encoder_class.return_value = mock_model
+        mock_import_func.return_value = mock_cross_encoder_class
         
         results = [
             SearchResult(

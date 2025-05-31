@@ -4,6 +4,7 @@ This module provides a hierarchical logging interface with tree-style
 formatting as described in issue #33.
 """
 
+import threading
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -80,6 +81,7 @@ class HierarchicalLogger:
         self.operation_stack: List[OperationNode] = []
         self.live: Optional[Live] = None
         self._id_counter = 0
+        self._lock = threading.Lock()  # Add thread safety
 
     def _generate_id(self) -> str:
         """Generate a unique operation ID."""
@@ -105,31 +107,33 @@ class HierarchicalLogger:
             Operation ID for tracking
 
         """
-        op_id = self._generate_id()
+        with self._lock:
+            op_id = self._generate_id()
 
-        # Determine indent level based on stack
-        indent_level = len(self.operation_stack)
+            # Determine indent level based on stack
+            indent_level = len(self.operation_stack)
 
-        operation = OperationNode(
-            id=op_id,
-            description=description,
-            status=OperationStatus.ACTIVE,
-            expandable=expandable,
-            details=details,
-            metadata=metadata,
-            indent_level=indent_level,
-        )
+            operation = OperationNode(
+                id=op_id,
+                description=description,
+                status=OperationStatus.ACTIVE,
+                expandable=expandable,
+                details=details,
+                metadata=metadata,
+                indent_level=indent_level,
+            )
 
-        if self.operation_stack:
-            # Add as child of current operation
-            self.operation_stack[-1].children.append(operation)
-        else:
-            # Add as root operation
-            self.operations.append(operation)
+            if self.operation_stack:
+                # Add as child of current operation
+                parent = self.operation_stack[-1]
+                parent.children.append(operation)
+            else:
+                # Add as root operation
+                self.operations.append(operation)
 
-        self.operation_stack.append(operation)
-        self._refresh_display()
-        return op_id
+            self.operation_stack.append(operation)
+            self._refresh_display()
+            return op_id
 
     def update_operation(
         self,
@@ -164,20 +168,21 @@ class HierarchicalLogger:
             error: Whether the operation ended in error
 
         """
-        if op_id:
-            operation = self._find_operation(op_id)
-        else:
-            operation = self.operation_stack[-1] if self.operation_stack else None
+        with self._lock:
+            if op_id:
+                operation = self._find_operation(op_id)
+            else:
+                operation = self.operation_stack[-1] if self.operation_stack else None
 
-        if operation:
-            operation.status = OperationStatus.ERROR if error else OperationStatus.COMPLETE
-            operation.end_time = time.time()
+            if operation:
+                operation.status = OperationStatus.ERROR if error else OperationStatus.COMPLETE
+                operation.end_time = time.time()
 
-            # Remove from stack if it's the current operation
-            if self.operation_stack and self.operation_stack[-1].id == operation.id:
-                self.operation_stack.pop()
+                # Remove from stack if it's the current operation
+                if self.operation_stack and self.operation_stack[-1].id == operation.id:
+                    self.operation_stack.pop()
 
-            self._refresh_display()
+                self._refresh_display()
 
     def _find_operation(self, op_id: str) -> Optional[OperationNode]:
         """Find an operation by ID."""

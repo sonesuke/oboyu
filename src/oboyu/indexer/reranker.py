@@ -7,10 +7,9 @@ to improve search result quality, especially for Japanese queries in RAG applica
 import logging
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
-from sentence_transformers import CrossEncoder
 
 from oboyu.common.paths import EMBEDDING_CACHE_DIR
 
@@ -19,6 +18,15 @@ if TYPE_CHECKING:
 from oboyu.indexer.onnx_converter import get_or_convert_cross_encoder_onnx_model
 
 logger = logging.getLogger(__name__)
+
+
+def _import_cross_encoder() -> Any:  # noqa: ANN401
+    """Lazy import of CrossEncoder to improve startup time."""
+    try:
+        from sentence_transformers import CrossEncoder
+        return CrossEncoder
+    except ImportError as e:
+        raise ImportError("sentence_transformers is required for reranking. Install with: pip install sentence_transformers") from e
 
 
 @dataclass
@@ -96,10 +104,11 @@ class CrossEncoderReranker(BaseReranker):
         logger.info(f"Initializing CrossEncoder reranker with model: {model_name}")
 
     @property
-    def model(self) -> CrossEncoder:
+    def model(self) -> Any:  # noqa: ANN401
         """Lazy load the CrossEncoder model."""
         if self._model is None:
             logger.info(f"Loading CrossEncoder model: {self.model_name}")
+            CrossEncoder = _import_cross_encoder()
             self._model = CrossEncoder(
                 self.model_name,
                 device=self.device,
@@ -107,7 +116,7 @@ class CrossEncoderReranker(BaseReranker):
                 trust_remote_code=True,
             )
             logger.info("CrossEncoder model loaded successfully")
-        return cast(CrossEncoder, self._model)
+        return self._model
 
     def rerank(
         self,
