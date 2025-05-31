@@ -79,7 +79,7 @@ class OptimizedONNXReranker(BaseReranker):
         
         predict_start = time.time()
         logger.debug(f"ONNX (optimized) predict starting with {len(pairs)} documents")
-        scores = self.model.predict(pairs, batch_size=self.batch_size)
+        scores = self.model.predict(pairs, batch_size=self.batch_size, show_progress_bar=False)
         predict_time = time.time() - predict_start
         logger.debug(f"ONNX (optimized) predict completed in {predict_time:.2f}s")
 
