@@ -17,10 +17,19 @@ This approach combines the efficiency of vector search with the accuracy of Cros
 
 Oboyu supports the following Ruri reranker models:
 
-- **`cl-nagoya/ruri-v3-reranker-310m`** (default): Latest v3 model with superior Japanese and multilingual performance
-- **`cl-nagoya/ruri-reranker-small`**: Lightweight option for resource-constrained environments
+- **`cl-nagoya/ruri-reranker-small`** (default): Lightweight model offering excellent balance of performance and resource usage
+- **`cl-nagoya/ruri-v3-reranker-310m`**: Heavy model with superior accuracy for quality-focused applications
 
 Both models are specifically optimized for Japanese text while maintaining good multilingual capabilities.
+
+### Model Comparison
+
+| Model | Size | Memory Usage | Speed | Accuracy | Best For |
+|-------|------|--------------|-------|----------|----------|
+| `cl-nagoya/ruri-reranker-small` | ~100M params | ~400MB | Fast (20-40ms) | Excellent | General use, real-time applications |
+| `cl-nagoya/ruri-v3-reranker-310m` | 310M params | ~1.2GB | Moderate (50-100ms) | Superior | Quality-focused, batch processing |
+
+**Recommendation**: The default `ruri-reranker-small` model provides the best balance for most use cases. It offers excellent accuracy with significantly lower resource requirements (~67% memory reduction) compared to the 310m model.
 
 ## Key Features
 
@@ -48,7 +57,7 @@ Add reranker settings to your `~/.config/oboyu/config.yaml`:
 ```yaml
 indexer:
   # Reranker settings
-  reranker_model: "cl-nagoya/ruri-v3-reranker-310m"  # Model to use
+  reranker_model: "cl-nagoya/ruri-reranker-small"  # Model to use
   use_reranker: true                                 # Enable by default
   reranker_use_onnx: true                           # Use ONNX optimization
   reranker_device: "cpu"                            # Device (cpu/cuda)
@@ -62,7 +71,7 @@ indexer:
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `reranker_model` | Model name or path | `cl-nagoya/ruri-v3-reranker-310m` |
+| `reranker_model` | Model name or path | `cl-nagoya/ruri-reranker-small` |
 | `use_reranker` | Enable reranking by default | `true` |
 | `reranker_use_onnx` | Use ONNX optimization | `true` |
 | `reranker_device` | Device for inference | `cpu` |
@@ -100,7 +109,7 @@ config = IndexerConfig(config_dict={
     "indexer": {
         "db_path": "oboyu.db",
         "use_reranker": True,
-        "reranker_model": "cl-nagoya/ruri-v3-reranker-310m",
+        "reranker_model": "cl-nagoya/ruri-reranker-small",
     }
 })
 indexer = Indexer(config=config)
@@ -236,10 +245,10 @@ rm -rf ~/.cache/oboyu/embedding/cache/models/onnx/
 
 1. **Slow First Query**: Models are loaded lazily on first use. Subsequent queries will be faster.
 
-2. **Out of Memory**: Try the small model or reduce batch size:
+2. **Out of Memory**: Reduce batch size or disable reranking temporarily:
    ```yaml
-   reranker_model: "cl-nagoya/ruri-reranker-small"
    reranker_batch_size: 4
+   # Or disable for this query: oboyu query "text" --no-rerank
    ```
 
 3. **ONNX Conversion Fails**: Disable ONNX optimization:
@@ -263,6 +272,33 @@ logging.getLogger("oboyu.indexer.reranker").setLevel(logging.DEBUG)
 3. **For Mixed Language**: The models work well for multilingual content
 4. **Initial Retrieval**: Set multiplier based on result diversity needs (3-5x is typical)
 5. **Threshold Setting**: Use threshold to filter low-confidence results in critical applications
+
+## Migration Guide
+
+### Upgrading from Previous Versions
+
+If you were previously using the 310m model as default and want to continue using it, update your configuration:
+
+```yaml
+indexer:
+  reranker_model: "cl-nagoya/ruri-v3-reranker-310m"
+```
+
+Otherwise, no action is needed - the new lightweight model will be used automatically.
+
+### Choosing the Right Model
+
+- **Use `ruri-reranker-small` when**:
+  - Running on resource-constrained environments
+  - Building real-time applications
+  - Prioritizing fast response times
+  - Memory usage is a concern
+
+- **Use `ruri-v3-reranker-310m` when**:
+  - Maximum accuracy is required
+  - Running batch processing jobs
+  - Have sufficient memory (2GB+ available)
+  - Building quality-critical RAG applications
 
 ## Future Enhancements
 

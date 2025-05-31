@@ -16,7 +16,7 @@ class FastPyTorchReranker(BaseReranker):
 
     def __init__(
         self,
-        model_name: str = "cl-nagoya/ruri-v3-reranker-310m",
+        model_name: str = "cl-nagoya/ruri-reranker-small",
         device: str = "cpu",
         batch_size: int = 16,
         max_length: int = 512,

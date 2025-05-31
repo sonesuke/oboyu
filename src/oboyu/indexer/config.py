@@ -41,7 +41,8 @@ DEFAULT_CONFIG = {
         # Processing settings
         "max_workers": 8,  # Maximum number of worker threads for parallel processing
         # Reranker settings
-        "reranker_model": "cl-nagoya/ruri-v3-reranker-310m",  # Default reranker model
+        "reranker_model": "cl-nagoya/ruri-reranker-small",  # Lightweight Japanese reranker
+        # Alternative heavy model: "cl-nagoya/ruri-v3-reranker-310m"
         "use_reranker": False,  # Whether to use reranker for search results
         "reranker_use_onnx": False,  # Whether to use ONNX optimization for reranker (PyTorch is faster for most cases)
         "reranker_device": "cpu",  # Device for reranker (cpu/cuda)
@@ -81,7 +82,7 @@ DEFAULT_M = 16
 DEFAULT_M0 = None
 DEFAULT_MAX_WORKERS = 8
 # Reranker defaults
-DEFAULT_RERANKER_MODEL = "cl-nagoya/ruri-v3-reranker-310m"
+DEFAULT_RERANKER_MODEL = "cl-nagoya/ruri-reranker-small"
 DEFAULT_USE_RERANKER = False
 DEFAULT_RERANKER_USE_ONNX = True
 DEFAULT_RERANKER_DEVICE = "cpu"
