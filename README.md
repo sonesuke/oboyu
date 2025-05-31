@@ -17,15 +17,16 @@ The system provides both command-line interface for direct queries and an MCP se
 
 ## Key Features
 
-- **Local Directory Processing**: Index any directory of text-based documents on your local system
-- **Text Format Support**: Process plain text, markdown, code files, configuration files, and more
-- **Japanese Language Excellence**: First-class support for Japanese text with built-in specialized tokenization and encoding detection
-- **Semantic Search**: Retrieve the most relevant documents using vector embeddings with the Ruri v3 model
-- **Multiple Search Modes**: Choose between vector, BM25, or hybrid search depending on your needs
-- **Advanced Reranking**: Improve search accuracy with lightweight Ruri Cross-Encoder reranker (default: ruri-reranker-small)
+- **Local Directory Processing**: Index any directory of text-based documents on your local system with incremental updates
+- **Text Format Support**: Process plain text, markdown, code files, configuration files, Jupyter notebooks, and more
+- **Japanese Language Excellence**: First-class support for Japanese text with specialized tokenization, encoding detection, and optimized models
+- **Multiple Search Modes**: Choose between vector, BM25, or hybrid search with configurable weighting
+- **Advanced Reranking**: Improve search accuracy with lightweight Ruri Cross-Encoder reranker (enabled by default)
+- **Interactive Query Mode**: Persistent REPL interface with command history, auto-suggestions, and real-time configuration
 - **ONNX Optimization**: 2-4x faster inference with automatic ONNX conversion for both embedding and reranker models
-- **Document-Focused Results**: Get top matching documents with URIs, titles, and relevant snippets
-- **Rich Command-Line Interface**: Powerful CLI with extensive options and colorized output
+- **Incremental Indexing**: Smart change detection with timestamp, hash, or hybrid strategies for efficient updates
+- **MCP Server Integration**: Model Context Protocol server for seamless AI assistant integration
+- **Rich Command-Line Interface**: Comprehensive CLI with hierarchical progress display and extensive options
 - **Privacy-Focused**: Your documents stay on your machine - no data sent to external services by default
 
 ## Installation
@@ -86,19 +87,25 @@ brew install cmake
 ## Quick Start
 
 ```bash
-# Index a directory
+# Index a directory (incremental by default)
 oboyu index /path/to/your/documents
 
 # Index with specific file patterns and Japanese encoding detection
 oboyu index /path/to/documents --include-patterns "*.txt,*.md" --japanese-encodings "utf-8,shift-jis,euc-jp"
 
-# Query your documents in Japanese (returns top matching documents with snippets)
+# Force complete re-indexing (non-incremental)
+oboyu index /path/to/documents --force
+
+# Query your documents in Japanese (hybrid search with reranking enabled by default)
 oboyu query "ドキュメント内の重要な概念は何ですか？"
 
 # Query in English with specific search mode and number of results
 oboyu query "What are the key concepts in the documents?" --mode vector --top-k 10
 
-# Query with reranking for improved accuracy (enabled by default)
+# Use hybrid search with custom weights
+oboyu query "database optimization techniques" --vector-weight 0.8 --bm25-weight 0.2
+
+# Query with reranking explicitly enabled (default behavior)
 oboyu query "技術的な実装の詳細" --rerank
 
 # Query without reranking for faster results
@@ -107,11 +114,26 @@ oboyu query "Quick overview of the project" --no-rerank
 # Get detailed explanation of search results
 oboyu query "Important design principles" --explain
 
+# Start interactive query session for continuous searches
+oboyu query --interactive
+
+# Interactive mode with reranker pre-loaded
+oboyu query --interactive --rerank --mode hybrid
+
 # Clear the entire index database (requires confirmation unless --force is used)
 oboyu clear
 
 # Clear with a specific database path
 oboyu clear --db-path custom.db --force
+
+# Check indexing status for a directory
+oboyu index manage status /path/to/documents
+
+# See what would be updated (dry-run)
+oboyu index manage diff /path/to/documents
+
+# Start MCP server for AI assistant integration
+oboyu mcp
 
 # Check the current version
 oboyu version
@@ -122,7 +144,7 @@ oboyu version
 Create a configuration file at the XDG-compliant location `~/.config/oboyu/config.yaml`:
 
 ```yaml
-# Crawler settings
+# Crawler settings for document discovery
 crawler:
   depth: 10
   include_patterns:
@@ -131,9 +153,19 @@ crawler:
     - "*.html"
     - "*.py"
     - "*.java"
+    - "*.js"
+    - "*.ts"
+    - "*.yaml"
+    - "*.yml"
+    - "*.json"
+    - "*.toml"
+    - "*.rst"
+    - "*.ipynb"
   exclude_patterns:
     - "*/node_modules/*"
-    - "*/venv/*"
+    - "*/.venv/*"
+    - "*/__pycache__/*"
+    - "*/.git/*"
   max_file_size: 10485760  # 10MB
   follow_symlinks: false
   japanese_encodings:
@@ -141,35 +173,49 @@ crawler:
     - "shift-jis"
     - "euc-jp"
   max_workers: 4
+  respect_gitignore: true
 
-# Indexer settings
+# Indexer settings for embedding and storage
 indexer:
+  # Text processing
   chunk_size: 1024
   chunk_overlap: 256
+  
+  # Embedding model
   embedding_model: "cl-nagoya/ruri-v3-30m"
   embedding_device: "cpu"
   batch_size: 8
-  db_path: "oboyu.db"
-  # Reranker settings
+  
+  # Database
+  db_path: "~/.oboyu/index.db"
+  
+  # Reranker settings (enabled by default)
   use_reranker: true
   reranker_model: "cl-nagoya/ruri-reranker-small"
   reranker_use_onnx: true
   reranker_top_k_multiplier: 3
   reranker_score_threshold: 0.5
+  
+  # Change detection for incremental indexing
+  change_detection_strategy: "smart"  # timestamp, hash, or smart
+  cleanup_deleted_files: true
+  enable_onnx_optimization: true
 
-# Query settings
+# Query settings for search behavior
 query:
   default_mode: "hybrid"
   vector_weight: 0.7
   bm25_weight: 0.3
   top_k: 5
+  use_reranker: true
   snippet_length: 160
   highlight_matches: true
+  show_scores: false
 ```
 
 Oboyu will create a default configuration file with these settings if none exists. You can override any of these settings via command-line options or by editing the configuration file.
 
-See the [configuration documentation](docs/configuration.md) for more options.
+See the [configuration documentation](docs/configuration.md) for complete details and advanced options.
 
 ## Contributing
 
