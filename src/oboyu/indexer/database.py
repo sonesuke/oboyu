@@ -31,7 +31,10 @@ from duckdb import DuckDBPyConnection
 from numpy.typing import NDArray
 
 from oboyu.indexer.config import DEFAULT_BATCH_SIZE
+from oboyu.indexer.database_manager import DatabaseManager
+from oboyu.indexer.index_manager import HNSWIndexParams
 from oboyu.indexer.processor import Chunk
+from oboyu.indexer.queries import ChunkData, EmbeddingData, QueryBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -91,42 +94,47 @@ class Database:
         """
         self.db_path = Path(db_path)
         self.embedding_dimensions = embedding_dimensions
+        self.batch_size = batch_size
+        
+        # Create HNSW parameters
+        self.hnsw_params = HNSWIndexParams(
+            ef_construction=ef_construction,
+            ef_search=ef_search,
+            m=m,
+            m0=m0 if m0 is not None else 2 * m
+        )
+        
+        # Initialize new database manager
+        self.db_manager = DatabaseManager(
+            db_path=db_path,
+            embedding_dimensions=embedding_dimensions,
+            hnsw_params=self.hnsw_params
+        )
+        
+        # Backward compatibility properties
         self.ef_construction = ef_construction
         self.ef_search = ef_search
         self.m = m
         self.m0 = m0 if m0 is not None else 2 * m
-        self.batch_size = batch_size
-
-        # Connections will be initialized in setup()
-        self.conn: Optional[DuckDBPyConnection] = None
+    
+    @property
+    def conn(self) -> Optional[DuckDBPyConnection]:
+        """Get database connection for backward compatibility."""
+        if hasattr(self, 'db_manager') and self.db_manager:
+            return self.db_manager.connection
+        return getattr(self, '_conn', None)
+    
+    @conn.setter  
+    def conn(self, value: Optional[DuckDBPyConnection]) -> None:
+        """Set database connection (for backward compatibility)."""
+        # Store for backward compatibility, but prefer using db_manager
+        self._conn = value
 
 
     def setup(self) -> None:
         """Set up the database schema and extensions."""
-        # Ensure the parent directory exists
-        if not str(self.db_path).startswith(":memory:"):
-            Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-
-        # Always use a file-based database to ensure persistence
-        self.conn = duckdb.connect(str(self.db_path))
-
-        # Install and load VSS extension first
-        # The VSS extension is a system library that comes with DuckDB
-        # See: https://duckdb.org/docs/stable/extensions/vss.html
-        self.conn.execute("INSTALL vss")
-        self.conn.execute("LOAD vss")
-
-        # Enable experimental persistence for HNSW indexes
-        self.conn.execute("SET hnsw_enable_experimental_persistence=true")
-        
-        # Set performance optimization pragmas
-        self.conn.execute("PRAGMA threads=8")  # Increase thread count
-        self.conn.execute("SET preserve_insertion_order=false")
-        self.conn.execute("SET memory_limit='4GB'")  # Increase memory limit
-        self.conn.execute("SET temp_directory='/tmp'")  # Use faster temp directory
-
-        # Create tables if they don't exist
-        self._create_schema()
+        # Use the new database manager for setup
+        self.db_manager.initialize_database()
 
 
 
@@ -236,13 +244,22 @@ class Database:
             chunks: List of document chunks to store
 
         """
-        if self.conn is None:
-            raise ValueError("Database connection not initialized. Call setup() first.")
-
         if not chunks:
             return
 
-        self._store_chunks_duckdb(chunks)
+        # Convert chunks to ChunkData for type safety
+        chunk_data_list = [QueryBuilder.from_chunk_to_chunk_data(chunk) for chunk in chunks]
+
+        # Use transaction for batch operations
+        with self.db_manager.transaction() as conn:
+            # Process chunks in batches
+            for i in range(0, len(chunk_data_list), self.batch_size):
+                batch = chunk_data_list[i:i + self.batch_size]
+                
+                # Use QueryBuilder for type-safe operations
+                for chunk_data in batch:
+                    sql, params = QueryBuilder.upsert_chunk(chunk_data)
+                    conn.execute(sql, params)
 
 
     def store_embeddings(
@@ -257,17 +274,34 @@ class Database:
             model_name: Name of the embedding model used
 
         """
-        if self.conn is None:
-            raise ValueError("Database connection not initialized. Call setup() first.")
-
         if not embeddings:
             return
 
-        # Process embeddings in batches to control memory usage
-        for batch_start in range(0, len(embeddings), self.batch_size):
-            batch_end = min(batch_start + self.batch_size, len(embeddings))
-            embeddings_batch = embeddings[batch_start:batch_end]
-            self._store_embeddings_duckdb(embeddings_batch, model_name)
+        # Convert to EmbeddingData for type safety
+        embedding_data_list = []
+        for embedding_id, chunk_id, vector, timestamp in embeddings:
+            # Skip problematic embeddings with scalar shape
+            if vector.shape == ():
+                continue
+            
+            embedding_data_list.append(EmbeddingData(
+                id=embedding_id,
+                chunk_id=chunk_id,
+                model=model_name,
+                vector=vector,
+                created_at=timestamp
+            ))
+
+        # Use transaction for batch operations
+        with self.db_manager.transaction() as conn:
+            # Process embeddings in batches to control memory usage
+            for i in range(0, len(embedding_data_list), self.batch_size):
+                batch = embedding_data_list[i:i + self.batch_size]
+                
+                # Use QueryBuilder for type-safe operations
+                for embedding_data in batch:
+                    sql, params = QueryBuilder.upsert_embedding(embedding_data)
+                    conn.execute(sql, params)
 
     def _store_chunks_duckdb(self, chunks: List[Chunk]) -> None:
         """Store document chunks using standard DuckDB (fallback method).
@@ -375,82 +409,36 @@ class Database:
             List of matching document chunks with similarity scores
 
         """
-        if self.conn is None:
-            raise ValueError("Database connection not initialized. Call setup() first.")
+        # Use QueryBuilder for type-safe vector search
+        sql, params = QueryBuilder.search_by_vector(
+            query_vector=query_vector,
+            limit=limit,
+            language=language,
+            embedding_dimensions=self.embedding_dimensions
+        )
 
-        # First create a temporary table with the query vector
-        temp_table_name = f"temp_query_vector_{uuid.uuid4().hex}"
+        # Execute search using connection
+        conn = self.db_manager.connection
+        results = conn.execute(sql, params).fetchall()
 
-        # We need to ensure query_vector is a numpy float32 array
-        if query_vector.dtype != np.float32:
-            query_vector = query_vector.astype(np.float32)
-
-        # Create a temporary table with the query vector
-        self.conn.execute(f"CREATE TEMPORARY TABLE {temp_table_name}(vec FLOAT[{self.embedding_dimensions}])")
-
-        # Insert the vector as a list
-        vector_list = query_vector.tolist()
-        self.conn.execute(f"INSERT INTO {temp_table_name} VALUES (?)", [vector_list])
-
-        # Build the query using the temporary table
-        sql_query = f"""
-        SELECT
-            c.id as chunk_id,
-            c.path,
-            c.title,
-            c.content,
-            c.chunk_index,
-            c.language,
-            c.metadata,
-            array_distance(e.vector, q.vec) as score
-        FROM chunks c
-        JOIN embeddings e ON c.id = e.chunk_id
-        CROSS JOIN {temp_table_name} q
-        """
-
-        # Add language filter if needed
-        params = []
-        if language:
-            sql_query += " WHERE c.language = ? "
-            params.append(language)
-
-        # Add ordering and limit
-        sql_query += f" ORDER BY score ASC LIMIT {limit}"
-
-        # Execute search
-        results = self.conn.execute(sql_query, params).fetchall()
-
-        # Clean up temporary table
-        self.conn.execute(f"DROP TABLE IF EXISTS {temp_table_name}")
-
-        # Format results
+        # Format results using QueryBuilder helper
         formatted_results = []
         for row in results:
-            # Convert cosine distance to similarity score
-            # Cosine distance ranges from 0 to 2, where 0 is best match
-            # Convert to similarity score where 1 is best match
-            distance = float(row[7])
-            similarity_score = 1.0 - (distance / 2.0)
+            result_dict = QueryBuilder.search_result_from_row(row)
             
-            formatted_results.append({
-                "chunk_id": row[0],
-                "path": row[1],
-                "title": row[2],
-                "content": row[3],
-                "chunk_index": row[4],
-                "language": row[5],
-                "metadata": json.loads(row[6]) if row[6] else {},
-                "score": similarity_score,  # Now higher scores are better
-            })
+            # Convert cosine distance to similarity score for compatibility
+            distance = result_dict["score"]
+            similarity_score = 1.0 - (distance / 2.0)
+            result_dict["score"] = similarity_score
+            
+            formatted_results.append(result_dict)
 
         return formatted_results
 
     def recompact_index(self) -> None:
         """Recompact the HNSW index to improve search performance."""
-        if self.conn is None:
-            raise ValueError("Database connection not initialized. Call setup() first.")
-
-        self.conn.execute("PRAGMA hnsw_compact_index('vector_idx')")
+        # Use IndexManager for index operations
+        self.db_manager.index_manager.compact_hnsw_index()
 
     def get_chunk_by_id(self, chunk_id: str) -> Optional[Dict[str, object]]:
         """Retrieve a chunk by its ID.
@@ -462,29 +450,16 @@ class Database:
             Chunk data as dictionary or None if not found
 
         """
-        if self.conn is None:
-            raise ValueError("Database connection not initialized. Call setup() first.")
-
-        result = self.conn.execute("""
-            SELECT id, path, title, content, chunk_index, language, created_at, modified_at, metadata
-            FROM chunks
-            WHERE id = ?
-        """, [chunk_id]).fetchone()
+        # Use QueryBuilder for type-safe query
+        sql, params = QueryBuilder.select_chunk_by_id(chunk_id)
+        
+        conn = self.db_manager.connection
+        result = conn.execute(sql, params).fetchone()
 
         if not result:
             return None
 
-        return {
-            "id": result[0],
-            "path": result[1],
-            "title": result[2],
-            "content": result[3],
-            "chunk_index": result[4],
-            "language": result[5],
-            "created_at": result[6],
-            "modified_at": result[7],
-            "metadata": json.loads(result[8]) if result[8] else {},
-        }
+        return QueryBuilder.chunk_from_row(result)
 
     def get_chunks_by_path(self, path: Union[str, Path]) -> List[Dict[str, object]]:
         """Retrieve chunks by document path.
@@ -587,22 +562,15 @@ class Database:
         This method removes all chunks and embeddings from the database
         while preserving the database schema and structure.
         """
-        if self.conn is None:
-            raise ValueError("Database connection not initialized. Call setup() first.")
-
-        # Clear BM25 index data first (inverted_index references chunks)
-        self.clear_bm25_index()
+        # Use QueryBuilder for safe data clearing
+        clear_queries = QueryBuilder.clear_all_data()
         
-        # Delete all data from embeddings (due to foreign key constraint)
-        self.conn.execute("DELETE FROM embeddings")
+        with self.db_manager.transaction() as conn:
+            for sql, params in clear_queries:
+                conn.execute(sql, params)
 
-        # Delete all data from chunks
-        self.conn.execute("DELETE FROM chunks")
-
-        # Drop and recreate the HNSW index to ensure clean state
-        # This is necessary because HNSW indexes can retain internal state
-        # even after all data is deleted
-        self.recreate_hnsw_index(force=True)
+        # Recreate HNSW index to ensure clean state
+        self.db_manager.index_manager.recreate_hnsw_index()
 
     def get_statistics(self) -> Dict[str, object]:
         """Retrieve statistics about the database.
@@ -1179,8 +1147,12 @@ class Database:
     
     def close(self) -> None:
         """Close the database connections."""
-        # Close the DuckDB connection
-        if self.conn:
-            self.conn.close()
-            self.conn = None
+        # Use DatabaseManager for proper cleanup
+        if hasattr(self, 'db_manager') and self.db_manager:
+            self.db_manager.close()
+        
+        # Also handle direct connection for backward compatibility
+        if hasattr(self, '_conn') and self._conn:
+            self._conn.close()
+            self._conn = None
 
