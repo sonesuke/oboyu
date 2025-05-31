@@ -4,6 +4,7 @@ This module provides the command-line interface for querying indexed documents.
 """
 
 import logging
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -17,6 +18,9 @@ from prompt_toolkit.history import FileHistory
 from rich.console import Console
 from rich.text import Text
 from typing_extensions import Annotated
+
+# Disable tokenizer parallelism to avoid forking warnings
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from oboyu.cli.hierarchical_logger import create_hierarchical_logger
 from oboyu.common.paths import DEFAULT_DB_PATH
