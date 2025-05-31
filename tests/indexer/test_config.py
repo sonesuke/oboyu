@@ -17,11 +17,11 @@ class TestIndexerConfig:
         config = IndexerConfig(config_dict={"indexer": {"db_path": test_db_path}})
 
         # Check default values
-        assert config.chunk_size == 1024
-        assert config.chunk_overlap == 256
+        assert config.chunk_size == 300
+        assert config.chunk_overlap == 75
         assert config.embedding_model == "cl-nagoya/ruri-v3-30m"
         assert config.embedding_device == "cpu"
-        assert config.batch_size == 128
+        assert config.batch_size == 64
         assert config.max_seq_length == 8192
         assert config.document_prefix == "検索文書: "
         assert config.query_prefix == "検索クエリ: "
@@ -33,7 +33,7 @@ class TestIndexerConfig:
         assert config.ef_search == 64
         assert config.m == 16
         assert config.m0 is None
-        assert config.max_workers == 8
+        assert config.max_workers == 2
 
     def test_config_from_dict(self) -> None:
         """Test loading configuration from dictionary."""
@@ -54,7 +54,7 @@ class TestIndexerConfig:
                 "ef_search": 128,
                 "m": 32,
                 "m0": 64,
-                "max_workers": 8,
+                "max_workers": 4,
             }
         }
 
@@ -76,7 +76,7 @@ class TestIndexerConfig:
         assert config.ef_search == 128
         assert config.m == 32
         assert config.m0 == 64
-        assert config.max_workers == 8
+        assert config.max_workers == 4
 
     def test_config_validation(self) -> None:
         """Test configuration validation."""
@@ -100,16 +100,16 @@ class TestIndexerConfig:
         config = IndexerConfig(config_dict=config_dict)
 
         # All values should now be valid defaults
-        assert config.chunk_size == 1024  # Default
-        assert config.chunk_overlap == 256  # Default
+        assert config.chunk_size == 300  # Default
+        assert config.chunk_overlap == 75  # Default
         assert config.embedding_device == "cpu"  # Default
-        assert config.batch_size == 128  # Default
+        assert config.batch_size == 64  # Default
         assert config.max_seq_length == 8192  # Default
         assert config.ef_construction == 128  # Default
         assert config.ef_search == 64  # Default
         assert config.m == 16  # Default
         assert config.m0 is None  # Default
-        assert config.max_workers == 8  # Default
+        assert config.max_workers == 2  # Default
 
     def test_partial_config(self) -> None:
         """Test partial configuration override."""

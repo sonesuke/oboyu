@@ -10,8 +10,8 @@ from typing import Any, Dict, Optional, Union
 DEFAULT_CONFIG = {
     "indexer": {
         # Document processing settings
-        "chunk_size": 1024,  # Default chunk size in characters
-        "chunk_overlap": 256,  # Default overlap between chunks
+        "chunk_size": 300,  # Default chunk size in characters (optimized for reranker compatibility)
+        "chunk_overlap": 75,  # Default overlap between chunks (25% of chunk_size)
         # Embedding settings
         "embedding_model": "cl-nagoya/ruri-v3-30m",  # Default embedding model
         "embedding_device": "cpu",  # Default device for embeddings (cpu/cuda)
@@ -69,8 +69,8 @@ DEFAULT_CONFIG = {
 }
 
 # Default values for individual settings, used for validation
-DEFAULT_CHUNK_SIZE = 1024
-DEFAULT_CHUNK_OVERLAP = 256
+DEFAULT_CHUNK_SIZE = 300
+DEFAULT_CHUNK_OVERLAP = 75
 DEFAULT_EMBEDDING_MODEL = "cl-nagoya/ruri-v3-30m"
 DEFAULT_EMBEDDING_DEVICE = "cpu"
 DEFAULT_BATCH_SIZE = 64
@@ -198,6 +198,9 @@ class IndexerConfig:
 
         # Validate reranker settings
         self._validate_reranker_settings(indexer_config)
+        
+        # Validate chunk size compatibility with reranker
+        self._validate_chunk_size_for_reranker(indexer_config)
 
         # Validate BM25 settings
         self._validate_bm25_settings(indexer_config)
@@ -337,6 +340,26 @@ class IndexerConfig:
         threshold = indexer_config.get("reranker_threshold")
         if threshold is not None and (not isinstance(threshold, (int, float)) or threshold < 0 or threshold > 1):
             indexer_config["reranker_threshold"] = DEFAULT_RERANKER_THRESHOLD
+
+    def _validate_chunk_size_for_reranker(self, indexer_config: Dict[str, Any]) -> None:
+        """Validate that chunk size is compatible with reranker constraints."""
+        import logging
+        
+        chunk_size = indexer_config.get("chunk_size", DEFAULT_CHUNK_SIZE)
+        reranker_max_length = indexer_config.get("reranker_max_length", DEFAULT_RERANKER_MAX_LENGTH)
+        
+        # Conservative estimate: ~60% of reranker max length should be available for document content
+        # This accounts for query text, prefixes, and separator tokens
+        max_recommended_chunk_size = int(reranker_max_length * 0.6)
+        
+        if chunk_size > max_recommended_chunk_size:
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Chunk size ({chunk_size}) may exceed reranker capacity "
+                f"(recommended: <{max_recommended_chunk_size} for reranker_max_length={reranker_max_length}). "
+                f"This may cause truncation warnings and degraded reranking quality. "
+                f"Consider reducing chunk_size."
+            )
 
     def _validate_bm25_settings(self, indexer_config: dict[str, Any]) -> None:
         """Validate BM25 settings."""
