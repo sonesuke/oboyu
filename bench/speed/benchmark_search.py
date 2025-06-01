@@ -12,8 +12,8 @@ from rich.progress import track
 from bench.config import BENCHMARK_CONFIG, QUERIES_DIR
 from bench.speed.results import SearchBenchmarkResult, SearchResult
 from bench.utils import SystemMonitor, Timer, calculate_statistics, print_metric, print_section
-from oboyu.indexer.database import Database
-from oboyu.indexer.embedding import EmbeddingGenerator
+from oboyu.indexer.storage.database_service import Database
+from oboyu.indexer.models.embedding_service import EmbeddingGenerator
 
 console = Console()
 

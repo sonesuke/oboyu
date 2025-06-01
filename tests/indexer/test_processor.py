@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from oboyu.indexer.core.document_processor import Chunk, DocumentProcessor
-from oboyu.indexer.processor import chunk_documents
+from oboyu.indexer.core.document_processor import chunk_documents
 
 
 class TestDocumentProcessor:

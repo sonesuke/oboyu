@@ -6,7 +6,7 @@ migration functionality.
 
 import pytest
 
-from oboyu.indexer.schema import SCHEMA_MIGRATIONS, DatabaseSchema
+from oboyu.indexer.storage.schema import SCHEMA_MIGRATIONS, DatabaseSchema
 
 
 class TestFileMetadataSchema:

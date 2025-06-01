@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from oboyu.indexer import SearchResult
-from oboyu.indexer.reranker import (
+from oboyu.indexer.models.reranker_service import (
     BaseReranker,
     CrossEncoderReranker,
     ONNXCrossEncoderReranker,

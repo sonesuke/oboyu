@@ -10,8 +10,8 @@ import string
 import uuid
 
 import numpy as np
-from oboyu.indexer.database import Database
-from oboyu.indexer.processor import Chunk
+from oboyu.indexer.storage.database_service import DatabaseService as Database
+from oboyu.indexer.core.document_processor import Chunk
 
 
 def random_string(length=100):

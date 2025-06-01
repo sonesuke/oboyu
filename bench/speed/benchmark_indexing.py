@@ -16,7 +16,7 @@ from bench.utils import SystemMonitor, Timer, print_metric, print_section
 from oboyu.crawler.crawler import Crawler
 from oboyu.crawler.discovery import discover_documents
 from oboyu.indexer import LegacyIndexer as Indexer
-from oboyu.indexer.database import Database
+from oboyu.indexer.storage.database_service import Database
 
 console = Console()
 
