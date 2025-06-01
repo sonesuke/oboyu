@@ -5,7 +5,7 @@ from typing import Optional
 
 from oboyu.indexer.config.indexer_config import IndexerConfig
 from oboyu.indexer.core.document_processor import DocumentProcessor
-from oboyu.indexer.core.search_engine import SearchEngine
+from oboyu.indexer.search.engine import SearchEngine
 from oboyu.indexer.models.embedding_service import EmbeddingService
 from oboyu.indexer.models.reranker_service import RerankerService
 from oboyu.indexer.models.tokenizer_service import TokenizerService

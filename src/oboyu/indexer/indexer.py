@@ -9,7 +9,7 @@ from numpy.typing import NDArray
 
 from oboyu.crawler.crawler import CrawlerResult
 from oboyu.indexer.config.indexer_config import IndexerConfig
-from oboyu.indexer.core.search_mode import SearchMode
+from oboyu.indexer.search.search_mode import SearchMode
 from oboyu.indexer.orchestrators.indexing_pipeline import IndexingPipeline
 from oboyu.indexer.orchestrators.search_orchestrator import SearchOrchestrator
 from oboyu.indexer.orchestrators.service_registry import ServiceRegistry

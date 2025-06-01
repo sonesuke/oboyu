@@ -26,7 +26,7 @@ from oboyu.indexer.search.search_filters import SearchFilters
 from oboyu.indexer.storage.database_manager import DatabaseManager
 from oboyu.indexer.storage.database_search_service import DatabaseSearchService
 from oboyu.indexer.storage.index_manager import HNSWIndexParams, IndexManager
-from oboyu.indexer.storage.repositories import ChunkRepository, EmbeddingRepository, StatisticsRepository
+from oboyu.indexer.storage.consolidated_repositories import ChunkRepository, EmbeddingRepository, StatisticsRepository
 
 logger = logging.getLogger(__name__)
 

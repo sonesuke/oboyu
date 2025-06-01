@@ -2,7 +2,7 @@
 
 import pytest
 
-from oboyu.indexer.core.search_context import ContextBuilder, SearchContext, SettingSource, SystemDefaults
+from oboyu.indexer.search.search_context import ContextBuilder, SearchContext, SettingSource, SystemDefaults
 
 
 class TestSearchContext:
