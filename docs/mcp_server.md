@@ -71,15 +71,32 @@ oboyu mcp --db-path /path/to/custom.db
 
 The Oboyu MCP server provides the following tool:
 
-### search_documents
+### search
 
-Search indexed documents using semantic search with Japanese language optimization.
+Execute high-precision semantic search with Japanese language optimization and comprehensive parameter guidance.
+
+**✨ Enhanced User Experience Features:**
+- 🔍 **Search Mode Optimization Guide**: Clear guidance on when to use vector, BM25, or hybrid modes
+- 💡 **Usage Examples & Best Practices**: Comprehensive examples for Japanese, English, and mixed queries
+- 🎯 **Optimization Tips**: Practical advice for query formulation and parameter tuning
+- ❌ **Troubleshooting Section**: Built-in guidance for common search issues
+- 🌏 **Language Support Details**: Explicit Japanese/English multilingual capabilities
 
 **Parameters:**
-- `query` (string, required): The search query in any language
-- `limit` (integer, optional): Number of results to return (default: 5)
-- `mode` (string, optional): Search mode - "vector", "bm25", or "hybrid" (default: "hybrid")
-- `language` (string, optional): Language filter (e.g., 'ja', 'en') to restrict search to specific language content
+
+The `search` tool now provides comprehensive documentation and optimization guidance directly in its annotation. Key parameters include:
+
+- `query` (string, required): Search query text (Japanese, English, or mixed supported)
+  - Examples: "machine learning algorithms", "機械学習アルゴリズム", "REST API design"
+- `top_k` (integer, 1-100): Number of results to return (recommended: 5-10, default: 5)
+  - 1-5: Highly curated results
+  - 6-15: Broader candidate pool  
+  - 16-100: Comprehensive search coverage
+- `mode` (string, optional): Search algorithm mode (default: "hybrid")
+  - "vector": Semantic similarity focus (best for conceptual queries)
+  - "bm25": Keyword matching focus (best for technical searches)  
+  - "hybrid": Balanced combination (recommended for general use)
+- `language` (string, optional): Language filter for results ("ja", "en", or None for all)
 - `snippet_config` (object, optional): Configuration for snippet generation and context control
 - `filters` (object, optional): Search filters for date range and path filtering
 
@@ -172,52 +189,52 @@ The MCP server provides flexible search capabilities through AI assistants:
 ### Hybrid Search (Default)
 ```
 # Through MCP tools in Claude or other AI assistants
-search_documents("機械学習の基本的なアルゴリズム", limit=5)
+search("機械学習の基本的なアルゴリズム", top_k=5)
 ```
 
 ### Vector Search
 ```
-search_documents("design patterns in software architecture", mode="vector", limit=10)
+search("design patterns in software architecture", mode="vector", top_k=10)
 ```
 
 ### BM25 Search
 ```
-search_documents("データベース正規化", mode="bm25")
+search("データベース正規化", mode="bm25")
 ```
 
 ### Language Filtering
 ```
-search_documents("機械学習アルゴリズム", language="ja", limit=10)
+search("機械学習アルゴリズム", language="ja", top_k=10)
 ```
 
 ### Snippet Context Control
 ```
 # Basic snippet configuration
-search_documents("機械学習の原則", 
-                snippet_config={
-                  "length": 200,
-                  "highlight_matches": true,
-                  "strategy": "sentence_boundary"
-                })
+search("機械学習の原則", 
+       snippet_config={
+         "length": 200,
+         "highlight_matches": true,
+         "strategy": "sentence_boundary"
+       })
 
 # Japanese-aware snippet processing
-search_documents("システム設計の考え方", 
-                snippet_config={
-                  "length": 150,
-                  "japanese_aware": true,
-                  "prefer_complete_sentences": true,
-                  "context_window": 30
-                })
+search("システム設計の考え方", 
+       snippet_config={
+         "length": 150,
+         "japanese_aware": true,
+         "prefer_complete_sentences": true,
+         "context_window": 30
+       })
 
 # Multi-level snippets
-search_documents("database design patterns", 
-                snippet_config={
-                  "levels": [
-                    {"type": "summary", "length": 100},
-                    {"type": "detailed", "length": 300}
-                  ],
-                  "highlight_matches": false
-                })
+search("database design patterns", 
+       snippet_config={
+         "levels": [
+           {"type": "summary", "length": 100},
+           {"type": "detailed", "length": 300}
+         ],
+         "highlight_matches": false
+       })
 ```
 
 ### Search Filtering
@@ -227,60 +244,60 @@ The MCP server now supports advanced filtering to narrow down search results:
 #### Date Range Filtering
 ```
 # Find recent documentation updates
-search_documents("システム設計", 
-                filters={
-                  "date_range": {
-                    "start": "2024-05-01",
-                    "field": "modified_at"
-                  }
-                })
+search("システム設計", 
+       filters={
+         "date_range": {
+           "start": "2024-05-01",
+           "field": "modified_at"
+         }
+       })
 
 # Find documents created in a specific time period
-search_documents("機械学習アルゴリズム", 
-                filters={
-                  "date_range": {
-                    "start": "2024-01-01",
-                    "end": "2024-12-31",
-                    "field": "created_at"
-                  }
-                })
+search("機械学習アルゴリズム", 
+       filters={
+         "date_range": {
+           "start": "2024-01-01",
+           "end": "2024-12-31",
+           "field": "created_at"
+         }
+       })
 ```
 
 #### Path Pattern Filtering
 ```
 # Search only in documentation directories
-search_documents("API documentation", 
-                filters={
-                  "path_filter": {
-                    "include_patterns": ["*/docs/*", "*/api/*", "*.md"],
-                    "exclude_patterns": ["*/test/*", "*.log"]
-                  }
-                })
+search("API documentation", 
+       filters={
+         "path_filter": {
+           "include_patterns": ["*/docs/*", "*/api/*", "*.md"],
+           "exclude_patterns": ["*/test/*", "*.log"]
+         }
+       })
 
 # Focus search on specific project areas
-search_documents("API implementation", 
-                filters={
-                  "path_filter": {
-                    "include_patterns": ["*/backend/*", "*/api/*"],
-                    "exclude_patterns": ["*/test/*", "*/deprecated/*"]
-                  }
-                })
+search("API implementation", 
+       filters={
+         "path_filter": {
+           "include_patterns": ["*/backend/*", "*/api/*"],
+           "exclude_patterns": ["*/test/*", "*/deprecated/*"]
+         }
+       })
 ```
 
 #### Combined Filtering
 ```
 # Search recent documentation in specific directories
-search_documents("設計パターン", 
-                filters={
-                  "date_range": {
-                    "start": "2024-06-01",
-                    "field": "modified_at"
-                  },
-                  "path_filter": {
-                    "include_patterns": ["*/documentation/*"],
-                    "exclude_patterns": ["*/archived/*"]
-                  }
-                })
+search("設計パターン", 
+       filters={
+         "date_range": {
+           "start": "2024-06-01",
+           "field": "modified_at"
+         },
+         "path_filter": {
+           "include_patterns": ["*/documentation/*"],
+           "exclude_patterns": ["*/archived/*"]
+         }
+       })
 ```
 
 #### Pattern Matching Rules

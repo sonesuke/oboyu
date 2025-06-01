@@ -54,19 +54,91 @@ def search(
     snippet_config: Optional[Dict[str, object]] = None,
     filters: Optional[Dict[str, object]] = None,
 ) -> Dict[str, object]:
-    """Execute a semantic search query and return relevant documents.
-
-    Args:
-        query: Search query
-        mode: Search mode (vector, bm25, hybrid)
-        top_k: Maximum number of results to return
-        language: Optional language filter (e.g., 'ja', 'en')
-        db_path: Optional path to the database file
-        snippet_config: Optional configuration for snippet generation
-        filters: Optional filters for date range and path filtering
-
-    Returns:
-        Dictionary containing search results and statistics
+    """Execute high-precision semantic search with Japanese language optimization.
+    
+    🔍 Search Mode Optimization Guide:
+    • vector: Conceptual search, semantic similarity, "explain about..." queries
+    • bm25: Exact keyword matching, technical terms, API names, function names
+    • hybrid: Balanced approach (recommended), optimal for general-purpose search
+    
+    📋 Parameters:
+        query (str): Search query text (Japanese, English, or mixed supported)
+            Examples: "machine learning algorithms", "機械学習アルゴリズム", "REST API design"
+            
+        mode (str): Search algorithm mode
+            • "vector": Semantic similarity focus (best for conceptual queries)
+            • "bm25": Keyword matching focus (best for technical searches)
+            • "hybrid": Balanced combination (recommended for general use)
+            
+        top_k (int, 1-100): Number of results to return (recommended: 5-10)
+            • 1-5: Highly curated results
+            • 6-15: Broader candidate pool
+            • 16-100: Comprehensive search coverage
+            
+        language (str, optional): Language filter for results
+            • "ja": Japanese content only
+            • "en": English content only
+            • None: All languages (auto-detected)
+            
+        db_path (str, optional): Path to database file (uses default if not specified)
+            
+        snippet_config (dict, optional): Configuration for snippet generation
+            • max_length: Maximum snippet length in characters
+            • context_window: Characters around matching terms
+            • highlight_terms: Whether to highlight matching terms
+            
+        filters (dict, optional): Filters for search results
+            • date_range: Filter by document modification date
+            • path_patterns: Include/exclude specific file paths
+            • file_types: Filter by file extensions
+    
+    📤 Returns:
+        Dictionary containing search results and statistics:
+        • results: List of matching documents with title, content, uri, score, language, metadata
+        • stats: Search statistics including count, query, and language filter
+        
+    💡 Usage Examples & Best Practices:
+        # Japanese conceptual search (recommended: vector mode)
+        search("機械学習の基本的な考え方", mode="vector")
+        
+        # Technical term search (recommended: bm25 mode)
+        search("pandas DataFrame merge", mode="bm25")
+        
+        # General-purpose search (recommended: hybrid mode, default)
+        search("project management best practices")
+        
+        # Language-specific search
+        search("Python async programming", language="en", top_k=10)
+        
+        # Japanese-English mixed query
+        search("Pythonでの非同期処理の実装", mode="hybrid")
+        
+        # Search with snippet customization
+        search("API documentation", snippet_config={"max_length": 200, "highlight_terms": True})
+        
+        # Filtered search by file type and date
+        search("configuration", filters={"file_types": [".py", ".json"], "path_patterns": ["src/**"]})
+    
+    🎯 Optimization Tips:
+        • 2-5 words per query typically yield best results
+        • Combine technical terms with general concepts
+        • Japanese particles like "について" and "に関して" are well-supported
+        • Try vector mode if too few results
+        • Try bm25 mode if results lack precision
+        • Mixed Japanese-English queries work naturally
+        • For Japanese content, vector mode often improves conceptual understanding
+        
+    ❌ Troubleshooting:
+        • No results → Use broader keywords / switch to vector mode
+        • Low relevance → Use more specific terms / switch to bm25 mode
+        • Slow performance → Reduce top_k / use language filter
+        • Japanese text issues → Ensure proper encoding (auto-detected)
+        
+    🌏 Language Support:
+        • Japanese: Full morphological analysis with MeCab
+        • English: Advanced tokenization and stemming
+        • Mixed queries: Automatic language detection per term
+        • Encoding: Auto-detection for UTF-8, Shift-JIS, EUC-JP
 
     """
     try:
