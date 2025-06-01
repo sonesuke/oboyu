@@ -1,29 +1,34 @@
 """BM25 indexer for Oboyu.
 
 This module provides BM25 indexing functionality for Japanese text search,
-including inverted index construction and statistical information management.
+orchestrating specialized components for index building, statistics, and term analysis.
 """
 
 import logging
-import math
 from collections import defaultdict
-from typing import Callable, Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from oboyu.indexer.core.document_processor import Chunk
-from oboyu.indexer.models.tokenizer_service import create_tokenizer
+from oboyu.indexer.models.tokenizer_service import create_tokenizer, TokenizerService
+from oboyu.indexer.search.bm25_statistics_calculator import BM25StatisticsCalculator
+from oboyu.indexer.search.inverted_index_builder import InvertedIndexBuilder
+from oboyu.indexer.search.term_frequency_analyzer import TermFrequencyAnalyzer
 
 logger = logging.getLogger(__name__)
 
 
 class BM25Indexer:
-    """BM25 indexer for building inverted index and computing statistics.
+    """BM25 indexer that orchestrates specialized components for indexing.
 
-    This class handles the construction of inverted index, document frequency
-    calculation, and other statistics required for BM25 scoring.
+    This class coordinates inverted index building, statistics calculation,
+    and term frequency analysis using focused, single-responsibility components.
     """
 
     def __init__(
         self,
+        index_builder: Optional[InvertedIndexBuilder] = None,
+        statistics_calculator: Optional[BM25StatisticsCalculator] = None,
+        term_analyzer: Optional[TermFrequencyAnalyzer] = None,
         k1: float = 1.2,
         b: float = 0.75,
         tokenizer_class: Optional[str] = None,
@@ -32,9 +37,12 @@ class BM25Indexer:
         min_doc_frequency: int = 1,
         store_positions: bool = True,
     ) -> None:
-        """Initialize BM25 indexer.
+        """Initialize BM25 indexer with specialized components.
 
         Args:
+            index_builder: Optional inverted index builder component
+            statistics_calculator: Optional BM25 statistics calculator component
+            term_analyzer: Optional term frequency analyzer component
             k1: BM25 k1 parameter (term saturation)
             b: BM25 b parameter (length normalization)
             tokenizer_class: Optional tokenizer class name
@@ -65,13 +73,50 @@ class BM25Indexer:
 
         # Store tokenizer config for parallel processing
         self.tokenizer_config = {"language": language, "min_token_length": min_token_length, "use_stopwords": use_stopwords}
-        # Index structures
-        self.inverted_index: Dict[str, List[Tuple[str, int, Optional[List[int]]]]] = defaultdict(list)
-        self.document_frequencies: Dict[str, int] = defaultdict(int)
-        self.collection_frequencies: Dict[str, int] = defaultdict(int)
-        self.document_lengths: Dict[str, int] = {}
-        self.document_count = 0
-        self.total_document_length = 0
+        
+        # Initialize specialized components
+        self.index_builder = index_builder or InvertedIndexBuilder(store_positions=store_positions)
+        self.statistics_calculator = statistics_calculator or BM25StatisticsCalculator()
+        # Create TokenizerService for the term analyzer if needed
+        if term_analyzer is None:
+            tokenizer_service = TokenizerService(language, {"min_token_length": min_token_length})
+            self.term_analyzer = TermFrequencyAnalyzer(tokenizer_service)
+        else:
+            self.term_analyzer = term_analyzer
+        
+        # Backward compatibility properties
+        self._term_freq_cache: Dict[int, Dict[str, int]] = {}
+    
+    # Backward compatibility properties
+    @property
+    def inverted_index(self) -> Dict[str, List[Tuple[str, int, Optional[List[int]]]]]:
+        """Access to inverted index for backward compatibility."""
+        return self.index_builder.get_index_data()
+    
+    @property
+    def document_frequencies(self) -> Dict[str, int]:
+        """Access to document frequencies for backward compatibility."""
+        return self.statistics_calculator.document_frequencies
+    
+    @property
+    def collection_frequencies(self) -> Dict[str, int]:
+        """Access to collection frequencies for backward compatibility."""
+        return self.statistics_calculator.collection_frequencies
+    
+    @property
+    def document_lengths(self) -> Dict[str, int]:
+        """Access to document lengths for backward compatibility."""
+        return self.statistics_calculator.document_lengths
+    
+    @property
+    def document_count(self) -> int:
+        """Access to document count for backward compatibility."""
+        return self.statistics_calculator.document_count
+    
+    @property
+    def total_document_length(self) -> int:
+        """Access to total document length for backward compatibility."""
+        return self.statistics_calculator.total_document_length
 
     def index_chunks(self, chunks: List[Chunk], progress_callback: Optional[Callable[[str, int, int], None]] = None) -> Dict[str, int]:
         """Index a batch of chunks for BM25 search.
@@ -85,10 +130,9 @@ class BM25Indexer:
 
         """
         stats = self._initialize_stats()
-        term_freq_cache: Dict[int, Dict[str, int]] = {}
         
-        # Process chunks
-        self._process_chunks(chunks, stats, term_freq_cache, progress_callback)
+        # Process chunks using specialized components
+        self._process_chunks_with_components(chunks, stats, progress_callback)
         
         # Report vocabulary and index building progress
         self._report_post_processing_progress(progress_callback)
@@ -154,7 +198,17 @@ class BM25Indexer:
         term_freq_cache: Dict[int, Dict[str, int]],
         progress_callback: Optional[Callable[[str, int, int], None]]
     ) -> None:
-        """Process chunks and update indices."""
+        """Legacy method for backward compatibility."""
+        # Delegate to new component-based method
+        self._process_chunks_with_components(chunks, stats, progress_callback)
+    
+    def _process_chunks_with_components(
+        self,
+        chunks: List[Chunk],
+        stats: Dict[str, int],
+        progress_callback: Optional[Callable[[str, int, int], None]]
+    ) -> None:
+        """Process chunks using specialized components."""
         import time
         
         total_chunks = len(chunks)
@@ -163,20 +217,22 @@ class BM25Indexer:
         for idx, chunk in enumerate(chunks):
             self._report_chunk_progress(idx, total_chunks, last_progress_time, time.time(), progress_callback)
             
-            # Get term frequencies with caching
-            term_frequencies = self._get_cached_term_frequencies(chunk, term_freq_cache)
+            # Analyze document using term frequency analyzer
+            term_frequencies = self.term_analyzer.analyze_document(chunk.content)
             
-            # Update document statistics
-            self._update_document_stats(chunk, term_frequencies)
+            # Extract unique terms
+            unique_terms = set(term_frequencies.keys())
             
-            # Update inverted index
-            unique_terms = self._update_inverted_index(chunk, term_frequencies, stats)
+            # Update statistics using statistics calculator
+            self.statistics_calculator.update_collection_statistics(
+                chunk.id, term_frequencies, unique_terms
+            )
             
-            # Update document frequencies
-            self._update_document_frequencies(unique_terms)
+            # Update inverted index using index builder
+            self.index_builder.update_index(chunk.id, term_frequencies)
             
-            self.document_count += 1
             stats["chunks_indexed"] += 1
+            stats["terms_indexed"] += sum(term_frequencies.values())
         
         # Report final tokenizing progress
         if progress_callback:
@@ -206,44 +262,8 @@ class BM25Indexer:
         chunk: Chunk,
         term_freq_cache: Dict[int, Dict[str, int]]
     ) -> Dict[str, int]:
-        """Get term frequencies with caching."""
-        content_hash = hash(chunk.content)
-        if content_hash in term_freq_cache:
-            return term_freq_cache[content_hash]
-        
-        term_frequencies = self.tokenizer.get_term_frequencies(chunk.content)
-        if len(term_freq_cache) < 1000:  # Limit cache size
-            term_freq_cache[content_hash] = term_frequencies
-        return term_frequencies
-    
-    def _update_document_stats(self, chunk: Chunk, term_frequencies: Dict[str, int]) -> None:
-        """Update document length statistics."""
-        doc_length = sum(term_frequencies.values())
-        self.document_lengths[chunk.id] = doc_length
-        self.total_document_length += doc_length
-    
-    def _update_inverted_index(
-        self,
-        chunk: Chunk,
-        term_frequencies: Dict[str, int],
-        stats: Dict[str, int]
-    ) -> Set[str]:
-        """Update inverted index and return unique terms."""
-        unique_terms_in_doc: Set[str] = set()
-        
-        for term, freq in term_frequencies.items():
-            positions: Optional[List[int]] = [] if self.store_positions else None
-            self.inverted_index[term].append((chunk.id, freq, positions))
-            self.collection_frequencies[term] += freq
-            unique_terms_in_doc.add(term)
-            stats["terms_indexed"] += freq
-        
-        return unique_terms_in_doc
-    
-    def _update_document_frequencies(self, unique_terms: Set[str]) -> None:
-        """Update document frequencies for unique terms."""
-        for term in unique_terms:
-            self.document_frequencies[term] += 1
+        """Legacy method for backward compatibility."""
+        return self.term_analyzer.analyze_document(chunk.content)
     
     def _report_post_processing_progress(
         self,
@@ -254,7 +274,7 @@ class BM25Indexer:
             return
         
         # Building vocabulary step
-        vocab_size = len(self.inverted_index)
+        vocab_size = self.index_builder.get_vocabulary_size()
         progress_callback("bm25_vocabulary", 0, vocab_size)
         progress_callback("bm25_vocabulary", vocab_size, vocab_size)
         
@@ -269,7 +289,7 @@ class BM25Indexer:
         self._report_inverted_index_storage_progress(progress_callback)
         
         # Storing document stats step
-        doc_count = len(self.document_lengths)
+        doc_count = len(self.statistics_calculator.document_lengths)
         progress_callback("bm25_store_document_stats", 0, doc_count)
         progress_callback("bm25_store_document_stats", doc_count, doc_count)
     
@@ -325,7 +345,7 @@ class BM25Indexer:
         chunk_id: str,
         chunk_term_freqs: Dict[str, int],
     ) -> float:
-        """Calculate BM25 score for a chunk given query terms.
+        """Calculate BM25 score for a chunk given query terms using statistics calculator.
 
         Args:
             query_terms: List of query terms
@@ -336,45 +356,29 @@ class BM25Indexer:
             BM25 score
 
         """
-        if chunk_id not in self.document_lengths:
+        doc_length = self.statistics_calculator.get_document_length(chunk_id)
+        if doc_length == 0:
             return 0.0
 
         score = 0.0
-        doc_length = self.document_lengths[chunk_id]
-        avg_doc_length = self.total_document_length / self.document_count if self.document_count > 0 else 1.0
-
         for term in query_terms:
             if term not in chunk_term_freqs:
                 continue
 
-            # Term frequency in the chunk
+            # Calculate BM25 term score using statistics calculator
             tf = chunk_term_freqs[term]
-
-            # Document frequency
-            df = self.document_frequencies.get(term, 0)
-            if df == 0:
-                continue
-
-            # IDF calculation: log((N - df + 0.5) / (df + 0.5))
-            idf = math.log((self.document_count - df + 0.5) / (df + 0.5))
-
-            # BM25 term score
-            numerator = tf * (self.k1 + 1)
-            denominator = tf + self.k1 * (1 - self.b + self.b * (doc_length / avg_doc_length))
-            term_score = idf * (numerator / denominator)
-
+            term_score = self.statistics_calculator.calculate_bm25_term_score(
+                term, tf, doc_length, self.k1, self.b
+            )
             score += term_score
 
         return score
 
     def clear(self) -> None:
-        """Clear all index data and reset statistics."""
-        self.inverted_index.clear()
-        self.document_frequencies.clear()
-        self.collection_frequencies.clear()
-        self.document_lengths.clear()
-        self.document_count = 0
-        self.total_document_length = 0
+        """Clear all index data and reset statistics using specialized components."""
+        self.index_builder.clear()
+        self.statistics_calculator.clear()
+        self._term_freq_cache.clear()
 
     def compute_bm25_score(
         self,
@@ -398,18 +402,10 @@ class BM25Indexer:
         return self.score(query_terms, chunk_id, chunk_term_freqs)
 
     def get_collection_stats(self) -> Dict[str, object]:
-        """Get collection statistics.
+        """Get collection statistics using statistics calculator.
 
         Returns:
             Dictionary containing collection statistics
 
         """
-        avg_doc_length = self.total_document_length / self.document_count if self.document_count > 0 else 0.0
-        return {
-            "document_count": self.document_count,
-            "total_document_length": self.total_document_length,
-            "average_document_length": avg_doc_length,
-            "avg_document_length": avg_doc_length,  # Alternative key name for backward compatibility
-            "vocabulary_size": len(self.inverted_index),
-            "total_terms": sum(self.collection_frequencies.values()),
-        }
+        return self.statistics_calculator.get_collection_stats()
