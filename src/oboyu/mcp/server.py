@@ -141,31 +141,6 @@ def index_directory(
         return {"error": str(e), "success": False, "documents_indexed": 0, "chunks_indexed": 0}
 
 
-@mcp.tool()
-def clear_index(
-    db_path: Optional[str] = None,
-) -> Dict[str, object]:
-    """Clear all data from the index database.
-
-    Args:
-        db_path: Optional path to the database file
-
-    Returns:
-        Dictionary containing operation results
-
-    """
-    try:
-        # Initialize indexer
-        indexer = get_indexer(db_path)
-
-        # Clear the index
-        indexer.clear_index()
-
-        # Return success
-        return {"success": True, "message": "Index database cleared successfully", "db_path": indexer.config.db_path}
-    except Exception as e:
-        logger.error(f"Error clearing index: {str(e)}")
-        return {"error": str(e), "success": False}
 
 
 @mcp.tool()
