@@ -2,6 +2,8 @@
 
 > A Japanese-enhanced semantic search system for your local documents.
 
+![demo](https://github.com/sonesuke/oboyu/blob/main/docs/assets/demo.gif?raw=true)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/badge/python-3.13%2B-blue)](https://www.python.org/downloads/)
 
