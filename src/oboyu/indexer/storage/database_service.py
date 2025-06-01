@@ -28,25 +28,16 @@ from numpy.typing import NDArray
 
 from oboyu.indexer.config import DEFAULT_BATCH_SIZE
 from oboyu.indexer.core.document_processor import Chunk
+from oboyu.indexer.storage.database_connection import DatabaseConnection
 from oboyu.indexer.storage.index_manager import HNSWIndexParams, IndexManager
 from oboyu.indexer.storage.migrations import MigrationManager
 from oboyu.indexer.storage.schema import DatabaseSchema
+from oboyu.indexer.storage.utils import DateTimeEncoder
 
 logger = logging.getLogger(__name__)
 
 
-# Custom JSON encoder for datetime objects
-class DateTimeEncoder(json.JSONEncoder):
-    """JSON encoder that handles datetime objects."""
-
-    def default(self, obj: object) -> object:
-        """Convert datetime objects to ISO format strings."""
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        return super().default(obj)
-
-
-class DatabaseService:
+class DatabaseService(DatabaseConnection):
     """Unified database service for vector database operations.
 
     This class combines the functionality of database management, transaction
@@ -73,11 +64,12 @@ class DatabaseService:
             enable_experimental_features: Enable experimental DuckDB features
 
         """
-        self.db_path = Path(db_path)
+        # Initialize parent class for connection management
+        super().__init__(db_path, enable_experimental_features)
+        
         self.embedding_dimensions = embedding_dimensions
         self.batch_size = batch_size
         self.auto_vacuum = auto_vacuum
-        self.enable_experimental_features = enable_experimental_features
 
         # Set default HNSW parameters if not provided
         self.hnsw_params = hnsw_params or HNSWIndexParams(

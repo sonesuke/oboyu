@@ -74,13 +74,14 @@ dev = [
     "pytest>=8.3.5",
     "pytest-cov>=6.1.1",
     "ruff>=0.11.12",
-    "psutil>=7.0.0",  # System resource monitoring for benchmarks
+    "psutil>=7.0.0", # System resource monitoring for benchmarks
     # Additional dependencies for RAG accuracy evaluation
-    "datasets>=3.6.0",  # For loading evaluation datasets
-    "scipy>=1.15.3",  # For advanced metric calculations
-    "scikit-learn>=1.6.1",  # For evaluation utilities
-    "pandas>=2.2.3",  # For data analysis and reporting
-    "pexpect>=4.9.0",  # For interactive CLI testing
+    "datasets>=3.6.0", # For loading evaluation datasets
+    "scipy>=1.15.3", # For advanced metric calculations
+    "scikit-learn>=1.6.1", # For evaluation utilities
+    "pandas>=2.2.3", # For data analysis and reporting
+    "pexpect>=4.9.0", # For interactive CLI testing
+    "pylint>=3.3.7",
 ]
 
 [tool.mypy]
@@ -134,3 +135,8 @@ quote-style = "double"
 
 [tool.ruff.lint.mccabe]
 max-complexity = 20
+
+[tool.pylint]
+disable = "all"
+enable = "too-many-lines"  # C0302
+max-module-lines = 500
