@@ -48,6 +48,7 @@ dependencies = [
     "python-frontmatter>=1.1.0",
     "numpy>=2.2.6", # For numerical computations (core functionality)
     "prompt-toolkit>=3.0.51",
+    "pydantic>=2.11.5",
 ]
 
 [project.scripts]
