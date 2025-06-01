@@ -21,8 +21,6 @@ DEFAULT_CONFIG = {
             "*/node_modules/*",
             "*/.venv/*",
         ],
-        "max_file_size": 10 * 1024 * 1024,  # 10MB
-        "follow_symlinks": False,
         "max_workers": 4,  # Default number of worker threads
         "respect_gitignore": True,  # Whether to respect .gitignore files
     }
@@ -32,10 +30,12 @@ DEFAULT_CONFIG = {
 DEFAULT_DEPTH = 10
 DEFAULT_INCLUDE_PATTERNS = ["*.txt", "*.md", "*.html", "*.py", "*.java"]
 DEFAULT_EXCLUDE_PATTERNS = ["*/node_modules/*", "*/venv/*"]
-DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-DEFAULT_FOLLOW_SYMLINKS = False
 DEFAULT_MAX_WORKERS = 4
 DEFAULT_RESPECT_GITIGNORE = True
+
+# Hard-coded values (no longer configurable)
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+FOLLOW_SYMLINKS = False
 
 
 class CrawlerConfig:
@@ -115,13 +115,6 @@ class CrawlerConfig:
         if not isinstance(exclude_patterns, list) or exclude_patterns is None:
             crawler_config["exclude_patterns"] = DEFAULT_EXCLUDE_PATTERNS[:]
 
-        # Validate max_file_size - must be a positive integer
-        if not isinstance(crawler_config.get("max_file_size"), int) or crawler_config.get("max_file_size", 0) <= 0:
-            crawler_config["max_file_size"] = DEFAULT_MAX_FILE_SIZE
-
-        # Validate follow_symlinks - must be a boolean
-        if not isinstance(crawler_config.get("follow_symlinks"), bool):
-            crawler_config["follow_symlinks"] = DEFAULT_FOLLOW_SYMLINKS
 
         # Validate max_workers - must be a positive integer
         if not isinstance(crawler_config.get("max_workers"), int) or crawler_config.get("max_workers", 0) <= 0:
@@ -146,15 +139,6 @@ class CrawlerConfig:
         """Patterns to exclude."""
         return list(self.config["crawler"]["exclude_patterns"])
 
-    @property
-    def max_file_size(self) -> int:
-        """Maximum file size in bytes."""
-        return int(self.config["crawler"]["max_file_size"])
-
-    @property
-    def follow_symlinks(self) -> bool:
-        """Whether to follow symbolic links."""
-        return bool(self.config["crawler"]["follow_symlinks"])
 
     @property
     def max_workers(self) -> int:

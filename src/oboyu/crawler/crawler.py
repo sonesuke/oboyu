@@ -41,8 +41,6 @@ class Crawler:
         depth: int = 10,
         include_patterns: Optional[List[str]] = None,
         exclude_patterns: Optional[List[str]] = None,
-        max_file_size: int = 10 * 1024 * 1024,  # 10MB
-        follow_symlinks: bool = False,
         max_workers: int = 4,  # Number of worker threads for parallel processing
         respect_gitignore: bool = True,  # Whether to respect .gitignore files
     ) -> None:
@@ -52,17 +50,17 @@ class Crawler:
             depth: Maximum directory traversal depth
             include_patterns: File patterns to include (e.g., "*.txt", "*.md")
             exclude_patterns: Patterns to exclude (e.g., "*/node_modules/*")
-            max_file_size: Maximum file size in bytes to process
-            follow_symlinks: Whether to follow symbolic links during traversal
             max_workers: Maximum number of worker threads for parallel processing
             respect_gitignore: Whether to respect .gitignore files (default: True)
+
+        Note:
+            max_file_size is hard-coded to 10MB and follow_symlinks is hard-coded to False
+            for consistency and security reasons.
 
         """
         self.depth = depth
         self.include_patterns = include_patterns or ["*.txt", "*.md", "*.html", "*.py", "*.java"]
         self.exclude_patterns = exclude_patterns or ["*/node_modules/*", "*/venv/*"]
-        self.max_file_size = max_file_size
-        self.follow_symlinks = follow_symlinks
         self.max_workers = max_workers
         self.respect_gitignore = respect_gitignore
 
@@ -86,8 +84,6 @@ class Crawler:
             patterns=self.include_patterns,
             exclude_patterns=self.exclude_patterns,
             max_depth=self.depth,
-            max_file_size=self.max_file_size,
-            follow_symlinks=self.follow_symlinks,
             respect_gitignore=self.respect_gitignore,
         )
 
