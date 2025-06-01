@@ -3,9 +3,14 @@
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Any, Callable, List, Optional
 
 from oboyu.cli.index_config import build_indexer_config, create_indexer_config
+from oboyu.cli.progress import create_indexer_progress_callback
+from oboyu.cli.services.configuration_service import ConfigurationService
+from oboyu.cli.services.console_manager import ConsoleManager
+from oboyu.cli.services.database_path_resolver import DatabasePathResolver
+from oboyu.cli.services.indexer_factory import IndexerFactory
 from oboyu.common.config import ConfigManager
 from oboyu.crawler.config import load_default_config
 from oboyu.crawler.crawler import Crawler
@@ -48,14 +53,23 @@ class DiffResult:
 class IndexingService:
     """Service for handling indexing operations."""
     
-    def __init__(self, config_manager: ConfigManager) -> None:
+    def __init__(
+        self, 
+        config_manager: ConfigManager,
+        indexer_factory: Optional[IndexerFactory] = None,
+        console_manager: Optional[ConsoleManager] = None,
+    ) -> None:
         """Initialize the indexing service.
         
         Args:
             config_manager: Configuration manager instance
+            indexer_factory: Factory for creating indexer instances with progress
+            console_manager: Console manager for progress display
 
         """
         self.config_manager = config_manager
+        self.indexer_factory = indexer_factory
+        self.console_manager = console_manager
     
     def create_indexer_config(
         self,
@@ -130,11 +144,19 @@ class IndexingService:
         total_chunks = 0
         total_files = 0
         
-        indexer = Indexer(config=indexer_config)
+        # Create indexer with progress display if factory is available
+        if self.indexer_factory and self.console_manager:
+            indexer = self.indexer_factory.create_indexer(indexer_config, self.console_manager)
+        else:
+            indexer = Indexer(config=indexer_config)
         
         try:
             for directory in directories:
-                if progress_callback:
+                # Start scan operation for progress tracking
+                scan_op_id = ""
+                if self.console_manager:
+                    scan_op_id = self.console_manager.logger.start_operation(f"Scanning directory {directory}...")
+                elif progress_callback:
                     progress_callback(f"Scanning directory {directory}...")
                 
                 # Note: detection_strategy and should_cleanup would be used in actual change detection
@@ -149,7 +171,16 @@ class IndexingService:
                 )
                 
                 crawler_results = crawler.crawl(directory)
-                result = indexer.index_documents(crawler_results)
+                
+                # Create indexer progress callback if console manager is available
+                indexer_progress_callback = None
+                if self.console_manager and scan_op_id:
+                    indexer_progress_callback = create_indexer_progress_callback(
+                        self.console_manager.logger,
+                        scan_op_id
+                    )
+                
+                result = indexer.index_documents(crawler_results, indexer_progress_callback)
                 
                 chunks_indexed = result.get("indexed_chunks", 0)
                 files_processed = result.get("total_documents", 0)

@@ -58,7 +58,11 @@ def clear(
     """
     base_command = BaseCommand(ctx)
     config_manager = base_command.get_config_manager()
-    indexing_service = IndexingService(config_manager)
+    indexing_service = IndexingService(
+        config_manager, 
+        base_command.services.indexer_factory,
+        base_command.services.console_manager
+    )
     
     # Get database path
     resolved_db_path = indexing_service.get_database_path(db_path)
@@ -96,7 +100,11 @@ def status(
     """
     base_command = BaseCommand(ctx)
     config_manager = base_command.get_config_manager()
-    indexing_service = IndexingService(config_manager)
+    indexing_service = IndexingService(
+        config_manager, 
+        base_command.services.indexer_factory,
+        base_command.services.console_manager
+    )
 
     # Get database path and display it
     resolved_db_path = indexing_service.get_database_path(db_path)
@@ -159,7 +167,11 @@ def diff(
     """
     base_command = BaseCommand(ctx)
     config_manager = base_command.get_config_manager()
-    indexing_service = IndexingService(config_manager)
+    indexing_service = IndexingService(
+        config_manager, 
+        base_command.services.indexer_factory,
+        base_command.services.console_manager
+    )
 
     # Get database path and display it
     resolved_db_path = indexing_service.get_database_path(db_path)
@@ -270,7 +282,11 @@ def index(
     )
 
     config_manager = base_command.get_config_manager()
-    indexing_service = IndexingService(config_manager)
+    indexing_service = IndexingService(
+        config_manager, 
+        base_command.services.indexer_factory,
+        base_command.services.console_manager
+    )
     
     # Get database path and display it
     resolved_db_path = indexing_service.get_database_path(db_path)
