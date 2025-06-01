@@ -1,7 +1,7 @@
 """Reranker service for improving search result relevance."""
 
 import logging
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
@@ -24,8 +24,8 @@ class RerankedResult:
 
     def to_search_result(self) -> "SearchResult":
         """Convert back to SearchResult with updated score."""
-        # Use dataclasses.replace to create a new instance with updated score
-        return replace(self.original_result, score=self.rerank_score)
+        # Use Pydantic's model_copy to create a new instance with updated score
+        return self.original_result.model_copy(update={"score": self.rerank_score})
 
 
 class BaseReranker:

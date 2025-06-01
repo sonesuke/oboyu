@@ -1,132 +1,120 @@
 """Configuration schema definitions with proper types."""
 
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
-@dataclass
-class CrawlerConfigSchema:
+
+class CrawlerConfigSchema(BaseModel):
     """Schema for crawler configuration."""
 
-    max_workers: int = 4
-    timeout: int = 30
-    max_depth: int = 3
-    exclude_dirs: List[str] = field(default_factory=lambda: ["__pycache__", ".git", "node_modules"])
-    include_extensions: List[str] = field(default_factory=lambda: [".py", ".md", ".txt", ".yaml", ".yml", ".json", ".toml", ".cfg", ".ini", ".rst", ".ipynb"])
-    min_doc_length: int = 50
-    chunk_size: int = 1000
-    chunk_overlap: int = 200
-    encoding: str = "utf-8"
-    use_japanese_tokenizer: bool = True
+    max_workers: int = Field(default=4, ge=1, le=100, description="Maximum number of worker threads")
+    timeout: int = Field(default=30, ge=1, le=300, description="Timeout in seconds for operations")
+    max_depth: int = Field(default=3, ge=0, le=10, description="Maximum directory traversal depth")
+    exclude_dirs: List[str] = Field(
+        default_factory=lambda: ["__pycache__", ".git", "node_modules"],
+        description="Directories to exclude from crawling"
+    )
+    include_extensions: List[str] = Field(
+        default_factory=lambda: [".py", ".md", ".txt", ".yaml", ".yml", ".json", ".toml", ".cfg", ".ini", ".rst", ".ipynb"],
+        description="File extensions to include in crawling"
+    )
+    min_doc_length: int = Field(default=50, ge=1, description="Minimum document length to process")
+    chunk_size: int = Field(default=1000, ge=100, le=10000, description="Size of text chunks")
+    chunk_overlap: int = Field(default=200, ge=0, description="Overlap between chunks")
+    encoding: str = Field(default="utf-8", description="Text encoding to use")
+    use_japanese_tokenizer: bool = Field(default=True, description="Use Japanese-specific tokenizer")
+
+    @field_validator('chunk_overlap')
+    @classmethod
+    def validate_chunk_overlap(cls, v: int, info: ValidationInfo) -> int:
+        """Validate that chunk overlap is less than chunk size."""
+        if 'chunk_size' in info.data and v >= info.data['chunk_size']:
+            raise ValueError("chunk_overlap must be less than chunk_size")
+        return v
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CrawlerConfigSchema":
         """Create instance from dictionary."""
-        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
+        return cls(**data)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         """Convert to dictionary."""
-        return {
-            "max_workers": self.max_workers,
-            "timeout": self.timeout,
-            "max_depth": self.max_depth,
-            "exclude_dirs": self.exclude_dirs,
-            "include_extensions": self.include_extensions,
-            "min_doc_length": self.min_doc_length,
-            "chunk_size": self.chunk_size,
-            "chunk_overlap": self.chunk_overlap,
-            "encoding": self.encoding,
-            "use_japanese_tokenizer": self.use_japanese_tokenizer,
-        }
+        return self.model_dump()
 
 
-@dataclass
-class IndexerConfigSchema:
+class IndexerConfigSchema(BaseModel):
     """Schema for indexer configuration."""
 
-    embedding_model: str = "cl-nagoya/ruri-v3-30m"
-    batch_size: int = 128
-    max_length: int = 8192
-    normalize_embeddings: bool = True
-    show_progress: bool = True
-    bm25_k1: float = 1.5
-    bm25_b: float = 0.75
-    use_japanese_tokenizer: bool = True
-    n_probe: int = 10
-    db_path: Optional[Path] = None
+    embedding_model: str = Field(default="cl-nagoya/ruri-v3-30m", description="Name or path of embedding model")
+    batch_size: int = Field(default=128, ge=1, le=1024, description="Batch size for processing")
+    max_length: int = Field(default=8192, ge=256, le=32768, description="Maximum sequence length")
+    normalize_embeddings: bool = Field(default=True, description="Whether to normalize embeddings")
+    show_progress: bool = Field(default=True, description="Show progress bars")
+    bm25_k1: float = Field(default=1.5, ge=0.0, le=3.0, description="BM25 k1 parameter")
+    bm25_b: float = Field(default=0.75, ge=0.0, le=1.0, description="BM25 b parameter")
+    use_japanese_tokenizer: bool = Field(default=True, description="Use Japanese-specific tokenizer")
+    n_probe: int = Field(default=10, ge=1, le=100, description="Number of probes for vector search")
+    db_path: Optional[Path] = Field(default=None, description="Database path")
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "IndexerConfigSchema":
         """Create instance from dictionary."""
         # Convert db_path string to Path if present
         if "db_path" in data and data["db_path"] is not None:
-            data = data.copy()
-            data["db_path"] = Path(data["db_path"])
-        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
+            data = dict(data)
+            data["db_path"] = Path(str(data["db_path"]))
+        return cls(**data)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         """Convert to dictionary."""
-        result = {
-            "embedding_model": self.embedding_model,
-            "batch_size": self.batch_size,
-            "max_length": self.max_length,
-            "normalize_embeddings": self.normalize_embeddings,
-            "show_progress": self.show_progress,
-            "bm25_k1": self.bm25_k1,
-            "bm25_b": self.bm25_b,
-            "use_japanese_tokenizer": self.use_japanese_tokenizer,
-            "n_probe": self.n_probe,
-        }
-        if self.db_path is not None:
-            result["db_path"] = str(self.db_path)
+        result = self.model_dump(exclude_none=True)
+        if result.get("db_path") is not None:
+            result["db_path"] = str(result["db_path"])
         return result
 
 
-@dataclass
-class QueryConfigSchema:
+class QueryConfigSchema(BaseModel):
     """Schema for query engine configuration."""
 
-    top_k: int = 10
-    rerank: bool = True
-    rerank_model: str = "cl-nagoya/ruri-reranker-small"
-    show_scores: bool = False
-    interactive: bool = False
+    top_k: int = Field(default=10, ge=1, le=1000, description="Number of top results to return")
+    rerank: bool = Field(default=True, description="Enable reranking of search results")
+    rerank_model: str = Field(default="cl-nagoya/ruri-reranker-small", description="Reranker model name")
+    show_scores: bool = Field(default=False, description="Show relevance scores in output")
+    interactive: bool = Field(default=False, description="Enable interactive mode")
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "QueryConfigSchema":
         """Create instance from dictionary."""
-        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
+        return cls(**data)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         """Convert to dictionary."""
-        return {
-            "top_k": self.top_k,
-            "rerank": self.rerank,
-            "rerank_model": self.rerank_model,
-            "show_scores": self.show_scores,
-            "interactive": self.interactive,
-        }
+        return self.model_dump()
 
 
-@dataclass
-class ConfigSchema:
+class ConfigSchema(BaseModel):
     """Complete configuration schema."""
 
-    crawler: CrawlerConfigSchema = field(default_factory=CrawlerConfigSchema)
-    indexer: IndexerConfigSchema = field(default_factory=IndexerConfigSchema)
-    query: QueryConfigSchema = field(default_factory=QueryConfigSchema)
+    crawler: CrawlerConfigSchema = Field(default_factory=CrawlerConfigSchema)
+    indexer: IndexerConfigSchema = Field(default_factory=IndexerConfigSchema)
+    query: QueryConfigSchema = Field(default_factory=QueryConfigSchema)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ConfigSchema":
         """Create instance from dictionary."""
+        crawler_data = data.get("crawler", {}) if isinstance(data.get("crawler", {}), dict) else {}
+        indexer_data = data.get("indexer", {}) if isinstance(data.get("indexer", {}), dict) else {}
+        query_data = data.get("query", {}) if isinstance(data.get("query", {}), dict) else {}
+        
         return cls(
-            crawler=CrawlerConfigSchema.from_dict(data.get("crawler", {})),
-            indexer=IndexerConfigSchema.from_dict(data.get("indexer", {})),
-            query=QueryConfigSchema.from_dict(data.get("query", {})),
+            crawler=CrawlerConfigSchema.from_dict(crawler_data),
+            indexer=IndexerConfigSchema.from_dict(indexer_data),
+            query=QueryConfigSchema.from_dict(query_data),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         """Convert to dictionary."""
         return {
             "crawler": self.crawler.to_dict(),
