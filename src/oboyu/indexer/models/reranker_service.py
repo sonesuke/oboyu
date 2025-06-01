@@ -96,18 +96,32 @@ class CrossEncoderReranker(BaseReranker):
 
         logger.debug(f"Reranking {len(results)} results for query: {query[:50]}...")
 
-        # Prepare query-document pairs
-        pairs = [[query, result.content] for result in results]
+        # Prepare query-document pairs with content truncation
+        pairs = []
+        for result in results:
+            # Truncate content to ensure it fits within max_length
+            content = result.content
+            if len(content) > self.max_length * 3:  # Rough character to token ratio
+                content = content[:self.max_length * 3]
+            pairs.append([query, content])
 
         # Score in batches
         all_scores: List[float] = []
         for i in range(0, len(pairs), self.batch_size):
             batch = pairs[i : i + self.batch_size]
-            # Suppress tokenizer warnings
+            # Suppress tokenizer warnings completely
             import warnings
+            import logging as base_logging
+            
+            # Save current levels
+            transformers_logger = base_logging.getLogger("transformers.tokenization_utils_base")
+            original_level = transformers_logger.level
+            
             with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", message="Be aware, overflowing tokens")
+                warnings.filterwarnings("ignore")
+                transformers_logger.setLevel(base_logging.ERROR)
                 scores = self.model.predict(batch, show_progress_bar=False)
+                transformers_logger.setLevel(original_level)
             all_scores.extend(scores)
 
         # Convert scores to numpy array for easier manipulation
