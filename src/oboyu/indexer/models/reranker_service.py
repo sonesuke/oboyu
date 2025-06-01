@@ -110,8 +110,8 @@ class CrossEncoderReranker(BaseReranker):
         for i in range(0, len(pairs), self.batch_size):
             batch = pairs[i : i + self.batch_size]
             # Suppress tokenizer warnings completely
-            import warnings
             import logging as base_logging
+            import warnings
             
             # Save current levels
             transformers_logger = base_logging.getLogger("transformers.tokenization_utils_base")
