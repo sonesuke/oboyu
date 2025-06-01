@@ -22,19 +22,10 @@ def detect_language(text: str) -> str:
 
     """
     # Import here to avoid circular imports
-    from langdetect import detect
+    from oboyu.crawler.extractor import _detect_language
 
-    # Check for Japanese characters
-    if contains_japanese(text):
-        return "ja"
-
-    # Use langdetect for other languages
-    try:
-        result: str = detect(text)
-        return result
-    except Exception:
-        # Default to English if detection fails
-        return "en"
+    # Use the FastText-based detection from extractor
+    return _detect_language(text)
 
 
 def contains_japanese(text: str) -> bool:

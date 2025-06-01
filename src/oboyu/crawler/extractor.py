@@ -4,20 +4,21 @@ This module provides utilities for extracting content from various file types.
 """
 
 import mimetypes
+import urllib.request
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import chardet
 import charset_normalizer
+import fasttext
 import frontmatter
-import langdetect
 
 # Initialize mimetypes
 mimetypes.init()
 
-# Configure langdetect for stability
-langdetect.DetectorFactory.seed = 0  # Make results deterministic
+# Global FastText model instance
+_fasttext_model: Optional[fasttext.FastText._FastText] = None
 
 
 def extract_content(file_path: Path) -> Tuple[str, str, Dict[str, Any]]:
@@ -246,8 +247,48 @@ def _parse_front_matter(content: str) -> Tuple[str, Dict[str, Any]]:
     return post.content, metadata
 
 
+def _get_fasttext_model() -> fasttext.FastText._FastText:
+    """Get or load the FastText language identification model.
+    
+    Returns:
+        FastText model instance
+        
+    Raises:
+        RuntimeError: If model cannot be loaded or downloaded
+
+    """
+    global _fasttext_model
+    
+    if _fasttext_model is not None:
+        return _fasttext_model
+    
+    # Try to load from cache first
+    from oboyu.common.paths import CACHE_BASE_DIR
+    model_path = CACHE_BASE_DIR / "fasttext" / "lid.176.bin"
+    
+    if model_path.exists():
+        try:
+            _fasttext_model = fasttext.load_model(str(model_path))
+            return _fasttext_model
+        except Exception:
+            # If cached model is corrupted, remove it and re-download
+            model_path.unlink(missing_ok=True)
+    
+    # Download model if not cached
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    model_url = "https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin"
+    
+    try:
+        # Use HTTPS URL which is secure for downloading the official FastText model
+        urllib.request.urlretrieve(model_url, str(model_path))  # noqa: S310
+        _fasttext_model = fasttext.load_model(str(model_path))
+        return _fasttext_model
+    except Exception as e:
+        raise RuntimeError(f"Failed to download or load FastText model: {e}") from e
+
+
 def _detect_language(text: str) -> str:
-    """Detect the language of the text.
+    """Detect the language of the text using FastText.
 
     Args:
         text: Text content
@@ -256,13 +297,12 @@ def _detect_language(text: str) -> str:
         ISO 639-1 language code
 
     """
-    # Special case for the test
-    if text == "This text contains some Japanese like こんにちは but is mostly English.":
-        return "en"
-
     # Trim text to just a reasonable sample for faster processing
-    # (langdetect works well with just a few paragraphs)
-    sample = text[:5000]
+    sample = text[:5000].replace('\n', ' ').strip()
+    
+    # If sample is too short, use fallback logic
+    if len(sample) < 10:
+        return "en"
 
     # Count Japanese characters as a quick pre-check
     japanese_char_count = sum(1 for char in sample if 0x3000 <= ord(char) <= 0x9FFF)
@@ -271,30 +311,50 @@ def _detect_language(text: str) -> str:
     if japanese_char_count > len(sample) * 0.1:
         return "ja"
 
-    # For mixed content or non-obvious cases, use langdetect
+    # Use FastText for language detection
     try:
-        # Use langdetect with a timeout to prevent hanging on difficult content
-        # It returns ISO 639-1 language codes (like 'en', 'ja', etc.)
-        detected = langdetect.detect(sample)
-
-        # Handle Japanese detection
-        if detected == "ja":
-            return "ja"
-
-        # Handle common languages
-        if detected in ["en", "zh", "ko", "fr", "de", "es", "it", "ru"]:
+        model = _get_fasttext_model()
+        predictions = model.predict(sample, k=1)
+        
+        if predictions and len(predictions) == 2 and len(predictions[0]) > 0:
+            # Extract language code from __label__xx format
+            language_label = predictions[0][0]
+            confidence = float(predictions[1][0])
+            
+            # Remove __label__ prefix
+            if language_label.startswith('__label__'):
+                detected = language_label[9:]  # Remove '__label__' prefix
+            else:
+                detected = language_label
+            
+            # Use detection if confidence is high enough
+            if confidence >= 0.5:
+                # Handle Japanese detection
+                if detected == "ja":
+                    return "ja"
+                
+                # Handle common languages
+                if detected in ["en", "zh", "ko", "fr", "de", "es", "it", "ru"]:
+                    return str(detected)
+            
+            # For other languages or low confidence, check again for Japanese characters
+            if japanese_char_count > 0:
+                return "ja"
+            
+            # Return detected language even with low confidence for common languages
+            if detected in ["en", "zh", "ko", "fr", "de", "es", "it", "ru"]:
+                return str(detected)
+            
             return str(detected)
-
-        # For other languages, check again for Japanese characters
-        # This is a fallback for cases where langdetect might miss Japanese
-        if japanese_char_count > 0:
-            return "ja"
-
-        return str(detected)
+        
     except Exception:
-        # If langdetect fails, fall back to simpler detection
-        if japanese_char_count > 0:
-            return "ja"
+        # If FastText fails, fall back to simpler detection
+        # This is expected behavior for graceful fallback
+        pass
+    
+    # Fallback detection
+    if japanese_char_count > 0:
+        return "ja"
 
-        # Default to English if we can't determine
-        return "en"
+    # Default to English if we can't determine
+    return "en"
