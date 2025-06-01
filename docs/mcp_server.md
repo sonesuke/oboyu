@@ -79,9 +79,9 @@ Search indexed documents using semantic search with Japanese language optimizati
 - `query` (string, required): The search query in any language
 - `limit` (integer, optional): Number of results to return (default: 5)
 - `mode` (string, optional): Search mode - "vector", "bm25", or "hybrid" (default: "hybrid")
-- `vector_weight` (float, optional): Weight for vector scores in hybrid mode (default: 0.7)
-- `bm25_weight` (float, optional): Weight for BM25 scores in hybrid mode (default: 0.3)
+- `language` (string, optional): Language filter (e.g., 'ja', 'en') to restrict search to specific language content
 - `snippet_config` (object, optional): Configuration for snippet generation and context control
+- `filters` (object, optional): Search filters for date range and path filtering
 
 **Snippet Configuration Options:**
 - `length` (integer): Maximum snippet length in characters (default: 300)
@@ -93,6 +93,15 @@ Search indexed documents using semantic search with Japanese language optimizati
 - `include_surrounding_context` (boolean): Include context around matches (default: true)
 - `japanese_aware` (boolean): Consider Japanese sentence boundaries (default: true)
 - `levels` (array): Multi-level snippet configurations with type and length
+
+**Search Filter Options:**
+- `date_range` (object, optional): Filter by document timestamps
+  - `start` (string, optional): Start date in ISO format (e.g., "2024-01-01" or "2024-01-01T12:00:00")
+  - `end` (string, optional): End date in ISO format
+  - `field` (string, optional): Date field to filter on - "created_at" or "modified_at" (default: "modified_at")
+- `path_filter` (object, optional): Filter by file path patterns
+  - `include_patterns` (array, optional): List of shell-style patterns to include (e.g., ["*/docs/*", "*.md"])
+  - `exclude_patterns` (array, optional): List of shell-style patterns to exclude (e.g., ["*/test/*", "*.log"])
 
 **Returns:**
 List of search results, each containing:
@@ -176,13 +185,9 @@ search_documents("design patterns in software architecture", mode="vector", limi
 search_documents("データベース正規化", mode="bm25")
 ```
 
-### Custom Hybrid Weights
+### Language Filtering
 ```
-search_documents("REST API best practices", 
-                mode="hybrid", 
-                vector_weight=0.6, 
-                bm25_weight=0.4, 
-                limit=8)
+search_documents("機械学習アルゴリズム", language="ja", limit=10)
 ```
 
 ### Snippet Context Control
@@ -215,6 +220,76 @@ search_documents("database design patterns",
                 })
 ```
 
+### Search Filtering
+
+The MCP server now supports advanced filtering to narrow down search results:
+
+#### Date Range Filtering
+```
+# Find recent documentation updates
+search_documents("システム設計", 
+                filters={
+                  "date_range": {
+                    "start": "2024-05-01",
+                    "field": "modified_at"
+                  }
+                })
+
+# Find documents created in a specific time period
+search_documents("機械学習アルゴリズム", 
+                filters={
+                  "date_range": {
+                    "start": "2024-01-01",
+                    "end": "2024-12-31",
+                    "field": "created_at"
+                  }
+                })
+```
+
+#### Path Pattern Filtering
+```
+# Search only in documentation directories
+search_documents("API documentation", 
+                filters={
+                  "path_filter": {
+                    "include_patterns": ["*/docs/*", "*/api/*", "*.md"],
+                    "exclude_patterns": ["*/test/*", "*.log"]
+                  }
+                })
+
+# Focus search on specific project areas
+search_documents("API implementation", 
+                filters={
+                  "path_filter": {
+                    "include_patterns": ["*/backend/*", "*/api/*"],
+                    "exclude_patterns": ["*/test/*", "*/deprecated/*"]
+                  }
+                })
+```
+
+#### Combined Filtering
+```
+# Search recent documentation in specific directories
+search_documents("設計パターン", 
+                filters={
+                  "date_range": {
+                    "start": "2024-06-01",
+                    "field": "modified_at"
+                  },
+                  "path_filter": {
+                    "include_patterns": ["*/documentation/*"],
+                    "exclude_patterns": ["*/archived/*"]
+                  }
+                })
+```
+
+#### Pattern Matching Rules
+- **Wildcard patterns**: Use `*` for any characters, `?` for single character
+- **Directory matching**: `*/docs/*` matches any file in a docs directory at any level
+- **File extension**: `*.md` matches all Markdown files
+- **Case sensitivity**: Pattern matching is case-insensitive for better usability
+- **Multiple patterns**: Include patterns are OR-ed together, exclude patterns are applied after includes
+
 ## Use Cases with AI Assistants
 
 The MCP server enables powerful search workflows:
@@ -242,6 +317,16 @@ The MCP server enables powerful search workflows:
   → Uses longer snippets (300+ chars) with complete sentences
 - "Find Japanese documentation about API usage"
   → Uses Japanese-aware sentence boundaries for natural text flow
+
+**Search Filtering:**
+- "Find recent changes to the API documentation"
+  → Uses date range filtering with modified_at field + path filtering for docs
+- "Show me configuration examples, but exclude test files"
+  → Uses path filtering to include config files and exclude test directories
+- "What documentation was created this year?"
+  → Uses date range filtering with created_at field for temporal search
+- "Search for database patterns only in the backend code"
+  → Uses path filtering to focus on specific project areas
 
 ## Performance Considerations
 

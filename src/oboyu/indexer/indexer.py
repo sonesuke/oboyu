@@ -17,6 +17,7 @@ from oboyu.indexer.models.tokenizer_service import TokenizerService
 from oboyu.indexer.search.bm25_indexer import BM25Indexer
 from oboyu.indexer.search.bm25_search import BM25Search
 from oboyu.indexer.search.hybrid_search import HybridSearch
+from oboyu.indexer.search.search_filters import SearchFilters
 from oboyu.indexer.search.search_result import SearchResult
 from oboyu.indexer.search.vector_search import VectorSearch
 from oboyu.indexer.storage.change_detector import FileChangeDetector
@@ -237,6 +238,7 @@ class Indexer:
         limit: int = 10,
         mode: str = "hybrid",
         language_filter: Optional[str] = None,
+        filters: Optional[SearchFilters] = None,
     ) -> List[SearchResult]:
         """Search using the coordinated search engine.
 
@@ -245,6 +247,7 @@ class Indexer:
             limit: Maximum number of results
             mode: Search mode ("vector", "bm25", "hybrid")
             language_filter: Optional language filter
+            filters: Optional search filters for date range and path filtering
 
         Returns:
             List of search results
@@ -283,6 +286,7 @@ class Indexer:
                 limit=limit * self.config.search.top_k_multiplier if self.reranker_service else limit,
                 language_filter=language_filter,
                 top_k_multiplier=self.config.search.top_k_multiplier,
+                filters=filters,
             )
 
             # Apply reranking if enabled
@@ -302,6 +306,7 @@ class Indexer:
         top_k: int = 10,
         limit: Optional[int] = None,
         language_filter: Optional[str] = None,
+        filters: Optional[SearchFilters] = None,
     ) -> List[SearchResult]:
         """Vector search using query string or embedding.
 
@@ -310,6 +315,7 @@ class Indexer:
             top_k: Maximum number of results (new parameter name)
             limit: Deprecated parameter name for compatibility
             language_filter: Optional language filter
+            filters: Optional search filters for date range and path filtering
 
         Returns:
             List of search results
@@ -329,6 +335,7 @@ class Indexer:
             mode=SearchMode.VECTOR,
             limit=result_limit,
             language_filter=language_filter,
+            filters=filters,
         )
 
     def delete_document(self, path: Path) -> int:

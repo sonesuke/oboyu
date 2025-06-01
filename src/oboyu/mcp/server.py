@@ -15,6 +15,7 @@ from oboyu.indexer.config.indexer_config import IndexerConfig
 from oboyu.indexer.config.model_config import ModelConfig
 from oboyu.indexer.config.processing_config import ProcessingConfig
 from oboyu.indexer.config.search_config import SearchConfig
+from oboyu.indexer.search.search_filters import SearchFilters
 from oboyu.indexer.search.snippet_processor import SnippetConfig, SnippetProcessor
 from oboyu.mcp.context import db_path_global, mcp
 
@@ -51,6 +52,7 @@ def search(
     language: Optional[str] = None,
     db_path: Optional[str] = None,
     snippet_config: Optional[Dict[str, object]] = None,
+    filters: Optional[Dict[str, object]] = None,
 ) -> Dict[str, object]:
     """Execute a semantic search query and return relevant documents.
 
@@ -61,6 +63,7 @@ def search(
         language: Optional language filter (e.g., 'ja', 'en')
         db_path: Optional path to the database file
         snippet_config: Optional configuration for snippet generation
+        filters: Optional filters for date range and path filtering
 
     Returns:
         Dictionary containing search results and statistics
@@ -69,9 +72,18 @@ def search(
     try:
         # Initialize indexer
         indexer = get_indexer(db_path)
+        
+        # Parse filters if provided
+        search_filters = None
+        if filters:
+            try:
+                search_filters = SearchFilters.from_dict(filters)
+            except Exception as e:
+                logger.warning(f"Invalid filters: {e}, proceeding without filters")
+                search_filters = None
 
         # Execute search with specified mode
-        results = indexer.search(query, limit=top_k, mode=mode, language_filter=language)
+        results = indexer.search(query, limit=top_k, mode=mode, language_filter=language, filters=search_filters)
 
         # Initialize snippet processor if config provided
         snippet_processor = None
