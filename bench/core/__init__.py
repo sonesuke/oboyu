@@ -2,11 +2,11 @@
 
 from .benchmark_base import BenchmarkBase, BenchmarkResult
 from .evaluation_framework import EvaluationFramework
-from .metrics import MetricsCalculator, IRMetrics
+from .metrics import IRMetrics, MetricsCalculator
 
 __all__ = [
     "BenchmarkBase",
-    "BenchmarkResult", 
+    "BenchmarkResult",
     "EvaluationFramework",
     "MetricsCalculator",
     "IRMetrics",

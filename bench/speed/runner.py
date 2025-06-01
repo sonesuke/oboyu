@@ -6,16 +6,15 @@ from typing import Dict, List
 
 from rich.console import Console
 
-from oboyu.indexer import LegacyIndexer as Indexer
-
-from benchmark_indexing import benchmark_indexing
-from benchmark_search import benchmark_search
 from bench.config import DATA_DIR, DATASET_SIZES, OBOYU_CONFIG, QUERIES_DIR, RESULTS_DIR, get_query_languages
-from generate_queries import generate_all_queries, save_queries
-from generate_test_data import generate_dataset
-from reporter import BenchmarkReporter
-from results import BenchmarkRun, SystemInfo
+from bench.speed.benchmark_indexing import benchmark_indexing
+from bench.speed.benchmark_search import benchmark_search
+from bench.speed.generate_queries import generate_all_queries, save_queries
+from bench.speed.generate_test_data import generate_dataset
+from bench.speed.reporter import BenchmarkReporter
+from bench.speed.results import BenchmarkRun, SystemInfo
 from bench.utils import check_oboyu_installation, get_timestamp, print_header, print_section
+from oboyu.indexer import LegacyIndexer as Indexer
 
 console = Console()
 

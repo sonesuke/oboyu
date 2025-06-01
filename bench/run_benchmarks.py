@@ -13,8 +13,8 @@ from typing import List, Optional
 # Add bench directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from logger import BenchmarkLogger
-from utils import check_oboyu_installation, print_header
+from bench.logger import BenchmarkLogger
+from bench.utils import check_oboyu_installation, print_header
 
 
 def parse_args() -> argparse.Namespace:
@@ -99,7 +99,7 @@ Examples:
 def run_speed_benchmarks(args: argparse.Namespace, logger: BenchmarkLogger) -> bool:
     """Run speed benchmarks."""
     try:
-        from speed.run_speed_benchmark import main as run_speed_main
+        from bench.speed.run_speed_benchmark import main as run_speed_main
 
         logger.section("Running Speed Benchmarks")
 
@@ -136,7 +136,7 @@ def run_speed_benchmarks(args: argparse.Namespace, logger: BenchmarkLogger) -> b
 def run_accuracy_benchmarks(args: argparse.Namespace, logger: BenchmarkLogger) -> bool:
     """Run accuracy benchmarks."""
     try:
-        from benchmark_rag_accuracy import main as run_accuracy_main
+        from bench.accuracy.benchmark_rag_accuracy import main as run_accuracy_main
 
         logger.section("Running Accuracy Benchmarks")
 
@@ -170,7 +170,7 @@ def run_accuracy_benchmarks(args: argparse.Namespace, logger: BenchmarkLogger) -
 def run_reranker_benchmarks(args: argparse.Namespace, logger: BenchmarkLogger) -> bool:
     """Run reranker benchmarks."""
     try:
-        from benchmark_reranking import main as run_reranker_main
+        from bench.reranker.benchmark_reranking import main as run_reranker_main
 
         logger.section("Running Reranker Benchmarks")
 

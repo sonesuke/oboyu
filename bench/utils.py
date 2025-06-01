@@ -179,7 +179,7 @@ def load_json(filepath: Path) -> Any:
 
 def get_timestamp() -> str:
     """Get current timestamp in configured format."""
-    from .config import OUTPUT_CONFIG
+    from bench.config import OUTPUT_CONFIG
     return datetime.now().strftime(OUTPUT_CONFIG["timestamp_format"])
 
 

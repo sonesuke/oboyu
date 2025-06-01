@@ -17,10 +17,10 @@ if src_path.exists():
 
 from rich.console import Console
 
-from analyze import BenchmarkAnalyzer
 from bench.config import DATA_DIR, DATASET_SIZES, QUERIES_DIR, RESULTS_DIR, get_query_languages
+from bench.speed.analyze import BenchmarkAnalyzer
+from bench.speed.runner import BenchmarkRunner
 from bench.utils import check_oboyu_installation, print_header
-from runner import BenchmarkRunner
 
 console = Console()
 

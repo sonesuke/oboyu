@@ -9,6 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+
 def run_command(cmd: list[str], description: str) -> bool:
     """Run a command and handle errors."""
     print(f"🔄 {description}")

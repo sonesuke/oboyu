@@ -11,13 +11,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-try:
-    from ..logger import BenchmarkLogger
-except ImportError:
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    from logger import BenchmarkLogger
+from bench.logger import BenchmarkLogger
 
 
 class ResultsAnalyzer:

@@ -10,17 +10,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from bench.logger import BenchmarkLogger
+from oboyu.indexer import LegacyIndexer as Indexer
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.database import Database
-from oboyu.indexer import LegacyIndexer as Indexer
 
-try:
-    from ..logger import BenchmarkLogger
-except ImportError:
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    from logger import BenchmarkLogger
 from .metrics_calculator import MetricsCalculator
 
 

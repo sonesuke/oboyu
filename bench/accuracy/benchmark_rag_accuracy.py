@@ -14,8 +14,6 @@ from typing import List, Optional
 # Add bench directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config import BENCHMARK_CONFIG
-from logger import BenchmarkLogger
 from rag_accuracy import (
     DatasetManager,
     RAGEvaluationConfig,
@@ -23,8 +21,11 @@ from rag_accuracy import (
     RerankerEvaluator,
     ResultsAnalyzer,
 )
-# Remove utils import - we'll handle paths directly
 
+from bench.config import BENCHMARK_CONFIG
+from bench.logger import BenchmarkLogger
+
+# Remove utils import - we'll handle paths directly
 from oboyu.indexer.config import IndexerConfig
 
 
