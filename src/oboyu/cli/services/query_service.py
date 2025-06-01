@@ -77,8 +77,18 @@ class QueryService:
         # Determine database path
         database_path = Path(db_path or query_config.get("database_path") or DEFAULT_DB_PATH)
         
-        # Initialize indexer with database path (simpler approach for query service)
-        indexer = Indexer.from_path(database_path)
+        # Initialize indexer with proper configuration including reranker settings
+        from oboyu.indexer.config.indexer_config import IndexerConfig
+        
+        config = IndexerConfig()
+        config.db_path = database_path
+        
+        # Apply reranker configuration if enabled
+        if query_config.get("use_reranker", False):
+            config.search.use_reranker = True
+            config.model.use_reranker = True
+        
+        indexer = Indexer(config)
         
         try:
             start_time = time.time()
