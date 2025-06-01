@@ -11,6 +11,14 @@ oboyu.db
 oboyu.db.wal
 .embedding_cache
 
+# Test databases (should not be committed)
+test.db
+test.db.wal
+index.db
+index.db.wal
+*.db
+*.db.wal
+
 # Benchmark directories
 bench/data/
 bench/queries/
