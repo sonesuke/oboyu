@@ -10,7 +10,8 @@ from numpy.typing import NDArray
 from oboyu.crawler.crawler import CrawlerResult
 from oboyu.indexer.config.indexer_config import IndexerConfig
 from oboyu.indexer.core.document_processor import DocumentProcessor
-from oboyu.indexer.core.search_engine import SearchEngine, SearchMode
+from oboyu.indexer.core.search_engine import SearchEngine
+from oboyu.indexer.core.search_mode import SearchMode
 from oboyu.indexer.models.embedding_service import EmbeddingService
 from oboyu.indexer.models.reranker_service import RerankerService
 from oboyu.indexer.models.tokenizer_service import TokenizerService
