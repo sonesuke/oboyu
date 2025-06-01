@@ -4,6 +4,7 @@ import json
 import logging
 from typing import List, Optional
 
+from oboyu.indexer.search.search_filters import SearchFilters
 from oboyu.indexer.search.search_result import SearchResult
 from oboyu.indexer.storage.database_service import DatabaseService
 
@@ -22,13 +23,14 @@ class BM25Search:
         """
         self.database_service = database_service
 
-    def search(self, terms: List[str], limit: int, language_filter: Optional[str] = None) -> List[SearchResult]:
+    def search(self, terms: List[str], limit: int, language_filter: Optional[str] = None, filters: Optional[SearchFilters] = None) -> List[SearchResult]:
         """Execute BM25 keyword search.
 
         Args:
             terms: List of search terms
             limit: Maximum number of results to return
             language_filter: Optional language filter
+            filters: Optional search filters for date range and path filtering
 
         Returns:
             List of search results ordered by BM25 score
@@ -36,7 +38,7 @@ class BM25Search:
         """
         try:
             # Execute BM25 search through database service
-            raw_results = self.database_service.bm25_search(terms=terms, limit=limit, language_filter=language_filter)
+            raw_results = self.database_service.bm25_search(terms=terms, limit=limit, language_filter=language_filter, filters=filters)
 
             # Convert to SearchResult objects
             search_results = []

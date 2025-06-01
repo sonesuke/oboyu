@@ -9,6 +9,7 @@ from numpy.typing import NDArray
 
 from oboyu.indexer.search.bm25_search import BM25Search
 from oboyu.indexer.search.hybrid_search import HybridSearch
+from oboyu.indexer.search.search_filters import SearchFilters
 from oboyu.indexer.search.search_result import SearchResult
 from oboyu.indexer.search.vector_search import VectorSearch
 
@@ -52,6 +53,7 @@ class SearchEngine:
         limit: int = 10,
         language_filter: Optional[str] = None,
         top_k_multiplier: int = 2,
+        filters: Optional[SearchFilters] = None,
     ) -> List[SearchResult]:
         """Execute search using appropriate search mode.
 
@@ -62,6 +64,7 @@ class SearchEngine:
             limit: Maximum number of results to return
             language_filter: Optional language filter
             top_k_multiplier: Multiplier for initial retrieval in hybrid search
+            filters: Optional search filters for date range and path filtering
 
         Returns:
             List of search results
@@ -71,12 +74,12 @@ class SearchEngine:
             if mode == SearchMode.VECTOR:
                 if query_vector is None:
                     raise ValueError("Query vector is required for vector search")
-                return self.vector_search.search(query_vector=query_vector, limit=limit, language_filter=language_filter)
+                return self.vector_search.search(query_vector=query_vector, limit=limit, language_filter=language_filter, filters=filters)
 
             elif mode == SearchMode.BM25:
                 if query_terms is None:
                     raise ValueError("Query terms are required for BM25 search")
-                return self.bm25_search.search(terms=query_terms, limit=limit, language_filter=language_filter)
+                return self.bm25_search.search(terms=query_terms, limit=limit, language_filter=language_filter, filters=filters)
 
             elif mode == SearchMode.HYBRID:
                 if query_vector is None or query_terms is None:
@@ -86,9 +89,9 @@ class SearchEngine:
                 initial_limit = limit * top_k_multiplier
 
                 # Execute both searches
-                vector_results = self.vector_search.search(query_vector=query_vector, limit=initial_limit, language_filter=language_filter)
+                vector_results = self.vector_search.search(query_vector=query_vector, limit=initial_limit, language_filter=language_filter, filters=filters)
 
-                bm25_results = self.bm25_search.search(terms=query_terms, limit=initial_limit, language_filter=language_filter)
+                bm25_results = self.bm25_search.search(terms=query_terms, limit=initial_limit, language_filter=language_filter, filters=filters)
 
                 # Combine results
                 return self.hybrid_search.search(vector_results=vector_results, bm25_results=bm25_results, limit=limit)

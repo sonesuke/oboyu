@@ -24,6 +24,7 @@ from duckdb import DuckDBPyConnection
 from numpy.typing import NDArray
 
 from oboyu.indexer.config import DEFAULT_BATCH_SIZE
+from oboyu.indexer.search.search_filters import SearchFilters
 from oboyu.indexer.storage.database_connection import DatabaseConnection
 from oboyu.indexer.storage.database_operations import DatabaseOperations
 from oboyu.indexer.storage.database_search_service import DatabaseSearchService
@@ -206,7 +207,12 @@ class DatabaseService(DatabaseConnection, DatabaseOperations):
             raise
 
     def vector_search(
-        self, query_vector: NDArray[np.float32], limit: int = 10, language_filter: Optional[str] = None, similarity_threshold: float = 0.0
+        self,
+        query_vector: NDArray[np.float32],
+        limit: int = 10,
+        language_filter: Optional[str] = None,
+        similarity_threshold: float = 0.0,
+        filters: Optional[SearchFilters] = None,
     ) -> List[Dict[str, Any]]:
         """Execute vector similarity search.
 
@@ -215,6 +221,7 @@ class DatabaseService(DatabaseConnection, DatabaseOperations):
             limit: Maximum number of results
             language_filter: Optional language filter
             similarity_threshold: Minimum similarity threshold
+            filters: Optional search filters for date range and path filtering
 
         Returns:
             List of search results with metadata
@@ -224,15 +231,22 @@ class DatabaseService(DatabaseConnection, DatabaseOperations):
             self.initialize()
         
         assert self.search_service is not None
-        return self.search_service.vector_search(query_vector, limit, language_filter, similarity_threshold)
+        return self.search_service.vector_search(query_vector, limit, language_filter, similarity_threshold, filters)
 
-    def bm25_search(self, terms: List[str], limit: int = 10, language_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+    def bm25_search(
+        self,
+        terms: List[str],
+        limit: int = 10,
+        language_filter: Optional[str] = None,
+        filters: Optional[SearchFilters] = None,
+    ) -> List[Dict[str, Any]]:
         """Execute BM25 text search.
 
         Args:
             terms: List of search terms
             limit: Maximum number of results
             language_filter: Optional language filter
+            filters: Optional search filters for date range and path filtering
 
         Returns:
             List of search results with metadata
@@ -242,7 +256,7 @@ class DatabaseService(DatabaseConnection, DatabaseOperations):
             self.initialize()
         
         assert self.search_service is not None
-        return self.search_service.bm25_search(terms, limit, language_filter)
+        return self.search_service.bm25_search(terms, limit, language_filter, filters)
 
     def get_chunk_by_id(self, chunk_id: str) -> Optional[Dict[str, Any]]:
         """Get chunk by ID.

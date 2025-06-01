@@ -7,6 +7,7 @@ from typing import List, Optional
 import numpy as np
 from numpy.typing import NDArray
 
+from oboyu.indexer.search.search_filters import SearchFilters
 from oboyu.indexer.search.search_result import SearchResult
 from oboyu.indexer.storage.database_service import DatabaseService
 
@@ -25,13 +26,20 @@ class VectorSearch:
         """
         self.database_service = database_service
 
-    def search(self, query_vector: NDArray[np.float32], limit: int, language_filter: Optional[str] = None) -> List[SearchResult]:
+    def search(
+        self,
+        query_vector: NDArray[np.float32],
+        limit: int,
+        language_filter: Optional[str] = None,
+        filters: Optional[SearchFilters] = None,
+    ) -> List[SearchResult]:
         """Execute vector similarity search.
 
         Args:
             query_vector: Query embedding vector
             limit: Maximum number of results to return
             language_filter: Optional language filter
+            filters: Optional search filters for date range and path filtering
 
         Returns:
             List of search results ordered by similarity score
@@ -39,7 +47,7 @@ class VectorSearch:
         """
         try:
             # Execute vector search through database service
-            raw_results = self.database_service.vector_search(query_vector=query_vector, limit=limit, language_filter=language_filter)
+            raw_results = self.database_service.vector_search(query_vector=query_vector, limit=limit, language_filter=language_filter, filters=filters)
 
             # Convert to SearchResult objects
             search_results = []
