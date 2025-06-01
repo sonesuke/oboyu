@@ -1,0 +1,131 @@
+name: Documentation Improvement
+description: Report documentation issues or suggest improvements
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us improve oboyu's documentation! Report gaps, unclear sections, or suggest new documentation.
+
+  - type: dropdown
+    id: doc_area
+    attributes:
+      label: Documentation Area
+      description: Which area of documentation needs improvement?
+      options:
+        - Installation guide
+        - Configuration
+        - CLI usage
+        - MCP integration
+        - Japanese language setup
+        - API reference
+        - Examples/tutorials
+        - Architecture docs
+        - Contributing guide
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: Issue Type
+      description: What type of documentation issue is this?
+      options:
+        - Missing information
+        - Unclear/confusing content
+        - Outdated information
+        - Translation needed
+        - Example needed
+        - Error in documentation
+        - New documentation request
+    validations:
+      required: true
+
+  - type: input
+    id: doc_location
+    attributes:
+      label: Documentation Location
+      description: Where is the problematic documentation located?
+      placeholder: "docs/installation.md, README.md, CLI help text, etc."
+
+  - type: textarea
+    id: current_content
+    attributes:
+      label: Current Content (if applicable)
+      description: Copy the current documentation content that needs improvement
+      placeholder: |
+        Current text that is unclear or missing:
+        "..."
+
+  - type: textarea
+    id: issue_description
+    attributes:
+      label: Issue Description
+      description: What's wrong with the current documentation or what's missing?
+      placeholder: |
+        The current documentation doesn't explain...
+        This section is confusing because...
+        Missing information about...
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested_improvement
+    attributes:
+      label: Suggested Improvement
+      description: How should the documentation be improved?
+      placeholder: |
+        The documentation should include...
+        This section should be rewritten to...
+        Add examples showing...
+
+  - type: textarea
+    id: user_context
+    attributes:
+      label: User Context
+      description: What were you trying to accomplish when you encountered this documentation issue?
+      placeholder: |
+        I was trying to...
+        My goal was to...
+        I expected to find information about...
+
+  - type: dropdown
+    id: target_audience
+    attributes:
+      label: Target Audience
+      description: Who would benefit most from this documentation improvement?
+      options:
+        - New users
+        - Advanced users
+        - Developers/contributors
+        - Japanese language users
+        - MCP server users
+        - All users
+
+  - type: checkboxes
+    id: language_support
+    attributes:
+      label: Language Support
+      description: Which languages should this documentation support?
+      options:
+        - label: English
+        - label: Japanese (日本語)
+        - label: Both English and Japanese
+
+  - type: textarea
+    id: examples_needed
+    attributes:
+      label: Examples Needed
+      description: What specific examples would help illustrate this documentation?
+      placeholder: |
+        Code examples showing...
+        Command line examples for...
+        Configuration examples for...
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Any other information that would help improve the documentation

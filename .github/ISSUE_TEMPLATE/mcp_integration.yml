@@ -1,0 +1,170 @@
+name: MCP Integration Issue
+description: Report issues with AI assistant integration and MCP server
+title: "[MCP]: "
+labels: ["mcp", "integration"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report issues related to the Model Context Protocol (MCP) server and AI assistant integration.
+
+  - type: dropdown
+    id: mcp_issue_type
+    attributes:
+      label: MCP Issue Type
+      description: What type of MCP integration issue is this?
+      options:
+        - Server startup/connection
+        - Tool discovery
+        - Search functionality
+        - Claude Desktop configuration
+        - Transport protocol
+        - Authentication
+        - Performance
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Issue Description
+      description: Describe the MCP integration issue you're experiencing
+      placeholder: |
+        What specific problem are you having with the MCP server?
+        What were you trying to accomplish?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction_steps
+    attributes:
+      label: Steps to Reproduce
+      description: How to reproduce this MCP issue
+      placeholder: |
+        1. Start MCP server with: oboyu mcp
+        2. Configure Claude Desktop with: ...
+        3. Try to use search tool: ...
+        4. Observe error: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: mcp_config
+    attributes:
+      label: MCP Configuration
+      description: Your MCP server configuration
+      placeholder: |
+        Claude Desktop config.json entry:
+        {
+          "mcpServers": {
+            "oboyu": {
+              "command": "oboyu",
+              "args": ["mcp"],
+              "env": {...}
+            }
+          }
+        }
+      render: json
+
+  - type: input
+    id: transport_method
+    attributes:
+      label: Transport Method
+      description: How is the MCP server communicating?
+      placeholder: "stdio, websocket, etc."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected Behavior
+      description: What should happen with the MCP integration?
+      placeholder: |
+        - Server should start successfully
+        - Tools should be discoverable in Claude Desktop
+        - Search should return relevant results
+        - ...
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: Actual Behavior
+      description: What actually happens?
+      placeholder: |
+        - Server fails to start
+        - Tools not appearing in Claude Desktop
+        - Search returns errors
+        - ...
+
+  - type: textarea
+    id: error_logs
+    attributes:
+      label: Error Logs
+      description: MCP server logs and error messages
+      render: shell
+
+  - type: textarea
+    id: claude_desktop_logs
+    attributes:
+      label: Claude Desktop Logs (if applicable)
+      description: Any relevant logs from Claude Desktop
+      render: shell
+
+  - type: input
+    id: oboyu_version
+    attributes:
+      label: Oboyu Version
+      description: What version of oboyu are you using?
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: claude_desktop_version
+    attributes:
+      label: Claude Desktop Version
+      description: What version of Claude Desktop are you using?
+      placeholder: "1.0.0"
+
+  - type: dropdown
+    id: operating_system
+    attributes:
+      label: Operating System
+      description: What operating system are you using?
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: search_testing
+    attributes:
+      label: Search Testing Results
+      description: If applicable, test search functionality and report results
+      placeholder: |
+        Test query: "Japanese text processing"
+        Expected results: Documents about Japanese processing
+        Actual results: Error message / No results / Wrong results
+
+  - type: checkboxes
+    id: tools_affected
+    attributes:
+      label: Which MCP Tools Are Affected?
+      description: Select all that apply
+      options:
+        - label: search_documents (semantic search)
+        - label: search_files (file search)
+        - label: get_file_content (file reading)
+        - label: All tools
+        - label: No tools visible
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Any other information about the MCP integration issue

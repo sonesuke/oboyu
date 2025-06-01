@@ -1,0 +1,129 @@
+name: Japanese Processing Issue
+description: Report issues specific to Japanese text processing
+title: "[Japanese]: "
+labels: ["japanese", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This template is specifically for issues related to Japanese text processing in oboyu.
+        日本語テキスト処理に関する問題を報告するためのテンプレートです。
+
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: Issue Type
+      description: What type of Japanese processing issue is this?
+      options:
+        - Character encoding (文字化け)
+        - Tokenization/MeCab issues
+        - Search accuracy
+        - Indexing problems
+        - Font/display issues
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Issue Description
+      description: Describe the Japanese processing issue
+      placeholder: |
+        English: Describe the issue...
+        日本語: 問題を説明してください...
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample_text
+    attributes:
+      label: Sample Japanese Text
+      description: Provide the Japanese text that causes the issue
+      placeholder: |
+        Example problematic text:
+        日本語のサンプルテキスト
+        ひらがな、カタカナ、漢字
+    validations:
+      required: true
+
+  - type: input
+    id: encoding
+    attributes:
+      label: Text Encoding
+      description: What encoding is the text in?
+      placeholder: "UTF-8, Shift_JIS, EUC-JP, etc."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected Behavior
+      description: How should the Japanese text be processed?
+      placeholder: |
+        Expected tokenization: 日本語 / テキスト / 処理
+        Expected search results: ...
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: Actual Behavior
+      description: What actually happens with the Japanese text?
+      placeholder: |
+        Actual tokenization: 日本語テキスト処理 (not split correctly)
+        Actual search results: ...
+
+  - type: input
+    id: mecab_version
+    attributes:
+      label: MeCab Version (if applicable)
+      description: What version of MeCab are you using?
+      placeholder: "mecab --version output"
+
+  - type: dropdown
+    id: mecab_dictionary
+    attributes:
+      label: MeCab Dictionary
+      description: Which MeCab dictionary are you using?
+      options:
+        - IPADic
+        - NEologd
+        - UniDic
+        - Other
+        - Unknown/Default
+
+  - type: textarea
+    id: environment_details
+    attributes:
+      label: Environment Details
+      description: System and locale information
+      placeholder: |
+        OS: macOS/Linux/Windows
+        Locale: ja_JP.UTF-8
+        Terminal encoding: UTF-8
+        Python locale: ...
+
+  - type: textarea
+    id: reproduction_steps
+    attributes:
+      label: Reproduction Steps
+      description: How to reproduce this Japanese processing issue
+      placeholder: |
+        1. Create file with Japanese text: "..."
+        2. Run indexing command: oboyu index ...
+        3. Search for: "..."
+        4. Observe incorrect behavior: ...
+
+  - type: textarea
+    id: error_output
+    attributes:
+      label: Error Output
+      description: Any error messages (especially encoding-related)
+      render: shell
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Any other relevant information about Japanese text handling

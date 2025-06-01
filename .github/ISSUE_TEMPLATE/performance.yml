@@ -1,0 +1,161 @@
+name: Performance Issue
+description: Report performance problems or optimization requests
+title: "[Performance]: "
+labels: ["performance"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report performance issues or request optimizations for oboyu components.
+
+  - type: dropdown
+    id: performance_area
+    attributes:
+      label: Performance Area
+      description: Which area is experiencing performance issues?
+      options:
+        - Indexing speed
+        - Search latency
+        - Memory usage
+        - Disk I/O
+        - CPU usage
+        - Startup time
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component has the performance issue?
+      options:
+        - Crawler
+        - Indexer
+        - Query Engine
+        - MCP Server
+        - CLI
+        - Database
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Performance Issue Description
+      description: Describe the performance problem you're experiencing
+      placeholder: |
+        What operation is slow?
+        How slow is it currently?
+        What would be acceptable performance?
+    validations:
+      required: true
+
+  - type: textarea
+    id: dataset_info
+    attributes:
+      label: Dataset Information
+      description: Details about the data being processed
+      placeholder: |
+        - Number of files: 1,000
+        - Total file size: 500MB
+        - File types: .txt, .md, .py
+        - Average file size: 500KB
+        - Language: English/Japanese mix
+
+  - type: textarea
+    id: timing_metrics
+    attributes:
+      label: Performance Measurements
+      description: Specific timing and resource usage measurements
+      placeholder: |
+        Indexing time: 45 minutes for 1,000 files
+        Search time: 2-3 seconds per query
+        Memory usage: 2GB peak during indexing
+        CPU usage: 80-90% during indexing
+      render: shell
+
+  - type: textarea
+    id: system_specs
+    attributes:
+      label: System Specifications
+      description: Hardware and system information
+      placeholder: |
+        CPU: Intel i7-10700K / Apple M1 / AMD Ryzen 5600X
+        RAM: 16GB
+        Storage: SSD/HDD
+        OS: macOS 14.0 / Ubuntu 22.04 / Windows 11
+    validations:
+      required: true
+
+  - type: input
+    id: oboyu_version
+    attributes:
+      label: Oboyu Version
+      description: What version of oboyu are you using?
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Configuration Settings
+      description: Relevant configuration that might affect performance
+      placeholder: |
+        Embedding model: sentence-transformers/all-MiniLM-L6-v2
+        Chunk size: 512
+        Chunk overlap: 50
+        Database: SQLite/PostgreSQL
+        Index settings: ...
+
+  - type: textarea
+    id: reproduction_steps
+    attributes:
+      label: Steps to Reproduce
+      description: How to reproduce the performance issue
+      placeholder: |
+        1. Prepare dataset with X files
+        2. Run: oboyu index /path/to/files
+        3. Measure time with: time oboyu index ...
+        4. Observe slow performance
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_performance
+    attributes:
+      label: Expected Performance
+      description: What performance would you expect for this operation?
+      placeholder: |
+        Indexing should complete in under 10 minutes
+        Search should respond within 500ms
+        Memory usage should stay under 1GB
+
+  - type: textarea
+    id: profiling_data
+    attributes:
+      label: Profiling Data (if available)
+      description: Any profiling information you've collected
+      render: shell
+
+  - type: checkboxes
+    id: optimization_areas
+    attributes:
+      label: Potential Optimization Areas
+      description: What aspects might need optimization?
+      options:
+        - label: Parallel processing
+        - label: Memory management
+        - label: Database queries
+        - label: File I/O operations
+        - label: Embedding computation
+        - label: Index structure
+        - label: Caching strategy
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Any other performance-related information
