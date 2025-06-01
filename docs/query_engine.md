@@ -59,20 +59,6 @@ def format_results(results, query):
     # Returns formatted results for presentation
 ```
 
-### MCP Server
-
-The MCP Server provides integration with external tools:
-
-- Implements stdio-based MCP protocol
-- Handles JSON request/response formatting
-- Manages persistent connection state
-- Provides debugging and error handling
-
-```python
-def start_mcp_server():
-    # Implementation details
-    # Runs the MCP server loop
-```
 
 ## Search Modes
 
@@ -122,27 +108,69 @@ oboyu query --mode bm25 "REST API implementation"
 
 ### Hybrid Search (Default)
 
-Hybrid search combines both approaches for optimal results:
+Hybrid search combines both approaches for optimal results by leveraging the strengths of both vector and BM25 search:
 
-- Executes both vector and BM25 searches in parallel
-- Normalizes scores using min-max normalization
-- Combines results with configurable weights (default: 70% vector, 30% BM25)
-- **Best for**: most general queries, balanced precision and recall
+- **Parallel Execution**: Executes both vector and BM25 searches simultaneously for efficiency
+- **Score Normalization**: Uses min-max normalization to ensure fair combination of different scoring systems
+- **Configurable Weights**: Combines results with adjustable weights (default: 70% vector, 30% BM25)
+- **Result Fusion**: Merges and re-ranks results from both methods to provide comprehensive coverage
+- **Best for**: most general queries, balanced precision and recall, complex information needs
 
-**Example CLI usage:**
+**How Hybrid Search Works:**
+
+1. **Query Processing**: The same query is processed for both search methods
+2. **Parallel Search**: Vector and BM25 searches execute simultaneously
+3. **Score Normalization**: Each method's scores are normalized to 0-1 range using min-max scaling
+4. **Weight Application**: Normalized scores are multiplied by their respective weights
+5. **Result Combination**: Final score = (vector_score × vector_weight) + (bm25_score × bm25_weight)
+6. **Ranking**: Results are sorted by combined score and top-k selected
+
+**Weight Configuration Strategies:**
+
 ```bash
-# Default hybrid search (recommended)
+# Default hybrid search (recommended for most use cases)
 oboyu query "Pythonでの非同期処理の実装方法"
+
+# Semantic-focused: Better for conceptual queries
 oboyu query --vector-weight 0.8 --bm25-weight 0.2 "database optimization techniques"
 
-# Adjust weights for specific needs
+# Keyword-focused: Better for specific term searches
+oboyu query --vector-weight 0.3 --bm25-weight 0.7 "REST API status codes"
+
+# Balanced approach: Equal weight to both methods
 oboyu query --vector-weight 0.5 --bm25-weight 0.5 "システム設計の原則"
 ```
 
-**When to use:**
-- General purpose searches
-- When you want both semantic and keyword matching
-- Most day-to-day search scenarios
+**Interactive Weight Tuning:**
+```bash
+# Start interactive session for weight experimentation
+oboyu query --interactive --mode hybrid
+
+> /weights 0.8 0.2
+✅ Weights changed to: Vector=0.8, BM25=0.2
+
+> machine learning algorithms
+# See results with semantic focus
+
+> /weights 0.3 0.7
+✅ Weights changed to: Vector=0.3, BM25=0.7
+
+> machine learning algorithms
+# See results with keyword focus
+```
+
+**When to use different weight configurations:**
+
+- **Vector-heavy (0.8/0.2)**: Conceptual queries, cross-language search, synonym matching
+- **Balanced (0.5/0.5)**: Mixed queries with both semantic and keyword requirements
+- **BM25-heavy (0.2/0.8)**: Precise technical terms, specific API names, exact matches
+- **Default (0.7/0.3)**: General purpose searches, most common scenario
+
+**Performance Benefits:**
+- **Comprehensive Coverage**: Finds both semantically similar and keyword-matching documents
+- **Robustness**: Reduces risk of missing relevant results due to single-method limitations
+- **Flexibility**: Easily tunable for different content types and query styles
+- **Efficiency**: Parallel execution means minimal performance penalty over single methods
 
 ## Japanese Query Support
 
@@ -278,78 +306,6 @@ oboyu query "Pythonでの例外処理のベストプラクティス"
 oboyu query --vector-weight 0.3 --bm25-weight 0.7 --limit 15 "database normalization rules"
 ```
 
-## MCP Protocol
-
-The MCP server provides a standardized interface for external tools and AI assistants:
-
-### Starting MCP Server
-
-```bash
-# Start MCP server for integration with Claude/other AI tools
-oboyu mcp
-
-# Specify custom options
-oboyu mcp --log-level debug
-```
-
-### Search Request Examples
-
-**Hybrid Search (Default):**
-```bash
-# Through MCP tools in Claude or other AI assistants
-search_documents("機械学習の基本的なアルゴリズム", limit=5)
-```
-
-**Vector Search:**
-```bash
-search_documents("design patterns in software architecture", mode="vector", limit=10)
-```
-
-**BM25 Search:**
-```bash
-search_documents("データベース正規化", mode="bm25")
-```
-
-**Custom Hybrid Weights:**
-```bash
-search_documents("REST API best practices", 
-                mode="hybrid", 
-                vector_weight=0.6, 
-                bm25_weight=0.4, 
-                limit=8)
-```
-
-### Integration Examples
-
-**With Claude Code:**
-The MCP server integrates seamlessly with Claude for code analysis and documentation queries:
-
-```bash
-# Claude can search your codebase for relevant documentation
-"How do I implement authentication in this project?"
-# → Uses hybrid search to find auth-related docs and code examples
-
-# Claude can find specific technical details
-"What are the database migration patterns used here?"
-# → Uses BM25 search for exact terminology matching
-```
-
-**With Custom Tools:**
-```python
-import mcp_client
-
-# Connect to Oboyu MCP server
-client = mcp_client.connect("oboyu")
-
-# Perform searches programmatically
-results = client.search_documents(
-    query="Python async programming patterns",
-    mode="hybrid",
-    vector_weight=0.7,
-    bm25_weight=0.3,
-    limit=5
-)
-```
 
 ## Performance Considerations
 

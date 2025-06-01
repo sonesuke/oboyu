@@ -114,5 +114,3 @@ def format_snippet(text: str, query: str, length: int = 160, highlight: bool = T
     # (Previously highlighted query terms)
 
     return snippet
-
-

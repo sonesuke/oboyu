@@ -3,7 +3,7 @@
 import hashlib
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -40,15 +40,17 @@ class EmbeddingCache:
         """
         cache_key = self._get_cache_key(text, model_name)
         cache_file = self.cache_dir / f"{cache_key}.npy"
-        
+
         if cache_file.exists():
             try:
-                return np.load(cache_file).astype(np.float32)
+                loaded_array = np.load(cache_file)
+                # Cast to proper type annotation
+                return loaded_array.astype(np.float32)  # type: ignore[no-any-return]
             except Exception as e:
                 logger.warning(f"Failed to load cached embedding: {e}")
                 # Remove corrupted cache file
                 cache_file.unlink(missing_ok=True)
-        
+
         return None
 
     def set(self, text: str, model_name: str, embedding: NDArray[np.float32]) -> None:
@@ -62,7 +64,7 @@ class EmbeddingCache:
         """
         cache_key = self._get_cache_key(text, model_name)
         cache_file = self.cache_dir / f"{cache_key}.npy"
-        
+
         try:
             np.save(cache_file, embedding)
         except Exception as e:
@@ -139,11 +141,12 @@ class EmbeddingService:
         """Get embedding dimensions."""
         return self.model_manager.get_dimensions()
 
-    def generate_embeddings(self, texts: List[str]) -> List[NDArray[np.float32]]:
+    def generate_embeddings(self, texts: List[str], progress_callback: Optional[Callable[[str, int, int], None]] = None) -> List[NDArray[np.float32]]:
         """Generate embeddings for a list of texts.
 
         Args:
             texts: List of texts to generate embeddings for
+            progress_callback: Optional callback for progress updates
 
         Returns:
             List of embedding arrays
@@ -152,7 +155,8 @@ class EmbeddingService:
         if not texts:
             return []
 
-        embeddings = []
+        # Use dictionary to store results by index to avoid None placeholders
+        result_embeddings: Dict[int, NDArray[np.float32]] = {}
         texts_to_process = []
         indices_to_process = []
 
@@ -161,38 +165,74 @@ class EmbeddingService:
             if self.cache:
                 cached_embedding = self.cache.get(text, self.model_name)
                 if cached_embedding is not None:
-                    embeddings.append(cached_embedding)
-                    continue
+                    # Fix scalar embeddings by converting to proper array
+                    if hasattr(cached_embedding, 'shape') and cached_embedding.shape == ():
+                        # Skip corrupted cache entry
+                        pass
+                    else:
+                        result_embeddings[i] = cached_embedding
+                        continue
 
             # Mark for processing
             texts_to_process.append(text)
             indices_to_process.append(i)
-            embeddings.append(None)  # Placeholder
 
         # Process uncached texts
         if texts_to_process:
             try:
-                new_embeddings = self.model_manager.model.encode(
-                    texts_to_process,
-                    batch_size=self.batch_size,
-                    normalize_embeddings=True
-                )
+                logger.info(f"Processing {len(texts_to_process)} uncached texts with batch_size={self.batch_size}")
+                
+                # Calculate number of batches for progress reporting
+                num_batches = (len(texts_to_process) + self.batch_size - 1) // self.batch_size
+                
+                if progress_callback:
+                    progress_callback("embedding", 0, num_batches)
+                
+                # Process in batches to track progress
+                if progress_callback and len(texts_to_process) > self.batch_size:
+                    # Process in smaller batches with progress updates
+                    all_embeddings = []
+                    for batch_idx in range(0, len(texts_to_process), self.batch_size):
+                        batch_texts = texts_to_process[batch_idx:batch_idx + self.batch_size]
+                        batch_embeddings = self.model_manager.model.encode(batch_texts, batch_size=self.batch_size, normalize_embeddings=True)
+                        all_embeddings.extend(batch_embeddings)
+                        
+                        # Report progress
+                        current_batch = (batch_idx // self.batch_size) + 1
+                        progress_callback("embedding", current_batch, num_batches)
+                    
+                    new_embeddings = np.array(all_embeddings)
+                else:
+                    # Process all at once
+                    new_embeddings = self.model_manager.model.encode(texts_to_process, batch_size=self.batch_size, normalize_embeddings=True)
+                    if progress_callback:
+                        progress_callback("embedding", num_batches, num_batches)
 
                 # Store in cache and update results
-                for idx, embedding in zip(indices_to_process, new_embeddings):
+                if len(indices_to_process) == 1 and new_embeddings.ndim == 1:
+                    # Single text case - new_embeddings is 1D array
+                    idx = indices_to_process[0]
+                    embedding = new_embeddings
                     if self.cache:
                         self.cache.set(texts[idx], self.model_name, embedding)
-                    embeddings[idx] = embedding
+                    result_embeddings[idx] = embedding
+                else:
+                    # Multiple texts case - new_embeddings is 2D array
+                    for i, idx in enumerate(indices_to_process):
+                        embedding = new_embeddings[i]
+                        if self.cache:
+                            self.cache.set(texts[idx], self.model_name, embedding)
+                        result_embeddings[idx] = embedding
 
             except Exception as e:
                 logger.error(f"Failed to generate embeddings: {e}")
                 # Fill with zeros for failed embeddings
                 zero_embedding = np.zeros(self.dimensions or 256, dtype=np.float32)
                 for idx in indices_to_process:
-                    embeddings[idx] = zero_embedding
+                    result_embeddings[idx] = zero_embedding
 
-        # Filter out None values (shouldn't happen, but for safety)
-        return [emb for emb in embeddings if emb is not None]
+        # Convert dictionary back to ordered list
+        return [result_embeddings[i] for i in range(len(texts))]
 
     def generate_query_embedding(self, query: str) -> NDArray[np.float32]:
         """Generate embedding for a search query.
@@ -206,12 +246,13 @@ class EmbeddingService:
         """
         # Add query prefix
         prefixed_query = f"{self.query_prefix}{query}"
-        
+
         # Generate embedding
         embeddings = self.generate_embeddings([prefixed_query])
-        
+
         if embeddings:
-            return embeddings[0]
+            result = embeddings[0]
+            return result.astype(np.float32)
         else:
             # Return zero embedding as fallback
             return np.zeros(self.dimensions or 256, dtype=np.float32)

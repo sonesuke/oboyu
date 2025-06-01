@@ -60,16 +60,16 @@ def main(
     """
     # Create base command for common functionality
     base_command = BaseCommand(ctx)
-    
+
     # Validate transport is one of the allowed values
     valid_transports: list[Literal["stdio", "sse", "streamable-http"]] = ["stdio", "sse", "streamable-http"]
     if transport not in valid_transports:
         raise typer.BadParameter(f"Transport must be one of: {', '.join(valid_transports)}")
-    
+
     # Create indexer configuration to get resolved database path
     indexer_config = base_command.create_indexer_config(db_path=str(db_path) if db_path else None)
     resolved_db_path = str(indexer_config.db_path)
-    
+
     if verbose:
         base_command.print_database_path(resolved_db_path)
 
@@ -81,7 +81,7 @@ def main(
         with base_command.logger.live_display():
             # Start MCP server operation
             server_op = base_command.logger.start_operation("Starting Oboyu MCP Server...")
-            
+
             # Load configuration
             config_op = base_command.logger.start_operation("Loading configuration...")
             base_command.logger.complete_operation(config_op)
@@ -98,7 +98,7 @@ def main(
             # Start transport
             transport_op = base_command.logger.start_operation(f"Starting {transport} transport...")
             base_command.logger.complete_operation(transport_op)
-            
+
             base_command.logger.complete_operation(server_op)
 
             # Add listening operation

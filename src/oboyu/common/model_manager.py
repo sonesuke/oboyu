@@ -47,10 +47,10 @@ class ModelManager(ABC):
         self.use_onnx = use_onnx and device == "cpu"  # ONNX most beneficial for CPU
         self.cache_dir = Path(cache_dir) if cache_dir else EMBEDDING_CACHE_DIR / "models"
         self.config = kwargs
-        
+
         # Model instance (lazy loaded)
         self._model: Optional[Any] = None
-        
+
         # Generate cache key for model instance caching
         self._cache_key = self._generate_cache_key()
 
@@ -58,12 +58,12 @@ class ModelManager(ABC):
         """Generate a unique cache key for this model configuration."""
         # Include all relevant configuration in cache key
         config_str = f"{self.model_name}_{self.model_type}_{self.device}_{self.use_onnx}"
-        
+
         # Add relevant config parameters
         for key, value in sorted(self.config.items()):
             if key in ["batch_size", "max_length", "max_seq_length", "quantization_config", "optimization_level"]:
                 config_str += f"_{key}_{value}"
-        
+
         # Hash to keep cache key reasonable length
         return hashlib.sha256(config_str.encode()).hexdigest()  # Use SHA256 instead of MD5
 
@@ -81,16 +81,16 @@ class ModelManager(ABC):
                 self._model = self._load_model()
                 _MODEL_CACHE[self._cache_key] = self._model
                 logger.debug(f"Cached {self.model_type} model: {self.model_name}")
-        
+
         return self._model
 
     @abstractmethod
     def _load_model(self) -> Any:  # noqa: ANN401
         """Load the model implementation.
-        
+
         Returns:
             The loaded model instance
-            
+
         """
         pass
 
@@ -119,38 +119,38 @@ class ONNXModelCache:
         quantized: bool = True,
     ) -> Path:
         """Get ONNX model path.
-        
+
         Args:
             model_name: Name of the model
             model_type: Type of model (embedding, reranker)
             cache_dir: Cache directory (defaults to XDG cache)
             quantized: Whether to prefer quantized version
-            
+
         Returns:
             Path to ONNX model file
-            
+
         """
         if cache_dir is None:
             cache_dir = EMBEDDING_CACHE_DIR / "models"
-        
+
         model_dir = cache_dir / "onnx" / model_name.replace("/", "_")
-        
+
         # Try quantized model first if requested
         if quantized:
             onnx_path = model_dir / "model_quantized.onnx"
             if onnx_path.exists() and onnx_path.stat().st_size > 0:
                 return onnx_path
-        
+
         # Try optimized model
         onnx_path = model_dir / "model_optimized.onnx"
         if onnx_path.exists() and onnx_path.stat().st_size > 0:
             return onnx_path
-        
+
         # Try basic model
         onnx_path = model_dir / "model.onnx"
         if onnx_path.exists() and onnx_path.stat().st_size > 0:
             return onnx_path
-        
+
         raise FileNotFoundError(f"No ONNX model found for {model_name} in {model_dir}")
 
     @staticmethod
@@ -162,39 +162,43 @@ class ONNXModelCache:
         quantization_config: Optional[Dict[str, Any]] = None,
     ) -> Path:
         """Convert model to ONNX format.
-        
+
         Args:
             model_name: Name of the model to convert
             model_type: Type of model (embedding, reranker)
             cache_dir: Cache directory (defaults to XDG cache)
             apply_quantization: Whether to apply quantization
             quantization_config: Quantization configuration
-            
+
         Returns:
             Path to converted ONNX model
-            
+
         """
         if cache_dir is None:
             cache_dir = EMBEDDING_CACHE_DIR / "models"
-        
+
         model_dir = cache_dir / "onnx" / model_name.replace("/", "_")
-        
+
         if model_type == "embedding":
-            from oboyu.indexer.onnx_converter import convert_to_onnx
-            return convert_to_onnx(
+            from oboyu.common.onnx_converter import convert_to_onnx
+
+            result = convert_to_onnx(
                 model_name,
                 model_dir,
                 apply_quantization=apply_quantization,
                 quantization_config=quantization_config,
             )
+            return result
         elif model_type == "reranker":
-            from oboyu.indexer.onnx_converter import convert_cross_encoder_to_onnx
-            return convert_cross_encoder_to_onnx(
+            from oboyu.common.onnx_converter import convert_cross_encoder_to_onnx
+
+            result = convert_cross_encoder_to_onnx(
                 model_name,
                 model_dir,
                 apply_quantization=apply_quantization,
                 quantization_config=quantization_config,
             )
+            return result
         else:
             raise ValueError(f"Unsupported model type: {model_type}")
 
@@ -207,22 +211,20 @@ class ONNXModelCache:
         quantization_config: Optional[Dict[str, Any]] = None,
     ) -> Path:
         """Get ONNX model path, converting if necessary.
-        
+
         Args:
             model_name: Name of the model
             model_type: Type of model (embedding, reranker)
             cache_dir: Cache directory (defaults to XDG cache)
             apply_quantization: Whether to apply quantization
             quantization_config: Quantization configuration
-            
+
         Returns:
             Path to ONNX model file
-            
+
         """
         try:
-            return ONNXModelCache.get_onnx_path(
-                model_name, model_type, cache_dir, quantized=apply_quantization
-            )
+            return ONNXModelCache.get_onnx_path(model_name, model_type, cache_dir, quantized=apply_quantization)
         except FileNotFoundError:
             logger.debug(f"ONNX model not found, converting {model_name}...")
             return ONNXModelCache.convert_to_onnx(
@@ -249,7 +251,7 @@ class EmbeddingModelManager(ModelManager):
         **kwargs: Any,  # noqa: ANN401
     ) -> None:
         """Initialize embedding model manager.
-        
+
         Args:
             model_name: Name of the embedding model
             device: Device to run the model on
@@ -259,7 +261,7 @@ class EmbeddingModelManager(ModelManager):
             quantization_config: ONNX quantization configuration
             optimization_level: ONNX optimization level
             **kwargs: Additional configuration
-            
+
         """
         super().__init__(
             model_name=model_name,
@@ -279,8 +281,8 @@ class EmbeddingModelManager(ModelManager):
     def _load_model(self) -> Any:  # noqa: ANN401
         """Load embedding model (ONNX or PyTorch)."""
         if self.use_onnx:
-            from oboyu.indexer.onnx_converter import ONNXEmbeddingModel
-            
+            from oboyu.common.onnx_converter import ONNXEmbeddingModel
+
             # Get or convert ONNX model
             onnx_path = ONNXModelCache.get_or_convert_onnx_model(
                 self.model_name,
@@ -289,7 +291,7 @@ class EmbeddingModelManager(ModelManager):
                 apply_quantization=self.quantization_config.get("enabled", True),
                 quantization_config=self.quantization_config,
             )
-            
+
             return ONNXEmbeddingModel(
                 onnx_path,
                 max_seq_length=self.max_seq_length,
@@ -299,14 +301,12 @@ class EmbeddingModelManager(ModelManager):
             # Load PyTorch model
             try:
                 from sentence_transformers import SentenceTransformer
+
                 # Silence SentenceTransformer logging
                 logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
             except ImportError as e:
-                raise ImportError(
-                    "sentence_transformers is required for embedding generation. "
-                    "Install with: pip install sentence_transformers"
-                ) from e
-            
+                raise ImportError("sentence_transformers is required for embedding generation. Install with: pip install sentence_transformers") from e
+
             model_cache_dir = self.get_cache_dir()
             model = SentenceTransformer(
                 self.model_name,
@@ -336,7 +336,7 @@ class RerankerModelManager(ModelManager):
         **kwargs: Any,  # noqa: ANN401
     ) -> None:
         """Initialize reranker model manager.
-        
+
         Args:
             model_name: Name of the reranker model
             device: Device to run the model on
@@ -346,7 +346,7 @@ class RerankerModelManager(ModelManager):
             quantization_config: ONNX quantization configuration
             optimization_level: ONNX optimization level
             **kwargs: Additional configuration
-            
+
         """
         super().__init__(
             model_name=model_name,
@@ -366,8 +366,8 @@ class RerankerModelManager(ModelManager):
     def _load_model(self) -> Any:  # noqa: ANN401
         """Load reranker model (ONNX or PyTorch)."""
         if self.use_onnx:
-            from oboyu.indexer.onnx_converter import ONNXCrossEncoderModel
-            
+            from oboyu.common.onnx_converter import ONNXCrossEncoderModel
+
             # Get or convert ONNX model
             onnx_path = ONNXModelCache.get_or_convert_onnx_model(
                 self.model_name,
@@ -376,7 +376,7 @@ class RerankerModelManager(ModelManager):
                 apply_quantization=self.quantization_config.get("enabled", True),
                 quantization_config=self.quantization_config,
             )
-            
+
             return ONNXCrossEncoderModel(
                 onnx_path,
                 max_seq_length=self.max_length,
@@ -387,11 +387,8 @@ class RerankerModelManager(ModelManager):
             try:
                 from sentence_transformers import CrossEncoder
             except ImportError as e:
-                raise ImportError(
-                    "sentence_transformers is required for reranking. "
-                    "Install with: pip install sentence_transformers"
-                ) from e
-            
+                raise ImportError("sentence_transformers is required for reranking. Install with: pip install sentence_transformers") from e
+
             return CrossEncoder(
                 self.model_name,
                 device=self.device,
@@ -406,10 +403,10 @@ def create_model_manager(
     device: str = "cpu",
     use_onnx: bool = True,
     cache_dir: Optional[Union[str, Path]] = None,
-    **kwargs: Any,
+    **kwargs: Any,  # noqa: ANN401
 ) -> ModelManager:
     """Create appropriate model manager instance.
-    
+
     Args:
         model_type: Type of model (embedding, reranker)
         model_name: Name of the model
@@ -417,13 +414,13 @@ def create_model_manager(
         use_onnx: Whether to use ONNX optimization
         cache_dir: Directory to cache models
         **kwargs: Additional model-specific configuration
-        
+
     Returns:
         Model manager instance
-        
+
     Raises:
         ValueError: If model_type is not supported
-        
+
     """
     if model_type == "embedding":
         return EmbeddingModelManager(
@@ -443,4 +440,3 @@ def create_model_manager(
         )
     else:
         raise ValueError(f"Unsupported model type: {model_type}. Must be 'embedding' or 'reranker'")
-

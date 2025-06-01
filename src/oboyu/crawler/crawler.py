@@ -43,7 +43,6 @@ class Crawler:
         exclude_patterns: Optional[List[str]] = None,
         max_file_size: int = 10 * 1024 * 1024,  # 10MB
         follow_symlinks: bool = False,
-        japanese_encodings: Optional[List[str]] = None,
         max_workers: int = 4,  # Number of worker threads for parallel processing
         respect_gitignore: bool = True,  # Whether to respect .gitignore files
     ) -> None:
@@ -55,7 +54,6 @@ class Crawler:
             exclude_patterns: Patterns to exclude (e.g., "*/node_modules/*")
             max_file_size: Maximum file size in bytes to process
             follow_symlinks: Whether to follow symbolic links during traversal
-            japanese_encodings: List of Japanese encodings to detect
             max_workers: Maximum number of worker threads for parallel processing
             respect_gitignore: Whether to respect .gitignore files (default: True)
 
@@ -65,7 +63,6 @@ class Crawler:
         self.exclude_patterns = exclude_patterns or ["*/node_modules/*", "*/venv/*"]
         self.max_file_size = max_file_size
         self.follow_symlinks = follow_symlinks
-        self.japanese_encodings = japanese_encodings or ["utf-8", "shift-jis", "euc-jp"]
         self.max_workers = max_workers
         self.respect_gitignore = respect_gitignore
 
@@ -109,34 +106,34 @@ class Crawler:
         results: List[CrawlerResult] = []
         total_docs = len(new_docs)
         completed_docs = 0
-        
+
         # Report initial progress
         if progress_callback:
             progress_callback("crawling", 0, total_docs)
-        
+
         import threading
         import time
+
         last_progress_time = time.time()
-        
+
         # Flag to stop periodic updates
         stop_periodic_updates = threading.Event()
-        
+
         # Function to send periodic progress updates even during long processing
         def periodic_progress_updater() -> None:
             while not stop_periodic_updates.wait(3.0):  # Update every 3 seconds
                 if progress_callback:
                     progress_callback("crawling", completed_docs, total_docs)
-        
+
         # Start periodic updater in background
         update_thread = threading.Thread(target=periodic_progress_updater, daemon=True)
         update_thread.start()
-        
+
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 # Submit all document processing tasks
                 future_to_doc = {
-                    executor.submit(self._process_document, doc_path, doc_metadata): (doc_path, doc_metadata)
-                    for doc_path, doc_metadata in new_docs
+                    executor.submit(self._process_document, doc_path, doc_metadata): (doc_path, doc_metadata) for doc_path, doc_metadata in new_docs
                 }
 
                 # Collect results as they complete with periodic progress updates
@@ -149,19 +146,29 @@ class Crawler:
                     except Exception as e:
                         # Log the error and continue
                         print(f"Error processing {doc_path}: {e}")
-                    
+
                     # Report progress
                     completed_docs += 1
                     current_time = time.time()
-                    
+
                     # Report more frequently: every completion or every 2 seconds
-                    if progress_callback and (completed_docs == 1 or current_time - last_progress_time >= 2.0 or completed_docs % 10 == 0):
+                    should_report = (
+                        completed_docs == 1
+                        or current_time - last_progress_time >= 2.0
+                        or completed_docs % 10 == 0
+                        or completed_docs == total_docs
+                    )
+                    if progress_callback and should_report:
                         progress_callback("crawling", completed_docs, total_docs)
                         last_progress_time = current_time
         finally:
             # Stop the periodic updater
             stop_periodic_updates.set()
             update_thread.join(timeout=1.0)
+            
+            # Always send final progress update to ensure completion
+            if progress_callback and completed_docs > 0:
+                progress_callback("crawling", completed_docs, total_docs)
 
         return results
 
@@ -182,7 +189,7 @@ class Crawler:
 
             # Apply special processing for Japanese text
             if language == "ja":
-                encoding = detect_encoding(content, self.japanese_encodings)
+                encoding = detect_encoding(content)
                 content = process_japanese_text(content, encoding)
 
             # Merge extracted metadata with doc_metadata

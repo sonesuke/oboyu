@@ -1,0 +1,29 @@
+Using database: /Users/sonesuke/.local/share/oboyu/index.db
+[06/01/25 13:13:15] INFO     PyTorch version 2.7.0 available.       config.py:54
+                    INFO     Duckdb version 1.3.0 available.        config.py:77
+[06/01/25 13:13:16] INFO     Set initial schema version: 1.0.0  migrations.py:94
+                    INFO     Applying 1 migrations...          migrations.py:347
+                    INFO     Applying migration: 1.1.0 - Add   migrations.py:214
+                             file metadata tracking for                         
+                             differential updates                               
+                    INFO     Migration 1.1.0 applied           migrations.py:245
+                             successfully                                       
+                    INFO     Successfully applied 1 migrations migrations.py:359
+                    INFO     Database indexes setup         index_manager.py:115
+                             completed                                          
+                    INFO     Database initialized        database_service.py:133
+                             successfully at                                    
+                             /Users/sonesuke/.local/shar                        
+                             e/oboyu/index.db                                   
+[06/01/25 13:13:17] INFO     Generating embeddings for 923 text   indexer.py:189
+                             chunks...                                          
+                    INFO     Processing 810 uncached    embedding_service.py:177
+                             texts with batch_size=64                           
+✓ Initializing Oboyu indexer... (3.7s)
+  ⎿ ✓ Loading embedding model (cl-nagoya/ruri-v3-30m)... (3.7s)
+
+⏺ Scanning directory ../test_medium...
+  ⎿ ⏺ Scanning directories... 1/503 (0%)
+    ⎿ ✓ Indexed 923 chunks from 503 documents (0.0s)
+
+Indexed 503 files (923 chunks) in 72.7s

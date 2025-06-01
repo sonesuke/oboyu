@@ -6,8 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Set
 
-from oboyu.indexer.bm25_indexer import BM25Indexer
-from oboyu.indexer.processor import Chunk
+from oboyu.indexer.search.bm25_indexer import BM25Indexer
+from oboyu.indexer.core.document_processor import Chunk
 
 
 class TestBM25Indexer:

@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.database import Database
-from oboyu.indexer.indexer import Indexer
+from oboyu.indexer import LegacyIndexer as Indexer
 
 try:
     from ..logger import BenchmarkLogger

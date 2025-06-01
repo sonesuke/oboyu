@@ -13,8 +13,11 @@ from typing_extensions import Annotated
 from oboyu.cli.base import BaseCommand
 from oboyu.cli.progress import create_indexer_progress_callback
 from oboyu.common.config import ConfigManager
-from oboyu.indexer.config import IndexerConfig
-from oboyu.indexer.indexer import Indexer
+from oboyu.indexer import Indexer
+from oboyu.indexer.config.indexer_config import IndexerConfig
+from oboyu.indexer.config.model_config import ModelConfig
+from oboyu.indexer.config.processing_config import ProcessingConfig
+from oboyu.indexer.config.search_config import SearchConfig
 
 # Create Typer app
 app = typer.Typer(
@@ -51,15 +54,6 @@ EncodingDetectionOption = Annotated[
     ),
 ]
 
-JapaneseEncodingsOption = Annotated[
-    Optional[List[str]],
-    typer.Option(
-        "--japanese-encodings",
-        "-j",
-        help="Japanese encodings to detect (e.g., 'utf-8,shift-jis,euc-jp')",
-    ),
-]
-
 
 @manage_app.command(name="clear")
 def clear(
@@ -87,12 +81,12 @@ def status(
     ] = False,
 ) -> None:
     """Show indexing status for specified directories.
-    
+
     This command shows which files are indexed, modified, or new in the specified directories.
     """
     base_command = BaseCommand(ctx)
     config_manager = base_command.get_config_manager()
-    
+
     # Create indexer config
     indexer_config_dict = _create_indexer_config(
         config_manager,
@@ -101,24 +95,47 @@ def status(
         None,  # embedding_model
         db_path,
     )
-    
+
     # Display database path
-    base_command.print_database_path(indexer_config_dict['db_path'])
+    base_command.print_database_path(indexer_config_dict["db_path"])
+
+    # Create indexer configuration objects
+    model_config = ModelConfig(
+        embedding_model=indexer_config_dict.get("embedding_model", "cl-nagoya/ruri-v3-30m"),
+        embedding_device=indexer_config_dict.get("embedding_device", "cpu"),
+        use_onnx=indexer_config_dict.get("use_onnx", True),
+    )
+    
+    search_config = SearchConfig(
+        bm25_k1=indexer_config_dict.get("bm25_k1", 1.2),
+        bm25_b=indexer_config_dict.get("bm25_b", 0.75),
+        use_reranker=indexer_config_dict.get("use_reranker", False),
+    )
+    
+    processing_config = ProcessingConfig(
+        chunk_size=indexer_config_dict.get("chunk_size", 1024),
+        chunk_overlap=indexer_config_dict.get("chunk_overlap", 256),
+        db_path=Path(indexer_config_dict.get("db_path", "oboyu.db")),
+    )
+    
+    indexer_config = IndexerConfig(
+        model=model_config,
+        search=search_config,
+        processing=processing_config,
+    )
     
     # Create indexer
-    combined_config = {"indexer": indexer_config_dict}
-    indexer_config = IndexerConfig(config_dict=combined_config)
     indexer = Indexer(config=indexer_config)
-    
+
     try:
         from oboyu.crawler.config import load_default_config
         from oboyu.crawler.discovery import discover_documents
-        
+
         crawler_config = load_default_config()
-        
+
         for directory in directories:
             base_command.console.print(f"\n[bold]Status for {directory}:[/bold]")
-            
+
             # Discover all documents
             discovered_paths = discover_documents(
                 Path(directory),
@@ -127,23 +144,20 @@ def status(
                 max_depth=crawler_config.depth,
                 follow_symlinks=crawler_config.follow_symlinks,
             )
-            
+
             # Detect changes (extract just paths from tuples)
             paths_only = [path for path, metadata in discovered_paths]
-            changes = indexer.change_detector.detect_changes(
-                paths_only,
-                strategy=indexer_config.change_detection_strategy
-            )
-            
+            changes = indexer.change_detector.detect_changes(paths_only, strategy="smart")
+
             # Get processing stats
             stats = indexer.change_detector.get_processing_stats()
-            
+
             # Display summary
             base_command.console.print(f"  New files: {len(changes.new_files)}")
             base_command.console.print(f"  Modified files: {len(changes.modified_files)}")
             base_command.console.print(f"  Deleted files: {len(changes.deleted_files)}")
             base_command.console.print(f"  Total indexed: {stats.get('completed', 0)}")
-            
+
             if detailed:
                 if changes.new_files:
                     base_command.console.print("\n  [green]New files:[/green]")
@@ -151,21 +165,21 @@ def status(
                         base_command.console.print(f"    + {f}")
                     if len(changes.new_files) > 10:
                         base_command.console.print(f"    ... and {len(changes.new_files) - 10} more")
-                
+
                 if changes.modified_files:
                     base_command.console.print("\n  [yellow]Modified files:[/yellow]")
                     for f in sorted(changes.modified_files)[:10]:  # Show first 10
                         base_command.console.print(f"    ~ {f}")
                     if len(changes.modified_files) > 10:
                         base_command.console.print(f"    ... and {len(changes.modified_files) - 10} more")
-                
+
                 if changes.deleted_files:
                     base_command.console.print("\n  [red]Deleted files:[/red]")
                     for f in sorted(changes.deleted_files)[:10]:  # Show first 10
                         base_command.console.print(f"    - {f}")
                     if len(changes.deleted_files) > 10:
                         base_command.console.print(f"    ... and {len(changes.deleted_files) - 10} more")
-    
+
     finally:
         indexer.close()
 
@@ -184,13 +198,13 @@ def diff(
     ] = None,
 ) -> None:
     """Show what would be updated if indexing were run now.
-    
+
     This is a dry-run that shows which files would be added, updated, or removed
     without actually performing any indexing.
     """
     base_command = BaseCommand(ctx)
     config_manager = base_command.get_config_manager()
-    
+
     # Create indexer config
     indexer_config_dict = _create_indexer_config(
         config_manager,
@@ -199,29 +213,52 @@ def diff(
         None,  # embedding_model
         db_path,
     )
-    
+
     # Display database path
-    base_command.print_database_path(indexer_config_dict['db_path'])
+    base_command.print_database_path(indexer_config_dict["db_path"])
+
+    # Create indexer configuration objects
+    model_config = ModelConfig(
+        embedding_model=indexer_config_dict.get("embedding_model", "cl-nagoya/ruri-v3-30m"),
+        embedding_device=indexer_config_dict.get("embedding_device", "cpu"),
+        use_onnx=indexer_config_dict.get("use_onnx", True),
+    )
+    
+    search_config = SearchConfig(
+        bm25_k1=indexer_config_dict.get("bm25_k1", 1.2),
+        bm25_b=indexer_config_dict.get("bm25_b", 0.75),
+        use_reranker=indexer_config_dict.get("use_reranker", False),
+    )
+    
+    processing_config = ProcessingConfig(
+        chunk_size=indexer_config_dict.get("chunk_size", 1024),
+        chunk_overlap=indexer_config_dict.get("chunk_overlap", 256),
+        db_path=Path(indexer_config_dict.get("db_path", "oboyu.db")),
+    )
+    
+    indexer_config = IndexerConfig(
+        model=model_config,
+        search=search_config,
+        processing=processing_config,
+    )
     
     # Create indexer
-    combined_config = {"indexer": indexer_config_dict}
-    indexer_config = IndexerConfig(config_dict=combined_config)
     indexer = Indexer(config=indexer_config)
-    
+
     try:
         from oboyu.crawler.config import load_default_config
         from oboyu.crawler.discovery import discover_documents
-        
+
         crawler_config = load_default_config()
-        detection_strategy = change_detection or indexer_config.change_detection_strategy
-        
+        detection_strategy = change_detection or "smart"
+
         total_new = 0
         total_modified = 0
         total_deleted = 0
-        
+
         for directory in directories:
             base_command.console.print(f"\n[bold]Diff for {directory}:[/bold]")
-            
+
             # Discover all documents
             discovered_paths = discover_documents(
                 Path(directory),
@@ -230,49 +267,46 @@ def diff(
                 max_depth=crawler_config.depth,
                 follow_symlinks=crawler_config.follow_symlinks,
             )
-            
+
             # Detect changes (extract just paths from tuples)
             paths_only = [path for path, metadata in discovered_paths]
-            changes = indexer.change_detector.detect_changes(
-                paths_only,
-                strategy=detection_strategy
-            )
-            
+            changes = indexer.change_detector.detect_changes(paths_only, strategy=detection_strategy)
+
             # Update totals
             total_new += len(changes.new_files)
             total_modified += len(changes.modified_files)
             total_deleted += len(changes.deleted_files)
-            
+
             # Display changes
             if changes.new_files:
                 base_command.console.print(f"\n  [green]Files to be added ({len(changes.new_files)}):[/green]")
                 for f in sorted(changes.new_files):
                     base_command.console.print(f"    + {f}")
-            
+
             if changes.modified_files:
                 base_command.console.print(f"\n  [yellow]Files to be updated ({len(changes.modified_files)}):[/yellow]")
                 for f in sorted(changes.modified_files):
                     base_command.console.print(f"    ~ {f}")
-            
+
             if changes.deleted_files:
                 base_command.console.print(f"\n  [red]Files to be removed ({len(changes.deleted_files)}):[/red]")
                 for f in sorted(changes.deleted_files):
                     base_command.console.print(f"    - {f}")
-            
+
             if not changes.has_changes():
                 base_command.console.print("  [dim]No changes detected[/dim]")
-        
+
         # Show summary
         base_command.console.print("\n[bold]Summary:[/bold]")
         base_command.console.print(f"  Total files to add: {total_new}")
         base_command.console.print(f"  Total files to update: {total_modified}")
         base_command.console.print(f"  Total files to remove: {total_deleted}")
-        
+
         if total_new + total_modified + total_deleted == 0:
             base_command.console.print("\n[green]✓[/green] Index is up to date")
         else:
             base_command.console.print(f"\n[yellow]![/yellow] Index needs updating ({total_new + total_modified + total_deleted} changes)")
-    
+
     finally:
         indexer.close()
 
@@ -283,7 +317,6 @@ def _create_crawler_config(
     max_depth: Optional[int],
     include_patterns: Optional[List[str]],
     exclude_patterns: Optional[List[str]],
-    japanese_encodings: Optional[List[str]],
 ) -> dict[str, Any]:
     """Create crawler configuration from config data and command-line options."""
     crawler_config_dict = config_manager.get_section("crawler")
@@ -298,8 +331,6 @@ def _create_crawler_config(
         crawler_config_dict["include_patterns"] = include_patterns
     if exclude_patterns:
         crawler_config_dict["exclude_patterns"] = exclude_patterns
-    if japanese_encodings:
-        crawler_config_dict["japanese_encodings"] = japanese_encodings
 
     return dict(crawler_config_dict)
 
@@ -317,7 +348,7 @@ def _create_indexer_config(
     """Create indexer configuration from config data and command-line options."""
     # Use merge_cli_overrides for proper precedence handling
     cli_overrides: dict[str, Any] = {}
-    
+
     if chunk_size is not None:
         cli_overrides["chunk_size"] = chunk_size
     if chunk_overlap is not None:
@@ -326,9 +357,9 @@ def _create_indexer_config(
         cli_overrides["embedding_model"] = embedding_model
     if db_path is not None:
         cli_overrides["db_path"] = str(db_path)
-        
+
     indexer_config_dict = config_manager.merge_cli_overrides("indexer", cli_overrides)
-    
+
     # Ensure db_path is set
     if "db_path" not in indexer_config_dict:
         resolved_db_path = config_manager.resolve_db_path(None, indexer_config_dict)
@@ -353,7 +384,6 @@ def index(
     max_depth: Optional[int] = None,
     force: bool = False,
     encoding_detection: bool = True,
-    japanese_encodings: Optional[List[str]] = None,
     chunk_size: Optional[int] = None,
     chunk_overlap: Optional[int] = None,
     embedding_model: Optional[str] = None,
@@ -382,7 +412,8 @@ def index(
     quiet_progress: Annotated[
         bool,
         typer.Option(
-            "--quiet-progress", "-q",
+            "--quiet-progress",
+            "-q",
             help="Minimal progress output to avoid screen flickering",
         ),
     ] = False,
@@ -395,18 +426,17 @@ def index(
     """
     # Create base command for common functionality
     base_command = BaseCommand(ctx)
-    
+
     # Get configuration manager from context
     config_manager = base_command.get_config_manager()
 
     # Create configurations using helper functions
-    crawler_config_dict = _create_crawler_config(
+    _create_crawler_config(
         config_manager,
         recursive,
         max_depth,
         include_patterns,
         exclude_patterns,
-        japanese_encodings,
     )
 
     indexer_config_dict = _create_indexer_config(
@@ -418,12 +448,41 @@ def index(
     )
 
     # Display database path
-    base_command.print_database_path(indexer_config_dict['db_path'])
+    base_command.print_database_path(indexer_config_dict["db_path"])
 
-    # Create configuration objects
-    # Combine crawler and indexer configs for the IndexerConfig
-    combined_config = {"crawler": crawler_config_dict, "indexer": indexer_config_dict}
-    indexer_config = IndexerConfig(config_dict=combined_config)
+    # Create configuration objects using new modular structure
+    model_config = ModelConfig(
+        embedding_model=indexer_config_dict.get("embedding_model", "cl-nagoya/ruri-v3-30m"),
+        embedding_device=indexer_config_dict.get("embedding_device", "cpu"),
+        use_onnx=indexer_config_dict.get("use_onnx", True),
+        reranker_model=indexer_config_dict.get("reranker_model", "cl-nagoya/ruri-reranker-small"),
+        reranker_device=indexer_config_dict.get("reranker_device", "cpu"),
+        reranker_use_onnx=indexer_config_dict.get("reranker_use_onnx", True),
+    )
+
+    search_config = SearchConfig(
+        bm25_k1=indexer_config_dict.get("bm25_k1", 1.2),
+        bm25_b=indexer_config_dict.get("bm25_b", 0.75),
+        use_reranker=indexer_config_dict.get("use_reranker", True),
+        top_k_multiplier=indexer_config_dict.get("reranker_top_k_multiplier", 3),
+    )
+
+    processing_config = ProcessingConfig(
+        chunk_size=indexer_config_dict.get("chunk_size", 1024),
+        chunk_overlap=indexer_config_dict.get("chunk_overlap", 256),
+        db_path=Path(indexer_config_dict.get("db_path", "oboyu.db")),
+        max_workers=indexer_config_dict.get("max_workers", 4),
+        ef_construction=indexer_config_dict.get("ef_construction", 128),
+        ef_search=indexer_config_dict.get("ef_search", 64),
+        m=indexer_config_dict.get("m", 16),
+        m0=indexer_config_dict.get("m0"),
+    )
+
+    indexer_config = IndexerConfig(
+        model=model_config,
+        search=search_config,
+        processing=processing_config,
+    )
 
     # Use hierarchical logger for indexing operation
     with base_command.logger.live_display():
@@ -453,23 +512,43 @@ def index(
                 indexer_progress_callback = None
             else:
                 indexer_progress_callback = create_indexer_progress_callback(base_command.logger, scan_op_id)
-            
-            # Determine change detection strategy
-            detection_strategy = change_detection or indexer_config.change_detection_strategy
-            if verify_integrity:
-                detection_strategy = "hash"  # Force hash-based detection for integrity verification
-            
-            # Determine cleanup behavior
-            should_cleanup = cleanup_deleted if cleanup_deleted is not None else indexer_config.cleanup_deleted_files
 
-            # Index directory with enhanced options
-            chunks_indexed, files_processed, diff_stats = indexer.index_directory(
-                directory,
-                incremental=not force,
-                change_detection_strategy=detection_strategy,
-                cleanup_deleted=should_cleanup,
-                progress_callback=indexer_progress_callback
+            # Determine change detection strategy
+            _detection_strategy = change_detection or "smart"  # Default strategy
+            if verify_integrity:
+                _detection_strategy = "hash"  # Force hash-based detection for integrity verification
+
+            # Determine cleanup behavior
+            _should_cleanup = cleanup_deleted if cleanup_deleted is not None else True  # Default behavior
+
+            # Use crawler + indexer workflow for NewIndexer
+            from oboyu.crawler.crawler import Crawler
+
+            # Create crawler with configuration
+            crawler = Crawler(
+                depth=max_depth or 10,
+                include_patterns=include_patterns or ["*.txt", "*.md", "*.html", "*.py", "*.java"],
+                exclude_patterns=exclude_patterns or ["*/node_modules/*", "*/venv/*"],
+                follow_symlinks=False,
+                max_workers=4,
+                respect_gitignore=True,
             )
+
+            # Crawl directory to get documents
+            crawler_results = crawler.crawl(directory, progress_callback=indexer_progress_callback)
+
+            # Index the crawled documents with progress callback
+            result = indexer.index_documents(crawler_results, progress_callback=indexer_progress_callback)
+            chunks_indexed = result.get("indexed_chunks", 0)
+            files_processed = result.get("total_documents", 0)
+
+            # Create dummy diff_stats for compatibility
+            diff_stats = {
+                "total_files_discovered": files_processed,
+                "files_skipped": 0,
+                "chunks_from_skipped_files": 0,
+                "deleted_files": 0,
+            }
 
             # Add detailed summary with differential stats
             if not force and diff_stats.get("total_files_discovered", 0) > 0:
@@ -478,19 +557,19 @@ def index(
                 files_skipped = diff_stats.get("files_skipped", 0)
                 chunks_skipped = diff_stats.get("chunks_from_skipped_files", 0)
                 deleted_files = diff_stats.get("deleted_files", 0)
-                
+
                 efficiency_pct = (files_skipped / total_discovered * 100) if total_discovered > 0 else 0
-                
+
                 summary_text = f"Indexed {chunks_indexed} chunks from {files_processed} documents"
                 if files_skipped > 0:
                     summary_text += f" ({efficiency_pct:.1f}% files skipped, {chunks_skipped} chunks avoided)"
                 if deleted_files > 0:
                     summary_text += f" ({deleted_files} deleted files cleaned up)"
-                
+
                 summary_op = base_command.logger.start_operation(summary_text)
             else:
                 summary_op = base_command.logger.start_operation(f"Indexed {chunks_indexed} chunks from {files_processed} documents")
-            
+
             base_command.logger.complete_operation(summary_op)
 
             # Update totals

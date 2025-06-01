@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 @dataclass
 class CrawlerConfigSchema:
     """Schema for crawler configuration."""
-    
+
     max_workers: int = 4
     timeout: int = 30
     max_depth: int = 3
@@ -44,7 +44,7 @@ class CrawlerConfigSchema:
 @dataclass
 class IndexerConfigSchema:
     """Schema for indexer configuration."""
-    
+
     embedding_model: str = "cl-nagoya/ruri-v3-30m"
     batch_size: int = 128
     max_length: int = 8192
@@ -86,7 +86,7 @@ class IndexerConfigSchema:
 @dataclass
 class QueryConfigSchema:
     """Schema for query engine configuration."""
-    
+
     top_k: int = 10
     rerank: bool = True
     rerank_model: str = "cl-nagoya/ruri-reranker-small"
@@ -112,7 +112,7 @@ class QueryConfigSchema:
 @dataclass
 class ConfigSchema:
     """Complete configuration schema."""
-    
+
     crawler: CrawlerConfigSchema = field(default_factory=CrawlerConfigSchema)
     indexer: IndexerConfigSchema = field(default_factory=IndexerConfigSchema)
     query: QueryConfigSchema = field(default_factory=QueryConfigSchema)

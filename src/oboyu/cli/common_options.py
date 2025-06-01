@@ -5,7 +5,7 @@ consistency across the CLI commands.
 """
 
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import typer
 from typing_extensions import Annotated
@@ -219,14 +219,14 @@ FormatOption = Annotated[
 
 class CommonOptions:
     """Centralized option definitions and validation for CLI commands."""
-    
+
     @staticmethod
-    def database_path_option(help_text: str = "Path to database file"):
+    def database_path_option(help_text: str = "Path to database file") -> Any:  # noqa: ANN401
         """Create a standardized database path option.
-        
+
         Args:
             help_text: Custom help text for the option
-            
+
         Returns:
             Annotated type for database path option
 
@@ -239,14 +239,14 @@ class CommonOptions:
                 envvar="OBOYU_DB_PATH",
             ),
         ]
-    
+
     @staticmethod
-    def config_option(help_text: str = "Path to configuration file"):
+    def config_option(help_text: str = "Path to configuration file") -> Any:  # noqa: ANN401
         """Create a standardized config option.
-        
+
         Args:
             help_text: Custom help text for the option
-            
+
         Returns:
             Annotated type for config option
 
@@ -263,21 +263,21 @@ class CommonOptions:
                 readable=True,
             ),
         ]
-    
+
     @staticmethod
-    def verbose_option():
+    def verbose_option() -> type:
         """Create a standardized verbose option.
-        
+
         Returns:
             Annotated type for verbose option
 
         """
         return VerboseOption
-    
+
     @staticmethod
-    def force_option():
+    def force_option() -> type:
         """Create a standardized force option.
-        
+
         Returns:
             Annotated type for force option
 

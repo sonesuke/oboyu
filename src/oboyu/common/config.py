@@ -51,7 +51,7 @@ class ConfigManager:
         crawler_defaults = CRAWLER_DEFAULTS.get("crawler", CRAWLER_DEFAULTS)
         # Handle nested structure in INDEXER_DEFAULTS
         indexer_defaults = INDEXER_DEFAULTS.get("indexer", INDEXER_DEFAULTS)
-        
+
         return {
             "crawler": crawler_defaults.copy() if isinstance(crawler_defaults, dict) else {},
             "indexer": indexer_defaults.copy() if isinstance(indexer_defaults, dict) else {},
@@ -74,7 +74,7 @@ class ConfigManager:
             try:
                 with open(self._config_path) as f:
                     file_config = yaml.safe_load(f) or {}
-                    
+
                 # Deep merge file config with defaults
                 for section, values in file_config.items():
                     if section in self._config_data and isinstance(values, dict):
@@ -84,6 +84,7 @@ class ConfigManager:
             except Exception as e:
                 # If config file is invalid, use defaults
                 import warnings
+
                 warnings.warn(f"Failed to load config from {self._config_path}: {e}. Using defaults.")
 
         return self._config_data
@@ -101,9 +102,7 @@ class ConfigManager:
         config = self.load_config()
         return dict(config.get(section, {}))
 
-    def merge_cli_overrides(
-        self, section: str, overrides: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def merge_cli_overrides(self, section: str, overrides: Dict[str, Any]) -> Dict[str, Any]:
         """Merge CLI arguments with configuration.
 
         Precedence: CLI args > config file > defaults
@@ -117,16 +116,13 @@ class ConfigManager:
 
         """
         base_config = self.get_section(section)
-        
+
         # Filter out None values from overrides
-        filtered_overrides = {
-            k: v for k, v in overrides.items()
-            if v is not None
-        }
-        
+        filtered_overrides = {k: v for k, v in overrides.items() if v is not None}
+
         # Apply overrides
         base_config.update(filtered_overrides)
-        
+
         return dict(base_config)
 
     def save_config(self, config_data: Optional[Dict[str, Any]] = None) -> None:
@@ -137,18 +133,14 @@ class ConfigManager:
 
         """
         data_to_save = config_data or self.load_config()
-        
+
         # Ensure parent directory exists
         self._config_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         with open(self._config_path, "w") as f:
             yaml.safe_dump(data_to_save, f, default_flow_style=False, sort_keys=False)
 
-    def resolve_db_path(
-        self,
-        cli_db_path: Optional[Path] = None,
-        section_config: Optional[Dict[str, Any]] = None
-    ) -> Path:
+    def resolve_db_path(self, cli_db_path: Optional[Path] = None, section_config: Optional[Dict[str, Any]] = None) -> Path:
         """Resolve database path with proper precedence.
 
         Precedence: CLI arg > config file > default
@@ -163,10 +155,10 @@ class ConfigManager:
         """
         if cli_db_path is not None:
             return cli_db_path
-        
+
         if section_config and "db_path" in section_config:
             return Path(section_config["db_path"])
-        
+
         return DEFAULT_DB_PATH
 
     @property
@@ -184,9 +176,7 @@ class ConfigManager:
         config_dict = self.load_config()
         return ConfigSchema.from_dict(config_dict)
 
-    def get_section_schema(
-        self, section: str
-    ) -> Union[CrawlerConfigSchema, IndexerConfigSchema, QueryConfigSchema]:
+    def get_section_schema(self, section: str) -> Union[CrawlerConfigSchema, IndexerConfigSchema, QueryConfigSchema]:
         """Get typed configuration for a specific section.
 
         Args:
@@ -200,7 +190,7 @@ class ConfigManager:
 
         """
         schema = self.get_schema()
-        
+
         if section == "crawler":
             return schema.crawler
         elif section == "indexer":

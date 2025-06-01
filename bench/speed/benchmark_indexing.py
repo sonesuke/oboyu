@@ -13,7 +13,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from oboyu.crawler.crawler import Crawler
 from oboyu.crawler.discovery import discover_documents
 from oboyu.indexer.database import Database
-from oboyu.indexer.indexer import Indexer
+from oboyu.indexer import LegacyIndexer as Indexer
 
 from bench.config import BENCHMARK_CONFIG, DATA_DIR, OBOYU_CONFIG
 from results import IndexingResult

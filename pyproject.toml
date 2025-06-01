@@ -120,6 +120,7 @@ ignore = [
   "D213",  # multi-line-summary-second-line (we're using D212 instead)
   "S608",  # Possible SQL injection vector through string-based query construction (we're using duckdb in-process. It doen't accept user input.)
   "W293",  # blank line contains whitespace
+  "S101",  # Use of assert detected - OK for internal configuration validation
 ]
 
 [tool.ruff.lint.isort]

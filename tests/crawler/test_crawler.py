@@ -20,7 +20,6 @@ class TestCrawler:
         assert "*/node_modules/*" in crawler.exclude_patterns
         assert crawler.max_file_size == 10 * 1024 * 1024  # 10MB
         assert not crawler.follow_symlinks
-        assert "utf-8" in crawler.japanese_encodings
         assert crawler.max_workers == 4  # Default worker count
         
         # Test with custom parameters
@@ -30,7 +29,6 @@ class TestCrawler:
             exclude_patterns=["*/temp/*"],
             max_file_size=1024,
             follow_symlinks=True,
-            japanese_encodings=["utf-8"],
             max_workers=8,
         )
         assert crawler.depth == 5
@@ -38,7 +36,6 @@ class TestCrawler:
         assert crawler.exclude_patterns == ["*/temp/*"]
         assert crawler.max_file_size == 1024
         assert crawler.follow_symlinks
-        assert crawler.japanese_encodings == ["utf-8"]
         assert crawler.max_workers == 8
     
     def test_crawler_crawl(self) -> None:

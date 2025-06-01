@@ -3,7 +3,7 @@
 > A Japanese-enhanced semantic search system for your local documents.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.13%2B-blue)](https://www.python.org/downloads/)
 
 ## What is Oboyu?
 
@@ -11,21 +11,21 @@
 
 With specialized support for Japanese language documents, Oboyu excels at processing content in both Japanese and English, making it an ideal solution for multilingual document collections.
 
-The system provides both command-line interface for direct queries and an MCP server mode for network-accessible document search. While Oboyu works with any text-based documents, it is particularly optimized for Japanese language content, making it unique among semantic search tools.
+The system provides both a comprehensive command-line interface for direct queries and an MCP server mode for AI assistant integration. While Oboyu works with any text-based documents, it is particularly optimized for Japanese language content, making it unique among semantic search tools.
 
-![Oboyu Concept](docs/images/oboyu_concept.png)
 
 ## Key Features
 
-- **Local Directory Processing**: Index any directory of text-based documents on your local system
-- **Text Format Support**: Process plain text, markdown, code files, configuration files, and more
-- **Japanese Language Excellence**: First-class support for Japanese text with built-in specialized tokenization and encoding detection
-- **Semantic Search**: Retrieve the most relevant documents using vector embeddings with the Ruri v3 model
-- **Multiple Search Modes**: Choose between vector, BM25, or hybrid search depending on your needs
-- **Advanced Reranking**: Improve search accuracy with lightweight Ruri Cross-Encoder reranker (default: ruri-reranker-small)
+- **Local Directory Processing**: Index any directory of text-based documents on your local system with incremental updates
+- **Text Format Support**: Process plain text, markdown, code files, configuration files, Jupyter notebooks, and more
+- **Japanese Language Excellence**: First-class support for Japanese text with specialized tokenization, encoding detection, and optimized models
+- **Multiple Search Modes**: Choose between vector, BM25, or hybrid search with configurable weighting
+- **Advanced Reranking**: Improve search accuracy with lightweight Ruri Cross-Encoder reranker (enabled by default)
+- **Interactive Query Mode**: Persistent REPL interface with command history, auto-suggestions, and real-time configuration
 - **ONNX Optimization**: 2-4x faster inference with automatic ONNX conversion for both embedding and reranker models
-- **Document-Focused Results**: Get top matching documents with URIs, titles, and relevant snippets
-- **Rich Command-Line Interface**: Powerful CLI with extensive options and colorized output
+- **Incremental Indexing**: Smart change detection with timestamp, hash, or hybrid strategies for efficient updates
+- **MCP Server Integration**: Model Context Protocol server for seamless AI assistant integration
+- **Rich Command-Line Interface**: Comprehensive CLI with hierarchical progress display and extensive options
 - **Privacy-Focused**: Your documents stay on your machine - no data sent to external services by default
 
 ## Installation
@@ -50,150 +50,87 @@ Oboyu requires several dependencies that are automatically installed:
 
 > **Note**: On the first run, Oboyu will download the Ruri v3 model (~90MB) and its required components from the Hugging Face model hub.
 
-### System Requirements
+#### System Requirements
 
-**Minimum Requirements:**
-- CPU: Any modern x86_64 or ARM64 processor
-- Memory: 2GB RAM (for embedding model + lightweight reranker)
-- Storage: 500MB free space (for models and cache)
-
-**Recommended Requirements:**
-- CPU: Multi-core processor (4+ cores)
-- Memory: 4GB+ RAM
-- Storage: 2GB+ free space
-
-**Memory Usage by Component:**
-- Ruri v3 embedding model: ~300MB
-- Lightweight reranker (default): ~400MB
-- Heavy reranker (optional): ~1.2GB
-- DuckDB + indexes: Variable based on document count
-
-#### SentencePiece Installation
-
-SentencePiece is a critical dependency for processing Japanese text. If you encounter issues during installation:
-
-```bash
-# On Ubuntu/Debian
-sudo apt-get install cmake build-essential pkg-config libgoogle-perftools-dev
-
-# On macOS with Homebrew
-brew install cmake
-
-# On Windows
-# Install Visual Studio Build Tools with C++ support
-```
+- **OS**: Linux, macOS (Windows not officially supported)
+- **CPU**: x86_64 or ARM64 processor
+- **Memory**: 2GB+ RAM
+- **Storage**: 1GB free space
 
 ## Quick Start
 
 ```bash
-# Index a directory
+# Index a directory (automatic encoding detection for Japanese files)
 oboyu index /path/to/your/documents
 
-# Index with specific file patterns and Japanese encoding detection
-oboyu index /path/to/documents --include-patterns "*.txt,*.md" --japanese-encodings "utf-8,shift-jis,euc-jp"
+# Query your documents
+oboyu query "What are the key concepts?"
 
-# Query your documents in Japanese (returns top matching documents with snippets)
-oboyu query "ドキュメント内の重要な概念は何ですか？"
+# Interactive query mode
+oboyu query --interactive
 
-# Query in English with specific search mode and number of results
-oboyu query "What are the key concepts in the documents?" --mode vector --top-k 10
-
-# Query with reranking for improved accuracy (enabled by default)
-oboyu query "技術的な実装の詳細" --rerank
-
-# Query without reranking for faster results
-oboyu query "Quick overview of the project" --no-rerank
-
-# Get detailed explanation of search results
-oboyu query "Important design principles" --explain
-
-# Clear the entire index database (requires confirmation unless --force is used)
-oboyu clear
-
-# Clear with a specific database path
-oboyu clear --db-path custom.db --force
-
-# Check the current version
-oboyu version
+# Start MCP server for AI integration
+oboyu mcp
 ```
+
+For more examples, see the [CLI documentation](docs/cli.md).
 
 ## Configuration
 
-Create a configuration file at the XDG-compliant location `~/.config/oboyu/config.yaml`:
+Oboyu works out of the box with sensible defaults. For customization, create `~/.config/oboyu/config.yaml`:
 
 ```yaml
-# Crawler settings
-crawler:
-  depth: 10
-  include_patterns:
-    - "*.txt"
-    - "*.md"
-    - "*.html"
-    - "*.py"
-    - "*.java"
-  exclude_patterns:
-    - "*/node_modules/*"
-    - "*/venv/*"
-  max_file_size: 10485760  # 10MB
-  follow_symlinks: false
-  japanese_encodings:
-    - "utf-8"
-    - "shift-jis"
-    - "euc-jp"
-  max_workers: 4
-
-# Indexer settings
 indexer:
   chunk_size: 1024
-  chunk_overlap: 256
   embedding_model: "cl-nagoya/ruri-v3-30m"
-  embedding_device: "cpu"
-  batch_size: 8
-  db_path: "oboyu.db"
-  # Reranker settings
   use_reranker: true
-  reranker_model: "cl-nagoya/ruri-reranker-small"
-  reranker_use_onnx: true
-  reranker_top_k_multiplier: 3
-  reranker_score_threshold: 0.5
 
-# Query settings
 query:
   default_mode: "hybrid"
-  vector_weight: 0.7
-  bm25_weight: 0.3
   top_k: 5
-  snippet_length: 160
-  highlight_matches: true
 ```
 
-Oboyu will create a default configuration file with these settings if none exists. You can override any of these settings via command-line options or by editing the configuration file.
-
-See the [configuration documentation](docs/configuration.md) for more options.
+See the [configuration documentation](docs/configuration.md) for all available options.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+We love your contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### Quick Start
+
+```bash
+# Fork and clone the repository
+git clone https://github.com/YOUR_USERNAME/oboyu.git
+cd oboyu
+
+# Install dependencies
+uv sync
+
+# Run fast tests
+uv run pytest -m "not slow"
+
+# Make your changes and submit a PR!
+```
 
 ## Documentation
 
-- [Configuration Options](docs/configuration.md)
-- [CLI Commands](docs/cli.md)
-- [API Reference](docs/api.md)
-- [Japanese Support Details](docs/japanese.md)
-- [Architecture Overview](docs/architecture.md)
-- [MCP Server Guide](docs/mcp_server.md)
-- [Reranker Guide](docs/reranker.md)
+### User Guides
+- [CLI Commands](docs/cli.md) - Complete command-line interface reference
+- [Configuration Options](docs/configuration.md) - YAML configuration and settings
+- [Japanese Language Support](docs/japanese.md) - Specialized Japanese text processing
+- [MCP Server Integration](docs/mcp_server.md) - AI assistant integration guide
+- [Reranker Guide](docs/reranker.md) - Advanced reranking for better accuracy
+
+### Technical Documentation
+- [Architecture Overview](docs/architecture.md) - System design and components
+- [Query Engine](docs/query_engine.md) - Search algorithms and modes
+- [Indexer](docs/indexer.md) - Document processing and embedding generation
+- [Crawler](docs/crawler.md) - Document discovery and extraction
+
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
 
 ## Acknowledgments
 

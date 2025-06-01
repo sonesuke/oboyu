@@ -1,8 +1,37 @@
 # Oboyu Indexer Architecture
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Design Goals](#design-goals)
+- [Modular Architecture](#modular-architecture)
+- [Component Structure](#component-structure)
+- [Database Schema](#database-schema)
+- [Index Types](#index-types)
+- [Ruri v3-30m Embedding Model](#ruri-v3-30m-embedding-model)
+- [Configuration](#configuration)
+- [Data Flow](#data-flow)
+- [Performance Considerations](#performance-considerations)
+- [API Usage Examples](#api-usage-examples)
+- [Migration from Legacy Architecture](#migration-from-legacy-architecture)
+- [Advanced Features](#advanced-features)
+- [Troubleshooting](#troubleshooting)
+- [Integration with Other Components](#integration-with-other-components)
+
 ## Overview
 
 The Indexer is the core processing component of Oboyu, responsible for analyzing documents, generating search indexes, and managing the database. It implements specialized processing for Japanese text and creates both vector indexes for semantic search and BM25 indexes for keyword-based search capabilities.
+
+The indexer has been completely refactored to use a **modular service-oriented architecture** that provides better maintainability, testability, and flexibility.
+
+### Key Architectural Changes (v2.0)
+
+- **✅ Modular Services**: Database, Embedding, Tokenizer, and Reranker services are now independent
+- **✅ Type-Safe Configuration**: Replaced flat dicts with typed dataclasses
+- **✅ Lazy Loading**: Models load only when needed for faster startup
+- **✅ Enhanced Testing**: Each service can be independently tested and mocked
+- **✅ Legacy Compatibility**: Old import paths still work during transition
+- **✅ Improved Error Handling**: Comprehensive logging and error reporting
 
 ## Design Goals
 
@@ -13,6 +42,139 @@ The Indexer is the core processing component of Oboyu, responsible for analyzing
 - Support incremental updates and embedding caching
 - Optimize for Japanese text processing with MeCab morphological analysis
 - Provide hybrid search combining vector and BM25 approaches
+- **NEW**: Modular architecture for independent service management
+- **NEW**: Comprehensive configuration system with type safety
+- **NEW**: Enhanced reranker integration for improved search accuracy
+
+## Modular Architecture
+
+The indexer follows a clean service-oriented architecture with clear separation of concerns:
+
+### Core Services
+
+```python
+# Main indexer facade that coordinates services
+class Indexer:
+    """Lightweight facade class that coordinates modular services."""
+    
+    def __init__(self, config: Optional[IndexerConfig] = None):
+        # Initialize configuration
+        self.config = config or IndexerConfig()
+        
+        # Initialize modular services
+        self.database_service = DatabaseService(...)
+        self.embedding_service = EmbeddingService(...)
+        self.tokenizer_service = TokenizerService(...)
+        self.reranker_service = RerankerService(...)
+        
+        # Initialize search engines
+        self.search_engine = SearchEngine(...)
+
+# Database service for data management
+class DatabaseService:
+    """Manages database operations and schema."""
+    
+    def store_chunks(self, chunks: List[Chunk]) -> None
+    def store_embeddings(self, chunk_ids: List[str], embeddings: List[NDArray]) -> None
+    def get_chunk_by_id(self, chunk_id: str) -> Optional[Dict[str, Any]]
+    def delete_chunks_by_path(self, path: Union[str, Path]) -> int
+    
+# Embedding service for vector generation  
+class EmbeddingService:
+    """Handles embedding model loading and inference."""
+    
+    def generate_embeddings(self, texts: List[str]) -> List[NDArray[np.float32]]
+    
+# Tokenizer service for text processing
+class TokenizerService:
+    """Provides Japanese and multilingual tokenization."""
+    
+    def tokenize(self, text: str) -> List[str]
+    def get_term_frequencies(self, text: str) -> Dict[str, int]
+    
+# Reranker service for result improvement
+class RerankerService:
+    """Manages reranker models and scoring."""
+    
+    def rerank(self, query: str, results: List[SearchResult], top_k: int) -> List[SearchResult]
+```
+
+### Search Engines
+
+```python
+# Specialized search implementations
+class VectorSearch:
+    """Vector similarity search using embeddings."""
+    
+class BM25Search:  
+    """Keyword-based search using BM25 algorithm."""
+    
+class HybridSearch:
+    """Combines vector and BM25 with configurable weights."""
+
+class SearchEngine:
+    """Unified search interface coordinating different search modes."""
+    
+    def search(
+        self,
+        query: str,
+        mode: SearchMode = SearchMode.HYBRID,
+        limit: int = 10,
+        **kwargs
+    ) -> List[SearchResult]
+```
+
+### Configuration System
+
+The indexer uses a modular configuration system with type safety:
+
+```python
+@dataclass 
+class IndexerConfig:
+    """Main indexer configuration."""
+    
+    model: ModelConfig           # Embedding and reranker models
+    search: SearchConfig         # Search algorithm settings  
+    processing: ProcessingConfig # Text processing options
+
+@dataclass
+class ModelConfig:
+    """Model-related configuration."""
+    
+    embedding_model: str = "cl-nagoya/ruri-v3-30m"
+    embedding_device: str = "cpu"
+    batch_size: int = 64
+    use_onnx: bool = True
+    reranker_model: str = "cl-nagoya/ruri-reranker-small"
+    use_reranker: bool = False
+
+@dataclass
+class ProcessingConfig:
+    """Document processing configuration."""
+    
+    chunk_size: int = 1024
+    chunk_overlap: int = 256
+    max_workers: int = 2
+    db_path: Union[str, Path] = "index.db"
+
+@dataclass
+class SearchConfig:
+    """Search-related configuration."""
+    
+    vector_weight: float = 0.7
+    bm25_weight: float = 0.3
+    use_reranker: bool = False
+    top_k_multiplier: int = 2
+    bm25_k1: float = 1.2
+    bm25_b: float = 0.75
+```
+
+This modular approach enables:
+- **Independent testing** of each component
+- **Flexible model swapping** without code changes
+- **Performance optimization** at the service level
+- **Easy extension** with new search algorithms
+- **Type-safe configuration** with automatic validation
 
 ## Component Structure
 
@@ -26,35 +188,152 @@ The Document Processor handles:
 - Prefix handling for Ruri v3 embedding model
 
 ```python
-def process_document(path, content, title, language, metadata=None):
-    # Split content into chunks
-    chunks = _chunk_text(content)
-    # Apply prefix to each chunk
-    prefixed_chunks = [f"検索文書: {chunk}" for chunk in chunks]
-    # Returns document chunks ready for indexing
-    return chunks_with_metadata
+@dataclass
+class Chunk:
+    """Represents a document chunk for indexing."""
+    
+    id: str
+    path: Path
+    title: str
+    content: str
+    chunk_index: int
+    language: str
+    created_at: datetime
+    modified_at: datetime
+    metadata: Dict[str, object]
+
+class DocumentProcessor:
+    """Processes documents into indexable chunks."""
+    
+    def process_document(
+        self, 
+        path: Union[str, Path], 
+        content: str, 
+        title: str, 
+        language: str = "en",
+        metadata: Optional[Dict[str, object]] = None
+    ) -> List[Chunk]:
+        """Process document into chunks with Ruri v3 prefixes."""
+        chunks = self._chunk_text(content)
+        return [
+            Chunk(
+                id=f"{path}:{i}",
+                path=Path(path),
+                title=title,
+                content=chunk,
+                chunk_index=i,
+                language=language,
+                created_at=datetime.now(),
+                modified_at=datetime.now(),
+                metadata=metadata or {}
+            )
+            for i, chunk in enumerate(chunks)
+        ]
 ```
 
-### Japanese Processor
+### Change Detection
 
-The Japanese Processor provides specialized handling for Japanese text:
-
-- Integration with crawler's Japanese text processing
-- Character normalization (full-width to half-width conversion)
-- Line ending standardization
-- Encoding detection and handling
+The indexer implements intelligent change detection for incremental updates:
 
 ```python
-def process_japanese_text(text, encoding="utf-8"):
-    # Normalize Japanese text
-    normalized = _normalize_japanese(text)
-    # Standardize line endings
-    standardized = _standardize_line_endings(normalized)
-    # Returns processed Japanese text
-    return standardized
+class FileChangeDetector:
+    """Detects changes in files for incremental indexing."""
+    
+    def __init__(self, database: DatabaseService, batch_size: int = 1000):
+        self.db = database
+        self.batch_size = batch_size
+    
+    def detect_changes(
+        self,
+        file_paths: List[Path],
+        strategy: str = "smart"
+    ) -> ChangeResult:
+        """Detect new, modified, and deleted files.
+        
+        Strategies:
+        - timestamp: Fast, uses modification time
+        - hash: Accurate, uses content hash  
+        - smart: Balanced approach using both
+        """
+
+@dataclass
+class ChangeResult:
+    """Result of change detection analysis."""
+    
+    new_files: List[Path]
+    modified_files: List[Path]
+    deleted_files: List[Path]
+    
+    @property
+    def total_changes(self) -> int:
+        return len(self.new_files) + len(self.modified_files) + len(self.deleted_files)
+    
+    def has_changes(self) -> bool:
+        return self.total_changes > 0
 ```
 
-### BM25 Indexer
+### Reranker Integration
+
+The indexer supports advanced reranking for improved search accuracy:
+
+```python
+class Indexer:
+    """Main indexer with reranking support."""
+    
+    def search(
+        self,
+        query: str,
+        limit: int = 10,
+        mode: SearchMode = SearchMode.HYBRID,
+        use_reranker: bool = None,
+        **kwargs
+    ) -> List[SearchResult]:
+        """Search with optional reranking."""
+        # Use configuration default if not specified
+        if use_reranker is None:
+            use_reranker = self.config.use_reranker
+        
+        # Initial retrieval (multiple of limit for reranking)
+        initial_limit = limit * self.config.search.top_k_multiplier if use_reranker else limit
+        initial_results = self.search_engine.search(query, mode=mode, limit=initial_limit, **kwargs)
+        
+        if use_reranker and self.reranker_service:
+            # Rerank for better accuracy
+            return self.reranker_service.rerank(query, initial_results, limit)
+        
+        return initial_results[:limit]
+```
+
+### ONNX Optimization
+
+Automatic model optimization for faster inference:
+
+```python
+class EmbeddingService:
+    """Embedding generation with ONNX optimization."""
+    
+    def __init__(
+        self, 
+        model_name: str = "cl-nagoya/ruri-v3-30m",
+        use_onnx: bool = True,
+        batch_size: int = 64,
+        device: str = "cpu"
+    ):
+        self.model_name = model_name
+        self.use_onnx = use_onnx
+        self.batch_size = batch_size
+        self.device = device
+        self._model = None  # Lazy loading
+        
+    def generate_embeddings(self, texts: List[str]) -> List[NDArray[np.float32]]:
+        """Generate embeddings with automatic ONNX optimization."""
+        if self._model is None:
+            self._model = self._load_model()
+        
+        return self._model.encode(texts, batch_size=self.batch_size)
+```
+
+## BM25 Indexer
 
 The BM25 Indexer creates keyword-based search indexes:
 
@@ -65,15 +344,37 @@ The BM25 Indexer creates keyword-based search indexes:
 - Support for incremental index updates
 
 ```python
-def build_bm25_index(chunks):
-    # Tokenize documents using Japanese-aware tokenizer
-    tokenized_docs = [tokenizer.tokenize(chunk.content) for chunk in chunks]
-    # Build inverted index
-    inverted_index = _build_inverted_index(tokenized_docs)
-    # Calculate document statistics
-    doc_stats = _calculate_document_statistics(tokenized_docs)
-    # Store in database
-    store_bm25_index(inverted_index, doc_stats)
+class BM25Indexer:
+    """BM25 indexer for building inverted index and computing statistics."""
+    
+    def __init__(
+        self,
+        k1: float = 1.2,
+        b: float = 0.75,
+        tokenizer_class: Optional[str] = None,
+        use_stopwords: bool = False,
+        min_doc_frequency: int = 1,
+        store_positions: bool = True,
+    ):
+        self.k1 = k1
+        self.b = b
+        self.tokenizer = create_tokenizer(
+            language=tokenizer_class or "ja",
+            use_stopwords=use_stopwords
+        )
+        
+    def index_chunks(
+        self, 
+        chunks: List[Chunk],
+        progress_callback: Optional[Callable[[int, int], None]] = None
+    ) -> Dict[str, int]:
+        """Index a batch of chunks for BM25 search."""
+        # Build inverted index with Japanese tokenization
+        for chunk in chunks:
+            term_frequencies = self.tokenizer.get_term_frequencies(chunk.content)
+            self._update_inverted_index(chunk.id, term_frequencies)
+        
+        return self.get_collection_stats()
 ```
 
 ### Japanese Tokenizer
@@ -87,144 +388,31 @@ The Tokenizer provides Japanese text analysis:
 - **Fallback Support**: Simple tokenization when Japanese tools unavailable
 
 ```python
-def tokenize_japanese(text):
-    if HAS_JAPANESE_TOKENIZER:
-        # Use MeCab for morphological analysis
-        return japanese_tokenizer.tokenize(text)
-    else:
-        # Fallback to simple tokenization
-        return fallback_tokenizer.tokenize(text)
-```
-
-### Embedding Generator
-
-The Embedding Generator creates vector representations:
-
-- Uses SentenceTransformer with Ruri v3-30m model
-- Generates 256-dimensional embeddings for document chunks
-- Handles batching for efficient processing
-- Implements persistent embedding cache
-- Applies specialized prefix scheme for different text types
-- **NEW**: Supports ONNX optimization for faster CPU inference
-
-```python
-def generate_embeddings(chunks):
-    # Apply document prefix
-    prefixed_chunks = [f"検索文書: {chunk.content}" for chunk in chunks]
-    # Generate embeddings in batches
-    embeddings = model.encode(prefixed_chunks, batch_size=8)
-    # Returns vectors for document chunks
-    return embeddings
-```
-
-#### ONNX Optimization
-
-Oboyu supports ONNX (Open Neural Network Exchange) optimization for accelerated inference:
-
-- **Automatic Conversion**: Models are automatically converted to ONNX format on first use
-- **Optimized Runtime**: Uses ONNX Runtime with graph optimization for better CPU performance
-- **Transparent Switching**: Can toggle between PyTorch and ONNX backends via configuration
-- **Model Caching**: ONNX models are cached to avoid re-conversion overhead
-- **Performance Benefits**: Typically 2-4x faster inference on CPU compared to PyTorch
-- **Lazy Loading**: Models are loaded only when first needed, improving startup time
-
-To enable ONNX optimization (enabled by default for CPU):
-
-```yaml
-indexer:
-  use_onnx: true  # Enable ONNX optimization
-  embedding_device: cpu  # ONNX is most beneficial for CPU
-```
-
-##### ONNX Quantization Support
-
-**NEW**: Oboyu now supports ONNX dynamic quantization for enhanced performance:
-
-- **Dynamic Quantization**: Weights are quantized to INT8 while activations remain in FP32
-- **Automatic Application**: Quantization is enabled by default for optimal performance
-- **Performance Benefits**: 20-50% additional speedup on top of ONNX optimization
-- **Memory Reduction**: 50-75% reduction in model memory usage
-- **Minimal Accuracy Loss**: Typically <5% accuracy degradation for Japanese semantic search
-
-Configuration options:
-
-```yaml
-indexer:
-  use_onnx: true  # Enable ONNX optimization
-  onnx_quantization:
-    enabled: true       # Enable quantization (default: true)
-    method: "dynamic"   # Quantization method (dynamic/static/fp16)
-    weight_type: "uint8"  # Weight quantization type (uint8/int8)
-```
-
-Key features:
-- **Zero Configuration**: Dynamic quantization requires no calibration dataset
-- **Graceful Fallback**: Falls back to non-quantized ONNX if quantization fails
-- **Transparent Caching**: Quantized models are cached separately for quick reuse
-
-##### ONNX Model Cache Directory Structure
-
-ONNX models are cached following the XDG Base Directory specification:
-
-```
-$XDG_CACHE_HOME/oboyu/embedding/cache/     # ~/.cache/oboyu/embedding/cache/
-├── models/                                # ONNX converted models
-│   └── onnx/                              # ONNX model subdirectory
-│       ├── cl-nagoya_ruri-v3-30m/
-│       │   ├── model.onnx                 # Converted ONNX model
-│       │   ├── model_optimized.onnx       # Optimized ONNX model (if optimization succeeds)
-│       │   ├── model_quantized.onnx       # Quantized ONNX model (NEW)
-│       │   ├── tokenizer_config.json      # Tokenizer configuration
-│       │   ├── special_tokens_map.json    # Special tokens mapping
-│       │   ├── vocab.txt                  # Vocabulary file
-│       │   └── onnx_config.json           # ONNX-specific configuration
-│       └── other_model_name/
-│           └── ...
-└── [embedding cache files]                # Regular embedding cache (*.pkl files)
-```
-
-The ONNX models are stored in the cache directory because they can be regenerated from the original models, making them appropriate for cache storage according to XDG specifications.
-
-#### Lazy Loading
-
-The EmbeddingGenerator implements lazy loading for optimal performance:
-
-- **Fast Initialization**: Creating EmbeddingGenerator instances is nearly instantaneous
-- **On-Demand Loading**: Models are only loaded when first accessed (e.g., during embedding generation)
-- **Global Caching**: Multiple instances with the same configuration share cached models
-- **Memory Efficiency**: Reduces memory usage when models aren't immediately needed
-
-### Database Manager
-
-The Database Manager handles:
-
-- DuckDB setup with VSS extension
-- Schema creation and management
-- HNSW index for vector similarity search with persistence support
-- Efficient vector storage and search
-- Transaction management for data consistency
-- Index clearing and maintenance
-
-```python
-def setup():
-    # Install and load VSS extension
-    conn.execute("INSTALL vss; LOAD vss;")
-    # Enable experimental persistence for HNSW indexes
-    conn.execute("SET hnsw_enable_experimental_persistence=true")
-    # Create database schema
-    _create_schema()
-    # Check if HNSW index exists before creating (NEW)
-    if not _hnsw_index_exists():
-        _create_hnsw_index()
-    else:
-        logger.info("Using existing HNSW index")
-
-def clear():
-    # Clear all data from the database
-    conn.execute("DELETE FROM embeddings")
-    conn.execute("DELETE FROM chunks")
-    # Recreate index to ensure clean state
-    recreate_hnsw_index(force=True)
+class TokenizerService:
+    """Service for text tokenization with Japanese support."""
+    
+    def __init__(
+        self,
+        language: str = "ja",
+        min_token_length: int = 2,
+        use_stopwords: bool = False
+    ):
+        self.language = language
+        self.min_token_length = min_token_length
+        self.use_stopwords = use_stopwords
+        self._tokenizer = None  # Lazy loading
+    
+    def tokenize(self, text: str) -> List[str]:
+        """Tokenize text with language-specific processing."""
+        if self._tokenizer is None:
+            self._tokenizer = self._create_tokenizer()
+        
+        return self._tokenizer.tokenize(text)
+    
+    def get_term_frequencies(self, text: str) -> Dict[str, int]:
+        """Get term frequency dictionary for BM25 indexing."""
+        tokens = self.tokenize(text)
+        return Counter(tokens)
 ```
 
 ## Database Schema
@@ -256,41 +444,15 @@ CREATE TABLE embeddings (
     created_at TIMESTAMP,     -- Embedding generation timestamp
     FOREIGN KEY (chunk_id) REFERENCES chunks (id)
 );
-```
 
-### BM25 Index Tables
-
-```sql
--- Vocabulary table stores term statistics for BM25 scoring
-CREATE TABLE vocabulary (
-    term VARCHAR PRIMARY KEY,
-    document_frequency INTEGER,    -- Number of documents containing this term
-    collection_frequency INTEGER   -- Total occurrences across all documents
-);
-
--- Inverted index table for fast keyword lookups
-CREATE TABLE inverted_index (
-    term VARCHAR,
-    chunk_id VARCHAR,
-    term_frequency INTEGER,       -- Frequency of term in this chunk
-    positions JSON,               -- Term positions (for phrase queries)
-    PRIMARY KEY (term, chunk_id),
-    FOREIGN KEY (chunk_id) REFERENCES chunks (id)
-);
-
--- Document statistics for BM25 normalization
-CREATE TABLE document_stats (
-    chunk_id VARCHAR PRIMARY KEY,
-    total_terms INTEGER,          -- Total number of terms in document
-    unique_terms INTEGER,         -- Number of unique terms
-    avg_term_frequency FLOAT,     -- Average term frequency
-    FOREIGN KEY (chunk_id) REFERENCES chunks (id)
-);
-
--- Collection-wide statistics for BM25 calculation
-CREATE TABLE collection_stats (
-    key VARCHAR PRIMARY KEY,
-    value FLOAT                   -- Stores avg_document_length, total_documents, etc.
+-- File metadata for change detection and incremental indexing
+CREATE TABLE file_metadata (
+    path VARCHAR PRIMARY KEY,
+    last_processed_at TIMESTAMP,
+    file_modified_at TIMESTAMP,
+    file_size INTEGER,
+    content_hash VARCHAR,
+    processing_status VARCHAR  -- 'pending', 'processing', 'completed', 'failed'
 );
 ```
 
@@ -307,10 +469,10 @@ WITH (
     M = 16
 );
 
--- B-tree indexes for efficient BM25 lookups
-CREATE INDEX idx_vocabulary_term ON vocabulary (term);
-CREATE INDEX idx_inverted_index_term ON inverted_index (term);
-CREATE INDEX idx_inverted_index_chunk ON inverted_index (chunk_id);
+-- B-tree indexes for efficient lookups
+CREATE INDEX idx_chunks_path ON chunks (path);
+CREATE INDEX idx_embeddings_chunk_id ON embeddings (chunk_id);
+CREATE INDEX idx_file_metadata_status ON file_metadata (processing_status);
 ```
 
 ## Index Types
@@ -325,28 +487,12 @@ The vector index enables semantic similarity search:
 - Creates Hierarchical Navigable Small Worlds (HNSW) index
 - Uses cosine similarity as distance metric
 - **Best for**: conceptual queries, cross-language understanding, semantic matching
-- **NEW**: Supports index persistence (experimental) for faster startup
 
 **Configurable parameters for accuracy vs. performance tradeoffs:**
 - `ef_construction`: Controls index build quality (default: 128)
 - `ef_search`: Controls search quality (default: 64)
 - `M`: Number of bidirectional links (default: 16)
-- `M0`: Level-0 connections (default: 2*M)
-
-#### HNSW Index Persistence (NEW)
-
-Oboyu now preserves HNSW indexes across database restarts:
-
-- **Automatic Detection**: Checks for existing indexes on startup
-- **Faster Queries**: No need to rebuild index after restart
-- **Experimental Feature**: Enabled via `SET hnsw_enable_experimental_persistence=true`
-- **Index Maintenance**: Provides `recreate_hnsw_index()` method for manual rebuilds
-
-**Important Notes:**
-- The entire index must fit in RAM (not buffer-managed)
-- No incremental updates - full index is serialized on checkpoint
-- WAL recovery not fully implemented - use with caution in production
-- Index is loaded lazily when first accessed after restart
+- `M0`: Level-0 connections (default: 2*M = 32)
 
 ### BM25 Index (Inverted Index)
 
@@ -357,33 +503,10 @@ The BM25 index enables precise keyword matching:
 - Stores term statistics and document frequencies
 - **Best for**: exact keyword matching, specific terminology, technical documentation
 
-**Key components:**
-- **Vocabulary**: Term statistics (document frequency, collection frequency)
-- **Inverted Index**: Term-to-document mappings with frequencies
-- **Document Statistics**: Per-document term counts and averages
-- **Collection Statistics**: Global statistics for normalization
-
 **BM25 Parameters:**
 - `k1`: Term frequency saturation parameter (default: 1.2)
 - `b`: Length normalization parameter (default: 0.75)
 - `min_token_length`: Minimum token length (default: 2)
-
-### Japanese Tokenization Features
-
-For BM25 indexing, Japanese text undergoes specialized processing:
-
-- **Morphological Analysis**: Uses MeCab with fugashi for accurate word segmentation
-- **Part-of-Speech Filtering**: Extracts content words (nouns, verbs, adjectives, adverbs)
-- **Stop Word Removal**: Filters particles (助詞), auxiliary verbs (助動詞), symbols
-- **Text Normalization**: Unicode NFKC normalization, character width conversion
-- **Base Form Extraction**: Uses lemmatized forms when available
-
-**Example Japanese tokenization:**
-```
-Input:  "機械学習アルゴリズムの実装について"
-Tokens: ["機械学習", "アルゴリズム", "実装"]
-Filtered: Removes particles like "の", "について"
-```
 
 ## Ruri v3-30m Embedding Model
 
@@ -405,111 +528,228 @@ Ruri v3 uses a 1+3 prefix scheme for different embedding purposes:
 - **Topic Prefix** (`トピック: `): Used for topic information
 - **General Prefix** (empty string): Used for general semantic encoding
 
-## Data Flow
+## Configuration
 
-1. Receive documents from the Crawler
-2. Process documents into chunks with appropriate prefix
-3. Generate embeddings for each chunk
-4. Store chunks and embeddings in the database
-5. Create and maintain HNSW index
-6. Process search queries with matching prefix
-
-## Configuration Options
-
-The Indexer is configured through the IndexerConfig class:
+The indexer is configured through a type-safe configuration system:
 
 ```python
-DEFAULT_CONFIG = {
-    "indexer": {
-        # Document processing settings
-        "chunk_size": 1024,  # Default chunk size in characters
-        "chunk_overlap": 256,  # Default overlap between chunks
-        
-        # Embedding settings
-        "embedding_model": "cl-nagoya/ruri-v3-30m",  # Default embedding model
-        "embedding_device": "cpu",  # Default device for embeddings
-        "batch_size": 8,  # Default batch size for embedding generation
-        "max_seq_length": 8192,  # Maximum sequence length
-        "use_onnx": true,  # Use ONNX optimization for faster inference
-        
-        # ONNX quantization settings (NEW)
-        "onnx_quantization": {
-            "enabled": true,       # Enable dynamic quantization (default: true)
-            "method": "dynamic",   # Quantization method (dynamic/static/fp16)
-            "weight_type": "uint8", # Weight quantization type (uint8/int8)
-        },
-        
-        # Prefix scheme settings (Ruri v3's 1+3 prefix scheme)
-        "document_prefix": "検索文書: ",  # Prefix for documents
-        "query_prefix": "検索クエリ: ",  # Prefix for search queries
-        "topic_prefix": "トピック: ",  # Prefix for topic information
-        "general_prefix": "",  # Prefix for general semantic encoding
-        
-        # Database settings
-        "db_path": "oboyu.db",  # Default database path
-        
-        # VSS (Vector Similarity Search) settings
-        "ef_construction": 128,  # Index construction parameter
-        "ef_search": 64,  # Search time parameter
-        "m": 16,  # Number of bidirectional links in HNSW graph
-        "m0": None,  # Level-0 connections (None means use 2*M)
-        
-        # BM25 settings
-        "use_bm25": true,  # Enable BM25 indexing (enabled by default)
-        "bm25_k1": 1.2,  # Term frequency saturation parameter
-        "bm25_b": 0.75,  # Length normalization parameter
-        "bm25_min_token_length": 2,  # Minimum token length for indexing
-        "use_japanese_tokenizer": true,  # Use MeCab for Japanese tokenization
-        
-        # Processing settings
-        "max_workers": 4,  # Maximum number of worker threads
-    }
-}
+# Default configuration values
+IndexerConfig(
+    model=ModelConfig(
+        embedding_model="cl-nagoya/ruri-v3-30m",
+        embedding_device="cpu",
+        batch_size=64,
+        max_seq_length=8192,
+        use_onnx=True,
+        reranker_model="cl-nagoya/ruri-reranker-small",
+        use_reranker=False,
+    ),
+    processing=ProcessingConfig(
+        chunk_size=1024,
+        chunk_overlap=256,
+        max_workers=2,
+        db_path="index.db",
+        ef_construction=128,
+        ef_search=64,
+        m=16,
+    ),
+    search=SearchConfig(
+        vector_weight=0.7,
+        bm25_weight=0.3,
+        use_reranker=False,
+        top_k_multiplier=2,
+        bm25_k1=1.2,
+        bm25_b=0.75,
+        bm25_min_token_length=2,
+    )
+)
 ```
 
-### BM25-specific Configuration
+## Data Flow
 
-**Japanese Tokenization Settings:**
-- `use_japanese_tokenizer`: Enable MeCab-based tokenization for Japanese text
-- `bm25_min_token_length`: Filter out very short tokens (default: 2)
-
-**BM25 Algorithm Parameters:**
-- `bm25_k1`: Controls term frequency saturation (higher = less saturation)
-- `bm25_b`: Controls document length normalization (0 = no normalization, 1 = full normalization)
-
-**Recommended Settings by Use Case:**
-
-**For Japanese documentation:**
-```yaml
-indexer:
-  use_japanese_tokenizer: true
-  bm25_k1: 1.2  # Standard value works well for Japanese
-  bm25_b: 0.75  # Good balance for varied document lengths
-```
-
-**For technical code documentation:**
-```yaml
-indexer:
-  bm25_k1: 1.5  # Higher saturation for technical terms
-  bm25_b: 0.6   # Less length normalization for code snippets
-```
-
-**For mixed-language content:**
-```yaml
-indexer:
-  use_japanese_tokenizer: true  # Handles Japanese, falls back for other languages
-  bm25_min_token_length: 1     # Include single-character terms for code
-```
+1. **Document Input**: Receive documents from the Crawler
+2. **Document Processing**: Process documents into chunks with appropriate prefix
+3. **Change Detection**: Detect new, modified, and deleted files
+4. **Embedding Generation**: Generate embeddings for new/modified chunks
+5. **Database Storage**: Store chunks and embeddings in the database
+6. **Index Creation**: Create and maintain HNSW and BM25 indexes
+7. **Search Processing**: Process search queries with matching prefix and reranking
 
 ## Performance Considerations
 
-- Uses ThreadPoolExecutor for parallel document processing
-- Implements batch processing for efficient embedding generation
-- Persistent embedding cache to avoid regenerating embeddings
-- Periodic HNSW index recompaction for better search performance
-- Intelligent chunk boundary detection at sentence/paragraph level
-- ONNX optimization provides 2-4x faster CPU inference for embeddings
-- Dynamic quantization adds 20-50% additional speedup with minimal accuracy loss
+- **Modular Services**: Independent optimization of each service
+- **Lazy Loading**: Models are loaded only when needed
+- **Batch Processing**: Efficient embedding generation in batches
+- **ONNX Optimization**: 2-4x faster CPU inference for embeddings
+- **Incremental Updates**: Only process changed files
+- **Persistent Caching**: Avoid regenerating embeddings
+- **Configurable Threading**: Adjustable worker count for parallel processing
+
+## API Usage Examples
+
+### Basic Usage
+
+```python
+from oboyu.indexer import Indexer
+from oboyu.indexer.config import IndexerConfig
+
+# Initialize with default configuration
+indexer = Indexer()
+
+# Index documents
+from oboyu.crawler.crawler import CrawlerResult
+crawler_result = CrawlerResult(...)
+indexer.index_documents(crawler_result)
+
+# Search with hybrid mode
+results = indexer.search("検索クエリ", limit=10)
+```
+
+### Advanced Configuration
+
+```python
+from oboyu.indexer.config import IndexerConfig, ModelConfig, SearchConfig
+
+# Custom configuration
+config = IndexerConfig(
+    model=ModelConfig(
+        embedding_model="cl-nagoya/ruri-v3-30m",
+        use_onnx=True,
+        use_reranker=True,
+    ),
+    search=SearchConfig(
+        vector_weight=0.6,
+        bm25_weight=0.4,
+        use_reranker=True,
+    )
+)
+
+indexer = Indexer(config)
+
+# Search with reranking
+results = indexer.search(
+    "機械学習の実装方法",
+    limit=5,
+    use_reranker=True
+)
+```
+
+### Search Modes
+
+```python
+from oboyu.indexer.core.search_engine import SearchMode
+
+# Vector search only
+results = indexer.search("query", mode=SearchMode.VECTOR)
+
+# BM25 search only  
+results = indexer.search("query", mode=SearchMode.BM25)
+
+# Hybrid search (default)
+results = indexer.search("query", mode=SearchMode.HYBRID)
+```
+
+## Migration from Legacy Architecture
+
+The indexer has been completely refactored from a monolithic design to a modular service-oriented architecture. Here are the key changes:
+
+### Breaking Changes
+
+- **Configuration**: Old flat configuration dict replaced with type-safe dataclasses
+- **API**: Service methods now have more specific interfaces
+- **Dependencies**: Some old methods deprecated in favor of new service APIs
+
+### Legacy Compatibility
+
+For backward compatibility, legacy import paths are maintained:
+
+```python
+# Legacy imports (still work)
+from oboyu.indexer import Indexer
+from oboyu.indexer.database import Database  # Points to DatabaseService
+from oboyu.indexer.embedding import EmbeddingGenerator  # Points to EmbeddingService
+
+# New preferred imports
+from oboyu.indexer.indexer import Indexer
+from oboyu.indexer.storage.database_service import DatabaseService
+from oboyu.indexer.models.embedding_service import EmbeddingService
+```
+
+### Testing Improvements
+
+The modular architecture significantly improves testability:
+
+- **Unit Testing**: Each service can be tested independently
+- **Mocking**: Services can be easily mocked for testing
+- **Integration Testing**: Clear interfaces between services
+- **Performance Testing**: Individual service performance can be measured
+
+## Advanced Features
+
+### Lazy Loading
+
+All services implement lazy loading for optimal startup performance:
+
+```python
+# Fast initialization - no models loaded yet
+indexer = Indexer()
+
+# Models loaded only when first needed
+results = indexer.search("query")  # <-- Models loaded here
+```
+
+### Service Injection
+
+For advanced use cases, services can be customized or replaced:
+
+```python
+# Custom embedding service
+custom_embedding_service = CustomEmbeddingService(...)
+
+# Inject into indexer
+indexer = Indexer(config)
+indexer.embedding_service = custom_embedding_service
+```
+
+### Monitoring and Metrics
+
+Services provide hooks for monitoring:
+
+```python
+# Progress callbacks for long operations
+def progress_callback(current: int, total: int):
+    print(f"Progress: {current}/{total}")
+
+indexer.index_documents(documents, progress_callback=progress_callback)
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Model Loading Errors**: Check ONNX runtime installation and model cache permissions
+2. **Japanese Tokenization**: Verify MeCab and fugashi installation for optimal performance
+3. **Database Connection**: Ensure DuckDB and VSS extension are properly installed
+4. **Memory Usage**: Adjust batch sizes if encountering out-of-memory errors
+
+### Performance Tuning
+
+1. **Batch Size**: Increase for better throughput, decrease for lower memory usage
+2. **Worker Count**: Adjust `max_workers` based on CPU cores
+3. **ONNX Optimization**: Enable for 2-4x faster CPU inference
+4. **Index Parameters**: Tune HNSW parameters for accuracy vs. speed tradeoffs
+
+### Debug Mode
+
+Enable debug logging for detailed service information:
+
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+# Detailed service logs will be printed
+indexer = Indexer()
+```
 
 ## Integration with Other Components
 
@@ -517,3 +757,7 @@ indexer:
 - Provides search functionality via the Indexer.search method
 - Maintains backwards compatibility with the crawler's Japanese text processing
 - Supports incremental updates for new documents
+- **NEW**: Modular service architecture for easy integration and testing
+- **NEW**: Type-safe configuration system for better maintainability
+- **NEW**: Comprehensive error handling and logging throughout all services
+- **NEW**: Performance monitoring capabilities built into each service

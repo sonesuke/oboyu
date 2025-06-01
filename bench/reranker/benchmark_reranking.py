@@ -17,7 +17,7 @@ import yaml
 
 from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.database import SearchResult
-from oboyu.indexer.indexer import Indexer
+from oboyu.indexer import LegacyIndexer as Indexer
 from oboyu.indexer.reranker import create_reranker
 
 from .logger import BenchmarkLogger

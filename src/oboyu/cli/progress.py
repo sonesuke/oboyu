@@ -22,6 +22,7 @@ class ProgressStage:
     operation_id: Optional[str] = None
     start_time: float = field(default_factory=time.time)
     metadata: Dict[str, Any] = field(default_factory=dict)
+    _last_update_time: float = field(default=0.0)
 
     @property
     def elapsed(self) -> float:
@@ -90,7 +91,7 @@ class ProgressPipeline:
             return
 
         stage = self.stages[name]
-        
+
         # Complete any active stage
         if self.active_stage and self.active_stage != name:
             self.complete_stage(self.active_stage)
@@ -113,7 +114,7 @@ class ProgressPipeline:
             return
 
         stage = self.stages[stage_name]
-        
+
         # Update total if provided
         if total is not None:
             stage.total = total
@@ -127,10 +128,10 @@ class ProgressPipeline:
 
         # Frequent updates for smooth real-time feedback
         should_update = (
-            current == 1 or  # First item
-            (current >= total) or  # Completion
-            (stage.elapsed > 1.0 and current % max(total // 40, 25) == 0) or  # Every 2.5% or 25 items after 1s
-            (time.time() - getattr(stage, '_last_update_time', 0) > 1.5)  # Every 1.5 seconds max
+            current == 1  # First item
+            or (total is not None and current >= total)  # Completion
+            or (total is not None and stage.elapsed > 1.0 and current % max(total // 40, 25) == 0)  # Every 2.5% or 25 items after 1s
+            or (time.time() - getattr(stage, "_last_update_time", 0) > 1.5)  # Every 1.5 seconds max
         )
 
         # Format progress message only when updating
@@ -154,7 +155,7 @@ class ProgressPipeline:
             return
 
         stage = self.stages[name]
-        
+
         if stage.operation_id:
             self.logger.complete_operation(stage.operation_id)
             stage.operation_id = None
@@ -184,7 +185,7 @@ class ProgressPipeline:
             # Format rate based on stage type
             rate_unit = stage.metadata.get("rate_unit", "items/sec")
             parts.append(f"{stage.rate:.0f} {rate_unit}")
-            
+
             # Add ETA if meaningful
             if stage.eta_seconds > 0:
                 parts.append(f"ETA: {stage.eta_seconds:.0f}s")
@@ -309,7 +310,7 @@ class IndexerProgressAdapter:
         elif stage in self.STAGE_CONFIG:
             # Handle regular stages
             self.pipeline.update(stage, current, total)
-            
+
             # Special handling for BM25 indexing substages
             if stage == "bm25_indexing" and current > 0:
                 config = self.STAGE_CONFIG[stage]
@@ -318,10 +319,7 @@ class IndexerProgressAdapter:
                     stage_obj = self.pipeline.stages[stage]
                     if stage_obj.operation_id:
                         substage_desc = config["substages"][current]
-                        self.pipeline.logger.update_operation(
-                            stage_obj.operation_id,
-                            substage_desc
-                        )
+                        self.pipeline.logger.update_operation(stage_obj.operation_id, substage_desc)
 
         # Handle initial scan completion
         if stage == "crawling" and current >= total and self.scan_operation_id:
@@ -331,9 +329,7 @@ class IndexerProgressAdapter:
         self._last_stage = stage
 
 
-def create_indexer_progress_callback(
-    logger: HierarchicalLogger, scan_operation_id: str
-) -> Callable[[str, int, int], None]:
+def create_indexer_progress_callback(logger: HierarchicalLogger, scan_operation_id: str) -> Callable[[str, int, int], None]:
     """Create a simplified progress callback for the indexer.
 
     Args:

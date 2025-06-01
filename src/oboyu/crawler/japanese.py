@@ -5,7 +5,7 @@ using proven third-party libraries to reduce maintenance burden.
 """
 
 import re
-from typing import List
+from typing import List, Optional
 
 import charset_normalizer
 import ftfy
@@ -13,12 +13,12 @@ import mojimoji
 import neologdn  # type: ignore[import-not-found]
 
 
-def detect_encoding(content: str, preferred_encodings: List[str]) -> str:
+def detect_encoding(content: str, preferred_encodings: Optional[List[str]] = None) -> str:
     """Detect the encoding of Japanese text.
 
     Args:
         content: Text content
-        preferred_encodings: List of preferred encodings to check
+        preferred_encodings: List of preferred encodings to check (deprecated, kept for compatibility)
 
     Returns:
         Detected encoding
@@ -28,6 +28,9 @@ def detect_encoding(content: str, preferred_encodings: List[str]) -> str:
         so we're using heuristics to determine if we need to convert to another encoding.
 
     """
+    # Default encodings for Japanese text
+    default_encodings = ["utf-8", "shift-jis", "euc-jp", "cp932", "iso-2022-jp"]
+    preferred_encodings = preferred_encodings or default_encodings
     # Check for Unicode replacement character, which indicates decoding issues
     has_replacement_char = "\ufffd" in content
 
@@ -57,8 +60,8 @@ def detect_encoding(content: str, preferred_encodings: List[str]) -> str:
                 # Just try the next encoding
                 continue
 
-    # Prioritize Japanese-specific encodings when Japanese characters are present
-    japanese_encodings = [enc for enc in preferred_encodings if enc.lower() in ("utf-8", "shift-jis", "sjis", "euc-jp", "cp932", "iso-2022-jp")]
+    # Use default Japanese encodings
+    japanese_encodings = default_encodings
 
     # If we found Japanese characters but couldn't determine encoding,
     # use the first Japanese-specific encoding if available
@@ -164,7 +167,7 @@ def _normalize_japanese(text: str) -> str:
     """
     # Use neologdn for normalization
     normalized = neologdn.normalize(text)
-    
+
     # Additional conversion for numbers and ASCII only
     return mojimoji.zen_to_han(normalized, kana=False, ascii=True, digit=True)
 
