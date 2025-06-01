@@ -6,6 +6,13 @@ from pathlib import Path
 import pytest
 
 from oboyu.crawler.crawler import Crawler, CrawlerResult
+from oboyu.crawler.services import (
+    ContentExtractor,
+    EncodingDetector,
+    FileDiscoveryService,
+    LanguageDetector,
+    MetadataExtractor,
+)
 
 
 class TestCrawler:
@@ -19,6 +26,13 @@ class TestCrawler:
         assert "*.txt" in crawler.include_patterns
         assert "*/node_modules/*" in crawler.exclude_patterns
         assert crawler.max_workers == 4  # Default worker count
+        
+        # Check that services are initialized
+        assert isinstance(crawler.discovery_service, FileDiscoveryService)
+        assert isinstance(crawler.content_extractor, ContentExtractor)
+        assert isinstance(crawler.language_detector, LanguageDetector)
+        assert isinstance(crawler.encoding_detector, EncodingDetector)
+        assert isinstance(crawler.metadata_extractor, MetadataExtractor)
         
         # Test with custom parameters
         crawler = Crawler(
@@ -104,3 +118,72 @@ class TestCrawler:
         metadata = {}
         title = crawler._generate_title(path, content, metadata)
         assert title == "document-title"
+
+    def test_crawler_with_custom_services(self) -> None:
+        """Test Crawler initialization with custom services."""
+        # Create custom services
+        custom_discovery = FileDiscoveryService(max_file_size=5 * 1024 * 1024)
+        custom_extractor = ContentExtractor(max_file_size=5 * 1024 * 1024)
+        custom_language_detector = LanguageDetector()
+        custom_encoding_detector = EncodingDetector()
+        custom_metadata_extractor = MetadataExtractor(follow_symlinks=True)
+
+        # Create crawler with custom services
+        crawler = Crawler(
+            discovery_service=custom_discovery,
+            content_extractor=custom_extractor,
+            language_detector=custom_language_detector,
+            encoding_detector=custom_encoding_detector,
+            metadata_extractor=custom_metadata_extractor,
+        )
+
+        # Check that custom services are used
+        assert crawler.discovery_service is custom_discovery
+        assert crawler.content_extractor is custom_extractor
+        assert crawler.language_detector is custom_language_detector
+        assert crawler.encoding_detector is custom_encoding_detector
+        assert crawler.metadata_extractor is custom_metadata_extractor
+
+        # Check custom configurations are preserved
+        assert crawler.discovery_service.max_file_size == 5 * 1024 * 1024
+        assert crawler.content_extractor.max_file_size == 5 * 1024 * 1024
+        assert crawler.metadata_extractor.follow_symlinks is True
+
+    def test_crawler_service_composition(self) -> None:
+        """Test that the Crawler properly orchestrates its services."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            test_dir = Path(temp_dir)
+
+            # Create test file with front matter
+            test_file = test_dir / "test.md"
+            test_content = '''---
+title: Service Composition Test
+---
+
+# Service Composition Test
+
+This tests the orchestration of services.
+'''
+            test_file.write_text(test_content)
+
+            # Create crawler and crawl
+            crawler = Crawler(include_patterns=["*.md"])
+            results = crawler.crawl(test_dir)
+
+            # Check that services worked together correctly
+            assert len(results) == 1
+            result = results[0]
+
+            # Check that content was extracted (without front matter)
+            assert "# Service Composition Test" in result.content
+            assert "---" not in result.content
+
+            # Check that title was extracted from metadata
+            assert result.title == "Service Composition Test"
+
+            # Check that language was detected
+            assert result.language == "en"
+
+            # Check that metadata includes both extracted and file metadata
+            assert "file_size" in result.metadata  # From file metadata
+            assert "title" in result.metadata     # From front matter

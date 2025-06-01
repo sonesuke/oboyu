@@ -8,9 +8,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set
 
-from oboyu.crawler.discovery import discover_documents
-from oboyu.crawler.extractor import extract_content
-from oboyu.crawler.japanese import detect_encoding, process_japanese_text
+from oboyu.crawler.services import (
+    ContentExtractor,
+    EncodingDetector,
+    FileDiscoveryService,
+    LanguageDetector,
+    MetadataExtractor,
+)
 
 
 @dataclass
@@ -34,7 +38,15 @@ class CrawlerResult:
 
 
 class Crawler:
-    """Document crawler for discovering and extracting content from files."""
+    """Document crawler for discovering and extracting content from files.
+    
+    Orchestrates specialized services to handle different aspects of document crawling:
+    - FileDiscoveryService: Finds files that match criteria
+    - ContentExtractor: Extracts content from different file formats
+    - LanguageDetector: Detects the language of document content
+    - EncodingDetector: Handles encoding detection and conversion
+    - MetadataExtractor: Extracts file metadata
+    """
 
     def __init__(
         self,
@@ -43,6 +55,11 @@ class Crawler:
         exclude_patterns: Optional[List[str]] = None,
         max_workers: int = 4,  # Number of worker threads for parallel processing
         respect_gitignore: bool = True,  # Whether to respect .gitignore files
+        discovery_service: Optional[FileDiscoveryService] = None,
+        content_extractor: Optional[ContentExtractor] = None,
+        language_detector: Optional[LanguageDetector] = None,
+        encoding_detector: Optional[EncodingDetector] = None,
+        metadata_extractor: Optional[MetadataExtractor] = None,
     ) -> None:
         """Initialize the crawler with configuration options.
 
@@ -52,6 +69,11 @@ class Crawler:
             exclude_patterns: Patterns to exclude (e.g., "*/node_modules/*")
             max_workers: Maximum number of worker threads for parallel processing
             respect_gitignore: Whether to respect .gitignore files (default: True)
+            discovery_service: Optional custom file discovery service
+            content_extractor: Optional custom content extractor
+            language_detector: Optional custom language detector
+            encoding_detector: Optional custom encoding detector
+            metadata_extractor: Optional custom metadata extractor
 
         Note:
             max_file_size is hard-coded to 10MB and follow_symlinks is hard-coded to False
@@ -63,6 +85,13 @@ class Crawler:
         self.exclude_patterns = exclude_patterns or ["*/node_modules/*", "*/venv/*"]
         self.max_workers = max_workers
         self.respect_gitignore = respect_gitignore
+
+        # Initialize services with defaults if not provided
+        self.discovery_service = discovery_service or FileDiscoveryService()
+        self.content_extractor = content_extractor or ContentExtractor()
+        self.language_detector = language_detector or LanguageDetector()
+        self.encoding_detector = encoding_detector or EncodingDetector()
+        self.metadata_extractor = metadata_extractor or MetadataExtractor()
 
         # Keep track of processed files to avoid duplicates
         self._processed_files: Set[Path] = set()
@@ -78,10 +107,10 @@ class Crawler:
             List of processed document results
 
         """
-        # Discover document paths
-        doc_paths = discover_documents(
-            directory=directory,
-            patterns=self.include_patterns,
+        # Discover document paths using the discovery service
+        doc_paths = self.discovery_service.discover_files(
+            root_paths=[directory],
+            include_patterns=self.include_patterns,
             exclude_patterns=self.exclude_patterns,
             max_depth=self.depth,
             respect_gitignore=self.respect_gitignore,
@@ -180,13 +209,16 @@ class Crawler:
 
         """
         try:
-            # Extract content, detect language, and get metadata
-            content, language, extracted_metadata = extract_content(doc_path)
+            # Extract content using the content extractor service
+            content, extracted_metadata = self.content_extractor.extract_content(doc_path)
+            
+            # Detect language using the language detector service
+            language = self.language_detector.detect_language(content)
 
-            # Apply special processing for Japanese text
+            # Apply special processing for Japanese text using encoding detector
             if language == "ja":
-                encoding = detect_encoding(content)
-                content = process_japanese_text(content, encoding)
+                encoding = self.encoding_detector.detect_encoding(content)
+                content = self.encoding_detector.process_japanese_text(content, encoding)
 
             # Merge extracted metadata with doc_metadata
             merged_metadata = {**doc_metadata, **extracted_metadata}
