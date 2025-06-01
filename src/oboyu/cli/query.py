@@ -81,8 +81,8 @@ def query(
             # Get indexer configuration and create indexer with proper config for interactive session
             indexer_config = config_manager.get_section("indexer")
             
-            from oboyu.indexer.config.indexer_config import IndexerConfig
             from oboyu.indexer import Indexer
+            from oboyu.indexer.config.indexer_config import IndexerConfig
             
             config = IndexerConfig()
             config.db_path = Path(database_path)

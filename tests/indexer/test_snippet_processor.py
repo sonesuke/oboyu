@@ -2,7 +2,8 @@
 
 import pytest
 
-from oboyu.indexer.search.snippet_processor import SnippetConfig, SnippetProcessor, SnippetStrategy
+from oboyu.indexer.search.snippet_processor import SnippetProcessor
+from oboyu.indexer.search.snippet_types import SnippetConfig, SnippetStrategy
 
 
 class TestSnippetProcessor:
@@ -132,7 +133,7 @@ class TestSnippetProcessor:
 
     def test_multi_level_snippets(self):
         """Test multi-level snippet configuration."""
-        from oboyu.indexer.search.snippet_processor import SnippetLevel
+        from oboyu.indexer.search.snippet_types import SnippetLevel
         
         levels = [
             SnippetLevel(type="summary", length=50),

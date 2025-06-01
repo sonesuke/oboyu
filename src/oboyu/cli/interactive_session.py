@@ -309,8 +309,8 @@ class InteractiveQuerySession:
                 results = self.indexer.hybrid_search(query, **search_params)
             
             # Apply reranking if enabled and available
-            if (self.config.get("rerank", False) and results and 
-                self.indexer.reranker_service and 
+            if (self.config.get("rerank", False) and results and
+                self.indexer.reranker_service and
                 self.indexer.reranker_service.is_available()):
                 results = self.indexer.rerank_results(query, results)
             
