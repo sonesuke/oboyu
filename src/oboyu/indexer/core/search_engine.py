@@ -1,12 +1,16 @@
 """Search engine coordinator for different search modes."""
 
 import logging
-from enum import Enum
 from typing import List, Optional
 
 import numpy as np
 from numpy.typing import NDArray
 
+from oboyu.indexer.core.hybrid_search_combiner import HybridSearchCombiner
+from oboyu.indexer.core.result_merger import ResultMerger
+from oboyu.indexer.core.score_normalizer import ScoreNormalizer
+from oboyu.indexer.core.search_mode import SearchMode
+from oboyu.indexer.core.search_mode_router import SearchModeRouter
 from oboyu.indexer.search.bm25_search import BM25Search
 from oboyu.indexer.search.hybrid_search import HybridSearch
 from oboyu.indexer.search.search_filters import SearchFilters
@@ -16,16 +20,8 @@ from oboyu.indexer.search.vector_search import VectorSearch
 logger = logging.getLogger(__name__)
 
 
-class SearchMode(Enum):
-    """Available search modes."""
-
-    VECTOR = "vector"
-    BM25 = "bm25"
-    HYBRID = "hybrid"
-
-
 class SearchEngine:
-    """Lightweight coordinator for different search modes."""
+    """Simplified search engine that orchestrates focused components."""
 
     def __init__(
         self,
@@ -44,6 +40,16 @@ class SearchEngine:
         self.vector_search = vector_search
         self.bm25_search = bm25_search
         self.hybrid_search = hybrid_search
+        
+        # Initialize composed components
+        self.router = SearchModeRouter(vector_search, bm25_search)
+        self.merger = ResultMerger()
+        self.normalizer = ScoreNormalizer()
+        self.combiner = HybridSearchCombiner(
+            vector_weight=hybrid_search.vector_weight,
+            bm25_weight=hybrid_search.bm25_weight,
+            score_normalizer=self.normalizer,
+        )
 
     def search(
         self,
@@ -71,15 +77,16 @@ class SearchEngine:
 
         """
         try:
-            if mode == SearchMode.VECTOR:
-                if query_vector is None:
-                    raise ValueError("Query vector is required for vector search")
-                return self.vector_search.search(query_vector=query_vector, limit=limit, language_filter=language_filter, filters=filters)
-
-            elif mode == SearchMode.BM25:
-                if query_terms is None:
-                    raise ValueError("Query terms are required for BM25 search")
-                return self.bm25_search.search(terms=query_terms, limit=limit, language_filter=language_filter, filters=filters)
+            # Route non-hybrid searches to appropriate implementation
+            if mode in (SearchMode.VECTOR, SearchMode.BM25):
+                return self.router.route(
+                    mode=mode,
+                    query_vector=query_vector,
+                    query_terms=query_terms,
+                    limit=limit,
+                    language_filter=language_filter,
+                    filters=filters,
+                )
 
             elif mode == SearchMode.HYBRID:
                 if query_vector is None or query_terms is None:
@@ -88,13 +95,40 @@ class SearchEngine:
                 # Get more results for hybrid combination
                 initial_limit = limit * top_k_multiplier
 
-                # Execute both searches
-                vector_results = self.vector_search.search(query_vector=query_vector, limit=initial_limit, language_filter=language_filter, filters=filters)
+                # Execute both searches through router
+                vector_results = self.router.route(
+                    mode=SearchMode.VECTOR,
+                    query_vector=query_vector,
+                    limit=initial_limit,
+                    language_filter=language_filter,
+                    filters=filters,
+                )
 
-                bm25_results = self.bm25_search.search(terms=query_terms, limit=initial_limit, language_filter=language_filter, filters=filters)
+                bm25_results = self.router.route(
+                    mode=SearchMode.BM25,
+                    query_terms=query_terms,
+                    limit=initial_limit,
+                    language_filter=language_filter,
+                    filters=filters,
+                )
 
-                # Combine results
-                return self.hybrid_search.search(vector_results=vector_results, bm25_results=bm25_results, limit=limit)
+                # Combine results using the new combiner
+                # For backward compatibility, we still use the old hybrid_search as well
+                combined_results = self.combiner.combine(
+                    vector_results=vector_results,
+                    bm25_results=bm25_results,
+                    limit=limit,
+                )
+                
+                # Also use the original hybrid search for backward compatibility
+                legacy_results = self.hybrid_search.search(
+                    vector_results=vector_results,
+                    bm25_results=bm25_results,
+                    limit=limit,
+                )
+                
+                # Merge both results to ensure backward compatibility
+                return self.merger.merge(combined_results, legacy_results, limit=limit)
 
             else:
                 raise ValueError(f"Unknown search mode: {mode}")
