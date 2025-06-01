@@ -13,13 +13,10 @@ Key features:
 - Type-safe query building with parameter binding
 """
 
-import json
 import logging
 import shutil
-from contextlib import contextmanager
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import duckdb
 import numpy as np
@@ -27,17 +24,16 @@ from duckdb import DuckDBPyConnection
 from numpy.typing import NDArray
 
 from oboyu.indexer.config import DEFAULT_BATCH_SIZE
-from oboyu.indexer.core.document_processor import Chunk
 from oboyu.indexer.storage.database_connection import DatabaseConnection
+from oboyu.indexer.storage.database_operations import DatabaseOperations
+from oboyu.indexer.storage.database_search_service import DatabaseSearchService
 from oboyu.indexer.storage.index_manager import HNSWIndexParams, IndexManager
 from oboyu.indexer.storage.migrations import MigrationManager
 from oboyu.indexer.storage.schema import DatabaseSchema
-from oboyu.indexer.storage.utils import DateTimeEncoder
 
 logger = logging.getLogger(__name__)
 
-
-class DatabaseService(DatabaseConnection):
+class DatabaseService(DatabaseConnection, DatabaseOperations):
     """Unified database service for vector database operations.
 
     This class combines the functionality of database management, transaction
@@ -85,6 +81,7 @@ class DatabaseService(DatabaseConnection):
         # Managers will be initialized after connection is established
         self.migration_manager: Optional[MigrationManager] = None
         self.index_manager: Optional[IndexManager] = None
+        self.search_service: Optional[DatabaseSearchService] = None
 
         # Connection state
         self.conn: Optional[DuckDBPyConnection] = None
@@ -111,6 +108,7 @@ class DatabaseService(DatabaseConnection):
             # Initialize managers with connection
             self.migration_manager = MigrationManager(self.conn, self.schema)
             self.index_manager = IndexManager(self.conn, self.schema)
+            self.search_service = DatabaseSearchService(self.conn)
 
             # Create database schema
             self._create_schema()
@@ -118,7 +116,7 @@ class DatabaseService(DatabaseConnection):
             # Run migrations
             self.migration_manager.run_migrations()
 
-            # Initialize HNSW index
+            # Initialize standard indexes (HNSW will be created later when data is available)
             self.index_manager.setup_all_indexes(self.hnsw_params)
 
             self._is_initialized = True
@@ -175,7 +173,10 @@ class DatabaseService(DatabaseConnection):
             # Install VSS extension
             self.conn.execute("INSTALL vss")
             self.conn.execute("LOAD vss")
-            logger.debug("VSS extension loaded successfully")
+            
+            # Enable HNSW persistence after loading VSS extension
+            self.conn.execute("SET hnsw_enable_experimental_persistence=true")
+            logger.debug("VSS extension loaded successfully with HNSW persistence enabled")
 
         except Exception as e:
             logger.error(f"Failed to setup VSS extension: {e}")
@@ -204,138 +205,6 @@ class DatabaseService(DatabaseConnection):
             logger.error(f"Failed to create database schema: {e}")
             raise
 
-    def _ensure_connection(self) -> DuckDBPyConnection:
-        """Ensure database connection is available."""
-        if not self.conn:
-            self.initialize()
-        assert self.conn is not None, "Database connection should be available"
-        return self.conn
-
-    @contextmanager
-    def transaction(self) -> Generator[DuckDBPyConnection, None, None]:
-        """Context manager for database transactions.
-
-        Yields:
-            Database connection within a transaction
-
-        """
-        if not self.conn:
-            self.initialize()
-
-        if not self.conn:
-            raise RuntimeError("Database connection not available")
-
-        try:
-            self.conn.execute("BEGIN TRANSACTION")
-            yield self.conn
-            self.conn.execute("COMMIT")
-        except Exception as e:
-            try:
-                self.conn.execute("ROLLBACK")
-            except Exception as rollback_error:
-                logger.error(f"Rollback failed: {rollback_error}")
-            raise e
-
-    def store_chunks(self, chunks: List[Chunk], progress_callback: Optional[Callable[[str, int, int], None]] = None) -> None:
-        """Store document chunks in the database.
-
-        Args:
-            chunks: List of document chunks to store
-            progress_callback: Optional progress callback
-
-        """
-        if not chunks:
-            return
-
-        if not self.conn:
-            self.initialize()
-
-        with self.transaction() as conn:
-            total_chunks = len(chunks)
-
-            for i, chunk in enumerate(chunks):
-                # Convert chunk to database format
-                chunk_data = {
-                    "id": chunk.id,
-                    "path": str(chunk.path),
-                    "title": chunk.title,
-                    "content": chunk.content,
-                    "chunk_index": chunk.chunk_index,
-                    "language": chunk.language,
-                    "created_at": chunk.created_at or datetime.now(),
-                    "modified_at": chunk.modified_at or datetime.now(),
-                    "metadata": json.dumps(chunk.metadata or {}, cls=DateTimeEncoder),
-                }
-
-                # Insert chunk
-                conn.execute(
-                    """
-                    INSERT OR REPLACE INTO chunks
-                    (id, path, title, content, chunk_index, language, created_at, modified_at, metadata)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                    [
-                        chunk_data["id"],
-                        chunk_data["path"],
-                        chunk_data["title"],
-                        chunk_data["content"],
-                        chunk_data["chunk_index"],
-                        chunk_data["language"],
-                        chunk_data["created_at"],
-                        chunk_data["modified_at"],
-                        chunk_data["metadata"],
-                    ],
-                )
-
-                # Report progress
-                if progress_callback and (i % 100 == 0 or i == total_chunks - 1):
-                    progress_callback("storing", i + 1, total_chunks)
-
-    def store_embeddings(
-        self,
-        chunk_ids: List[str],
-        embeddings: List[NDArray[np.float32]],
-        model_name: str = "cl-nagoya/ruri-v3-30m",
-        progress_callback: Optional[Callable[[str, int, int], None]] = None
-    ) -> None:
-        """Store embedding vectors in the database.
-
-        Args:
-            chunk_ids: List of chunk IDs
-            embeddings: List of embedding vectors
-            model_name: Name of the embedding model
-            progress_callback: Optional callback for progress updates
-
-        """
-        if len(chunk_ids) != len(embeddings):
-            raise ValueError("Number of chunk IDs must match number of embeddings")
-
-        if not self.conn:
-            self.initialize()
-
-        total_embeddings = len(chunk_ids)
-        
-        with self.transaction() as conn:
-            for i, (chunk_id, embedding) in enumerate(zip(chunk_ids, embeddings)):
-                # Generate embedding ID
-                import uuid
-
-                embedding_id = str(uuid.uuid4())
-
-                # Store embedding
-                conn.execute(
-                    """
-                    INSERT OR REPLACE INTO embeddings
-                    (id, chunk_id, model, vector, created_at)
-                    VALUES (?, ?, ?, ?, ?)
-                """,
-                    [embedding_id, chunk_id, model_name, embedding.astype(np.float32).tolist(), datetime.now()],
-                )
-                
-                # Report progress
-                if progress_callback and (i % 100 == 0 or i == total_embeddings - 1):
-                    progress_callback("storing_embeddings", i + 1, total_embeddings)
-
     def vector_search(
         self, query_vector: NDArray[np.float32], limit: int = 10, language_filter: Optional[str] = None, similarity_threshold: float = 0.0
     ) -> List[Dict[str, Any]]:
@@ -351,51 +220,11 @@ class DatabaseService(DatabaseConnection):
             List of search results with metadata
 
         """
-        conn = self._ensure_connection()
-
-        try:
-            # Ensure query_vector is float32
-            query_vector_f32 = query_vector.astype(np.float32)
-            
-            # Build query with optional language filter
-            where_clause = ""
-            # Use regular Python floats but cast in SQL
-            params = [query_vector_f32.tolist(), limit]
-
-            if language_filter:
-                where_clause = "AND c.language = ?"
-                params.append(language_filter)
-
-            if similarity_threshold > 0:
-                where_clause += " AND array_cosine_similarity(e.vector, CAST(? AS FLOAT[256])) >= ?"
-                params.extend([query_vector_f32.tolist(), similarity_threshold])
-
-            query = f"""
-                SELECT
-                    c.id,
-                    c.path,
-                    c.title,
-                    c.content,
-                    c.chunk_index,
-                    c.language,
-                    c.metadata,
-                    array_cosine_similarity(e.vector, CAST(? AS FLOAT[256])) as score
-                FROM chunks c
-                JOIN embeddings e ON c.id = e.chunk_id
-                WHERE 1=1 {where_clause}
-                ORDER BY score DESC
-                LIMIT ?
-            """
-
-            results = conn.execute(query, params).fetchall()
-
-            # Convert to list of dicts
-            columns = ["id", "path", "title", "content", "chunk_index", "language", "metadata", "score"]
-            return [dict(zip(columns, result)) for result in results]
-
-        except Exception as e:
-            logger.error(f"Vector search failed: {e}")
-            return []
+        if not self.search_service:
+            self.initialize()
+        
+        assert self.search_service is not None
+        return self.search_service.vector_search(query_vector, limit, language_filter, similarity_threshold)
 
     def bm25_search(self, terms: List[str], limit: int = 10, language_filter: Optional[str] = None) -> List[Dict[str, Any]]:
         """Execute BM25 text search.
@@ -409,40 +238,11 @@ class DatabaseService(DatabaseConnection):
             List of search results with metadata
 
         """
-        if not self.conn:
+        if not self.search_service:
             self.initialize()
-
-        try:
-            # Build search query
-            search_text = " ".join(terms)
-
-            where_clause = ""
-            params = [f"%{search_text}%", limit]
-
-            if language_filter:
-                where_clause = "AND language = ?"
-                params.insert(-1, language_filter)
-
-            query = f"""
-                SELECT
-                    id, path, title, content, chunk_index, language, metadata,
-                    1.0 as score
-                FROM chunks
-                WHERE content LIKE ? {where_clause}
-                ORDER BY score DESC
-                LIMIT ?
-            """
-
-            conn = self._ensure_connection()
-            results = conn.execute(query, params).fetchall()
-
-            # Convert to list of dicts
-            columns = ["id", "path", "title", "content", "chunk_index", "language", "metadata", "score"]
-            return [dict(zip(columns, result)) for result in results]
-
-        except Exception as e:
-            logger.error(f"BM25 search failed: {e}")
-            return []
+        
+        assert self.search_service is not None
+        return self.search_service.bm25_search(terms, limit, language_filter)
 
     def get_chunk_by_id(self, chunk_id: str) -> Optional[Dict[str, Any]]:
         """Get chunk by ID.
@@ -454,28 +254,11 @@ class DatabaseService(DatabaseConnection):
             Chunk data or None if not found
 
         """
-        if not self.conn:
+        if not self.search_service:
             self.initialize()
-
-        try:
-            conn = self._ensure_connection()
-            result = conn.execute(
-                """
-                SELECT id, path, title, content, chunk_index, language,
-                       created_at, modified_at, metadata
-                FROM chunks WHERE id = ?
-            """,
-                [chunk_id],
-            ).fetchone()
-
-            if result:
-                columns = ["id", "path", "title", "content", "chunk_index", "language", "created_at", "modified_at", "metadata"]
-                return dict(zip(columns, result))
-            return None
-
-        except Exception as e:
-            logger.error(f"Failed to get chunk by ID: {e}")
-            return None
+        
+        assert self.search_service is not None
+        return self.search_service.get_chunk_by_id(chunk_id)
 
     def delete_chunks_by_path(self, path: Union[str, Path]) -> int:
         """Delete all chunks for a specific file path.
@@ -610,6 +393,24 @@ class DatabaseService(DatabaseConnection):
         except Exception as e:
             logger.error(f"Failed to get database stats: {e}")
             return {}
+
+    def ensure_hnsw_index(self) -> None:
+        """Ensure HNSW index exists if there are embeddings."""
+        if not self.index_manager:
+            return
+            
+        # Check if index already exists
+        if self.index_manager.hnsw_index_exists():
+            return
+            
+        # Create index if we have embeddings but no index
+        if self.index_manager._should_create_hnsw_index():
+            logger.info("Creating HNSW index after embeddings were added")
+            success = self.index_manager.create_hnsw_index(self.hnsw_params)
+            if success:
+                logger.info("HNSW index created successfully")
+            else:
+                logger.warning("HNSW index creation failed")
 
     def close(self) -> None:
         """Close database connection."""

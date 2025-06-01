@@ -32,8 +32,8 @@ class TestONNXEmbeddingModel:
             (tmp_path / file).touch()
         
         # Mock the InferenceSession and AutoTokenizer
-        with patch("oboyu.common.onnx_converter.InferenceSession") as mock_session, \
-             patch("oboyu.common.onnx_converter.AutoTokenizer.from_pretrained") as mock_tokenizer:
+        with patch("oboyu.common.onnx.embedding_model.InferenceSession") as mock_session, \
+             patch("oboyu.common.onnx.embedding_model.AutoTokenizer.from_pretrained") as mock_tokenizer:
             
             # Configure mocks
             mock_output = MagicMock()
@@ -55,8 +55,8 @@ class TestONNXEmbeddingModel:
         model_path = tmp_path / "model.onnx"
         model_path.touch()
         
-        with patch("oboyu.common.onnx_converter.InferenceSession") as mock_session, \
-             patch("oboyu.common.onnx_converter.AutoTokenizer.from_pretrained") as mock_tokenizer:
+        with patch("oboyu.common.onnx.embedding_model.InferenceSession") as mock_session, \
+             patch("oboyu.common.onnx.embedding_model.AutoTokenizer.from_pretrained") as mock_tokenizer:
             
             # Configure session mock
             mock_output = MagicMock()
@@ -92,8 +92,8 @@ class TestONNXEmbeddingModel:
         model_path = tmp_path / "model.onnx"
         model_path.touch()
         
-        with patch("oboyu.common.onnx_converter.InferenceSession") as mock_session, \
-             patch("oboyu.common.onnx_converter.AutoTokenizer.from_pretrained") as mock_tokenizer:
+        with patch("oboyu.common.onnx.embedding_model.InferenceSession") as mock_session, \
+             patch("oboyu.common.onnx.embedding_model.AutoTokenizer.from_pretrained") as mock_tokenizer:
             
             # Configure mocks
             mock_output = MagicMock()
@@ -144,8 +144,8 @@ class TestONNXEmbeddingModel:
         model_path = tmp_path / "model.onnx"
         model_path.touch()
         
-        with patch("oboyu.common.onnx_converter.InferenceSession") as mock_session, \
-             patch("oboyu.common.onnx_converter.AutoTokenizer.from_pretrained") as mock_tokenizer:
+        with patch("oboyu.common.onnx.embedding_model.InferenceSession") as mock_session, \
+             patch("oboyu.common.onnx.embedding_model.AutoTokenizer.from_pretrained") as mock_tokenizer:
             
             # Configure mocks
             mock_output = MagicMock()
@@ -180,8 +180,8 @@ class TestONNXEmbeddingModel:
 class TestONNXConversion:
     """Test cases for ONNX conversion functions."""
 
-    @patch("oboyu.common.onnx_converter.SentenceTransformer")
-    @patch("oboyu.common.onnx_converter.torch.onnx.export")
+    @patch("oboyu.common.onnx.embedding_model.SentenceTransformer")
+    @patch("oboyu.common.onnx.embedding_model.torch.onnx.export")
     def test_convert_to_onnx(self, mock_export: MagicMock, mock_st: MagicMock, tmp_path: Path) -> None:
         """Test converting a SentenceTransformer model to ONNX."""
         # Configure mock SentenceTransformer
@@ -224,7 +224,7 @@ class TestONNXConversion:
         assert config["embedding_dimension"] == 256
         assert config["pooling_strategy"] == "mean"
 
-    @patch("oboyu.common.onnx_converter.convert_to_onnx")
+    @patch("oboyu.common.onnx.embedding_model.convert_to_onnx")
     def test_get_or_convert_onnx_model_cached(self, mock_convert: MagicMock, tmp_path: Path) -> None:
         """Test getting cached ONNX model."""
         model_name = "test/model"
@@ -242,23 +242,24 @@ class TestONNXConversion:
         assert result == onnx_path
         mock_convert.assert_not_called()
 
-    @patch("oboyu.common.onnx_converter.convert_to_onnx")
-    def test_get_or_convert_onnx_model_new(self, mock_convert: MagicMock, tmp_path: Path) -> None:
+    @patch("oboyu.common.model_manager.ONNXModelCache.get_or_convert_onnx_model")
+    def test_get_or_convert_onnx_model_new(self, mock_cache: MagicMock, tmp_path: Path) -> None:
         """Test converting model when not cached."""
         model_name = "test/model"
         cache_dir = tmp_path / "cache"
         
-        # Mock conversion
+        # Mock the cache method
         expected_path = cache_dir / "onnx" / "test_model" / "model.onnx"
-        mock_convert.return_value = expected_path
+        mock_cache.return_value = expected_path
         
         # Get model (should convert)
         result = get_or_convert_onnx_model(model_name, cache_dir)
         
         assert result == expected_path
-        mock_convert.assert_called_once_with(
+        mock_cache.assert_called_once_with(
             model_name, 
-            cache_dir / "onnx" / "test_model", 
+            "embedding",
+            cache_dir=cache_dir,
             apply_quantization=True,
             quantization_config=None
         )
@@ -274,7 +275,7 @@ class TestONNXQuantization:
         model_path = tmp_path / "model.onnx"
         model_path.write_bytes(b"dummy onnx model" * 100)  # Make it reasonably sized
         
-        with patch("oboyu.common.onnx_converter.quantize_dynamic") as mock_quantize:
+        with patch("oboyu.common.onnx.quantization.quantize_dynamic") as mock_quantize:
             # Mock successful quantization
             def create_quantized_file(*args, **kwargs):
                 # Get model_output from kwargs (it's a keyword argument)
@@ -303,7 +304,7 @@ class TestONNXQuantization:
         model_path = tmp_path / "model.onnx"
         model_path.write_bytes(b"dummy onnx model" * 100)
         
-        with patch("oboyu.common.onnx_converter.quantize_dynamic") as mock_quantize:
+        with patch("oboyu.common.onnx.quantization.quantize_dynamic") as mock_quantize:
             # Mock successful quantization
             def create_quantized_file(*args, **kwargs):
                 output_path = Path(kwargs["model_output"])
@@ -329,14 +330,14 @@ class TestONNXQuantization:
         with pytest.raises(RuntimeError, match="quantization tools are not available"):
             quantize_model_dynamic(model_path)
     
-    @patch("oboyu.common.onnx_converter.SentenceTransformer")
-    @patch("oboyu.common.onnx_converter.torch.onnx.export")
-    @patch("oboyu.common.onnx_converter.quantize_model_dynamic")
+    @patch("oboyu.common.onnx.embedding_model.quantize_model_dynamic")
+    @patch("oboyu.common.onnx.embedding_model.SentenceTransformer")
+    @patch("oboyu.common.onnx.embedding_model.torch.onnx.export")
     def test_convert_to_onnx_with_quantization(
         self, 
-        mock_quantize: MagicMock, 
         mock_export: MagicMock, 
         mock_st: MagicMock, 
+        mock_quantize: MagicMock, 
         tmp_path: Path
     ) -> None:
         """Test ONNX conversion with quantization enabled."""
@@ -356,9 +357,22 @@ class TestONNXQuantization:
             "attention_mask": MagicMock(),
         }
         
+        # Mock export to create a dummy ONNX file
+        def create_onnx_file(*args, **kwargs):
+            # Create a dummy ONNX file
+            onnx_path = tmp_path / "model.onnx"
+            onnx_path.write_bytes(b"dummy onnx model" * 100)
+        
+        mock_export.side_effect = create_onnx_file
+        
         # Mock quantization to return quantized path
         quantized_path = tmp_path / "model_quantized.onnx"
-        mock_quantize.return_value = quantized_path
+        
+        def create_quantized_file(input_path, **kwargs):
+            quantized_path.write_bytes(b"quantized model" * 50)
+            return quantized_path
+            
+        mock_quantize.side_effect = create_quantized_file
         
         # Convert with quantization
         result = convert_to_onnx("test-model", tmp_path, apply_quantization=True)
@@ -376,15 +390,15 @@ class TestONNXQuantization:
             config = json.load(f)
         assert config.get("quantized") is True
     
-    @patch("oboyu.common.onnx_converter.convert_to_onnx")
-    def test_get_or_convert_onnx_model_with_quantization(self, mock_convert: MagicMock, tmp_path: Path) -> None:
+    @patch("oboyu.common.model_manager.ONNXModelCache.get_or_convert_onnx_model")
+    def test_get_or_convert_onnx_model_with_quantization(self, mock_cache: MagicMock, tmp_path: Path) -> None:
         """Test get_or_convert with quantization config."""
         model_name = "test/model"
         cache_dir = tmp_path / "cache"
         
-        # Mock conversion
+        # Mock the cache method
         expected_path = cache_dir / "onnx" / "test_model" / "model_quantized.onnx"
-        mock_convert.return_value = expected_path
+        mock_cache.return_value = expected_path
         
         # Custom quantization config
         quant_config = {"enabled": True, "weight_type": "int8"}
@@ -397,10 +411,11 @@ class TestONNXQuantization:
             quantization_config=quant_config
         )
         
-        # Verify convert was called with quantization config
-        mock_convert.assert_called_once_with(
+        # Verify cache was called with quantization config
+        mock_cache.assert_called_once_with(
             model_name,
-            cache_dir / "onnx" / "test_model",
+            "embedding",
+            cache_dir=cache_dir,
             apply_quantization=True,
             quantization_config=quant_config
         )

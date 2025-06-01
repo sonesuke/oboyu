@@ -13,7 +13,12 @@ try:
     QUANTIZATION_AVAILABLE = True
 except ImportError:
     QUANTIZATION_AVAILABLE = False
+    QuantType = None
+    quantize_dynamic = None
     logger.warning("ONNX Runtime quantization tools not available. Quantization will be disabled.")
+
+
+__all__ = ["QUANTIZATION_AVAILABLE", "QuantType", "quantize_model_dynamic"]
 
 
 def quantize_model_dynamic(

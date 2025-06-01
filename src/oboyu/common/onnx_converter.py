@@ -11,6 +11,7 @@ from .onnx import (
     QUANTIZATION_AVAILABLE,
     ONNXCrossEncoderModel,
     ONNXEmbeddingModel,
+    QuantType,
     convert_cross_encoder_to_onnx,
     convert_to_onnx,
     get_or_convert_cross_encoder_onnx_model,
@@ -20,6 +21,7 @@ from .onnx import (
 
 __all__ = [
     "QUANTIZATION_AVAILABLE",
+    "QuantType",
     "quantize_model_dynamic",
     "ONNXEmbeddingModel",
     "convert_to_onnx",

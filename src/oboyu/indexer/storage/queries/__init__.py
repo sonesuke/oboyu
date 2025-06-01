@@ -1,5 +1,6 @@
 """Unified query builder interface."""
 
+from ..utils import DateTimeEncoder
 from .chunk_queries import ChunkQueries
 from .data_models import (
     BM25Data,
@@ -10,7 +11,6 @@ from .data_models import (
     VocabularyData,
 )
 from .embedding_queries import EmbeddingQueries
-from ..utils import DateTimeEncoder
 
 
 class QueryBuilder:
