@@ -81,12 +81,24 @@ Search indexed documents using semantic search with Japanese language optimizati
 - `mode` (string, optional): Search mode - "vector", "bm25", or "hybrid" (default: "hybrid")
 - `vector_weight` (float, optional): Weight for vector scores in hybrid mode (default: 0.7)
 - `bm25_weight` (float, optional): Weight for BM25 scores in hybrid mode (default: 0.3)
+- `snippet_config` (object, optional): Configuration for snippet generation and context control
+
+**Snippet Configuration Options:**
+- `length` (integer): Maximum snippet length in characters (default: 300)
+- `context_window` (integer): Characters before/after match for context (default: 50)
+- `max_snippets_per_result` (integer): Maximum snippets per search result (default: 1)
+- `highlight_matches` (boolean): Whether to highlight search matches (default: true)
+- `strategy` (string): Snippet boundary strategy - "fixed_length", "sentence_boundary", or "paragraph_boundary" (default: "sentence_boundary")
+- `prefer_complete_sentences` (boolean): Try to end snippets at sentence boundaries (default: true)
+- `include_surrounding_context` (boolean): Include context around matches (default: true)
+- `japanese_aware` (boolean): Consider Japanese sentence boundaries (default: true)
+- `levels` (array): Multi-level snippet configurations with type and length
 
 **Returns:**
 List of search results, each containing:
 - `path`: File path of the document
 - `title`: Document or chunk title
-- `content`: Relevant text snippet
+- `content`: Relevant text snippet (processed according to snippet_config)
 - `score`: Relevance score (0-1)
 
 **Example Response:**
@@ -173,6 +185,36 @@ search_documents("REST API best practices",
                 limit=8)
 ```
 
+### Snippet Context Control
+```
+# Basic snippet configuration
+search_documents("機械学習の原則", 
+                snippet_config={
+                  "length": 200,
+                  "highlight_matches": true,
+                  "strategy": "sentence_boundary"
+                })
+
+# Japanese-aware snippet processing
+search_documents("システム設計の考え方", 
+                snippet_config={
+                  "length": 150,
+                  "japanese_aware": true,
+                  "prefer_complete_sentences": true,
+                  "context_window": 30
+                })
+
+# Multi-level snippets
+search_documents("database design patterns", 
+                snippet_config={
+                  "levels": [
+                    {"type": "summary", "length": 100},
+                    {"type": "detailed", "length": 300}
+                  ],
+                  "highlight_matches": false
+                })
+```
+
 ## Use Cases with AI Assistants
 
 The MCP server enables powerful search workflows:
@@ -192,6 +234,14 @@ The MCP server enables powerful search workflows:
 **Japanese Content Search:**
 - "プロジェクトでの非同期処理の実装方法を教えて"
   → Leverages Japanese language optimization for accurate results
+
+**Snippet Context Control:**
+- "Show me brief summaries of design patterns in this codebase"
+  → Uses short snippet length (50-100 chars) for overview
+- "I need detailed explanations of the authentication flow"
+  → Uses longer snippets (300+ chars) with complete sentences
+- "Find Japanese documentation about API usage"
+  → Uses Japanese-aware sentence boundaries for natural text flow
 
 ## Performance Considerations
 
