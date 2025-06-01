@@ -280,8 +280,8 @@ def index(
     progress_callback = None
     if not quiet_progress:
         def progress_callback_func(message: str) -> None:
-            op_id = base_command.logger.start_operation(message, expandable=False)
-            base_command.logger.complete_operation(op_id)
+            # Use console.print instead of logger operations to avoid potential conflicts
+            base_command.console.print(f"  ⎿ {message}")
         progress_callback = progress_callback_func
     
     # Execute indexing with progress tracking
