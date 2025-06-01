@@ -13,14 +13,15 @@ runner = CliRunner()
 
 
 @pytest.fixture
-def mock_indexer():
-    """Fixture for mocking the Indexer class."""
-    with patch("oboyu.cli.index.Indexer") as mock_indexer_class:
-        mock_indexer = mock_indexer_class.return_value
-        yield mock_indexer
+def mock_indexing_service():
+    """Fixture for mocking the IndexingService class."""
+    with patch("oboyu.cli.index.IndexingService") as mock_service_class:
+        mock_service = mock_service_class.return_value
+        mock_service.get_database_path.return_value = "test.db"
+        yield mock_service
 
 
-def test_clear_command(mock_indexer):
+def test_clear_command(mock_indexing_service):
     """Test the clear command."""
     # Create a test context to provide to the command
     # Typer needs a context for commands that use ctx parameter
@@ -40,13 +41,13 @@ def test_clear_command(mock_indexer):
     
     # Check the clear_index method was called (if exit code was 0)
     if result.exit_code == 0:
-        mock_indexer.clear_index.assert_called_once()
+        mock_indexing_service.clear_index.assert_called_once()
         
         # Check the success message is displayed
         assert "Index database cleared successfully!" in result.stdout
 
 
-def test_clear_command_confirmation_yes(mock_indexer):
+def test_clear_command_confirmation_yes(mock_indexing_service):
     """Test the clear command with confirmation (yes)."""
     # Create a test context
     ctx = {"config_data": {"indexer": {"db_path": "test.db"}}}
@@ -69,10 +70,10 @@ def test_clear_command_confirmation_yes(mock_indexer):
         assert "Warning" in result.stdout
         
         # Check the clear_index method was called
-        mock_indexer.clear_index.assert_called_once()
+        mock_indexing_service.clear_index.assert_called_once()
 
 
-def test_clear_command_confirmation_no(mock_indexer):
+def test_clear_command_confirmation_no(mock_indexing_service):
     """Test the clear command with confirmation (no)."""
     # Create a test context
     ctx = {"config_data": {"indexer": {"db_path": "test.db"}}}
@@ -98,10 +99,10 @@ def test_clear_command_confirmation_no(mock_indexer):
         assert "Operation cancelled" in result.stdout
         
         # Check the clear_index method was not called
-        mock_indexer.clear_index.assert_not_called()
+        mock_indexing_service.clear_index.assert_not_called()
 
 
-def test_clear_command_with_db_path(mock_indexer):
+def test_clear_command_with_db_path(mock_indexing_service):
     """Test the clear command with custom database path."""
     with tempfile.TemporaryDirectory() as temp_dir:
         db_path = Path(temp_dir) / "custom.db"
@@ -127,4 +128,4 @@ def test_clear_command_with_db_path(mock_indexer):
             assert f"Using explicitly specified database path: {db_path}" in result.stdout
             
             # Check the clear_index method was called
-            mock_indexer.clear_index.assert_called_once()
+            mock_indexing_service.clear_index.assert_called_once()

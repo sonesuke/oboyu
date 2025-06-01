@@ -10,13 +10,8 @@ import typer
 from typing_extensions import Annotated
 
 from oboyu.cli.base import BaseCommand
-from oboyu.cli.index_config import (
-    build_status_indexer_config,
-    create_crawler_config,
-    create_indexer_config,
-)
-from oboyu.cli.index_operations import execute_indexing_operation
-from oboyu.indexer import Indexer
+from oboyu.cli.index_config import create_crawler_config
+from oboyu.cli.services.indexing_service import IndexingService
 
 app = typer.Typer(
     help="Index documents for search and manage the index",
@@ -62,7 +57,28 @@ def clear(
     while preserving the database schema and structure.
     """
     base_command = BaseCommand(ctx)
-    base_command.handle_clear_operation(db_path=str(db_path) if db_path else None, force=force)
+    config_manager = base_command.get_config_manager()
+    indexing_service = IndexingService(config_manager)
+    
+    # Get database path
+    resolved_db_path = indexing_service.get_database_path(db_path)
+    base_command.print_database_path(resolved_db_path)
+    
+    # Confirm operation
+    if not base_command.confirm_database_operation(
+        "remove all indexed documents and search data from",
+        force,
+        resolved_db_path
+    ):
+        return
+    
+    # Perform clear operation with progress tracking
+    with base_command.logger.live_display():
+        clear_op = base_command.logger.start_operation("Clearing index database...")
+        indexing_service.clear_index(db_path)
+        base_command.logger.complete_operation(clear_op)
+    
+    base_command.console.print("\nIndex database cleared successfully!")
 
 @manage_app.command(name="status")
 def status(
@@ -80,70 +96,48 @@ def status(
     """
     base_command = BaseCommand(ctx)
     config_manager = base_command.get_config_manager()
+    indexing_service = IndexingService(config_manager)
 
-    indexer_config_dict = create_indexer_config(
-        config_manager,
-        None,  # chunk_size
-        None,  # chunk_overlap
-        None,  # embedding_model
-        db_path,
-    )
-
-    base_command.print_database_path(indexer_config_dict["db_path"])
-    indexer_config = build_status_indexer_config(indexer_config_dict)
+    # Get database path and display it
+    resolved_db_path = indexing_service.get_database_path(db_path)
+    base_command.print_database_path(resolved_db_path)
     
-    indexer = Indexer(config=indexer_config)
+    # Get status for all directories
+    status_results = indexing_service.get_status(directories, db_path)
+    
+    for status_result in status_results:
+        base_command.console.print(f"\n[bold]Status for {status_result.directory}:[/bold]")
+        base_command.console.print(f"  New files: {status_result.new_files}")
+        base_command.console.print(f"  Modified files: {status_result.modified_files}")
+        base_command.console.print(f"  Deleted files: {status_result.deleted_files}")
+        base_command.console.print(f"  Total indexed: {status_result.total_indexed}")
 
-    try:
-        from oboyu.crawler.config import load_default_config
-        from oboyu.crawler.discovery import discover_documents
-
-        crawler_config = load_default_config()
-
-        for directory in directories:
-            base_command.console.print(f"\n[bold]Status for {directory}:[/bold]")
-
-            discovered_paths = discover_documents(
-                Path(directory),
-                patterns=crawler_config.include_patterns,
-                exclude_patterns=crawler_config.exclude_patterns,
-                max_depth=crawler_config.depth,
-            )
-
-            paths_only = [path for path, metadata in discovered_paths]
-            changes = indexer.change_detector.detect_changes(paths_only, strategy="smart")
-
-            stats = indexer.change_detector.get_processing_stats()
-
-            base_command.console.print(f"  New files: {len(changes.new_files)}")
-            base_command.console.print(f"  Modified files: {len(changes.modified_files)}")
-            base_command.console.print(f"  Deleted files: {len(changes.deleted_files)}")
-            base_command.console.print(f"  Total indexed: {stats.get('completed', 0)}")
-
-            if detailed:
-                if changes.new_files:
+        if detailed:
+            # Get detailed diff for this directory
+            diff_results = indexing_service.get_diff([status_result.directory], db_path)
+            if diff_results:
+                diff_result = diff_results[0]
+                
+                if diff_result.new_files:
                     base_command.console.print("\n  [green]New files:[/green]")
-                    for f in sorted(changes.new_files)[:10]:  # Show first 10
+                    for f in diff_result.new_files[:10]:  # Show first 10
                         base_command.console.print(f"    + {f}")
-                    if len(changes.new_files) > 10:
-                        base_command.console.print(f"    ... and {len(changes.new_files) - 10} more")
+                    if len(diff_result.new_files) > 10:
+                        base_command.console.print(f"    ... and {len(diff_result.new_files) - 10} more")
 
-                if changes.modified_files:
+                if diff_result.modified_files:
                     base_command.console.print("\n  [yellow]Modified files:[/yellow]")
-                    for f in sorted(changes.modified_files)[:10]:  # Show first 10
+                    for f in diff_result.modified_files[:10]:  # Show first 10
                         base_command.console.print(f"    ~ {f}")
-                    if len(changes.modified_files) > 10:
-                        base_command.console.print(f"    ... and {len(changes.modified_files) - 10} more")
+                    if len(diff_result.modified_files) > 10:
+                        base_command.console.print(f"    ... and {len(diff_result.modified_files) - 10} more")
 
-                if changes.deleted_files:
+                if diff_result.deleted_files:
                     base_command.console.print("\n  [red]Deleted files:[/red]")
-                    for f in sorted(changes.deleted_files)[:10]:  # Show first 10
+                    for f in diff_result.deleted_files[:10]:  # Show first 10
                         base_command.console.print(f"    - {f}")
-                    if len(changes.deleted_files) > 10:
-                        base_command.console.print(f"    ... and {len(changes.deleted_files) - 10} more")
-
-    finally:
-        indexer.close()
+                    if len(diff_result.deleted_files) > 10:
+                        base_command.console.print(f"    ... and {len(diff_result.deleted_files) - 10} more")
 
 @manage_app.command(name="diff")
 def diff(
@@ -165,78 +159,53 @@ def diff(
     """
     base_command = BaseCommand(ctx)
     config_manager = base_command.get_config_manager()
+    indexing_service = IndexingService(config_manager)
 
-    indexer_config_dict = create_indexer_config(
-        config_manager,
-        None,  # chunk_size
-        None,  # chunk_overlap
-        None,  # embedding_model
-        db_path,
-    )
-
-    base_command.print_database_path(indexer_config_dict["db_path"])
-    indexer_config = build_status_indexer_config(indexer_config_dict)
+    # Get database path and display it
+    resolved_db_path = indexing_service.get_database_path(db_path)
+    base_command.print_database_path(resolved_db_path)
     
-    indexer = Indexer(config=indexer_config)
+    # Get diff results for all directories
+    diff_results = indexing_service.get_diff(directories, db_path, change_detection)
+    
+    total_new = 0
+    total_modified = 0
+    total_deleted = 0
 
-    try:
-        from oboyu.crawler.config import load_default_config
-        from oboyu.crawler.discovery import discover_documents
+    for diff_result in diff_results:
+        base_command.console.print(f"\n[bold]Diff for {diff_result.directory}:[/bold]")
 
-        crawler_config = load_default_config()
-        detection_strategy = change_detection or "smart"
+        total_new += len(diff_result.new_files)
+        total_modified += len(diff_result.modified_files)
+        total_deleted += len(diff_result.deleted_files)
 
-        total_new = 0
-        total_modified = 0
-        total_deleted = 0
+        if diff_result.new_files:
+            base_command.console.print(f"\n  [green]Files to be added ({len(diff_result.new_files)}):[/green]")
+            for f in diff_result.new_files:
+                base_command.console.print(f"    + {f}")
 
-        for directory in directories:
-            base_command.console.print(f"\n[bold]Diff for {directory}:[/bold]")
+        if diff_result.modified_files:
+            base_command.console.print(f"\n  [yellow]Files to be updated ({len(diff_result.modified_files)}):[/yellow]")
+            for f in diff_result.modified_files:
+                base_command.console.print(f"    ~ {f}")
 
-            discovered_paths = discover_documents(
-                Path(directory),
-                patterns=crawler_config.include_patterns,
-                exclude_patterns=crawler_config.exclude_patterns,
-                max_depth=crawler_config.depth,
-            )
+        if diff_result.deleted_files:
+            base_command.console.print(f"\n  [red]Files to be removed ({len(diff_result.deleted_files)}):[/red]")
+            for f in diff_result.deleted_files:
+                base_command.console.print(f"    - {f}")
 
-            paths_only = [path for path, metadata in discovered_paths]
-            changes = indexer.change_detector.detect_changes(paths_only, strategy=detection_strategy)
+        if not (diff_result.new_files or diff_result.modified_files or diff_result.deleted_files):
+            base_command.console.print("  [dim]No changes detected[/dim]")
 
-            total_new += len(changes.new_files)
-            total_modified += len(changes.modified_files)
-            total_deleted += len(changes.deleted_files)
+    base_command.console.print("\n[bold]Summary:[/bold]")
+    base_command.console.print(f"  Total files to add: {total_new}")
+    base_command.console.print(f"  Total files to update: {total_modified}")
+    base_command.console.print(f"  Total files to remove: {total_deleted}")
 
-            if changes.new_files:
-                base_command.console.print(f"\n  [green]Files to be added ({len(changes.new_files)}):[/green]")
-                for f in sorted(changes.new_files):
-                    base_command.console.print(f"    + {f}")
-
-            if changes.modified_files:
-                base_command.console.print(f"\n  [yellow]Files to be updated ({len(changes.modified_files)}):[/yellow]")
-                for f in sorted(changes.modified_files):
-                    base_command.console.print(f"    ~ {f}")
-
-            if changes.deleted_files:
-                base_command.console.print(f"\n  [red]Files to be removed ({len(changes.deleted_files)}):[/red]")
-                for f in sorted(changes.deleted_files):
-                    base_command.console.print(f"    - {f}")
-
-            if not changes.has_changes():
-                base_command.console.print("  [dim]No changes detected[/dim]")
-
-        base_command.console.print("\n[bold]Summary:[/bold]")
-        base_command.console.print(f"  Total files to add: {total_new}")
-        base_command.console.print(f"  Total files to update: {total_modified}")
-        base_command.console.print(f"  Total files to remove: {total_deleted}")
-
-        if total_new + total_modified + total_deleted == 0:
-            base_command.console.print("\n[green]✓[/green] Index is up to date")
-        else:
-            base_command.console.print(f"\n[yellow]![/yellow] Index needs updating ({total_new + total_modified + total_deleted} changes)")
-
-    finally:
-        indexer.close()
+    if total_new + total_modified + total_deleted == 0:
+        base_command.console.print("\n[green]✓[/green] Index is up to date")
+    else:
+        base_command.console.print(f"\n[yellow]![/yellow] Index needs updating ({total_new + total_modified + total_deleted} changes)")
 
 
 @app.callback(invoke_without_command=True)
@@ -300,19 +269,41 @@ def index(
         exclude_patterns,
     )
 
-    execute_indexing_operation(
-        base_command=base_command,
-        directories=directories,
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        embedding_model=embedding_model,
-        db_path=db_path,
-        change_detection=change_detection,
-        cleanup_deleted=cleanup_deleted,
-        verify_integrity=verify_integrity,
-        quiet_progress=quiet_progress,
-        force=force,
-        max_depth=max_depth,
-        include_patterns=include_patterns,
-        exclude_patterns=exclude_patterns,
-    )
+    config_manager = base_command.get_config_manager()
+    indexing_service = IndexingService(config_manager)
+    
+    # Get database path and display it
+    resolved_db_path = indexing_service.get_database_path(db_path)
+    base_command.print_database_path(resolved_db_path)
+    
+    # Create progress callback if not quiet
+    progress_callback = None
+    if not quiet_progress:
+        def progress_callback_func(message: str) -> None:
+            op_id = base_command.logger.start_operation(message, expandable=False)
+            base_command.logger.complete_operation(op_id)
+        progress_callback = progress_callback_func
+    
+    # Execute indexing with progress tracking
+    with base_command.logger.live_display():
+        init_op = base_command.logger.start_operation("Initializing Oboyu indexer...")
+        
+        result = indexing_service.execute_indexing(
+            directories=directories,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            embedding_model=embedding_model,
+            db_path=db_path,
+            change_detection=change_detection,
+            cleanup_deleted=cleanup_deleted,
+            verify_integrity=verify_integrity,
+            force=force,
+            max_depth=max_depth,
+            include_patterns=include_patterns,
+            exclude_patterns=exclude_patterns,
+            progress_callback=progress_callback,
+        )
+        
+        base_command.logger.complete_operation(init_op)
+    
+    base_command.console.print(f"\nIndexed {result.total_files} files ({result.total_chunks} chunks) in {result.elapsed_time:.1f}s")
