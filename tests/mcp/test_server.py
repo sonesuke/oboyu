@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from oboyu.mcp.context import mcp
-from oboyu.mcp.server import get_indexer, search, get_index_info, index_directory, clear_index
+from oboyu.mcp.server import get_indexer, search, get_index_info, index_directory
 
 
 @pytest.fixture
@@ -137,39 +137,6 @@ def test_index_directory(mock_get_indexer, mock_indexer):
     mock_get_indexer.assert_not_called()
 
 
-@patch("oboyu.mcp.server.get_indexer")
-def test_clear_index(mock_get_indexer, mock_indexer):
-    """Test the clear_index tool function."""
-    # Setup the mock
-    mock_get_indexer.return_value = mock_indexer
-    mock_indexer.config.db_path = "/path/to/test.db"
-    
-    # Call the function
-    result = clear_index()
-    
-    # Verify the indexer was called
-    mock_get_indexer.assert_called_once_with(None)
-    mock_indexer.clear_index.assert_called_once()
-    
-    # Check the response format
-    assert "success" in result
-    assert result["success"] is True
-    assert "message" in result
-    assert "cleared successfully" in result["message"]
-    assert "db_path" in result
-    assert result["db_path"] == "/path/to/test.db"
-    
-    # Test error case
-    mock_get_indexer.reset_mock()
-    mock_indexer.clear_index.side_effect = Exception("Test error")
-    mock_get_indexer.return_value = mock_indexer
-    
-    result = clear_index()
-    
-    assert "success" in result
-    assert result["success"] is False
-    assert "error" in result
-    assert result["error"] == "Test error"
 
 
 @patch("oboyu.mcp.server.get_indexer")
