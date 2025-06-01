@@ -1,0 +1,101 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please provide details about what you'd like to see added to oboyu.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component would this feature affect?
+      options:
+        - Crawler
+        - Indexer
+        - Query Engine
+        - MCP Server
+        - CLI
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem would this feature solve? What pain point are you experiencing?
+      placeholder: I'm trying to do X, but I can't because...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: What would you like to happen? Describe your ideal solution.
+      placeholder: I would like oboyu to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_cases
+    attributes:
+      label: Use Cases
+      description: Provide specific examples of how this feature would be used
+      placeholder: |
+        1. When indexing documentation, I want to...
+        2. When searching for Japanese content, I need to...
+        3. When using the MCP server, it would help if...
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What alternative solutions or workarounds have you considered?
+      placeholder: I've tried using... but it doesn't work because...
+
+  - type: checkboxes
+    id: feature_type
+    attributes:
+      label: Feature Type
+      description: What type of feature is this?
+      options:
+        - label: New functionality
+        - label: Enhancement to existing feature
+        - label: Performance improvement
+        - label: Developer experience improvement
+        - label: Documentation improvement
+        - label: Japanese language support enhancement
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Nice to have
+        - Would be helpful
+        - Important for my workflow
+        - Critical/blocking
+
+  - type: textarea
+    id: japanese_context
+    attributes:
+      label: Japanese Language Context (if applicable)
+      description: If this feature relates to Japanese text processing, provide specific details
+      placeholder: |
+        Specific Japanese language requirements:
+        - Character handling needs
+        - Tokenization improvements
+        - Search accuracy enhancements
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Any other context, screenshots, or examples that would help explain this feature request
