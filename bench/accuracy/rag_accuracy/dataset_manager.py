@@ -12,12 +12,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 try:
-    from ..logger import BenchmarkLogger
+    from bench.logger import BenchmarkLogger
 except ImportError:
     import sys
     from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    from logger import BenchmarkLogger
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+    from bench.logger import BenchmarkLogger
 
 
 @dataclass
@@ -239,6 +239,7 @@ class JMTEBDatasetLoader(DatasetLoader):
         
         Returns:
             Dataset mimicking the structure of JMTEB datasets
+
         """
         if self.dataset_name == "miracl-ja":
             return self._create_miracl_ja_like()
@@ -302,13 +303,13 @@ class JMTEBDatasetLoader(DatasetLoader):
                 other_topic = topics[(i + 1) % len(topics)]
                 query_text = template.format(topic=topic, other_topic=other_topic)
                 relevant_docs = [
-                    doc.doc_id for doc in documents 
+                    doc.doc_id for doc in documents
                     if doc.metadata and (doc.metadata["topic"] == topic or doc.metadata["topic"] == other_topic)
                 ][:5]
             else:
                 query_text = template.format(topic=topic)
                 relevant_docs = [
-                    doc.doc_id for doc in documents 
+                    doc.doc_id for doc in documents
                     if doc.metadata and doc.metadata["topic"] == topic
                 ][:5]
             
@@ -380,7 +381,7 @@ class JMTEBDatasetLoader(DatasetLoader):
             
             query_text = query_types[i % len(query_types)]
             relevant_docs = [
-                doc.doc_id for doc in documents 
+                doc.doc_id for doc in documents
                 if doc.metadata and doc.metadata["topic"] == topic
             ][:3]  # Fewer relevant docs for long document retrieval
             
@@ -465,7 +466,7 @@ A: 原則として、事由が発生してから14日以内に申請してくだ
             
             query_text = query_templates[i % len(query_templates)]
             relevant_docs = [
-                doc.doc_id for doc in documents 
+                doc.doc_id for doc in documents
                 if doc.metadata and doc.metadata["category"] == category
             ][:5]
             
@@ -554,7 +555,7 @@ A: 原則として、事由が発生してから14日以内に申請してくだ
             
             query_text = query_templates[i % len(query_templates)]
             relevant_docs = [
-                doc.doc_id for doc in documents 
+                doc.doc_id for doc in documents
                 if doc.metadata and doc.metadata["topic"] == topic
             ][:6]
             

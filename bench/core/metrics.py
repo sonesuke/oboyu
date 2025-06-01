@@ -1,7 +1,7 @@
 """Unified metrics calculation for all benchmark types."""
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 
 import numpy as np
 
@@ -29,7 +29,7 @@ class IRMetrics:
         }
 
 
-@dataclass 
+@dataclass
 class SpeedMetrics:
     """Speed and performance metrics."""
     
@@ -68,6 +68,7 @@ class MetricsCalculator:
             
         Returns:
             Precision@K value
+
         """
         if k <= 0 or not retrieved_docs:
             return 0.0
@@ -87,6 +88,7 @@ class MetricsCalculator:
             
         Returns:
             Recall@K value
+
         """
         if not relevant_docs or k <= 0:
             return 0.0
@@ -97,8 +99,8 @@ class MetricsCalculator:
     
     @staticmethod
     def calculate_ndcg_at_k(
-        relevant_docs: Set[str], 
-        retrieved_docs: List[str], 
+        relevant_docs: Set[str],
+        retrieved_docs: List[str],
         k: int,
         relevance_scores: Optional[Dict[str, float]] = None
     ) -> float:
@@ -112,6 +114,7 @@ class MetricsCalculator:
             
         Returns:
             NDCG@K value
+
         """
         if k <= 0 or not retrieved_docs or not relevant_docs:
             return 0.0
@@ -147,6 +150,7 @@ class MetricsCalculator:
             
         Returns:
             Reciprocal rank (0 if no relevant documents found)
+
         """
         for i, doc in enumerate(retrieved_docs):
             if doc in relevant_docs:
@@ -164,6 +168,7 @@ class MetricsCalculator:
             
         Returns:
             F1@K value
+
         """
         precision = MetricsCalculator.calculate_precision_at_k(relevant_docs, retrieved_docs, k)
         recall = MetricsCalculator.calculate_recall_at_k(relevant_docs, retrieved_docs, k)
@@ -183,6 +188,7 @@ class MetricsCalculator:
             
         Returns:
             Hit rate (0.0 or 1.0)
+
         """
         top_k = retrieved_docs[:k]
         return 1.0 if any(doc in relevant_docs for doc in top_k) else 0.0
@@ -205,6 +211,7 @@ class MetricsCalculator:
             
         Returns:
             IRMetrics object with all calculated metrics
+
         """
         precision_at_k = {}
         recall_at_k = {}
@@ -238,6 +245,7 @@ class MetricsCalculator:
             
         Returns:
             Aggregated IRMetrics object
+
         """
         if not metrics_list:
             return IRMetrics({}, {}, {}, 0.0, 0.0, {})
@@ -286,6 +294,7 @@ class MetricsCalculator:
             
         Returns:
             SpeedMetrics object
+
         """
         if not response_times:
             return SpeedMetrics(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)

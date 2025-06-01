@@ -7,24 +7,18 @@ for improving RAG (Retrieval-Augmented Generation) performance.
 
 import argparse
 import json
-import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import numpy as np
 import yaml
 
-from oboyu.indexer.config import IndexerConfig
-from oboyu.indexer.database import SearchResult
+from bench.accuracy.rag_accuracy.reranker_evaluator import RerankerEvaluator
+from bench.logger import BenchmarkLogger
 from oboyu.indexer import LegacyIndexer as Indexer
+from oboyu.indexer.config import IndexerConfig
 from oboyu.indexer.reranker import create_reranker
-
-from .logger import BenchmarkLogger
-from .rag_accuracy.dataset_manager import DatasetManager
-from .rag_accuracy.metrics_calculator import MetricsCalculator
-from .rag_accuracy.rag_evaluator import QueryResult, RAGEvaluator
-from .rag_accuracy.reranker_evaluator import RerankingResult, RerankerEvaluator
+from oboyu.indexer.search.search_result import SearchResult
 
 
 class OboyuRerankerAdapter:

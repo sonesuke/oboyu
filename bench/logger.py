@@ -75,3 +75,22 @@ class BenchmarkLogger:
         """
         if self.verbose:
             self.console.print(f"[dim]DEBUG:[/dim] {message}")
+
+    def table(self, headers: list, rows: list) -> None:
+        """Print a formatted table.
+
+        Args:
+            headers: Table headers
+            rows: Table rows
+
+        """
+        from rich.table import Table
+        
+        table = Table()
+        for header in headers:
+            table.add_column(header)
+        
+        for row in rows:
+            table.add_row(*[str(cell) for cell in row])
+        
+        self.console.print(table)

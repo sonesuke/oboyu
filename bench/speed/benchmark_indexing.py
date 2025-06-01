@@ -10,14 +10,13 @@ from typing import Dict, List, Tuple
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
+from bench.config import BENCHMARK_CONFIG, DATA_DIR, OBOYU_CONFIG
+from bench.speed.results import IndexingResult
+from bench.utils import SystemMonitor, Timer, print_metric, print_section
 from oboyu.crawler.crawler import Crawler
 from oboyu.crawler.discovery import discover_documents
-from oboyu.indexer.database import Database
 from oboyu.indexer import LegacyIndexer as Indexer
-
-from bench.config import BENCHMARK_CONFIG, DATA_DIR, OBOYU_CONFIG
-from results import IndexingResult
-from bench.utils import SystemMonitor, Timer, print_metric, print_section
+from oboyu.indexer.database import Database
 
 console = Console()
 
@@ -164,9 +163,7 @@ class IndexingBenchmark:
     
     def _run_warmup(self) -> None:
         """Run warmup with minimal data to initialize models and libraries."""
-        from datetime import datetime
-        
-        console.print(f"[dim]  Initializing models with dummy data...[/dim]")
+        console.print("[dim]  Initializing models with dummy data...[/dim]")
         
         # Create temporary database
         db_path, db = self._create_temp_db()
@@ -214,15 +211,15 @@ class IndexingBenchmark:
         
         # Warmup runs
         if self.warmup_runs > 0:
-            console.print(f"\n[yellow]Phase 1: Warmup[/yellow]")
-            console.print(f"Initializing models and libraries...")
+            console.print("\n[yellow]Phase 1: Warmup[/yellow]")
+            console.print("Initializing models and libraries...")
             console.print(f"[dim]Warmup start: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
             self._run_warmup()
             gc.collect()
             console.print(f"[dim]Warmup complete: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
         
         # Test runs
-        console.print(f"\n[yellow]Phase 2: Test Runs[/yellow]")
+        console.print("\n[yellow]Phase 2: Test Runs[/yellow]")
         console.print(f"Running {self.test_runs} test run(s)...")
         console.print(f"[dim]Test runs start: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
         all_metrics: List[Dict[str, float]] = []
@@ -256,7 +253,7 @@ class IndexingBenchmark:
         console.print(f"[dim]Test runs complete: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
         
         # Calculate aggregated results
-        console.print(f"\n[yellow]Phase 3: Aggregating Results[/yellow]")
+        console.print("\n[yellow]Phase 3: Aggregating Results[/yellow]")
         console.print(f"[dim]Aggregation start: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")
         result = self._aggregate_results(all_metrics)
         console.print(f"[dim]Aggregation end: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}[/dim]")

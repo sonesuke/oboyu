@@ -9,12 +9,11 @@ from typing import Dict, List, Optional, Tuple
 from rich.console import Console
 from rich.progress import track
 
+from bench.config import BENCHMARK_CONFIG, QUERIES_DIR
+from bench.speed.results import SearchBenchmarkResult, SearchResult
+from bench.utils import SystemMonitor, Timer, calculate_statistics, print_metric, print_section
 from oboyu.indexer.database import Database
 from oboyu.indexer.embedding import EmbeddingGenerator
-
-from bench.config import BENCHMARK_CONFIG, QUERIES_DIR
-from results import SearchBenchmarkResult, SearchResult
-from bench.utils import SystemMonitor, Timer, calculate_statistics, print_metric, print_section
 
 console = Console()
 
@@ -253,7 +252,7 @@ if __name__ == "__main__":
     # Test with a dummy database
     import tempfile
 
-    from benchmark_indexing import IndexingBenchmark
+    from bench.speed.benchmark_indexing import IndexingBenchmark
     
     # Create a small test index
     console.print("Creating test index...")
@@ -261,7 +260,7 @@ if __name__ == "__main__":
         temp_path = Path(temp_dir)
         
         # Generate small dataset
-        from generate_test_data import generate_dataset
+        from bench.speed.generate_test_data import generate_dataset
         data_dir = temp_path / "data"
         generate_dataset("small", data_dir / "small", clean=True)
         

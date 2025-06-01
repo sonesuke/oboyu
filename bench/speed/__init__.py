@@ -4,7 +4,7 @@ This module contains tools for measuring and analyzing the speed performance
 of Oboyu's indexing and search operations.
 """
 
-from .runner import BenchmarkRunner
-from .results import BenchmarkRun, ResultsManager
+from bench.speed.results import BenchmarkRun, ResultsManager
+from bench.speed.runner import BenchmarkRunner
 
 __all__ = ["BenchmarkRunner", "BenchmarkRun", "ResultsManager"]

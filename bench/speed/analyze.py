@@ -9,8 +9,8 @@ from rich.console import Console
 from rich.table import Table
 
 from bench.config import RESULTS_DIR
-from reporter import generate_comparison_report
-from results import BenchmarkRun, ResultsManager
+from bench.speed.reporter import generate_comparison_report
+from bench.speed.results import BenchmarkRun, ResultsManager
 from bench.utils import print_header, print_metric, print_section
 
 console = Console()

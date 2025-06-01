@@ -15,14 +15,12 @@ Examples:
     
     # Run accuracy evaluation
     python bench/run_benchmarks.py accuracy --datasets synthetic
+
 """
 
-from .accuracy import run_accuracy_benchmark
-from .reranker import run_reranker_benchmark  
-from .speed.run_speed_benchmark import main as run_speed_benchmark
-
+# Defer imports to avoid circular dependency issues
 __all__ = [
     "run_accuracy_benchmark",
-    "run_reranker_benchmark", 
+    "run_reranker_benchmark",
     "run_speed_benchmark",
 ]

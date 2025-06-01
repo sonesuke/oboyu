@@ -4,7 +4,6 @@ import json
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -43,6 +42,7 @@ class BenchmarkBase(ABC):
             output_dir: Directory to save results
             logger: Logger instance
             monitor_system: Whether to monitor system resources
+
         """
         self.name = name
         self.output_dir = output_dir or Path("bench/results")
@@ -61,6 +61,7 @@ class BenchmarkBase(ABC):
         
         Returns:
             True if setup successful, False otherwise
+
         """
         pass
     
@@ -70,6 +71,7 @@ class BenchmarkBase(ABC):
         
         Returns:
             Dictionary containing benchmark metrics
+
         """
         pass
     
@@ -83,6 +85,7 @@ class BenchmarkBase(ABC):
         
         Returns:
             BenchmarkResult containing all results and metadata
+
         """
         timestamp = get_timestamp()
         start_time = time.time()
@@ -147,6 +150,7 @@ class BenchmarkBase(ABC):
         
         Args:
             result: BenchmarkResult to save
+
         """
         # Save JSON results
         json_path = self.output_dir / f"{self.name}_{result.timestamp}.json"
@@ -165,6 +169,7 @@ class BenchmarkBase(ABC):
         Args:
             result: BenchmarkResult to save
             report_path: Path to save report
+
         """
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(f"Oboyu {self.name} Benchmark Report\n")
@@ -210,6 +215,7 @@ class BenchmarkBase(ABC):
             
         Returns:
             List of BenchmarkResult objects
+
         """
         # Find all result files for this benchmark
         pattern = f"{self.name}_*.json"
