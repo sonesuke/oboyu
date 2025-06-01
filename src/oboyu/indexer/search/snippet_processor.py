@@ -10,7 +10,7 @@ from .snippet_strategies import (
     SentenceBoundaryStrategy,
     SnippetStrategy as SnippetStrategyBase,
 )
-from .snippet_types import SnippetConfig, SnippetLevel, SnippetMatch, SnippetStrategy
+from .snippet_types import SnippetConfig, SnippetMatch, SnippetStrategy
 from .text_highlighter import TextHighlighter
 
 

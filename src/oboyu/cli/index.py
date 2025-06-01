@@ -59,7 +59,7 @@ def clear(
     base_command = BaseCommand(ctx)
     config_manager = base_command.get_config_manager()
     indexing_service = IndexingService(
-        config_manager, 
+        config_manager,
         base_command.services.indexer_factory,
         base_command.services.console_manager
     )
@@ -101,7 +101,7 @@ def status(
     base_command = BaseCommand(ctx)
     config_manager = base_command.get_config_manager()
     indexing_service = IndexingService(
-        config_manager, 
+        config_manager,
         base_command.services.indexer_factory,
         base_command.services.console_manager
     )
@@ -168,7 +168,7 @@ def diff(
     base_command = BaseCommand(ctx)
     config_manager = base_command.get_config_manager()
     indexing_service = IndexingService(
-        config_manager, 
+        config_manager,
         base_command.services.indexer_factory,
         base_command.services.console_manager
     )
@@ -283,7 +283,7 @@ def index(
 
     config_manager = base_command.get_config_manager()
     indexing_service = IndexingService(
-        config_manager, 
+        config_manager,
         base_command.services.indexer_factory,
         base_command.services.console_manager
     )
