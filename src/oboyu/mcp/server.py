@@ -16,7 +16,8 @@ from oboyu.indexer.config.model_config import ModelConfig
 from oboyu.indexer.config.processing_config import ProcessingConfig
 from oboyu.indexer.config.search_config import SearchConfig
 from oboyu.indexer.search.search_filters import SearchFilters
-from oboyu.indexer.search.snippet_processor import SnippetConfig, SnippetProcessor
+from oboyu.indexer.search.snippet_processor import SnippetProcessor
+from oboyu.indexer.search.snippet_types import SnippetConfig
 from oboyu.mcp.context import db_path_global, mcp
 
 # Configure logging

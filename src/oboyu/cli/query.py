@@ -89,6 +89,8 @@ def query(
             
             # Apply configuration from file
             if indexer_config.get("use_reranker", False):
+                assert config.search is not None, "SearchConfig should be initialized"
+                assert config.model is not None, "ModelConfig should be initialized"
                 config.search.use_reranker = True
                 config.model.use_reranker = True
             
