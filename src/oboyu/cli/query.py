@@ -5,9 +5,8 @@ This module provides the command-line interface for querying indexed documents.
 
 import logging
 import os
-import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import typer
 from rich.console import Console
@@ -18,8 +17,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from oboyu.cli.base import BaseCommand
 from oboyu.cli.interactive_session import InteractiveQuerySession
-from oboyu.common.paths import DEFAULT_DB_PATH
-from oboyu.indexer import Indexer
+from oboyu.cli.services.query_service import QueryService
 from oboyu.indexer.search.search_result import SearchResult
 
 # Create Typer app
@@ -70,33 +68,20 @@ def query(
         base_command.console.print("❌ Error: Query argument is required (or use --interactive)", style="red")
         raise typer.Exit(1)
 
-    # Get configuration manager
+    # Get configuration manager and query service
     config_manager = base_command.get_config_manager()
-
-    # Get query engine configuration
-    query_config = config_manager.get_section("query")
-
-    # Override with command-line options
-    cli_overrides: Dict[str, Any] = {}
-    if top_k is not None:
-        cli_overrides["top_k"] = top_k
-    if vector_weight is not None:
-        cli_overrides["vector_weight"] = vector_weight
-    if bm25_weight is not None:
-        cli_overrides["bm25_weight"] = bm25_weight
-    if rerank is not None:
-        cli_overrides["use_reranker"] = rerank
-
-    query_config = config_manager.merge_cli_overrides("query", cli_overrides)
-
-    # Determine database path
-    database_path = Path(db_path or query_config.get("database_path") or DEFAULT_DB_PATH)
+    query_service = QueryService(config_manager)
 
     try:
-        # Initialize indexer
-        indexer = Indexer.from_path(database_path)
-
         if interactive:
+            # Get query configuration for interactive session
+            query_config = query_service.get_query_config(top_k, vector_weight, bm25_weight, rerank)
+            database_path = query_service.get_database_path(db_path)
+            
+            # Initialize indexer for interactive session
+            from oboyu.indexer import Indexer
+            indexer = Indexer.from_path(Path(database_path))
+            
             # Start interactive session
             session_config = {
                 "mode": mode,
@@ -108,36 +93,22 @@ def query(
             session = InteractiveQuerySession(indexer, session_config, base_command.console)
             session.run()
         else:
-            # Execute single query
+            # Execute single query using service
             # At this point, query is guaranteed to be non-None due to validation above
             assert query is not None, "Query should be validated as non-None by this point"
             
-            start_time = time.time()
-
-            # Execute search based on mode
-            if mode == "vector":
-                results = indexer.vector_search(query, top_k=query_config.get("top_k", 10))
-            elif mode == "bm25":
-                results = indexer.bm25_search(query, top_k=query_config.get("top_k", 10))
-            else:  # hybrid
-                results = indexer.hybrid_search(
-                    query,
-                    top_k=query_config.get("top_k", 10),
-                    vector_weight=query_config.get("vector_weight", 0.7),
-                    bm25_weight=query_config.get("bm25_weight", 0.3),
-                )
-
-            # Apply reranking if enabled
-            if query_config.get("use_reranker", False) and results:
-                try:
-                    results = indexer.rerank_results(query, results)
-                except Exception as rerank_error:
-                    base_command.console.print(f"⚠️  Reranking failed: {rerank_error}", style="yellow")
-
-            elapsed_time = time.time() - start_time
+            result = query_service.execute_query(
+                query=query,
+                mode=mode,
+                top_k=top_k,
+                vector_weight=vector_weight,
+                bm25_weight=bm25_weight,
+                db_path=db_path,
+                rerank=rerank,
+            )
 
             # Display results
-            _display_results(base_command.console, results, elapsed_time, mode, explain, format)
+            _display_results(base_command.console, result.results, result.elapsed_time, result.mode, explain, format)
 
     except Exception as e:
         base_command.console.print(f"❌ Search failed: {e}", style="red")

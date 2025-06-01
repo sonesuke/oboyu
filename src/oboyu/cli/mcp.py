@@ -11,7 +11,7 @@ from rich.console import Console
 from typing_extensions import Annotated
 
 from oboyu.cli.base import BaseCommand
-from oboyu.mcp.context import db_path_global, mcp
+from oboyu.cli.services.mcp_service import MCPService
 
 # Create Typer app
 app = typer.Typer(
@@ -66,15 +66,15 @@ def main(
     if transport not in valid_transports:
         raise typer.BadParameter(f"Transport must be one of: {', '.join(valid_transports)}")
 
-    # Create indexer configuration to get resolved database path
-    indexer_config = base_command.create_indexer_config(db_path=str(db_path) if db_path else None)
-    resolved_db_path = str(indexer_config.db_path)
+    # Get configuration manager and MCP service
+    config_manager = base_command.get_config_manager()
+    mcp_service = MCPService(config_manager)
+
+    # Get resolved database path
+    resolved_db_path = mcp_service.get_database_path(db_path)
 
     if verbose:
         base_command.print_database_path(resolved_db_path)
-
-    # Store DB path in a global variable that our tools can access
-    db_path_global.value = resolved_db_path
 
     # Use hierarchical logger for MCP server startup
     if verbose:
@@ -113,8 +113,8 @@ def main(
         # Cast to the correct type for mypy type checking
         mcp_transport: Literal["stdio", "sse", "streamable-http"] = transport  # type: ignore
 
-        # Now we can run with the proper type
-        mcp.run(mcp_transport)
+        # Start the server using the service
+        mcp_service.start_server(db_path, mcp_transport, port)
     except Exception as e:
         base_command.console.print(f"Error starting MCP server: {str(e)}", style="red")
         raise typer.Exit(code=1)
