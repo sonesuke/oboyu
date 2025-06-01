@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -152,11 +152,12 @@ class Indexer:
             hybrid_search=hybrid_search,
         )
 
-    def index_documents(self, crawler_results: List[CrawlerResult]) -> Dict[str, Any]:
+    def index_documents(self, crawler_results: List[CrawlerResult], progress_callback: Optional[Callable[[str, int, int], None]] = None) -> Dict[str, Any]:
         """Index documents using the coordinated services.
 
         Args:
             crawler_results: Results from document crawling
+            progress_callback: Optional callback for progress updates
 
         Returns:
             Indexing result summary
@@ -166,9 +167,14 @@ class Indexer:
             return {"indexed_chunks": 0, "total_documents": 0}
 
         try:
-            # Process documents into chunks
+            # Process documents into chunks with progress tracking
             all_chunks = []
-            for result in crawler_results:
+            total_docs = len(crawler_results)
+            
+            if progress_callback:
+                progress_callback("processing", 0, total_docs)
+                
+            for i, result in enumerate(crawler_results):
                 chunks = self.document_processor.process_document(
                     path=result.path,
                     content=result.content,
@@ -177,23 +183,41 @@ class Indexer:
                     metadata=result.metadata,
                 )
                 all_chunks.extend(chunks)
+                
+                if progress_callback:
+                    progress_callback("processing", i + 1, total_docs)
 
             if not all_chunks:
                 return {"indexed_chunks": 0, "total_documents": len(crawler_results)}
 
-            # Store chunks in database
-            self.database_service.store_chunks(all_chunks)
+            # Store chunks in database with progress tracking
+            total_chunks = len(all_chunks)
+            if progress_callback:
+                progress_callback("storing", 0, total_chunks)
+            
+            self.database_service.store_chunks(all_chunks, progress_callback=progress_callback)
 
-            # Generate embeddings
+            # Generate embeddings with progress tracking
             texts_for_embedding = self.document_processor.prepare_for_embedding(all_chunks)
-            embeddings = self.embedding_service.generate_embeddings(texts_for_embedding)
+            logger.info(f"Generating embeddings for {len(texts_for_embedding)} text chunks...")
+            
+            if progress_callback:
+                progress_callback("embedding", 0, len(texts_for_embedding))
+                
+            embeddings = self.embedding_service.generate_embeddings(texts_for_embedding, progress_callback=progress_callback)
 
-            # Store embeddings
+            # Store embeddings with progress tracking
             chunk_ids = [chunk.id for chunk in all_chunks]
-            self.database_service.store_embeddings(chunk_ids, embeddings)
+            if progress_callback:
+                progress_callback("storing_embeddings", 0, len(chunk_ids))
+                
+            self.database_service.store_embeddings(chunk_ids, embeddings, progress_callback=progress_callback)
 
-            # Update BM25 index
-            self.bm25_indexer.index_chunks(all_chunks)
+            # Update BM25 index with progress tracking
+            if progress_callback:
+                progress_callback("bm25_indexing", 0, 5)  # BM25 has 5 main steps
+                
+            self.bm25_indexer.index_chunks(all_chunks, progress_callback=progress_callback)
 
             return {
                 "indexed_chunks": len(all_chunks),

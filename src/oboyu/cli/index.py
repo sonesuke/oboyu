@@ -537,8 +537,8 @@ def index(
             # Crawl directory to get documents
             crawler_results = crawler.crawl(directory, progress_callback=indexer_progress_callback)
 
-            # Index the crawled documents
-            result = indexer.index_documents(crawler_results)
+            # Index the crawled documents with progress callback
+            result = indexer.index_documents(crawler_results, progress_callback=indexer_progress_callback)
             chunks_indexed = result.get("indexed_chunks", 0)
             files_processed = result.get("total_documents", 0)
 

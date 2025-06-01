@@ -14,7 +14,7 @@ class ProcessingConfig:
     chunk_overlap: int = 256
 
     # Processing settings
-    max_workers: int = 2
+    max_workers: int = 4
 
     # Database settings
     db_path: Union[str, Path] = "index.db"

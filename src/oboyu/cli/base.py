@@ -86,9 +86,13 @@ class BaseCommand:
         from oboyu.indexer.config.processing_config import ProcessingConfig
         from oboyu.indexer.config.search_config import SearchConfig
 
-        # Create modular config from dict
-        model_config = ModelConfig()
-        search_config = SearchConfig()
+        # Create modular config from dict with overrides
+        model_config = ModelConfig(
+            use_reranker=indexer_config_dict.get("use_reranker", False)
+        )
+        search_config = SearchConfig(
+            use_reranker=indexer_config_dict.get("use_reranker", False)
+        )
         processing_config = ProcessingConfig(db_path=Path(indexer_config_dict["db_path"]))
 
         return IndexerConfig(model=model_config, search=search_config, processing=processing_config)

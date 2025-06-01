@@ -148,14 +148,28 @@ class DatabaseService:
             # Memory and performance settings
             self.conn.execute("SET memory_limit='2GB'")
             self.conn.execute("SET threads=4")
+            
+            # Enable HNSW experimental persistence for file-based databases
+            self.conn.execute("SET hnsw_enable_experimental_persistence=true")
 
             # Enable experimental features if requested
             if self.enable_experimental_features:
-                self.conn.execute("SET enable_experimental_features=true")
+                try:
+                    self.conn.execute("SET enable_experimental_features=true")
+                except Exception:
+                    # Try alternative setting name for newer DuckDB versions
+                    try:
+                        self.conn.execute("SET enable_external_access=true")
+                    except Exception as inner_e:
+                        logger.debug(f"Failed to set enable_external_access: {inner_e}")
 
             # Configure auto-vacuum
             if self.auto_vacuum:
-                self.conn.execute("PRAGMA auto_vacuum=INCREMENTAL")
+                try:
+                    self.conn.execute("PRAGMA auto_vacuum=INCREMENTAL")
+                except Exception as e:
+                    # Auto-vacuum might not be supported in newer DuckDB versions
+                    logger.debug(f"Auto-vacuum configuration failed: {e}")
 
         except Exception as e:
             logger.warning(f"Failed to configure database settings: {e}")
@@ -230,7 +244,7 @@ class DatabaseService:
                 logger.error(f"Rollback failed: {rollback_error}")
             raise e
 
-    def store_chunks(self, chunks: List[Chunk], progress_callback: Optional[Callable[[int, int], None]] = None) -> None:
+    def store_chunks(self, chunks: List[Chunk], progress_callback: Optional[Callable[[str, int, int], None]] = None) -> None:
         """Store document chunks in the database.
 
         Args:
@@ -283,15 +297,22 @@ class DatabaseService:
 
                 # Report progress
                 if progress_callback and (i % 100 == 0 or i == total_chunks - 1):
-                    progress_callback(i + 1, total_chunks)
+                    progress_callback("storing", i + 1, total_chunks)
 
-    def store_embeddings(self, chunk_ids: List[str], embeddings: List[NDArray[np.float32]], model_name: str = "cl-nagoya/ruri-v3-30m") -> None:
+    def store_embeddings(
+        self,
+        chunk_ids: List[str],
+        embeddings: List[NDArray[np.float32]],
+        model_name: str = "cl-nagoya/ruri-v3-30m",
+        progress_callback: Optional[Callable[[str, int, int], None]] = None
+    ) -> None:
         """Store embedding vectors in the database.
 
         Args:
             chunk_ids: List of chunk IDs
             embeddings: List of embedding vectors
             model_name: Name of the embedding model
+            progress_callback: Optional callback for progress updates
 
         """
         if len(chunk_ids) != len(embeddings):
@@ -300,8 +321,10 @@ class DatabaseService:
         if not self.conn:
             self.initialize()
 
+        total_embeddings = len(chunk_ids)
+        
         with self.transaction() as conn:
-            for chunk_id, embedding in zip(chunk_ids, embeddings):
+            for i, (chunk_id, embedding) in enumerate(zip(chunk_ids, embeddings)):
                 # Generate embedding ID
                 import uuid
 
@@ -314,8 +337,12 @@ class DatabaseService:
                     (id, chunk_id, model, vector, created_at)
                     VALUES (?, ?, ?, ?, ?)
                 """,
-                    [embedding_id, chunk_id, model_name, embedding.tolist(), datetime.now()],
+                    [embedding_id, chunk_id, model_name, embedding.astype(np.float32).tolist(), datetime.now()],
                 )
+                
+                # Report progress
+                if progress_callback and (i % 100 == 0 or i == total_embeddings - 1):
+                    progress_callback("storing_embeddings", i + 1, total_embeddings)
 
     def vector_search(
         self, query_vector: NDArray[np.float32], limit: int = 10, language_filter: Optional[str] = None, similarity_threshold: float = 0.0
@@ -335,17 +362,21 @@ class DatabaseService:
         conn = self._ensure_connection()
 
         try:
+            # Ensure query_vector is float32
+            query_vector_f32 = query_vector.astype(np.float32)
+            
             # Build query with optional language filter
             where_clause = ""
-            params = [query_vector.tolist(), limit]
+            # Use regular Python floats but cast in SQL
+            params = [query_vector_f32.tolist(), limit]
 
             if language_filter:
                 where_clause = "AND c.language = ?"
                 params.append(language_filter)
 
             if similarity_threshold > 0:
-                where_clause += " AND array_cosine_similarity(e.vector, ?) >= ?"
-                params.extend([query_vector.tolist(), similarity_threshold])
+                where_clause += " AND array_cosine_similarity(e.vector, CAST(? AS FLOAT[256])) >= ?"
+                params.extend([query_vector_f32.tolist(), similarity_threshold])
 
             query = f"""
                 SELECT
@@ -356,7 +387,7 @@ class DatabaseService:
                     c.chunk_index,
                     c.language,
                     c.metadata,
-                    array_cosine_similarity(e.vector, ?) as score
+                    array_cosine_similarity(e.vector, CAST(? AS FLOAT[256])) as score
                 FROM chunks c
                 JOIN embeddings e ON c.id = e.chunk_id
                 WHERE 1=1 {where_clause}

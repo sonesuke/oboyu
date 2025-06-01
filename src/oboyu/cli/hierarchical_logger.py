@@ -163,7 +163,9 @@ class HierarchicalLogger:
             current_time = time.time()
             if not hasattr(self, "_last_refresh_time"):
                 self._last_refresh_time = 0.0
-            if current_time - self._last_refresh_time > 0.5:  # Throttle to every 0.5 seconds
+            # Force refresh for completion indicators or throttle for regular updates
+            is_completion = description and ("100%" in description or description.endswith("..."))
+            if is_completion or current_time - self._last_refresh_time > 0.5:  # Throttle to every 0.5 seconds except for completion
                 self._refresh_display()
                 self._last_refresh_time = current_time
 
@@ -253,9 +255,7 @@ class HierarchicalLogger:
         """Refresh the display with current state."""
         if self.live:
             output = Text()
-            for i, operation in enumerate(self.operations):
-                if i > 0:
-                    output.append("\n")
+            for operation in self.operations:
                 op_lines = self._render_operation(operation)
                 for line in op_lines:
                     output.append(line)

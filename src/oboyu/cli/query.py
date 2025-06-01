@@ -462,15 +462,18 @@ def query(
     if bm25_weight is not None:
         cli_overrides["bm25_weight"] = bm25_weight
     if rerank is not None:
-        cli_overrides["rerank"] = rerank
+        cli_overrides["use_reranker"] = rerank
 
     query_config = config_manager.merge_cli_overrides("query", cli_overrides)
 
     # Get top_k value for use later
     top_k_value = int(query_config.get("top_k", 5))
 
-    # Create indexer configuration
-    indexer_config = base_command.create_indexer_config(db_path=str(db_path) if db_path else None)
+    # Create indexer configuration with reranker setting
+    indexer_config = base_command.create_indexer_config(
+        db_path=str(db_path) if db_path else None,
+        use_reranker=query_config.get("use_reranker", False)
+    )
 
     # Show database path
     base_command.print_database_path(str(indexer_config.processing.db_path if indexer_config.processing else "oboyu.db"))

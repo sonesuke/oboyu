@@ -48,14 +48,14 @@ class HybridSearch:
             # Add vector search results
             for result in vector_results:
                 chunk_id = result.chunk_id
-                weighted_score = result.score * self.vector_weight
+                weighted_score = float(result.score) * self.vector_weight
                 combined_scores[chunk_id] = combined_scores.get(chunk_id, 0) + weighted_score
                 results_map[chunk_id] = result
 
             # Add BM25 search results
             for result in bm25_results:
                 chunk_id = result.chunk_id
-                weighted_score = result.score * self.bm25_weight
+                weighted_score = float(result.score) * self.bm25_weight
                 combined_scores[chunk_id] = combined_scores.get(chunk_id, 0) + weighted_score
 
                 # Use the result from BM25 if not already in map (or update with BM25 version)

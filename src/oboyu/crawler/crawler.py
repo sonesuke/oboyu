@@ -152,13 +152,23 @@ class Crawler:
                     current_time = time.time()
 
                     # Report more frequently: every completion or every 2 seconds
-                    if progress_callback and (completed_docs == 1 or current_time - last_progress_time >= 2.0 or completed_docs % 10 == 0):
+                    should_report = (
+                        completed_docs == 1
+                        or current_time - last_progress_time >= 2.0
+                        or completed_docs % 10 == 0
+                        or completed_docs == total_docs
+                    )
+                    if progress_callback and should_report:
                         progress_callback("crawling", completed_docs, total_docs)
                         last_progress_time = current_time
         finally:
             # Stop the periodic updater
             stop_periodic_updates.set()
             update_thread.join(timeout=1.0)
+            
+            # Always send final progress update to ensure completion
+            if progress_callback and completed_docs > 0:
+                progress_callback("crawling", completed_docs, total_docs)
 
         return results
 

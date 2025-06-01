@@ -103,7 +103,11 @@ class CrossEncoderReranker(BaseReranker):
         all_scores: List[float] = []
         for i in range(0, len(pairs), self.batch_size):
             batch = pairs[i : i + self.batch_size]
-            scores = self.model.predict(batch, show_progress_bar=False)
+            # Suppress tokenizer warnings
+            import warnings
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="Be aware, overflowing tokens")
+                scores = self.model.predict(batch, show_progress_bar=False)
             all_scores.extend(scores)
 
         # Convert scores to numpy array for easier manipulation
