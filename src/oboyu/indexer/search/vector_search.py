@@ -25,12 +25,7 @@ class VectorSearch:
         """
         self.database_service = database_service
 
-    def search(
-        self,
-        query_vector: NDArray[np.float32],
-        limit: int,
-        language_filter: Optional[str] = None
-    ) -> List[SearchResult]:
+    def search(self, query_vector: NDArray[np.float32], limit: int, language_filter: Optional[str] = None) -> List[SearchResult]:
         """Execute vector similarity search.
 
         Args:
@@ -44,30 +39,26 @@ class VectorSearch:
         """
         try:
             # Execute vector search through database service
-            raw_results = self.database_service.vector_search(
-                query_vector=query_vector,
-                limit=limit,
-                language_filter=language_filter
-            )
+            raw_results = self.database_service.vector_search(query_vector=query_vector, limit=limit, language_filter=language_filter)
 
             # Convert to SearchResult objects
             search_results = []
             for result in raw_results:
                 try:
                     # Parse metadata if it's a string
-                    metadata = result.get('metadata', {})
+                    metadata = result.get("metadata", {})
                     if isinstance(metadata, str):
                         metadata = json.loads(metadata)
 
                     search_result = SearchResult(
-                        chunk_id=result['id'],
-                        path=result['path'],
-                        title=result['title'],
-                        content=result['content'],
-                        chunk_index=result['chunk_index'],
-                        language=result['language'],
+                        chunk_id=result["id"],
+                        path=result["path"],
+                        title=result["title"],
+                        content=result["content"],
+                        chunk_index=result["chunk_index"],
+                        language=result["language"],
                         metadata=metadata,
-                        score=result.get('score', 0.0)
+                        score=result.get("score", 0.0),
                     )
                     search_results.append(search_result)
 

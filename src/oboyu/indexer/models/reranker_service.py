@@ -1,12 +1,220 @@
 """Reranker service for improving search result relevance."""
 
 import logging
-from typing import List, Optional
+from dataclasses import dataclass, replace
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from oboyu.indexer.reranker import BaseReranker, create_reranker
-from oboyu.indexer.search.search_result import SearchResult
+import numpy as np
+
+from oboyu.common.model_manager import RerankerModelManager
+
+if TYPE_CHECKING:
+    from oboyu.indexer.search.search_result import SearchResult
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class RerankedResult:
+    """Result after reranking with relevance score."""
+
+    original_result: "SearchResult"
+    rerank_score: float
+
+    def to_search_result(self) -> "SearchResult":
+        """Convert back to SearchResult with updated score."""
+        # Use dataclasses.replace to create a new instance with updated score
+        return replace(self.original_result, score=self.rerank_score)
+
+
+class BaseReranker:
+    """Base class for reranker implementations."""
+
+    def __init__(
+        self,
+        model_name: str = "cl-nagoya/ruri-reranker-small",
+        device: str = "cpu",
+        batch_size: int = 8,
+        max_length: int = 512,
+    ) -> None:
+        """Initialize the base reranker."""
+        self.model_name = model_name
+        self.device = device
+        self.batch_size = batch_size
+        self.max_length = max_length
+        self._model: Optional[Any] = None
+
+    def rerank(
+        self,
+        query: str,
+        results: List["SearchResult"],
+        top_k: Optional[int] = None,
+        threshold: Optional[float] = None,
+    ) -> List["SearchResult"]:
+        """Rerank search results based on query-document relevance."""
+        raise NotImplementedError("Subclasses must implement rerank method")
+
+
+class CrossEncoderReranker(BaseReranker):
+    """Reranker using sentence-transformers CrossEncoder models."""
+
+    def __init__(
+        self,
+        model_name: str = "cl-nagoya/ruri-reranker-small",
+        device: str = "cpu",
+        batch_size: int = 8,
+        max_length: int = 512,
+    ) -> None:
+        """Initialize the CrossEncoder reranker with lazy loading."""
+        super().__init__(model_name, device, batch_size, max_length)
+        logger.debug(f"Initializing CrossEncoder reranker with model: {model_name}")
+
+        # Create model manager for unified model loading
+        self.model_manager = RerankerModelManager(
+            model_name=model_name,
+            device=device,
+            use_onnx=False,  # This is the PyTorch version
+            max_length=max_length,
+        )
+
+    @property
+    def model(self) -> Any:  # noqa: ANN401
+        """Lazy load the CrossEncoder model."""
+        return self.model_manager.model
+
+    def rerank(
+        self,
+        query: str,
+        results: List["SearchResult"],
+        top_k: Optional[int] = None,
+        threshold: Optional[float] = None,
+    ) -> List["SearchResult"]:
+        """Rerank search results using CrossEncoder."""
+        if not results:
+            return []
+
+        logger.debug(f"Reranking {len(results)} results for query: {query[:50]}...")
+
+        # Prepare query-document pairs
+        pairs = [[query, result.content] for result in results]
+
+        # Score in batches
+        all_scores: List[float] = []
+        for i in range(0, len(pairs), self.batch_size):
+            batch = pairs[i : i + self.batch_size]
+            scores = self.model.predict(batch, show_progress_bar=False)
+            all_scores.extend(scores)
+
+        # Convert scores to numpy array for easier manipulation
+        scores_array = np.array(all_scores)
+
+        # Create reranked results
+        reranked_results: List[RerankedResult] = []
+        for result, score in zip(results, scores_array):
+            # Normalize score to [0, 1] range using sigmoid
+            normalized_score = float(1 / (1 + np.exp(-score)))
+            reranked_results.append(RerankedResult(result, normalized_score))
+
+        # Sort by rerank score (descending)
+        reranked_results.sort(key=lambda x: x.rerank_score, reverse=True)
+
+        # Apply threshold if specified
+        if threshold is not None:
+            reranked_results = [r for r in reranked_results if r.rerank_score >= threshold]
+
+        # Apply top_k if specified
+        if top_k is not None:
+            reranked_results = reranked_results[:top_k]
+
+        # Convert back to SearchResult objects
+        final_results = [r.to_search_result() for r in reranked_results]
+
+        logger.debug(f"Reranking complete. Returning {len(final_results)} results")
+        return final_results
+
+
+class ONNXCrossEncoderReranker(BaseReranker):
+    """ONNX-optimized CrossEncoder reranker for faster CPU inference."""
+
+    def __init__(
+        self,
+        model_name: str = "cl-nagoya/ruri-reranker-small",
+        device: str = "cpu",
+        batch_size: int = 8,
+        max_length: int = 512,
+        cache_dir: Optional[Path] = None,
+        quantization_config: Optional[Dict[str, Any]] = None,
+        optimization_level: str = "none",
+    ) -> None:
+        """Initialize the ONNX CrossEncoder reranker with lazy loading."""
+        super().__init__(model_name, device, batch_size, max_length)
+        logger.debug(f"Initializing ONNX CrossEncoder reranker with model: {model_name}")
+
+        # Create model manager for unified model loading
+        self.model_manager = RerankerModelManager(
+            model_name=model_name,
+            device=device,
+            use_onnx=True,
+            max_length=max_length,
+            cache_dir=cache_dir,
+            quantization_config=quantization_config or {"enabled": True, "weight_type": "uint8"},
+            optimization_level=optimization_level,
+        )
+
+    @property
+    def model(self) -> Any:  # noqa: ANN401
+        """Lazy load the ONNX model and tokenizer."""
+        return self.model_manager.model
+
+    def rerank(
+        self,
+        query: str,
+        results: List["SearchResult"],
+        top_k: Optional[int] = None,
+        threshold: Optional[float] = None,
+    ) -> List["SearchResult"]:
+        """Rerank search results using ONNX CrossEncoder."""
+        if not results:
+            return []
+
+        logger.debug(f"ONNX reranking {len(results)} results for query: {query[:50]}...")
+
+        # Prepare query-document pairs
+        queries = [query] * len(results)
+        documents = [result.content for result in results]
+
+        # Score using ONNX model
+        import time
+
+        predict_start = time.time()
+        logger.debug(f"ONNX predict starting with {len(documents)} documents, batch_size={self.batch_size}")
+        scores = self.model.predict(queries, documents, batch_size=self.batch_size)
+        predict_time = time.time() - predict_start
+        logger.debug(f"ONNX predict completed in {predict_time:.2f}s")
+
+        # Create reranked results
+        reranked_results: List[RerankedResult] = []
+        for result, score in zip(results, scores):
+            # Scores from ONNX model are already normalized
+            reranked_results.append(RerankedResult(result, float(score)))
+
+        # Sort by rerank score (descending)
+        reranked_results.sort(key=lambda x: x.rerank_score, reverse=True)
+
+        # Apply threshold if specified
+        if threshold is not None:
+            reranked_results = [r for r in reranked_results if r.rerank_score >= threshold]
+
+        # Apply top_k if specified
+        if top_k is not None:
+            reranked_results = reranked_results[:top_k]
+
+        # Convert back to SearchResult objects
+        final_results = [r.to_search_result() for r in reranked_results]
+
+        logger.debug(f"ONNX reranking complete. Returning {len(final_results)} results")
+        return final_results
 
 
 class RerankerService:
@@ -19,21 +227,11 @@ class RerankerService:
         device: str = "cpu",
         batch_size: int = 16,
         max_length: int = 512,
-        quantization_config: Optional[dict] = None,
+        quantization_config: Optional[Dict[str, Any]] = None,
         optimization_level: str = "none",
+        cache_dir: Optional[Path] = None,
     ) -> None:
-        """Initialize reranker service.
-
-        Args:
-            model_name: Name of the reranker model
-            use_onnx: Whether to use ONNX optimization
-            device: Device to run model on
-            batch_size: Batch size for reranking
-            max_length: Maximum sequence length
-            quantization_config: ONNX quantization configuration
-            optimization_level: ONNX optimization level
-
-        """
+        """Initialize reranker service."""
         self.model_name = model_name
         self.use_onnx = use_onnx
         self.device = device
@@ -43,68 +241,74 @@ class RerankerService:
         # Initialize reranker
         self.reranker: Optional[BaseReranker] = None
         try:
-            self.reranker = create_reranker(
-                model_name=model_name,
-                use_onnx=use_onnx,
-                device=device,
-                batch_size=batch_size,
-                max_length=max_length,
-                quantization_config=quantization_config,
-                optimization_level=optimization_level,
-            )
+            if use_onnx:
+                self.reranker = ONNXCrossEncoderReranker(
+                    model_name=model_name,
+                    device=device,
+                    batch_size=batch_size,
+                    max_length=max_length,
+                    cache_dir=cache_dir,
+                    quantization_config=quantization_config,
+                    optimization_level=optimization_level,
+                )
+            else:
+                self.reranker = CrossEncoderReranker(
+                    model_name=model_name,
+                    device=device,
+                    batch_size=batch_size,
+                    max_length=max_length,
+                )
         except Exception as e:
             logger.error(f"Failed to initialize reranker: {e}")
 
-    def rerank(self, query: str, results: List[SearchResult]) -> List[SearchResult]:
-        """Rerank search results based on query relevance.
-
-        Args:
-            query: Original search query
-            results: List of search results to rerank
-
-        Returns:
-            Reranked search results
-
-        """
+    def rerank(
+        self,
+        query: str,
+        results: List["SearchResult"],
+        top_k: Optional[int] = None,
+        threshold: Optional[float] = None,
+    ) -> List["SearchResult"]:
+        """Rerank search results based on query relevance."""
         if not self.reranker or not results:
             return results
 
         try:
-            # Prepare query-document pairs
-            pairs = [(query, result.content) for result in results]
-            
-            # Get reranking scores
-            scores = self.reranker.rerank(pairs)
-            
-            # Create new results with updated scores
-            reranked_results = []
-            for result, score in zip(results, scores):
-                reranked_result = SearchResult(
-                    chunk_id=result.chunk_id,
-                    path=result.path,
-                    title=result.title,
-                    content=result.content,
-                    chunk_index=result.chunk_index,
-                    language=result.language,
-                    metadata=result.metadata,
-                    score=score
-                )
-                reranked_results.append(reranked_result)
-            
-            # Sort by new scores
-            reranked_results.sort(key=lambda x: x.score, reverse=True)
-            
-            return reranked_results
-
+            return self.reranker.rerank(query, results, top_k, threshold)
         except Exception as e:
             logger.error(f"Reranking failed: {e}")
             return results
 
     def is_available(self) -> bool:
-        """Check if reranker is available.
-
-        Returns:
-            True if reranker is available, False otherwise
-
-        """
+        """Check if reranker is available."""
         return self.reranker is not None
+
+
+# Factory function for backward compatibility
+def create_reranker(
+    model_name: str = "cl-nagoya/ruri-reranker-small",
+    use_onnx: bool = True,
+    device: str = "cpu",
+    batch_size: int = 8,
+    max_length: int = 512,
+    cache_dir: Optional[Path] = None,
+    quantization_config: Optional[Dict[str, Any]] = None,
+    optimization_level: str = "none",
+) -> BaseReranker:
+    """Create appropriate reranker instance."""
+    if use_onnx:
+        return ONNXCrossEncoderReranker(
+            model_name=model_name,
+            device=device,
+            batch_size=batch_size,
+            max_length=max_length,
+            cache_dir=cache_dir,
+            quantization_config=quantization_config,
+            optimization_level=optimization_level,
+        )
+    else:
+        return CrossEncoderReranker(
+            model_name=model_name,
+            device=device,
+            batch_size=batch_size,
+            max_length=max_length,
+        )

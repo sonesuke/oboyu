@@ -23,11 +23,6 @@ DEFAULT_CONFIG = {
         ],
         "max_file_size": 10 * 1024 * 1024,  # 10MB
         "follow_symlinks": False,
-        "japanese_encodings": [
-            "utf-8",
-            "shift-jis",
-            "euc-jp",
-        ],
         "max_workers": 4,  # Default number of worker threads
         "respect_gitignore": True,  # Whether to respect .gitignore files
     }
@@ -39,7 +34,6 @@ DEFAULT_INCLUDE_PATTERNS = ["*.txt", "*.md", "*.html", "*.py", "*.java"]
 DEFAULT_EXCLUDE_PATTERNS = ["*/node_modules/*", "*/venv/*"]
 DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 DEFAULT_FOLLOW_SYMLINKS = False
-DEFAULT_JAPANESE_ENCODINGS = ["utf-8", "shift-jis", "euc-jp"]
 DEFAULT_MAX_WORKERS = 4
 DEFAULT_RESPECT_GITIGNORE = True
 
@@ -129,11 +123,6 @@ class CrawlerConfig:
         if not isinstance(crawler_config.get("follow_symlinks"), bool):
             crawler_config["follow_symlinks"] = DEFAULT_FOLLOW_SYMLINKS
 
-        # Validate japanese_encodings - must be a list and not None
-        japanese_encodings = crawler_config.get("japanese_encodings")
-        if not isinstance(japanese_encodings, list) or japanese_encodings is None:
-            crawler_config["japanese_encodings"] = DEFAULT_JAPANESE_ENCODINGS[:]
-
         # Validate max_workers - must be a positive integer
         if not isinstance(crawler_config.get("max_workers"), int) or crawler_config.get("max_workers", 0) <= 0:
             crawler_config["max_workers"] = DEFAULT_MAX_WORKERS
@@ -166,11 +155,6 @@ class CrawlerConfig:
     def follow_symlinks(self) -> bool:
         """Whether to follow symbolic links."""
         return bool(self.config["crawler"]["follow_symlinks"])
-
-    @property
-    def japanese_encodings(self) -> List[str]:
-        """Japanese encodings to detect."""
-        return list(self.config["crawler"]["japanese_encodings"])
 
     @property
     def max_workers(self) -> int:

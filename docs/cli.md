@@ -95,8 +95,6 @@ oboyu index /path/to/documents --force
 # Index with custom chunking settings
 oboyu index /path/to/documents --chunk-size 2048 --chunk-overlap 512
 
-# Index with Japanese encoding detection
-oboyu index /path/to/documents --japanese-encodings "utf-8,shift-jis,euc-jp"
 
 # Index with change detection strategy
 oboyu index /path/to/documents --change-detection hash
@@ -114,8 +112,7 @@ Options:
 - `--exclude-patterns`: File patterns to exclude (e.g., `*/node_modules/*`)
 - `--max-depth`: Maximum recursion depth
 - `--force`, `-f`: Force re-index of all documents (disable incremental indexing)
-- `--encoding-detection/--no-encoding-detection`: Enable/disable Japanese encoding detection (default: enabled)
-- `--japanese-encodings`: Japanese encodings to detect (e.g., `utf-8,shift-jis,euc-jp`)
+- `--encoding-detection/--no-encoding-detection`: Enable/disable automatic encoding detection (default: enabled)
 - `--chunk-size`: Chunk size in characters (default: 1024)
 - `--chunk-overlap`: Chunk overlap in characters (default: 256)
 - `--embedding-model`: Embedding model to use (default: cl-nagoya/ruri-v3-30m)

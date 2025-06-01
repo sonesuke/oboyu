@@ -50,8 +50,7 @@ The content extraction subsystem handles:
 ```python
 def extract_content(
     file_path: Path,
-    encoding: Optional[str] = None,
-    japanese_encodings: List[str] = ["utf-8", "shift-jis", "euc-jp"]
+    encoding: Optional[str] = None
 ) -> Tuple[str, str, Dict[str, Any]]:
     """Extract and normalize content from a file.
     
@@ -124,10 +123,7 @@ crawler:
   max_file_size: 10485760        # 10MB maximum file size
   follow_symlinks: false         # Whether to follow symbolic links
   respect_gitignore: true        # Whether to respect .gitignore files
-  japanese_encodings:            # Japanese encodings to detect
-    - "utf-8"
-    - "shift-jis"
-    - "euc-jp"
+  # Japanese encoding detection is automatic
   max_workers: 4                 # Number of parallel workers for processing
 ```
 

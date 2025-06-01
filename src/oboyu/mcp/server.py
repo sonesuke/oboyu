@@ -10,8 +10,11 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from oboyu.common.paths import DEFAULT_DB_PATH
-from oboyu.indexer.config import IndexerConfig
-from oboyu.indexer.indexer import Indexer
+from oboyu.indexer import Indexer
+from oboyu.indexer.config.indexer_config import IndexerConfig
+from oboyu.indexer.config.model_config import ModelConfig
+from oboyu.indexer.config.processing_config import ProcessingConfig
+from oboyu.indexer.config.search_config import SearchConfig
 from oboyu.mcp.context import db_path_global, mcp
 
 # Configure logging
@@ -31,9 +34,9 @@ def get_indexer(db_path: Optional[str] = None) -> Indexer:
     # Use supplied path, global variable, or default (in that order)
     actual_db_path = db_path or db_path_global.value or str(DEFAULT_DB_PATH)
 
-    # Create indexer configuration
-    config_dict = {"indexer": {"db_path": actual_db_path}}
-    indexer_config = IndexerConfig(config_dict=config_dict)
+    # Create indexer configuration with minimal settings
+    processing_config = ProcessingConfig(db_path=Path(actual_db_path))
+    indexer_config = IndexerConfig(model=ModelConfig(), search=SearchConfig(), processing=processing_config)
 
     # Create and return indexer
     return Indexer(config=indexer_config)
@@ -65,7 +68,7 @@ def search(
         indexer = get_indexer(db_path)
 
         # Execute search with specified mode
-        results = indexer.search(query, limit=top_k, mode=mode, language=language)
+        results = indexer.search(query, limit=top_k, mode=mode, language_filter=language)
 
         # Format results for MCP output
         formatted_results = []
@@ -115,8 +118,15 @@ def index_directory(
         # Initialize indexer
         indexer = get_indexer(db_path)
 
-        # Perform indexing
-        chunks_indexed, files_processed = indexer.index_directory(directory=directory, incremental=incremental)
+        # Perform indexing - NewIndexer doesn't have index_directory method
+        # Use the crawler directly
+        from oboyu.crawler.crawler import Crawler
+
+        crawler = Crawler()
+        crawler_results = crawler.crawl(directory)
+        result = indexer.index_documents(crawler_results)
+        chunks_indexed = result.get("indexed_chunks", 0)
+        files_processed = result.get("total_documents", 0)
 
         # Return results
         return {
@@ -173,17 +183,17 @@ def get_index_info(db_path: Optional[str] = None) -> Dict[str, object]:
         # Initialize indexer
         indexer = get_indexer(db_path)
 
-        # Query database for statistics
-        db_stats = indexer.database.get_statistics()
+        # Query database for statistics using NewIndexer API
+        db_stats = indexer.get_stats()
 
         # Return formatted statistics
         return {
-            "document_count": db_stats.get("document_count", 0),
-            "chunk_count": db_stats.get("chunk_count", 0),
-            "languages": db_stats.get("languages", ["unknown"]),
+            "document_count": db_stats.get("indexed_paths", 0),
+            "chunk_count": db_stats.get("total_chunks", 0),
+            "languages": ["unknown"],  # Not available in NewIndexer stats yet
             "embedding_model": db_stats.get("embedding_model", "unknown"),
-            "db_path": db_stats.get("db_path", str(DEFAULT_DB_PATH)),
-            "last_updated": db_stats.get("last_updated", "unknown"),
+            "db_path": str(indexer.config.processing.db_path) if indexer.config.processing else "unknown",
+            "last_updated": "unknown",  # Not available in NewIndexer stats yet
         }
     except Exception as e:
         logger.error(f"Error retrieving index info: {str(e)}")

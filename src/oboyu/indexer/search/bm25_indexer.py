@@ -9,8 +9,8 @@ import math
 from collections import defaultdict
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
-from oboyu.indexer.processor import Chunk
-from oboyu.indexer.tokenizer import create_tokenizer
+from oboyu.indexer.core.document_processor import Chunk
+from oboyu.indexer.models.tokenizer_service import create_tokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -98,8 +98,9 @@ class BM25Indexer:
         # Process chunks with caching for better performance
         # Cache term frequencies to avoid re-tokenizing identical content
         term_freq_cache: Dict[int, Dict[str, int]] = {}
-        
+
         import time
+
         last_progress_time = time.time()
         # start_time = time.time()
 
@@ -108,11 +109,7 @@ class BM25Indexer:
             # Report progress dynamically based on time elapsed and chunk count
             # Report every 3 seconds OR every 2% of chunks (whichever comes first) to reduce noise
             progress_interval = max(1, total_chunks // 50)  # At least every 2% or every chunk for small sets
-            if progress_callback and (
-                current_time - last_progress_time > 3.0 or
-                idx % progress_interval == 0 or
-                idx == 0
-            ):
+            if progress_callback and (current_time - last_progress_time > 3.0 or idx % progress_interval == 0 or idx == 0):
                 progress_callback(idx, total_chunks)
                 last_progress_time = current_time
 
@@ -236,7 +233,7 @@ class BM25Indexer:
 
         Returns:
             BM25 score
-            
+
         """
         if chunk_id not in self.document_lengths:
             return 0.0

@@ -131,16 +131,13 @@ class TestInteractiveQuerySession:
             "test query",
             limit=5,
             mode="hybrid",
-            use_reranker=False,
-            vector_weight=0.7,
-            bm25_weight=0.3,
         )
 
     def test_show_stats(self, interactive_session, mock_indexer):
         """Test statistics display."""
         # This should not raise an exception
         interactive_session._show_stats()
-        mock_indexer.get_statistics.assert_called_once()
+        mock_indexer.get_stats.assert_called_once()
 
     @patch("subprocess.run")
     def test_clear_command(self, mock_run, interactive_session):
@@ -174,7 +171,7 @@ def test_interactive_session_run():
         with create_app_session(input=pipe_input, output=DummyOutput()):
             mock_indexer = MagicMock()
             mock_indexer.search.return_value = []
-            mock_indexer.get_statistics.return_value = {
+            mock_indexer.get_stats.return_value = {
                 "total_documents": 0,
                 "total_chunks": 0,
                 "unique_files": 0,

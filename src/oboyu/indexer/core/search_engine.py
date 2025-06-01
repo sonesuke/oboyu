@@ -71,47 +71,27 @@ class SearchEngine:
             if mode == SearchMode.VECTOR:
                 if query_vector is None:
                     raise ValueError("Query vector is required for vector search")
-                return self.vector_search.search(
-                    query_vector=query_vector,
-                    limit=limit,
-                    language_filter=language_filter
-                )
+                return self.vector_search.search(query_vector=query_vector, limit=limit, language_filter=language_filter)
 
             elif mode == SearchMode.BM25:
                 if query_terms is None:
                     raise ValueError("Query terms are required for BM25 search")
-                return self.bm25_search.search(
-                    terms=query_terms,
-                    limit=limit,
-                    language_filter=language_filter
-                )
+                return self.bm25_search.search(terms=query_terms, limit=limit, language_filter=language_filter)
 
             elif mode == SearchMode.HYBRID:
                 if query_vector is None or query_terms is None:
                     raise ValueError("Both query vector and terms are required for hybrid search")
-                
+
                 # Get more results for hybrid combination
                 initial_limit = limit * top_k_multiplier
 
                 # Execute both searches
-                vector_results = self.vector_search.search(
-                    query_vector=query_vector,
-                    limit=initial_limit,
-                    language_filter=language_filter
-                )
+                vector_results = self.vector_search.search(query_vector=query_vector, limit=initial_limit, language_filter=language_filter)
 
-                bm25_results = self.bm25_search.search(
-                    terms=query_terms,
-                    limit=initial_limit,
-                    language_filter=language_filter
-                )
+                bm25_results = self.bm25_search.search(terms=query_terms, limit=initial_limit, language_filter=language_filter)
 
                 # Combine results
-                return self.hybrid_search.search(
-                    vector_results=vector_results,
-                    bm25_results=bm25_results,
-                    limit=limit
-                )
+                return self.hybrid_search.search(vector_results=vector_results, bm25_results=bm25_results, limit=limit)
 
             else:
                 raise ValueError(f"Unknown search mode: {mode}")

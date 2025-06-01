@@ -2,7 +2,7 @@
 
 import pytest
 
-from oboyu.indexer.tokenizer import (
+from oboyu.indexer.models.tokenizer_service import (
     FallbackTokenizer,
     JapaneseTokenizer,
     create_tokenizer,

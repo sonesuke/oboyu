@@ -6,7 +6,7 @@ from typing import Dict, List
 
 from rich.console import Console
 
-from oboyu.indexer.indexer import Indexer
+from oboyu.indexer import LegacyIndexer as Indexer
 
 from benchmark_indexing import benchmark_indexing
 from benchmark_search import benchmark_search

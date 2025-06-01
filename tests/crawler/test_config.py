@@ -14,7 +14,6 @@ class TestCrawlerConfig:
         assert "*/node_modules/*" in config.exclude_patterns
         assert config.max_file_size == 10 * 1024 * 1024  # 10MB
         assert not config.follow_symlinks
-        assert "utf-8" in config.japanese_encodings
         assert config.max_workers == 4  # Default worker count
     
     def test_config_from_dict(self) -> None:
@@ -26,7 +25,6 @@ class TestCrawlerConfig:
                 "exclude_patterns": ["*/temp/*"],
                 "max_file_size": 1024,
                 "follow_symlinks": True,
-                "japanese_encodings": ["utf-8"],
                 "max_workers": 8,
             }
         }
@@ -37,7 +35,6 @@ class TestCrawlerConfig:
         assert config.exclude_patterns == ["*/temp/*"]
         assert config.max_file_size == 1024
         assert config.follow_symlinks
-        assert config.japanese_encodings == ["utf-8"]
         assert config.max_workers == 8
     
     def test_config_validation(self) -> None:
@@ -61,7 +58,6 @@ class TestCrawlerConfig:
         assert "*/node_modules/*" in config.exclude_patterns  # Default exclude pattern
         assert config.max_file_size == 10 * 1024 * 1024  # Default (10MB)
         assert not config.follow_symlinks  # Default (False)
-        assert "utf-8" in config.japanese_encodings  # Default encoding
     
     def test_partial_config(self) -> None:
         """Test partial configuration override."""
@@ -85,4 +81,3 @@ class TestCrawlerConfig:
         assert "*/node_modules/*" in config.exclude_patterns
         assert config.max_file_size == 10 * 1024 * 1024
         assert isinstance(config.follow_symlinks, bool)
-        assert len(config.japanese_encodings) > 0

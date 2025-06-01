@@ -59,20 +59,6 @@ def format_results(results, query):
     # Returns formatted results for presentation
 ```
 
-### MCP Server
-
-The MCP Server provides integration with external tools:
-
-- Implements stdio-based MCP protocol
-- Handles JSON request/response formatting
-- Manages persistent connection state
-- Provides debugging and error handling
-
-```python
-def start_mcp_server():
-    # Implementation details
-    # Runs the MCP server loop
-```
 
 ## Search Modes
 
@@ -320,78 +306,6 @@ oboyu query "Pythonでの例外処理のベストプラクティス"
 oboyu query --vector-weight 0.3 --bm25-weight 0.7 --limit 15 "database normalization rules"
 ```
 
-## MCP Protocol
-
-The MCP server provides a standardized interface for external tools and AI assistants:
-
-### Starting MCP Server
-
-```bash
-# Start MCP server for integration with Claude/other AI tools
-oboyu mcp
-
-# Specify custom options
-oboyu mcp --log-level debug
-```
-
-### Search Request Examples
-
-**Hybrid Search (Default):**
-```bash
-# Through MCP tools in Claude or other AI assistants
-search_documents("機械学習の基本的なアルゴリズム", limit=5)
-```
-
-**Vector Search:**
-```bash
-search_documents("design patterns in software architecture", mode="vector", limit=10)
-```
-
-**BM25 Search:**
-```bash
-search_documents("データベース正規化", mode="bm25")
-```
-
-**Custom Hybrid Weights:**
-```bash
-search_documents("REST API best practices", 
-                mode="hybrid", 
-                vector_weight=0.6, 
-                bm25_weight=0.4, 
-                limit=8)
-```
-
-### Integration Examples
-
-**With Claude Code:**
-The MCP server integrates seamlessly with Claude for code analysis and documentation queries:
-
-```bash
-# Claude can search your codebase for relevant documentation
-"How do I implement authentication in this project?"
-# → Uses hybrid search to find auth-related docs and code examples
-
-# Claude can find specific technical details
-"What are the database migration patterns used here?"
-# → Uses BM25 search for exact terminology matching
-```
-
-**With Custom Tools:**
-```python
-import mcp_client
-
-# Connect to Oboyu MCP server
-client = mcp_client.connect("oboyu")
-
-# Perform searches programmatically
-results = client.search_documents(
-    query="Python async programming patterns",
-    mode="hybrid",
-    vector_weight=0.7,
-    bm25_weight=0.3,
-    limit=5
-)
-```
 
 ## Performance Considerations
 

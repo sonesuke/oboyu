@@ -157,8 +157,16 @@ class DocumentProcessor:
         title = metadata.get("title", "Unknown")
         language = metadata.get("language", "en")
 
+        # Ensure path is properly converted to Path
+        if isinstance(path, Path):
+            doc_path = path
+        elif isinstance(path, str):
+            doc_path = Path(path)
+        else:
+            doc_path = Path("unknown")
+
         return self.process_document(
-            path=Path(path) if not isinstance(path, Path) else path,
+            path=doc_path,
             content=content,
             title=str(title),
             language=str(language),
@@ -232,7 +240,7 @@ class DocumentProcessor:
 
         while start < len(text) and iteration_count < max_iterations:
             iteration_count += 1
-            
+
             # Get chunk of specified size
             end = start + self.chunk_size
 
@@ -267,15 +275,17 @@ class DocumentProcessor:
             # Move start position for next chunk, considering overlap
             old_start = start
             start = end - self.chunk_overlap if end < len(text) else len(text)
-            
+
             # Safety check to prevent infinite loops
             if start <= old_start and iteration_count > 1:
                 import logging
+
                 logging.error(f"_chunk_text: Potential infinite loop detected! start={start}, old_start={old_start}")
                 start = old_start + max(1, self.chunk_size // 2)  # Force progress
 
         if iteration_count >= max_iterations:
             import logging
+
             logging.error(f"_chunk_text: Hit maximum iteration limit {max_iterations}")
         return chunks
 

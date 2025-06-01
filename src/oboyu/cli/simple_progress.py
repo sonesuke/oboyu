@@ -6,12 +6,12 @@ simple line overwriting instead of Rich.Live.
 
 import sys
 import time
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional
 
 
 class SimpleProgressDisplay:
     """Simple single-line progress display."""
-    
+
     def __init__(self) -> None:
         """Initialize the progress display."""
         self.current_stage: Optional[str] = None
@@ -35,10 +35,10 @@ class SimpleProgressDisplay:
             "bm25_creating_indexes": "Creating indexes",
             "recompacting": "Optimizing database",
         }
-    
+
     def update(self, stage: str, current: int, total: int) -> None:
         """Update progress display.
-        
+
         Args:
             stage: Current stage name
             current: Current progress
@@ -46,41 +46,41 @@ class SimpleProgressDisplay:
 
         """
         now = time.time()
-        
+
         # Update at reasonable intervals
         if stage != self.current_stage or now - self.last_update > 2.0 or current >= total:
             self.current_stage = stage
             self.last_update = now
-            
+
             # Get stage description
             stage_desc = self.stages.get(stage, stage.replace("_", " ").title())
-            
+
             # Calculate percentage
             if total > 0:
                 percent = (current / total) * 100
                 progress_text = f"{stage_desc}... {current}/{total} ({percent:.0f}%)"
             else:
                 progress_text = f"{stage_desc}... {current}"
-            
+
             # Calculate elapsed time
             elapsed = now - self.start_time
             if elapsed > 60:
-                time_text = f" [{elapsed/60:.1f}m]"
+                time_text = f" [{elapsed / 60:.1f}m]"
             else:
                 time_text = f" [{elapsed:.0f}s]"
-            
+
             # Overwrite current line
             sys.stderr.write(f"\r{progress_text}{time_text}")
             sys.stderr.flush()
-            
+
             # New line on completion
             if current >= total and total > 0:
                 sys.stderr.write("\n")
                 sys.stderr.flush()
-    
+
     def finish(self, message: Optional[str] = None) -> None:
         """Finish progress display.
-        
+
         Args:
             message: Optional completion message
 
@@ -92,12 +92,17 @@ class SimpleProgressDisplay:
         sys.stderr.flush()
 
 
-def create_simple_progress_callback() -> callable:
+def create_simple_progress_callback() -> Callable[[int, int], None]:
     """Create a simple progress callback function.
-    
+
     Returns:
         Progress callback function
 
     """
     display = SimpleProgressDisplay()
-    return display.update
+    
+    def callback(current: int, total: int) -> None:
+        """Progress callback wrapper."""
+        display.update("Progress", current, total)
+    
+    return callback

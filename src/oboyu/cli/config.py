@@ -33,10 +33,10 @@ def load_config(config_path: Optional[Union[str, Path]] = None) -> Dict[str, Any
     # Convert to Path if string
     if isinstance(config_path, str):
         config_path = Path(config_path)
-    
+
     # Use ConfigManager for loading
     manager = ConfigManager(config_path)
-    
+
     # If config file doesn't exist
     if not manager.config_path.exists():
         # For default path, create it
@@ -45,7 +45,7 @@ def load_config(config_path: Optional[Union[str, Path]] = None) -> Dict[str, Any
         else:
             # For explicit path, raise error as before
             raise FileNotFoundError(f"Configuration file not found: {manager.config_path}")
-        
+
     # Check if file is valid YAML
     try:
         with open(manager.config_path) as f:
@@ -54,7 +54,7 @@ def load_config(config_path: Optional[Union[str, Path]] = None) -> Dict[str, Any
                 raise ValueError("Configuration file must be a valid YAML dictionary")
     except yaml.YAMLError as e:
         raise ValueError(f"Invalid YAML in configuration file: {e}")
-        
+
     return manager.load_config()
 
 
@@ -71,7 +71,7 @@ def create_default_config(path: Path) -> Dict[str, Any]:
     # Use ConfigManager to create default config
     manager = ConfigManager(path)
     config_data = manager.load_config()  # This will use defaults
-    
+
     # Save the default configuration
     try:
         manager.save_config(config_data)

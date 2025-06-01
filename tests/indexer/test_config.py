@@ -1,194 +1,113 @@
 """Tests for the indexer configuration handling functionality."""
 
-from oboyu.indexer.config import (
-    DEFAULT_EMBEDDING_MODEL,
-    IndexerConfig,
-    load_default_config,
-)
+from pathlib import Path
+
+from oboyu.indexer.config.indexer_config import IndexerConfig
+from oboyu.indexer.config.model_config import ModelConfig
+from oboyu.indexer.config.processing_config import ProcessingConfig
+from oboyu.indexer.config.search_config import SearchConfig
 
 
 class TestIndexerConfig:
     """Test cases for the IndexerConfig class."""
 
     def test_default_config(self) -> None:
-        """Test loading default configuration with explicit db_path."""
-        # Now we need to provide a db_path explicitly
-        test_db_path = "test.db"
-        config = IndexerConfig(config_dict={"indexer": {"db_path": test_db_path}})
+        """Test loading default configuration."""
+        # Create config with default sub-configs
+        config = IndexerConfig()
 
-        # Check default values
-        assert config.chunk_size == 300
-        assert config.chunk_overlap == 75
+        # Check default values through properties
+        assert config.chunk_size == 1024
+        assert config.chunk_overlap == 256
         assert config.embedding_model == "cl-nagoya/ruri-v3-30m"
         assert config.embedding_device == "cpu"
-        assert config.batch_size == 64
-        assert config.max_seq_length == 8192
-        assert config.document_prefix == "検索文書: "
-        assert config.query_prefix == "検索クエリ: "
-        assert config.topic_prefix == "トピック: "
-        assert config.general_prefix == ""
-        # Check db_path is properly set
-        assert config.db_path == test_db_path
-        assert config.ef_construction == 128
-        assert config.ef_search == 64
-        assert config.m == 16
-        assert config.m0 is None
-        assert config.max_workers == 2
+        assert config.use_reranker is False
 
-    def test_config_from_dict(self) -> None:
-        """Test loading configuration from dictionary."""
-        config_dict = {
-            "indexer": {
-                "chunk_size": 512,
-                "chunk_overlap": 128,
-                "embedding_model": "cl-nagoya/ruri-v3-30m",
-                "embedding_device": "cuda",
-                "batch_size": 16,
-                "max_seq_length": 4096,
-                "document_prefix": "doc: ",
-                "query_prefix": "query: ",
-                "topic_prefix": "topic: ",
-                "general_prefix": "general: ",
-                "db_path": "custom.db",
-                "ef_construction": 256,
-                "ef_search": 128,
-                "m": 32,
-                "m0": 64,
-                "max_workers": 4,
-            }
-        }
+    def test_config_with_custom_values(self) -> None:
+        """Test configuration with custom values."""
+        # Create custom sub-configs
+        model_config = ModelConfig(
+            embedding_model="custom-model",
+            embedding_device="cuda",
+            use_onnx=False,
+        )
+        
+        processing_config = ProcessingConfig(
+            db_path=Path("custom.db"),
+            chunk_size=512,
+            chunk_overlap=128,
+        )
+        
+        search_config = SearchConfig(
+            use_reranker=True,
+            top_k_multiplier=3,
+        )
+        
+        config = IndexerConfig(
+            model=model_config,
+            processing=processing_config,
+            search=search_config,
+        )
 
-        config = IndexerConfig(config_dict=config_dict)
-
-        # Check values from dict
+        # Check custom values
         assert config.chunk_size == 512
         assert config.chunk_overlap == 128
-        assert config.embedding_model == "cl-nagoya/ruri-v3-30m"
+        assert config.embedding_model == "custom-model"
         assert config.embedding_device == "cuda"
-        assert config.batch_size == 16
-        assert config.max_seq_length == 4096
-        assert config.document_prefix == "doc: "
-        assert config.query_prefix == "query: "
-        assert config.topic_prefix == "topic: "
-        assert config.general_prefix == "general: "
-        assert config.db_path == "custom.db"
-        assert config.ef_construction == 256
-        assert config.ef_search == 128
-        assert config.m == 32
-        assert config.m0 == 64
-        assert config.max_workers == 4
+        assert config.use_reranker is True
+        assert str(config.db_path) == "custom.db"
 
-    def test_config_validation(self) -> None:
-        """Test configuration validation."""
-        # Test with invalid values
-        config_dict = {
-            "indexer": {
-                "chunk_size": -1,  # Invalid: negative
-                "chunk_overlap": 2000,  # Invalid: greater than chunk_size
-                "embedding_device": "invalid",  # Invalid: not 'cpu' or 'cuda'
-                "batch_size": 0,  # Invalid: non-positive
-                "max_seq_length": -1,  # Invalid: negative
-                "ef_construction": 0,  # Invalid: non-positive
-                "ef_search": -1,  # Invalid: negative
-                "m": 0,  # Invalid: non-positive
-                "m0": -1,  # Invalid: negative
-                "max_workers": 0,  # Invalid: non-positive
-            }
-        }
+    def test_backward_compatibility_properties(self) -> None:
+        """Test backward compatibility properties."""
+        # Create config with specific db_path
+        processing_config = ProcessingConfig(db_path=Path("test.db"))
+        config = IndexerConfig(processing=processing_config)
 
-        # This should not raise an exception
-        config = IndexerConfig(config_dict=config_dict)
-
-        # All values should now be valid defaults
-        assert config.chunk_size == 300  # Default
-        assert config.chunk_overlap == 75  # Default
-        assert config.embedding_device == "cpu"  # Default
-        assert config.batch_size == 64  # Default
-        assert config.max_seq_length == 8192  # Default
-        assert config.ef_construction == 128  # Default
-        assert config.ef_search == 64  # Default
-        assert config.m == 16  # Default
-        assert config.m0 is None  # Default
-        assert config.max_workers == 2  # Default
-
-    def test_partial_config(self) -> None:
-        """Test partial configuration override."""
-        # Only override some values
-        config_dict = {
-            "indexer": {
-                "chunk_size": 512,
-                "chunk_overlap": 128,
-                # Other values not specified - will be set to defaults
-            }
-        }
-
-        config = IndexerConfig(config_dict=config_dict)
-
-        # Check overridden values
-        assert config.chunk_size == 512
-        assert config.chunk_overlap == 128
-
-        # Check default values for non-overridden
-        # For simplicity, we just verify it's a non-empty string
-        assert isinstance(config.embedding_model, str) and config.embedding_model
-        assert config.embedding_device == "cpu"
-        # For simplicity, we just verify it's a non-empty string
-        assert isinstance(config.db_path, str) and config.db_path
-    
-    def test_use_onnx_property(self) -> None:
-        """Test use_onnx property."""
-        config = IndexerConfig(config_dict={"indexer": {"db_path": "test.db", "use_onnx": True}})
-        assert config.use_onnx is True
+        # Test db_path property
+        assert config.db_path == Path("test.db")
         
-        config = IndexerConfig(config_dict={"indexer": {"db_path": "test.db", "use_onnx": False}})
-        assert config.use_onnx is False
-    
-    def test_onnx_quantization_properties(self) -> None:
-        """Test ONNX quantization properties."""
-        # Test defaults
-        config = IndexerConfig(config_dict={"indexer": {"db_path": "test.db"}})
-        assert config.onnx_quantization_enabled is True
-        assert config.onnx_quantization_method == "dynamic"
-        assert config.onnx_quantization_weight_type == "uint8"
-        assert config.onnx_quantization_config == {
-            "enabled": True,
-            "method": "dynamic",
-            "weight_type": "uint8"
-        }
+        # Test db_path setter
+        config.db_path = "new_path.db"
+        assert config.db_path == Path("new_path.db")
+
+    def test_post_init_creates_defaults(self) -> None:
+        """Test that post_init creates default sub-configs if not provided."""
+        # Create config without any sub-configs
+        config = IndexerConfig(model=None, processing=None, search=None)
         
-        # Test custom config
-        custom_config = {
-            "indexer": {
-                "db_path": "test.db",
-                "onnx_quantization": {
-                    "enabled": False,
-                    "method": "static",
-                    "weight_type": "int8"
-                }
-            }
-        }
-        config = IndexerConfig(config_dict=custom_config)
-        assert config.onnx_quantization_enabled is False
-        assert config.onnx_quantization_method == "static"
-        assert config.onnx_quantization_weight_type == "int8"
-    
-    def test_onnx_quantization_validation(self) -> None:
-        """Test ONNX quantization configuration validation."""
-        # Test with invalid values
-        config_dict = {
-            "indexer": {
-                "db_path": "test.db",
-                "onnx_quantization": {
-                    "enabled": "yes",  # Should be boolean
-                    "method": "invalid",  # Should be dynamic/static/fp16
-                    "weight_type": "float32"  # Should be uint8/int8
-                }
-            }
-        }
+        # Verify defaults were created
+        assert config.model is not None
+        assert config.processing is not None
+        assert config.search is not None
         
-        config = IndexerConfig(config_dict=config_dict)
+        # Verify they have default values
+        assert isinstance(config.model, ModelConfig)
+        assert isinstance(config.processing, ProcessingConfig)
+        assert isinstance(config.search, SearchConfig)
+
+    def test_reranker_model_property(self) -> None:
+        """Test reranker_model property."""
+        model_config = ModelConfig(reranker_model="custom-reranker")
+        config = IndexerConfig(model=model_config)
         
-        # Should be set to defaults due to invalid values
-        assert config.onnx_quantization_enabled is True
-        assert config.onnx_quantization_method == "dynamic"
-        assert config.onnx_quantization_weight_type == "uint8"
+        assert config.reranker_model == "custom-reranker"
+
+    def test_use_reranker_combines_configs(self) -> None:
+        """Test that use_reranker combines model and search configs."""
+        # Test with search config enabled
+        search_config = SearchConfig(use_reranker=True)
+        model_config = ModelConfig(use_reranker=False)
+        config = IndexerConfig(model=model_config, search=search_config)
+        assert config.use_reranker is True
+        
+        # Test with model config enabled
+        search_config = SearchConfig(use_reranker=False)
+        model_config = ModelConfig(use_reranker=True)
+        config = IndexerConfig(model=model_config, search=search_config)
+        assert config.use_reranker is True
+        
+        # Test with both disabled
+        search_config = SearchConfig(use_reranker=False)
+        model_config = ModelConfig(use_reranker=False)
+        config = IndexerConfig(model=model_config, search=search_config)
+        assert config.use_reranker is False

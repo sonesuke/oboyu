@@ -68,11 +68,7 @@ crawler:
   # Whether to follow symbolic links
   follow_symlinks: false
   
-  # Japanese encodings to detect and handle
-  japanese_encodings:
-    - "utf-8"
-    - "shift-jis"
-    - "euc-jp"
+  # Japanese encoding detection is automatic - no configuration needed
   
   # Number of worker threads for parallel processing
   max_workers: 4
@@ -90,7 +86,6 @@ crawler:
 | `exclude_patterns` | list[str] | [*/node_modules/*, ...] | Patterns to exclude (glob syntax) |
 | `max_file_size` | int | 10485760 | Maximum file size in bytes |
 | `follow_symlinks` | bool | false | Whether to follow symbolic links |
-| `japanese_encodings` | list[str] | [utf-8, shift-jis, euc-jp] | Japanese encodings to detect |
 | `max_workers` | int | 4 | Number of worker threads |
 | `respect_gitignore` | bool | true | Whether to respect .gitignore files |
 
@@ -217,11 +212,7 @@ crawler:
     - "*.txt"
     - "*.md"
     - "*.html"
-  japanese_encodings:
-    - "utf-8"
-    - "shift-jis"
-    - "euc-jp"
-    - "iso-2022-jp"
+  # Japanese encoding detection is automatic
 
 indexer:
   chunk_size: 512  # Smaller chunks for Japanese

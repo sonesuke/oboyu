@@ -273,32 +273,6 @@ logging.getLogger("oboyu.indexer.reranker").setLevel(logging.DEBUG)
 4. **Initial Retrieval**: Set multiplier based on result diversity needs (3-5x is typical)
 5. **Threshold Setting**: Use threshold to filter low-confidence results in critical applications
 
-## Migration Guide
-
-### Upgrading from Previous Versions
-
-If you were previously using the 310m model as default and want to continue using it, update your configuration:
-
-```yaml
-indexer:
-  reranker_model: "cl-nagoya/ruri-v3-reranker-310m"
-```
-
-Otherwise, no action is needed - the new lightweight model will be used automatically.
-
-### Choosing the Right Model
-
-- **Use `ruri-reranker-small` when**:
-  - Running on resource-constrained environments
-  - Building real-time applications
-  - Prioritizing fast response times
-  - Memory usage is a concern
-
-- **Use `ruri-v3-reranker-310m` when**:
-  - Maximum accuracy is required
-  - Running batch processing jobs
-  - Have sufficient memory (2GB+ available)
-  - Building quality-critical RAG applications
 
 ## Future Enhancements
 

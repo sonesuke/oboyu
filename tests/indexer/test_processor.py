@@ -4,7 +4,8 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from oboyu.indexer.processor import Chunk, DocumentProcessor, chunk_documents
+from oboyu.indexer.core.document_processor import Chunk, DocumentProcessor
+from oboyu.indexer.processor import chunk_documents
 
 
 class TestDocumentProcessor:
@@ -85,8 +86,20 @@ class TestDocumentProcessor:
         """Test the chunk_documents helper function."""
         # Create test documents
         docs = [
-            (Path("/test/doc1.txt"), "Content of document 1. " * 5, "Doc 1", "en", {"source": "test1"}),
-            (Path("/test/doc2.txt"), "Content of document 2. " * 5, "Doc 2", "en", {"source": "test2"}),
+            {
+                "path": "/test/doc1.txt",
+                "content": "Content of document 1. " * 5,
+                "title": "Doc 1",
+                "language": "en",
+                "metadata": {"source": "test1"}
+            },
+            {
+                "path": "/test/doc2.txt", 
+                "content": "Content of document 2. " * 5,
+                "title": "Doc 2",
+                "language": "en",
+                "metadata": {"source": "test2"}
+            },
         ]
         
         # Process documents

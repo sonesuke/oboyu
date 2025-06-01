@@ -55,25 +55,20 @@ def callback(
     """Set up global options for the CLI."""
     # Configure logging based on verbosity level
     import logging
+
     if verbose:
-        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     else:
         # Set to ERROR level to suppress INFO, DEBUG, and WARNING messages
-        logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
+        logging.basicConfig(level=logging.ERROR, format="%(asctime)s - %(levelname)s - %(message)s")
         # Disable lower level logs from all loggers
         logging.getLogger().setLevel(logging.ERROR)
-    
+
     # Use ConfigManager for unified configuration handling
     config_manager = ConfigManager(config)
-    
+
     # Store configuration manager and options in context
-    ctx.obj = {
-        "verbose": verbose,
-        "config_manager": config_manager,
-        "config": config,
-        "db_path": db_path,
-        "config_data": config_manager.load_config()
-    }
+    ctx.obj = {"verbose": verbose, "config_manager": config_manager, "config": config, "db_path": db_path, "config_data": config_manager.load_config()}
 
 
 @app.command()
@@ -92,25 +87,25 @@ def clear(
     ] = False,
 ) -> None:
     """Clear all data from the index database while preserving the database schema and structure.
-    
+
     This command completely removes the database files, providing a thorough cleanup
     that resets the file size and removes all Write-Ahead Log files.
     """
     import os
     from pathlib import Path
-    
+
     from oboyu.common.config import ConfigManager
-    
+
     # Get configuration manager from context or create new one
     config_manager = ctx.obj.get("config_manager") if ctx.obj else ConfigManager()
-    
+
     # Resolve database path
     indexer_config_dict = config_manager.get_section("indexer")
     resolved_db_path = config_manager.resolve_db_path(Path(db_path) if db_path else None, indexer_config_dict)
-    
+
     # Show database path
     console.print(f"Using database: {resolved_db_path}")
-    
+
     # Confirm operation
     if not force:
         console.print("Warning: This will completely remove the index database files.")
@@ -118,14 +113,14 @@ def clear(
         if not confirm:
             console.print("Operation cancelled.")
             return
-    
+
     # Delete database files
     files_to_delete = [
         str(resolved_db_path),  # Main database file
         str(resolved_db_path) + "-wal",  # Write-Ahead Log file
         str(resolved_db_path) + "-shm",  # Shared memory file
     ]
-    
+
     deleted_files = []
     for file_path in files_to_delete:
         try:
@@ -134,7 +129,7 @@ def clear(
                 deleted_files.append(file_path)
         except OSError as e:
             console.print(f"Warning: Could not delete {file_path}: {e}")
-    
+
     if deleted_files:
         console.print(f"\nDeleted {len(deleted_files)} database file(s):")
         for file_path in deleted_files:
@@ -143,8 +138,6 @@ def clear(
     else:
         console.print("\nNo database files found to delete.")
         console.print("Index database was already clear.")
-
-
 
 
 def run() -> None:

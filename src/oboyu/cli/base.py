@@ -4,6 +4,7 @@ This module provides a base class that consolidates common patterns
 across CLI commands to reduce code duplication.
 """
 
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import typer
@@ -11,16 +12,16 @@ from rich.console import Console
 
 from oboyu.cli.hierarchical_logger import create_hierarchical_logger
 from oboyu.common.config import ConfigManager
-from oboyu.indexer.config import IndexerConfig
-from oboyu.indexer.indexer import Indexer
+from oboyu.indexer import Indexer
+from oboyu.indexer.config.indexer_config import IndexerConfig
 
 
 class BaseCommand:
     """Base class for all CLI commands with common functionality.
-    
+
     This class encapsulates common patterns like:
     - Configuration management
-    - Database path resolution 
+    - Database path resolution
     - Indexer initialization
     - Console and logging setup
     """
@@ -57,7 +58,7 @@ class BaseCommand:
     def create_indexer_config(
         self,
         db_path: Optional[str] = None,
-        **overrides: Any,
+        **overrides: Any,  # noqa: ANN401
     ) -> IndexerConfig:
         """Create indexer configuration with proper precedence.
 
@@ -74,13 +75,23 @@ class BaseCommand:
 
         # Handle database path with clear precedence
         from pathlib import Path
+
         resolved_db_path = config_manager.resolve_db_path(Path(db_path) if db_path else None, indexer_config_dict)
         indexer_config_dict["db_path"] = str(resolved_db_path)
 
         # Apply any additional overrides
         indexer_config_dict.update(overrides)
 
-        return IndexerConfig(config_dict={"indexer": indexer_config_dict})
+        from oboyu.indexer.config.model_config import ModelConfig
+        from oboyu.indexer.config.processing_config import ProcessingConfig
+        from oboyu.indexer.config.search_config import SearchConfig
+
+        # Create modular config from dict
+        model_config = ModelConfig()
+        search_config = SearchConfig()
+        processing_config = ProcessingConfig(db_path=Path(indexer_config_dict["db_path"]))
+
+        return IndexerConfig(model=model_config, search=search_config, processing=processing_config)
 
     def create_indexer(
         self,
@@ -104,7 +115,7 @@ class BaseCommand:
 
             if show_model_loading:
                 # Get model name from config for better user feedback
-                model_name = config.embedding_model
+                model_name = config.model.embedding_model if config.model else "unknown"
                 load_op = self.logger.start_operation(f"Loading embedding model ({model_name})...")
                 indexer = Indexer(config=config)
                 self.logger.complete_operation(load_op)
@@ -171,15 +182,13 @@ class BaseCommand:
         """
         # Create indexer config
         config = self.create_indexer_config(db_path)
-        resolved_db_path = config.db_path
+        resolved_db_path = config.processing.db_path if config.processing else Path("oboyu.db")
 
         # Show database path
         self.print_database_path(str(resolved_db_path))
 
         # Confirm operation
-        if not self.confirm_database_operation(
-            "remove all indexed documents and search data from", force, str(resolved_db_path)
-        ):
+        if not self.confirm_database_operation("remove all indexed documents and search data from", force, str(resolved_db_path)):
             return
 
         # Perform clear operation with progress tracking

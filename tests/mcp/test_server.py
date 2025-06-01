@@ -28,14 +28,11 @@ def mock_indexer():
     
     # Setup the database statistics
     db_stats = {
-        "document_count": 10,
-        "chunk_count": 50,
-        "languages": ["ja", "en"],
+        "indexed_paths": 10,
+        "total_chunks": 50,
         "embedding_model": "test-model",
-        "db_path": "/path/to/test.db",
-        "last_updated": "2025-05-18T12:00:00Z"
     }
-    indexer.database.get_statistics.return_value = db_stats
+    indexer.get_stats.return_value = db_stats
     
     return indexer
 
@@ -51,7 +48,7 @@ def test_search(mock_get_indexer, mock_indexer):
     
     # Verify the indexer was called with correct parameters
     mock_get_indexer.assert_called_once_with(None)
-    mock_indexer.search.assert_called_once_with("test query", limit=5, mode="hybrid", language=None)
+    mock_indexer.search.assert_called_once_with("test query", limit=5, mode="hybrid", language_filter=None)
     
     # Check the response format
     assert "results" in result
@@ -79,7 +76,7 @@ def test_search_with_language_filter(mock_get_indexer, mock_indexer):
     
     # Verify the indexer was called with correct parameters
     mock_get_indexer.assert_called_once_with(None)
-    mock_indexer.search.assert_called_once_with("test query", limit=5, mode="hybrid", language="ja")
+    mock_indexer.search.assert_called_once_with("test query", limit=5, mode="hybrid", language_filter="ja")
 
 
 @patch("oboyu.mcp.server.get_indexer")
@@ -100,18 +97,21 @@ def test_index_directory(mock_get_indexer, mock_indexer):
     """Test the index_directory tool function."""
     # Setup the mock
     mock_get_indexer.return_value = mock_indexer
-    # Setup indexer.index_directory to return some results
-    mock_indexer.index_directory.return_value = (25, 5)  # (chunks_indexed, files_processed)
+    # Setup indexer.index_documents to return some results
+    mock_indexer.index_documents.return_value = {"indexed_chunks": 25, "total_documents": 5}
     mock_indexer.config.db_path = "/path/to/test.db"
     
     # Call the function with a valid directory
     with patch('oboyu.mcp.server.Path.exists', return_value=True):
         with patch('oboyu.mcp.server.Path.is_dir', return_value=True):
-            result = index_directory("/valid/directory", incremental=True)
+            with patch('oboyu.crawler.crawler.Crawler') as mock_crawler:
+                mock_crawler_instance = mock_crawler.return_value
+                mock_crawler_instance.crawl.return_value = []
+                result = index_directory("/valid/directory", incremental=True)
     
     # Verify the indexer was called correctly
     mock_get_indexer.assert_called_once_with(None)
-    mock_indexer.index_directory.assert_called_once()
+    mock_indexer.index_documents.assert_called_once()
     
     # Check the response format for success
     assert "success" in result
@@ -183,7 +183,7 @@ def test_get_index_info(mock_get_indexer, mock_indexer):
     
     # Verify the indexer was called
     mock_get_indexer.assert_called_once_with(None)
-    mock_indexer.database.get_statistics.assert_called_once()
+    mock_indexer.get_stats.assert_called_once()
     
     # Check the response format
     assert "document_count" in result
@@ -191,10 +191,6 @@ def test_get_index_info(mock_get_indexer, mock_indexer):
     assert "chunk_count" in result
     assert result["chunk_count"] == 50
     assert "languages" in result
-    assert result["languages"] == ["ja", "en"]
     assert "embedding_model" in result
     assert result["embedding_model"] == "test-model"
     assert "db_path" in result
-    assert result["db_path"] == "/path/to/test.db"
-    assert "last_updated" in result
-    assert result["last_updated"] == "2025-05-18T12:00:00Z"

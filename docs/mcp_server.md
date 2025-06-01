@@ -8,7 +8,8 @@ Model Context Protocol (MCP) is a standard protocol that enables AI assistants t
 
 - Search through your indexed documents
 - Retrieve semantic search results with Japanese language optimization
-- Access information about your document index
+- Perform both vector and keyword-based searches
+- Access hybrid search combining both approaches
 
 ## Getting Started
 
@@ -17,7 +18,7 @@ Model Context Protocol (MCP) is a standard protocol that enables AI assistants t
 To use the Oboyu MCP server, you need:
 
 1. An existing Oboyu index (create one using `oboyu index <directory>`)
-2. The `mcp[cli]` package installed (included in Oboyu dependencies)
+2. Oboyu installed with MCP dependencies (included by default)
 
 ### Running the MCP Server
 
@@ -27,7 +28,7 @@ Start the MCP server with:
 oboyu mcp
 ```
 
-By default, this runs the server using stdio transport, which is suitable for direct integration with AI assistant platforms.
+By default, this runs the server using stdio transport, which is suitable for direct integration with AI assistant platforms like Claude Desktop.
 
 ### Command Options
 
@@ -38,8 +39,13 @@ The MCP server command supports several options:
 | `--db-path PATH` | Path to the database file (default: `~/.oboyu/index.db`) |
 | `--transport, -t TYPE` | Transport mechanism: stdio, sse, streamable-http (default: stdio) |
 | `--port, -p NUMBER` | Port number for SSE or streamable-http transport (required for non-stdio transports) |
-| `--verbose, -v` | Enable verbose output |
-| `--debug, -d` | Enable debug mode with additional logging |
+| `--debug` | Enable debug mode with additional logging |
+
+### Transport Types
+
+- **stdio** (default): Standard input/output, ideal for Claude Desktop and similar integrations
+- **sse**: Server-Sent Events over HTTP, useful for web-based integrations
+- **streamable-http**: HTTP with streaming support, for advanced use cases
 
 ### Examples
 
@@ -49,175 +55,188 @@ Start the MCP server with stdio transport (default):
 oboyu mcp
 ```
 
-Start the MCP server with streamable-http transport on port 8000:
+Start with SSE transport on port 8080:
 
 ```bash
-oboyu mcp --transport streamable-http --port 8000
+oboyu mcp --transport sse --port 8080
 ```
 
-Start the MCP server with SSE transport on port 8001:
+Start with custom database path:
 
 ```bash
-oboyu mcp --transport sse --port 8001
+oboyu mcp --db-path /path/to/custom.db
 ```
 
-Start the MCP server with a specific database path:
+## MCP Tools Provided
 
-```bash
-oboyu mcp --db-path /path/to/custom/index.db
-```
+The Oboyu MCP server provides the following tool:
 
-## Available Tools
+### search_documents
 
-The Oboyu MCP server provides the following tools to AI assistants:
-
-### Search Tool
-
-The `search` tool allows AI assistants to search for documents in your Oboyu index.
+Search indexed documents using semantic search with Japanese language optimization.
 
 **Parameters:**
+- `query` (string, required): The search query in any language
+- `limit` (integer, optional): Number of results to return (default: 5)
+- `mode` (string, optional): Search mode - "vector", "bm25", or "hybrid" (default: "hybrid")
+- `vector_weight` (float, optional): Weight for vector scores in hybrid mode (default: 0.7)
+- `bm25_weight` (float, optional): Weight for BM25 scores in hybrid mode (default: 0.3)
 
-- `query` (string, required): The search query text
-- `mode` (string, optional): Search mode (vector, bm25, hybrid) - default: hybrid
-- `top_k` (integer, optional): Maximum number of results to return - default: 5
-- `language` (string, optional): Language filter (e.g., 'ja', 'en')
-- `db_path` (string, optional): Custom database path
+**Returns:**
+List of search results, each containing:
+- `path`: File path of the document
+- `title`: Document or chunk title
+- `content`: Relevant text snippet
+- `score`: Relevance score (0-1)
 
 **Example Response:**
+```json
+[
+  {
+    "path": "/docs/ml-guide.md",
+    "title": "Machine Learning Guide",
+    "content": "機械学習の基本的なアルゴリズムには、教師あり学習、教師なし学習、強化学習があります...",
+    "score": 0.92
+  }
+]
+```
+
+## Integration with Claude Desktop
+
+The MCP server is designed to work seamlessly with Claude Desktop:
+
+### Configuration
+
+1. Configure Claude Desktop settings
+2. Add the Oboyu MCP server to the configuration:
 
 ```json
 {
-  "results": [
-    {
-      "title": "Japanese Grammar Guide",
-      "content": "日本語の文法について説明します。日本語は主語-目的語-動詞の語順です。",
-      "uri": "file:///path/to/document.md",
-      "score": 0.89,
-      "language": "ja",
-      "metadata": {"source": "grammar-guide"}
+  "servers": {
+    "oboyu": {
+      "command": "oboyu",
+      "args": ["mcp"],
+      "env": {}
     }
-  ],
-  "stats": {
-    "count": 1,
-    "query": "日本語 文法",
-    "language_filter": "ja"
   }
 }
 ```
 
-### Index Directory Tool
+3. Restart Claude Desktop
+4. Use natural language to search your indexed documents:
+   - "Search for information about machine learning algorithms"
+   - "Find documentation about database design patterns"
+   - "Show me examples of Python async programming"
 
-The `index_directory` tool allows AI assistants to add new documents to the Oboyu index.
+### Custom Database Path
 
-**Parameters:**
-
-- `directory_path` (string, required): Path to the directory to index
-- `incremental` (boolean, optional): Only index new or changed files - default: true
-- `db_path` (string, optional): Custom database path
-
-**Example Response:**
+If your index is not in the default location:
 
 ```json
 {
-  "success": true,
-  "directory": "/path/to/documents",
-  "documents_indexed": 25,
-  "chunks_indexed": 142,
-  "db_path": "/home/user/.oboyu/index.db"
+  "servers": {
+    "oboyu": {
+      "command": "oboyu",
+      "args": ["mcp", "--db-path", "/path/to/your/index.db"],
+      "env": {}
+    }
+  }
 }
 ```
 
-### Clear Index Tool
+## Search Examples
 
-The `clear_index` tool allows AI assistants to reset the Oboyu index.
+The MCP server provides flexible search capabilities through AI assistants:
 
-**Parameters:**
-
-- `db_path` (string, optional): Custom database path
-
-**Example Response:**
-
-```json
-{
-  "success": true,
-  "message": "Index database cleared successfully",
-  "db_path": "/home/user/.oboyu/index.db"
-}
+### Hybrid Search (Default)
+```
+# Through MCP tools in Claude or other AI assistants
+search_documents("機械学習の基本的なアルゴリズム", limit=5)
 ```
 
-### Get Index Info Tool
-
-The `get_index_info` tool provides information about your Oboyu index.
-
-**Parameters:**
-
-- `db_path` (string, optional): Custom database path
-
-**Example Response:**
-
-```json
-{
-  "document_count": 157,
-  "chunk_count": 1253,
-  "languages": ["ja", "en", "fr"],
-  "embedding_model": "ruri-v3-30m",
-  "db_path": "/home/user/.oboyu/index.db",
-  "last_updated": "2025-05-18T12:34:56Z"
-}
+### Vector Search
+```
+search_documents("design patterns in software architecture", mode="vector", limit=10)
 ```
 
-## Integration with AI Assistants
+### BM25 Search
+```
+search_documents("データベース正規化", mode="bm25")
+```
 
-The Oboyu MCP server is designed to be integrated with AI assistant platforms that support the Model Context Protocol. Check your AI assistant platform's documentation for specific integration instructions.
+### Custom Hybrid Weights
+```
+search_documents("REST API best practices", 
+                mode="hybrid", 
+                vector_weight=0.6, 
+                bm25_weight=0.4, 
+                limit=8)
+```
 
-### Example Integration with Claude
+## Use Cases with AI Assistants
 
-To integrate Oboyu with Claude:
+The MCP server enables powerful search workflows:
 
-1. Start the Oboyu MCP server:
-   ```bash
-   oboyu mcp
-   ```
+**Code Documentation Search:**
+- "How do I implement authentication in this project?"
+  → Uses hybrid search to find auth-related docs and code examples
 
-2. Configure Claude to use the Oboyu MCP tools via your platform's MCP integration features.
+**Technical Reference Lookup:**
+- "What are the database migration patterns used here?"
+  → Uses BM25 search for exact terminology matching
 
-3. You can now ask Claude questions like:
-   - "Search my documents for information about Japanese grammar"
-   - "Find documents related to 日本の歴史 (Japanese history)"
-   - "How many documents are in my Oboyu index?"
+**Conceptual Queries:**
+- "Explain the architecture design principles in this codebase"
+  → Uses vector search for semantic understanding
 
-## Japanese Language Support
+**Japanese Content Search:**
+- "プロジェクトでの非同期処理の実装方法を教えて"
+  → Leverages Japanese language optimization for accurate results
 
-Oboyu MCP server preserves all the Japanese language optimizations from the core Oboyu system:
+## Performance Considerations
 
-- Accurate handling of Japanese queries
-- Proper tokenization of Japanese text
-- Support for mixed Japanese and English content
-- Proper display of Japanese characters in search results
-
-This makes Oboyu particularly valuable for AI assistants when working with Japanese content.
+- The MCP server maintains a persistent connection to the database for fast responses
+- Search operations typically complete in 50-200ms depending on index size
+- Japanese text processing is optimized with MeCab tokenization caching
+- Vector similarity search uses HNSW index for efficient approximate nearest neighbor lookups
+- Hybrid search runs vector and BM25 searches in parallel for optimal performance
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Missing Index**: Ensure you've created an index using `oboyu index` before starting the MCP server.
+**MCP server won't start:**
+- Ensure you have an existing index (run `oboyu index <directory>` first)
+- Check that the database path exists and is readable
+- Verify the transport type and port combination is valid
 
-2. **Transport Errors**: If using HTTP/WebSocket transports, check that the specified port is available.
+**No results returned:**
+- Verify documents have been indexed properly with `oboyu index manage status`
+- Check if the query language matches document language
+- Try different search modes (vector vs BM25 vs hybrid)
 
-3. **Encoding Issues**: If Japanese text appears garbled, check your terminal's character encoding.
+**Connection errors with AI assistants:**
+- Ensure the MCP server is running (`oboyu mcp`)
+- Check the configuration JSON syntax in your AI assistant settings
+- Verify the command path if Oboyu is installed in a virtual environment
 
-### Logs and Debugging
+### Debug Mode
 
-Enable verbose and debug mode for detailed logs:
+Enable debug mode to see detailed server operations:
 
 ```bash
-oboyu mcp --verbose --debug
+oboyu mcp --debug
 ```
 
-## Advanced Configuration
+This will output:
+- MCP protocol messages
+- Search query processing details
+- Database operations
+- Performance timing information
 
-For advanced use cases, you can customize the MCP server by modifying the source code in the `src/oboyu/mcp/` directory, particularly:
+## Implementation Details
 
-- `server.py`: For customizing tool functionality
-- `cli.py`: For modifying CLI behavior
+For advanced use cases, you can customize the MCP server by modifying the source code in the `src/oboyu/mcp/` directory:
+
+- `server.py`: Main server implementation with tool definitions
+- `context.py`: Search context management and result formatting

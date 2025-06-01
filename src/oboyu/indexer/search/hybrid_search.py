@@ -28,12 +28,7 @@ class HybridSearch:
             self.vector_weight = 0.7
             self.bm25_weight = 0.3
 
-    def search(
-        self,
-        vector_results: List[SearchResult],
-        bm25_results: List[SearchResult],
-        limit: int
-    ) -> List[SearchResult]:
+    def search(self, vector_results: List[SearchResult], bm25_results: List[SearchResult], limit: int) -> List[SearchResult]:
         """Combine and weight search results.
 
         Args:
@@ -62,17 +57,13 @@ class HybridSearch:
                 chunk_id = result.chunk_id
                 weighted_score = result.score * self.bm25_weight
                 combined_scores[chunk_id] = combined_scores.get(chunk_id, 0) + weighted_score
-                
+
                 # Use the result from BM25 if not already in map (or update with BM25 version)
                 if chunk_id not in results_map:
                     results_map[chunk_id] = result
 
             # Sort by combined score
-            sorted_chunk_ids = sorted(
-                combined_scores.keys(),
-                key=lambda chunk_id: combined_scores[chunk_id],
-                reverse=True
-            )
+            sorted_chunk_ids = sorted(combined_scores.keys(), key=lambda chunk_id: combined_scores[chunk_id], reverse=True)
 
             # Create final results with updated scores
             final_results = []
@@ -87,7 +78,7 @@ class HybridSearch:
                     chunk_index=result.chunk_index,
                     language=result.language,
                     metadata=result.metadata,
-                    score=combined_scores[chunk_id]
+                    score=combined_scores[chunk_id],
                 )
                 final_results.append(final_result)
 

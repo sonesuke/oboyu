@@ -161,8 +161,8 @@ class HierarchicalLogger:
             operation.metadata.update(metadata)
             # Refresh display with throttling to reduce flickering
             current_time = time.time()
-            if not hasattr(self, '_last_refresh_time'):
-                self._last_refresh_time = 0
+            if not hasattr(self, "_last_refresh_time"):
+                self._last_refresh_time = 0.0
             if current_time - self._last_refresh_time > 0.5:  # Throttle to every 0.5 seconds
                 self._refresh_display()
                 self._last_refresh_time = current_time
