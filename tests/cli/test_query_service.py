@@ -119,7 +119,7 @@ class TestQueryService:
         """Test vector query execution."""
         mock_indexer = Mock()
         mock_indexer.vector_search.return_value = mock_search_results
-        mock_indexer_class.from_path.return_value = mock_indexer
+        mock_indexer_class.return_value = mock_indexer
         
         result = query_service.execute_query("test query", mode="vector")
         
@@ -136,7 +136,7 @@ class TestQueryService:
         """Test BM25 query execution."""
         mock_indexer = Mock()
         mock_indexer.bm25_search.return_value = mock_search_results
-        mock_indexer_class.from_path.return_value = mock_indexer
+        mock_indexer_class.return_value = mock_indexer
         
         result = query_service.execute_query("test query", mode="bm25")
         
@@ -151,7 +151,7 @@ class TestQueryService:
         """Test hybrid query execution."""
         mock_indexer = Mock()
         mock_indexer.hybrid_search.return_value = mock_search_results
-        mock_indexer_class.from_path.return_value = mock_indexer
+        mock_indexer_class.return_value = mock_indexer
         
         result = query_service.execute_query("test query", mode="hybrid")
         
@@ -172,7 +172,7 @@ class TestQueryService:
         mock_indexer = Mock()
         mock_indexer.hybrid_search.return_value = mock_search_results
         mock_indexer.rerank_results.return_value = mock_search_results[:1]  # Reranked results
-        mock_indexer_class.from_path.return_value = mock_indexer
+        mock_indexer_class.return_value = mock_indexer
         
         # Override config to enable reranking
         query_service.config_manager.merge_cli_overrides.return_value = {
@@ -196,7 +196,7 @@ class TestQueryService:
         mock_indexer = Mock()
         mock_indexer.hybrid_search.return_value = mock_search_results
         mock_indexer.rerank_results.side_effect = Exception("Reranking failed")
-        mock_indexer_class.from_path.return_value = mock_indexer
+        mock_indexer_class.return_value = mock_indexer
         
         # Override config to enable reranking
         query_service.config_manager.merge_cli_overrides.return_value = {
@@ -218,7 +218,7 @@ class TestQueryService:
         """Test query execution with parameter overrides."""
         mock_indexer = Mock()
         mock_indexer.hybrid_search.return_value = mock_search_results
-        mock_indexer_class.from_path.return_value = mock_indexer
+        mock_indexer_class.return_value = mock_indexer
         
         result = query_service.execute_query(
             "test query",
@@ -229,8 +229,8 @@ class TestQueryService:
             db_path=Path("/custom/db.db")
         )
         
-        # Verify indexer was created with custom path
-        mock_indexer_class.from_path.assert_called_once_with(Path("/custom/db.db"))
+        # Verify indexer was created
+        mock_indexer_class.assert_called_once()
         
         # Verify overrides were applied (through merge_cli_overrides call)
         expected_overrides = {

@@ -112,12 +112,10 @@ def query(
             # At this point, query is guaranteed to be non-None due to validation above
             assert query is not None, "Query should be validated as non-None by this point"
             
-            result = query_service.execute_query(
+            result = query_service.execute_query_with_context(
                 query=query,
                 mode=mode,
                 top_k=top_k,
-                vector_weight=vector_weight,
-                bm25_weight=bm25_weight,
                 db_path=db_path,
                 rerank=rerank,
             )

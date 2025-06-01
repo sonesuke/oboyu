@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from oboyu.common.config import ConfigManager
 from oboyu.common.paths import DEFAULT_DB_PATH
 from oboyu.indexer import Indexer
+from oboyu.indexer.core.search_context import ContextBuilder, SettingSource
 from oboyu.indexer.search.search_result import SearchResult
 
 
@@ -85,6 +86,8 @@ class QueryService:
         
         # Apply reranker configuration if enabled
         if query_config.get("use_reranker", False):
+            assert config.search is not None, "SearchConfig should be initialized"
+            assert config.model is not None, "ModelConfig should be initialized"
             config.search.use_reranker = True
             config.model.use_reranker = True
         
@@ -114,6 +117,91 @@ class QueryService:
                     # Log reranking failure but continue with original results
                     import logging
                     logging.warning(f"Reranking failed: {e}")
+            
+            elapsed_time = time.time() - start_time
+            
+            return QueryResult(
+                results=results,
+                elapsed_time=elapsed_time,
+                mode=mode,
+                total_results=len(results),
+            )
+        finally:
+            indexer.close()
+    
+    def execute_query_with_context(
+        self,
+        query: str,
+        mode: str = "hybrid",
+        top_k: Optional[int] = None,
+        db_path: Optional[Path] = None,
+        rerank: Optional[bool] = None,
+    ) -> QueryResult:
+        """Execute a search query using SearchContext pattern for explicit setting tracking.
+        
+        This method implements the Context Pattern to ensure user-specified
+        settings are never overridden by default values.
+        
+        Args:
+            query: Search query text
+            mode: Search mode (vector, bm25, hybrid)
+            top_k: Number of results to return
+            db_path: Optional database path override
+            rerank: Whether to use reranking
+            
+        Returns:
+            QueryResult with search results and metadata
+
+        """
+        # Build search context from CLI arguments - only explicit values are set
+        context_builder = ContextBuilder()
+        
+        if top_k is not None:
+            context_builder.with_top_k(top_k, SettingSource.CLI_ARGUMENT)
+        if rerank is not None:
+            context_builder.with_reranker(rerank, SettingSource.CLI_ARGUMENT)
+            
+        context = context_builder.build()
+        
+        # Get query engine configuration for database path
+        query_config = self.config_manager.get_section("query")
+        
+        # Determine database path
+        database_path = Path(db_path or query_config.get("database_path") or DEFAULT_DB_PATH)
+        
+        # Initialize indexer with proper configuration
+        from oboyu.indexer.config.indexer_config import IndexerConfig
+        from oboyu.indexer.core.search_mode import SearchMode
+        
+        config = IndexerConfig()
+        config.db_path = database_path
+        
+        # Important: Enable reranker service if ANY explicit reranker setting exists
+        # This ensures the reranker service is available when user explicitly wants it
+        if context.is_explicitly_set('reranker_enabled'):
+            assert config.search is not None, "SearchConfig should be initialized"
+            assert config.model is not None, "ModelConfig should be initialized"
+            config.search.use_reranker = True
+            config.model.use_reranker = True
+        
+        indexer = Indexer(config)
+        
+        try:
+            start_time = time.time()
+            
+            # Convert mode string to SearchMode enum
+            search_mode = SearchMode.HYBRID
+            if mode == "vector":
+                search_mode = SearchMode.VECTOR
+            elif mode == "bm25":
+                search_mode = SearchMode.BM25
+            
+            # Execute search using context pattern
+            results = indexer.search_orchestrator.search_with_context(
+                query=query,
+                context=context,
+                mode=search_mode,
+            )
             
             elapsed_time = time.time() - start_time
             

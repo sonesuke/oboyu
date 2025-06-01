@@ -6,6 +6,7 @@ from typing import List, Optional, Union
 import numpy as np
 from numpy.typing import NDArray
 
+from oboyu.indexer.core.search_context import SearchContext, SystemDefaults
 from oboyu.indexer.core.search_mode import SearchMode
 from oboyu.indexer.orchestrators.service_registry import ServiceRegistry
 from oboyu.indexer.search.search_filters import SearchFilters
@@ -97,6 +98,99 @@ class SearchOrchestrator:
             
         except Exception as e:
             logger.error(f"Search failed: {e}")
+            return []
+    
+    def search_with_context(
+        self,
+        query: str,
+        context: SearchContext,
+        mode: SearchMode = SearchMode.HYBRID,
+        language_filter: Optional[str] = None,
+        filters: Optional[SearchFilters] = None,
+    ) -> List[SearchResult]:
+        """Execute search using SearchContext pattern that preserves explicit settings.
+        
+        This method implements the Context Pattern to ensure user-specified
+        settings are never overridden by default values.
+        
+        Args:
+            query: Search query
+            context: SearchContext with explicit settings
+            mode: Search mode (VECTOR, BM25, or HYBRID)
+            language_filter: Optional language filter
+            filters: Optional search filters for date range and path filtering
+            
+        Returns:
+            List of search results
+            
+        """
+        try:
+            # Prepare search inputs based on mode
+            query_vector = None
+            query_terms = None
+            
+            if mode in [SearchMode.VECTOR, SearchMode.HYBRID]:
+                query_vector = self.embedding_service.generate_query_embedding(query)
+                
+            if mode in [SearchMode.BM25, SearchMode.HYBRID]:
+                query_terms = self.tokenizer_service.tokenize_query(query)
+            
+            # Determine settings using context pattern - explicit settings are NEVER overridden
+            if context.is_explicitly_set('reranker_enabled'):
+                use_reranker = context.get_reranker_setting()
+                logger.info(f"🔧 Using EXPLICIT reranker: {use_reranker}")
+            else:
+                use_reranker = SystemDefaults.get_reranker_default()
+                logger.info(f"📝 Using DEFAULT reranker: {use_reranker}")
+            
+            if context.is_explicitly_set('top_k'):
+                explicit_limit = context.get_top_k_setting()
+                assert explicit_limit is not None, "Explicit top_k should not be None"
+                limit = explicit_limit
+                logger.debug(f"🔧 Using EXPLICIT top_k: {limit}")
+            else:
+                limit = SystemDefaults.get_top_k_default()
+                logger.debug(f"📝 Using DEFAULT top_k: {limit}")
+            
+            # Log final settings for debugging
+            final_settings = {
+                'reranker_enabled': use_reranker,
+                'top_k': limit,
+            }
+            context.log_final_settings(final_settings)
+            
+            # Determine result limit considering reranking
+            search_limit = limit
+            if use_reranker and self.reranker_service:
+                assert self.config.search is not None
+                search_limit = limit * self.config.search.top_k_multiplier
+                logger.debug(f"🔧 Reranker enabled, expanding search limit to {search_limit}")
+            
+            # Execute search
+            results = self.search_engine.search(
+                query_vector=query_vector,
+                query_terms=query_terms,
+                mode=mode,
+                limit=search_limit,
+                language_filter=language_filter,
+                filters=filters,
+            )
+            
+            # Apply reranking if enabled
+            if use_reranker and self.reranker_service and self.reranker_service.is_available() and results:
+                logger.info(f"🔧 Applying reranking to {len(results)} results")
+                results = self.reranker_service.rerank(query, results)
+                logger.info(f"🔧 Reranking completed, {len(results)} results returned")
+            elif use_reranker and not self.reranker_service:
+                logger.warning("🔧 Reranker explicitly requested but reranker service not available")
+            elif use_reranker and self.reranker_service and not self.reranker_service.is_available():
+                logger.warning("🔧 Reranker explicitly requested but reranker service not initialized")
+                
+            # Return final results with limit
+            return results[:limit]
+            
+        except Exception as e:
+            logger.error(f"Search with context failed: {e}")
             return []
             
     def vector_search(
