@@ -1,44 +1,40 @@
 """Unified database service for Oboyu indexer.
 
-This module provides a comprehensive database management interface combining
-the functionality of the previous database.py and database_manager.py files.
+This module provides a facade interface for database operations using
+the repository pattern to separate concerns.
 
 Key features:
-- DuckDB with VSS extension for vector similarity search
-- HNSW index for efficient vector search
+- Repository pattern for clean separation of concerns
+- Facade pattern for backward compatibility
+- Delegated operations to focused repository classes
 - Transaction management with context managers
-- Connection pooling and lifecycle management
-- Schema initialization and migration support
-- Batched processing for large document collections
-- Type-safe query building with parameter binding
+- Type-safe operations with proper error handling
 """
 
 import logging
-import shutil
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, Generator, List, Optional, Union
 
-import duckdb
 import numpy as np
 from duckdb import DuckDBPyConnection
 from numpy.typing import NDArray
 
 from oboyu.indexer.config import DEFAULT_BATCH_SIZE
+from oboyu.indexer.core.document_processor import Chunk
 from oboyu.indexer.search.search_filters import SearchFilters
-from oboyu.indexer.storage.database_connection import DatabaseConnection
-from oboyu.indexer.storage.database_operations import DatabaseOperations
+from oboyu.indexer.storage.database_manager import DatabaseManager
 from oboyu.indexer.storage.database_search_service import DatabaseSearchService
 from oboyu.indexer.storage.index_manager import HNSWIndexParams, IndexManager
-from oboyu.indexer.storage.migrations import MigrationManager
-from oboyu.indexer.storage.schema import DatabaseSchema
+from oboyu.indexer.storage.repositories import ChunkRepository, EmbeddingRepository, StatisticsRepository
 
 logger = logging.getLogger(__name__)
 
-class DatabaseService(DatabaseConnection, DatabaseOperations):
-    """Unified database service for vector database operations.
+class DatabaseService:
+    """Unified database service using repository pattern.
 
-    This class combines the functionality of database management, transaction
-    handling, and query operations in a single, cohesive interface.
+    This class acts as a facade for database operations, delegating to
+    specialized repository classes while maintaining backward compatibility.
     """
 
     def __init__(
@@ -61,151 +57,124 @@ class DatabaseService(DatabaseConnection, DatabaseOperations):
             enable_experimental_features: Enable experimental DuckDB features
 
         """
-        # Initialize parent class for connection management
-        super().__init__(db_path, enable_experimental_features)
-        
+        self.db_path = Path(db_path)
         self.embedding_dimensions = embedding_dimensions
         self.batch_size = batch_size
-        self.auto_vacuum = auto_vacuum
-
-        # Set default HNSW parameters if not provided
-        self.hnsw_params = hnsw_params or HNSWIndexParams(
-            ef_construction=128,
-            ef_search=64,
-            m=16,
-            m0=None,
+        self.hnsw_params = hnsw_params
+        
+        # Initialize database manager
+        self.db_manager = DatabaseManager(
+            db_path=db_path,
+            embedding_dimensions=embedding_dimensions,
+            hnsw_params=hnsw_params,
+            auto_vacuum=auto_vacuum,
+            enable_experimental_features=enable_experimental_features,
         )
-
-        # Initialize schema
-        self.schema = DatabaseSchema(embedding_dimensions)
-
-        # Managers will be initialized after connection is established
-        self.migration_manager: Optional[MigrationManager] = None
-        self.index_manager: Optional[IndexManager] = None
+        
+        # Repositories will be initialized after connection is established
+        self.chunk_repository: Optional[ChunkRepository] = None
+        self.embedding_repository: Optional[EmbeddingRepository] = None
+        self.statistics_repository: Optional[StatisticsRepository] = None
         self.search_service: Optional[DatabaseSearchService] = None
-
-        # Connection state
-        self.conn: Optional[DuckDBPyConnection] = None
+        
         self._is_initialized = False
 
     def initialize(self) -> None:
-        """Initialize the database schema and extensions."""
+        """Initialize the database and repositories."""
         if self._is_initialized:
             return
 
         try:
-            # Ensure database directory exists
-            self.db_path.parent.mkdir(parents=True, exist_ok=True)
-
-            # Connect to database
-            self.conn = duckdb.connect(str(self.db_path))
-
-            # Configure database settings
-            self._configure_database()
-
-            # Install and load VSS extension
-            self._setup_vss_extension()
-
-            # Initialize managers with connection
-            self.migration_manager = MigrationManager(self.conn, self.schema)
-            self.index_manager = IndexManager(self.conn, self.schema)
-            self.search_service = DatabaseSearchService(self.conn)
-
-            # Create database schema
-            self._create_schema()
-
-            # Run migrations
-            self.migration_manager.run_migrations()
-
-            # Initialize standard indexes (HNSW will be created later when data is available)
-            self.index_manager.setup_all_indexes(self.hnsw_params)
-
+            # Initialize database through manager
+            self.db_manager.initialize()
+            
+            # Get connection from manager
+            conn = self.db_manager.get_connection()
+            
+            # Initialize repositories with connection
+            self.chunk_repository = ChunkRepository(conn)
+            self.embedding_repository = EmbeddingRepository(conn)
+            self.statistics_repository = StatisticsRepository(conn)
+            self.search_service = DatabaseSearchService(conn)
+            
             self._is_initialized = True
-            logger.info(f"Database initialized successfully at {self.db_path}")
+            logger.info("Database service initialized successfully")
 
         except Exception as e:
-            logger.error(f"Failed to initialize database: {e}")
-            if self.conn:
-                self.conn.close()
-                self.conn = None
+            logger.error(f"Failed to initialize database service: {e}")
+            self.db_manager.close()
             raise
 
-    def _configure_database(self) -> None:
-        """Configure database settings for optimal performance."""
-        if not self.conn:
-            return
+    @property
+    def conn(self) -> Optional[DuckDBPyConnection]:
+        """Get database connection for backward compatibility."""
+        if self._is_initialized:
+            return self.db_manager.get_connection()
+        return None
+    
+    @property
+    def index_manager(self) -> Optional[IndexManager]:
+        """Get index manager for backward compatibility."""
+        return self.db_manager.index_manager
+    
+    @contextmanager
+    def transaction(self) -> Generator[DuckDBPyConnection, None, None]:
+        """Context manager for database transactions.
+        
+        Yields:
+            Database connection with active transaction
+        
+        """
+        if not self._is_initialized:
+            self.initialize()
+        
+        with self.db_manager.transaction() as conn:
+            yield conn
 
-        try:
-            # Memory and performance settings
-            self.conn.execute("SET memory_limit='2GB'")
-            self.conn.execute("SET threads=4")
-            
-            # Enable HNSW experimental persistence for file-based databases
-            self.conn.execute("SET hnsw_enable_experimental_persistence=true")
+    def store_chunks(
+        self,
+        chunks: List[Chunk],
+        progress_callback: Optional[Callable[[str, int, int], None]] = None,
+    ) -> None:
+        """Store document chunks in the database.
 
-            # Enable experimental features if requested
-            if self.enable_experimental_features:
-                try:
-                    self.conn.execute("SET enable_experimental_features=true")
-                except Exception:
-                    # Try alternative setting name for newer DuckDB versions
-                    try:
-                        self.conn.execute("SET enable_external_access=true")
-                    except Exception as inner_e:
-                        logger.debug(f"Failed to set enable_external_access: {inner_e}")
+        Args:
+            chunks: List of document chunks to store
+            progress_callback: Optional progress callback
 
-            # Configure auto-vacuum
-            if self.auto_vacuum:
-                try:
-                    self.conn.execute("PRAGMA auto_vacuum=INCREMENTAL")
-                except Exception as e:
-                    # Auto-vacuum might not be supported in newer DuckDB versions
-                    logger.debug(f"Auto-vacuum configuration failed: {e}")
+        """
+        if not self._is_initialized:
+            self.initialize()
+        
+        assert self.chunk_repository is not None
+        with self.transaction():
+            self.chunk_repository.store_chunks(chunks, progress_callback)
+    
+    def store_embeddings(
+        self,
+        chunk_ids: List[str],
+        embeddings: List[NDArray[np.float32]],
+        model_name: str = "cl-nagoya/ruri-v3-30m",
+        progress_callback: Optional[Callable[[str, int, int], None]] = None,
+    ) -> None:
+        """Store embedding vectors in the database.
 
-        except Exception as e:
-            logger.warning(f"Failed to configure database settings: {e}")
+        Args:
+            chunk_ids: List of chunk IDs
+            embeddings: List of embedding vectors
+            model_name: Name of the embedding model
+            progress_callback: Optional callback for progress updates
 
-    def _setup_vss_extension(self) -> None:
-        """Install and load the VSS extension for vector operations."""
-        if not self.conn:
-            return
-
-        try:
-            # Install VSS extension
-            self.conn.execute("INSTALL vss")
-            self.conn.execute("LOAD vss")
-            
-            # Enable HNSW persistence after loading VSS extension
-            self.conn.execute("SET hnsw_enable_experimental_persistence=true")
-            logger.debug("VSS extension loaded successfully with HNSW persistence enabled")
-
-        except Exception as e:
-            logger.error(f"Failed to setup VSS extension: {e}")
-            raise
-
-    def _create_schema(self) -> None:
-        """Create database schema using schema definitions."""
-        if not self.conn:
-            return
-
-        try:
-            # Get all table definitions
-            tables = self.schema.get_all_tables()
-
-            # Create tables in dependency order
-            for table in tables:
-                self.conn.execute(table.sql)
-
-                # Create indexes for this table
-                for index_sql in table.indexes:
-                    self.conn.execute(index_sql)
-
-            logger.debug("Database schema created successfully")
-
-        except Exception as e:
-            logger.error(f"Failed to create database schema: {e}")
-            raise
-
+        """
+        if not self._is_initialized:
+            self.initialize()
+        
+        assert self.embedding_repository is not None
+        with self.transaction():
+            self.embedding_repository.store_embeddings(
+                chunk_ids, embeddings, model_name, progress_callback
+            )
+    
     def vector_search(
         self,
         query_vector: NDArray[np.float32],
@@ -227,11 +196,13 @@ class DatabaseService(DatabaseConnection, DatabaseOperations):
             List of search results with metadata
 
         """
-        if not self.search_service:
+        if not self._is_initialized:
             self.initialize()
         
         assert self.search_service is not None
-        return self.search_service.vector_search(query_vector, limit, language_filter, similarity_threshold, filters)
+        return self.search_service.vector_search(
+            query_vector, limit, language_filter, similarity_threshold, filters
+        )
 
     def bm25_search(
         self,
@@ -252,7 +223,7 @@ class DatabaseService(DatabaseConnection, DatabaseOperations):
             List of search results with metadata
 
         """
-        if not self.search_service:
+        if not self._is_initialized:
             self.initialize()
         
         assert self.search_service is not None
@@ -268,11 +239,11 @@ class DatabaseService(DatabaseConnection, DatabaseOperations):
             Chunk data or None if not found
 
         """
-        if not self.search_service:
+        if not self._is_initialized:
             self.initialize()
         
-        assert self.search_service is not None
-        return self.search_service.get_chunk_by_id(chunk_id)
+        assert self.chunk_repository is not None
+        return self.chunk_repository.get_chunk_by_id(chunk_id)
 
     def delete_chunks_by_path(self, path: Union[str, Path]) -> int:
         """Delete all chunks for a specific file path.
@@ -284,29 +255,19 @@ class DatabaseService(DatabaseConnection, DatabaseOperations):
             Number of chunks deleted
 
         """
-        if not self.conn:
+        if not self._is_initialized:
             self.initialize()
 
         try:
-            with self.transaction() as conn:
+            with self.transaction():
+                assert self.embedding_repository is not None
+                assert self.chunk_repository is not None
+                
                 # Delete embeddings first
-                conn.execute(
-                    """
-                    DELETE FROM embeddings
-                    WHERE chunk_id IN (SELECT id FROM chunks WHERE path = ?)
-                """,
-                    [str(path)],
-                )
-
+                self.embedding_repository.delete_embeddings_by_path(str(path))
+                
                 # Delete chunks and get count
-                result = conn.execute(
-                    """
-                    DELETE FROM chunks WHERE path = ?
-                """,
-                    [str(path)],
-                )
-
-                return result.rowcount if hasattr(result, "rowcount") else 0
+                return self.chunk_repository.delete_chunks_by_path(path)
 
         except Exception as e:
             logger.error(f"Failed to delete chunks by path: {e}")
@@ -314,39 +275,32 @@ class DatabaseService(DatabaseConnection, DatabaseOperations):
 
     def get_chunk_count(self) -> int:
         """Get total number of chunks in the database."""
-        if not self.conn:
+        if not self._is_initialized:
             self.initialize()
-
-        try:
-            conn = self._ensure_connection()
-            result = conn.execute("SELECT COUNT(*) FROM chunks").fetchone()
-            return result[0] if result else 0
-        except Exception as e:
-            logger.error(f"Failed to get chunk count: {e}")
-            return 0
+        
+        assert self.chunk_repository is not None
+        return self.chunk_repository.get_chunk_count()
 
     def get_paths_with_chunks(self) -> List[str]:
         """Get list of file paths that have chunks in the database."""
-        if not self.conn:
+        if not self._is_initialized:
             self.initialize()
-
-        try:
-            conn = self._ensure_connection()
-            results = conn.execute("SELECT DISTINCT path FROM chunks").fetchall()
-            return [result[0] for result in results]
-        except Exception as e:
-            logger.error(f"Failed to get paths with chunks: {e}")
-            return []
+        
+        assert self.chunk_repository is not None
+        return self.chunk_repository.get_paths_with_chunks()
 
     def clear_database(self) -> None:
         """Clear all data from the database."""
-        if not self.conn:
+        if not self._is_initialized:
             self.initialize()
 
         try:
-            with self.transaction() as conn:
-                conn.execute("DELETE FROM embeddings")
-                conn.execute("DELETE FROM chunks")
+            with self.transaction():
+                assert self.embedding_repository is not None
+                assert self.chunk_repository is not None
+                
+                self.embedding_repository.clear_all_embeddings()
+                self.chunk_repository.clear_all_chunks()
         except Exception as e:
             logger.error(f"Failed to clear database: {e}")
 
@@ -360,15 +314,7 @@ class DatabaseService(DatabaseConnection, DatabaseOperations):
             True if backup was successful
 
         """
-        try:
-            if self.db_path.exists():
-                shutil.copy2(self.db_path, backup_path)
-                logger.info(f"Database backed up to {backup_path}")
-                return True
-            return False
-        except Exception as e:
-            logger.error(f"Database backup failed: {e}")
-            return False
+        return self.db_manager.backup_database(backup_path)
 
     def get_database_stats(self) -> Dict[str, Any]:
         """Get database statistics.
@@ -377,65 +323,29 @@ class DatabaseService(DatabaseConnection, DatabaseOperations):
             Dictionary with database statistics
 
         """
-        if not self.conn:
+        if not self._is_initialized:
             self.initialize()
-
-        try:
-            conn = self._ensure_connection()
-            stats = {}
-
-            # Chunk statistics
-            result = conn.execute("SELECT COUNT(*) FROM chunks").fetchone()
-            stats["chunk_count"] = result[0] if result else 0
-
-            # Embedding statistics
-            result = conn.execute("SELECT COUNT(*) FROM embeddings").fetchone()
-            stats["embedding_count"] = result[0] if result else 0
-
-            # Database size
-            if self.db_path.exists():
-                stats["database_size_bytes"] = self.db_path.stat().st_size
-            else:
-                stats["database_size_bytes"] = 0
-
-            # Unique paths
-            result = conn.execute("SELECT COUNT(DISTINCT path) FROM chunks").fetchone()
-            stats["unique_paths"] = result[0] if result else 0
-
-            return stats
-
-        except Exception as e:
-            logger.error(f"Failed to get database stats: {e}")
-            return {}
+        
+        assert self.statistics_repository is not None
+        stats = self.statistics_repository.get_database_stats()
+        
+        # Add database size
+        if self.db_path.exists():
+            stats["database_size_bytes"] = self.db_path.stat().st_size
+        else:
+            stats["database_size_bytes"] = 0
+        
+        return stats
 
     def ensure_hnsw_index(self) -> None:
         """Ensure HNSW index exists if there are embeddings."""
-        if not self.index_manager:
-            return
-            
-        # Check if index already exists
-        if self.index_manager.hnsw_index_exists():
-            return
-            
-        # Create index if we have embeddings but no index
-        if self.index_manager._should_create_hnsw_index():
-            logger.info("Creating HNSW index after embeddings were added")
-            success = self.index_manager.create_hnsw_index(self.hnsw_params)
-            if success:
-                logger.info("HNSW index created successfully")
-            else:
-                logger.warning("HNSW index creation failed")
+        self.db_manager.ensure_hnsw_index()
 
     def close(self) -> None:
         """Close database connection."""
-        if self.conn:
-            try:
-                self.conn.close()
-                self.conn = None
-                self._is_initialized = False
-                logger.debug("Database connection closed")
-            except Exception as e:
-                logger.error(f"Failed to close database: {e}")
+        if self._is_initialized:
+            self.db_manager.close()
+            self._is_initialized = False
 
     def __enter__(self) -> "DatabaseService":
         """Context manager entry."""
@@ -445,3 +355,9 @@ class DatabaseService(DatabaseConnection, DatabaseOperations):
     def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
         """Context manager exit."""
         self.close()
+    
+    def _ensure_connection(self) -> DuckDBPyConnection:
+        """Ensure database connection is available (backward compatibility)."""
+        if not self._is_initialized:
+            self.initialize()
+        return self.db_manager.get_connection()
