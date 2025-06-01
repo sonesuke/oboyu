@@ -10,7 +10,8 @@ from typing import Any, Dict, Optional
 import typer
 from rich.console import Console
 
-from oboyu.cli.hierarchical_logger import create_hierarchical_logger
+from oboyu.cli.hierarchical_logger import HierarchicalLogger
+from oboyu.cli.services import CommandServices
 from oboyu.common.config import ConfigManager
 from oboyu.indexer import Indexer
 from oboyu.indexer.config.indexer_config import IndexerConfig
@@ -19,11 +20,8 @@ from oboyu.indexer.config.indexer_config import IndexerConfig
 class BaseCommand:
     """Base class for all CLI commands with common functionality.
 
-    This class encapsulates common patterns like:
-    - Configuration management
-    - Database path resolution
-    - Indexer initialization
-    - Console and logging setup
+    This class uses composition with CommandServices to provide
+    focused, testable functionality through specialized service classes.
     """
 
     def __init__(self, ctx: typer.Context) -> None:
@@ -34,8 +32,27 @@ class BaseCommand:
 
         """
         self.ctx = ctx
-        self.console = Console()
-        self.logger = create_hierarchical_logger(self.console)
+        self.services = CommandServices(ctx)
+
+    @property
+    def console(self) -> Console:
+        """Get the console instance for backward compatibility.
+        
+        Returns:
+            Rich console instance
+            
+        """
+        return self.services.console
+
+    @property
+    def logger(self) -> HierarchicalLogger:
+        """Get the logger instance for backward compatibility.
+        
+        Returns:
+            Hierarchical logger instance
+            
+        """
+        return self.services.logger
 
     def get_config_manager(self) -> ConfigManager:
         """Get configuration manager from context.
@@ -44,7 +61,7 @@ class BaseCommand:
             ConfigManager instance from context or a new one
 
         """
-        return self.ctx.obj.get("config_manager") if self.ctx.obj else ConfigManager()
+        return self.services.config_service.get_config_manager()
 
     def get_config_data(self) -> Dict[str, Any]:
         """Get configuration data from context.
@@ -53,7 +70,7 @@ class BaseCommand:
             Configuration data dictionary
 
         """
-        return self.ctx.obj.get("config_data", {}) if self.ctx.obj else {}
+        return self.services.config_service.get_config_data()
 
     def create_indexer_config(
         self,
@@ -70,32 +87,7 @@ class BaseCommand:
             IndexerConfig instance with proper configuration
 
         """
-        config_manager = self.get_config_manager()
-        indexer_config_dict = config_manager.get_section("indexer")
-
-        # Handle database path with clear precedence
-        from pathlib import Path
-
-        resolved_db_path = config_manager.resolve_db_path(Path(db_path) if db_path else None, indexer_config_dict)
-        indexer_config_dict["db_path"] = str(resolved_db_path)
-
-        # Apply any additional overrides
-        indexer_config_dict.update(overrides)
-
-        from oboyu.indexer.config.model_config import ModelConfig
-        from oboyu.indexer.config.processing_config import ProcessingConfig
-        from oboyu.indexer.config.search_config import SearchConfig
-
-        # Create modular config from dict with overrides
-        model_config = ModelConfig(
-            use_reranker=indexer_config_dict.get("use_reranker", False)
-        )
-        search_config = SearchConfig(
-            use_reranker=indexer_config_dict.get("use_reranker", False)
-        )
-        processing_config = ProcessingConfig(db_path=Path(indexer_config_dict["db_path"]))
-
-        return IndexerConfig(model=model_config, search=search_config, processing=processing_config)
+        return self.services.indexer_factory.create_indexer_config(db_path, **overrides)
 
     def create_indexer(
         self,
@@ -114,23 +106,12 @@ class BaseCommand:
             Initialized Indexer instance
 
         """
-        if show_progress:
-            init_op = self.logger.start_operation("Initializing Oboyu indexer...")
-
-            if show_model_loading:
-                # Get model name from config for better user feedback
-                model_name = config.model.embedding_model if config.model else "unknown"
-                load_op = self.logger.start_operation(f"Loading embedding model ({model_name})...")
-                indexer = Indexer(config=config)
-                self.logger.complete_operation(load_op)
-            else:
-                indexer = Indexer(config=config)
-
-            self.logger.complete_operation(init_op)
-        else:
-            indexer = Indexer(config=config)
-
-        return indexer
+        return self.services.indexer_factory.create_indexer(
+            config,
+            self.services.console_manager,
+            show_progress,
+            show_model_loading
+        )
 
     def confirm_database_operation(
         self,
@@ -149,19 +130,7 @@ class BaseCommand:
             True if operation should proceed, False otherwise
 
         """
-        if force:
-            return True
-
-        if db_path:
-            self.console.print(f"Using database: {db_path}")
-
-        self.console.print(f"Warning: This will {operation_name} the index database.")
-        confirm = typer.confirm("Are you sure you want to continue?")
-        if not confirm:
-            self.console.print("Operation cancelled.")
-            return False
-
-        return True
+        return self.services.console_manager.confirm_database_operation(operation_name, force, db_path)
 
     def print_database_path(self, db_path: str) -> None:
         """Print the database path being used.
@@ -170,7 +139,7 @@ class BaseCommand:
             db_path: Database path to display
 
         """
-        self.console.print(f"Using database: {db_path}")
+        self.services.console_manager.print_database_path(db_path)
 
     def handle_clear_operation(
         self,
@@ -196,15 +165,15 @@ class BaseCommand:
             return
 
         # Perform clear operation with progress tracking
-        with self.logger.live_display():
+        with self.services.logger.live_display():
             indexer = self.create_indexer(config)
 
             # Clear the index
-            clear_op = self.logger.start_operation("Clearing index database...")
+            clear_op = self.services.logger.start_operation("Clearing index database...")
             indexer.clear_index()
-            self.logger.complete_operation(clear_op)
+            self.services.logger.complete_operation(clear_op)
 
             # Clean up resources
             indexer.close()
 
-        self.console.print("\nIndex database cleared successfully!")
+        self.services.console.print("\nIndex database cleared successfully!")
