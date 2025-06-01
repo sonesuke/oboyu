@@ -58,7 +58,11 @@ def clear(
     """
     base_command = BaseCommand(ctx)
     config_manager = base_command.get_config_manager()
-    indexing_service = IndexingService(config_manager)
+    indexing_service = IndexingService(
+        config_manager, 
+        base_command.services.indexer_factory,
+        base_command.services.console_manager
+    )
     
     # Get database path
     resolved_db_path = indexing_service.get_database_path(db_path)
@@ -96,7 +100,11 @@ def status(
     """
     base_command = BaseCommand(ctx)
     config_manager = base_command.get_config_manager()
-    indexing_service = IndexingService(config_manager)
+    indexing_service = IndexingService(
+        config_manager, 
+        base_command.services.indexer_factory,
+        base_command.services.console_manager
+    )
 
     # Get database path and display it
     resolved_db_path = indexing_service.get_database_path(db_path)
@@ -159,7 +167,11 @@ def diff(
     """
     base_command = BaseCommand(ctx)
     config_manager = base_command.get_config_manager()
-    indexing_service = IndexingService(config_manager)
+    indexing_service = IndexingService(
+        config_manager, 
+        base_command.services.indexer_factory,
+        base_command.services.console_manager
+    )
 
     # Get database path and display it
     resolved_db_path = indexing_service.get_database_path(db_path)
@@ -270,7 +282,11 @@ def index(
     )
 
     config_manager = base_command.get_config_manager()
-    indexing_service = IndexingService(config_manager)
+    indexing_service = IndexingService(
+        config_manager, 
+        base_command.services.indexer_factory,
+        base_command.services.console_manager
+    )
     
     # Get database path and display it
     resolved_db_path = indexing_service.get_database_path(db_path)
@@ -280,8 +296,8 @@ def index(
     progress_callback = None
     if not quiet_progress:
         def progress_callback_func(message: str) -> None:
-            # Use console.print instead of logger operations to avoid potential conflicts
-            base_command.console.print(f"  ⎿ {message}")
+            op_id = base_command.logger.start_operation(message, expandable=False)
+            base_command.logger.complete_operation(op_id)
         progress_callback = progress_callback_func
     
     # Execute indexing with progress tracking

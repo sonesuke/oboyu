@@ -93,19 +93,12 @@ class IndexerFactory:
             Initialized Indexer instance
 
         """
-        if show_progress and console_manager:
-            init_op = console_manager.logger.start_operation("Initializing Oboyu indexer...")
-
-            if show_model_loading:
-                # Get model name from config for better user feedback
-                model_name = config.model.embedding_model if config.model else "unknown"
-                load_op = console_manager.logger.start_operation(f"Loading embedding model ({model_name})...")
-                indexer = Indexer(config=config)
-                console_manager.logger.complete_operation(load_op)
-            else:
-                indexer = Indexer(config=config)
-
-            console_manager.logger.complete_operation(init_op)
+        if show_progress and console_manager and show_model_loading:
+            # Get model name from config for better user feedback
+            model_name = config.model.embedding_model if config.model else "unknown"
+            load_op = console_manager.logger.start_operation(f"Loading embedding model ({model_name})...")
+            indexer = Indexer(config=config)
+            console_manager.logger.complete_operation(load_op)
         else:
             indexer = Indexer(config=config)
 
