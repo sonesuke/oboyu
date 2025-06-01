@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import Mock, patch
 import numpy as np
 
-from oboyu.indexer.core.search_mode import SearchMode
+from oboyu.indexer.search.search_mode import SearchMode
 from oboyu.indexer.core.search_mode_router import SearchModeRouter
 from oboyu.indexer.search.search_result import SearchResult
 

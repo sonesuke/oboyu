@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from oboyu.indexer.models.embedding_service import EmbeddingService
+from oboyu.indexer.services.embedding import EmbeddingService
 from oboyu.indexer.core.document_processor import Chunk
 
 

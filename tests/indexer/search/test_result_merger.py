@@ -2,7 +2,7 @@
 
 import pytest
 
-from oboyu.indexer.core.result_merger import ResultMerger
+from oboyu.indexer.search.result_merger import ResultMerger
 from oboyu.indexer.search.search_result import SearchResult
 
 

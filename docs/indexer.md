@@ -672,7 +672,7 @@ from oboyu.indexer.embedding import EmbeddingGenerator  # Points to EmbeddingSer
 # New preferred imports
 from oboyu.indexer.indexer import Indexer
 from oboyu.indexer.storage.database_service import DatabaseService
-from oboyu.indexer.models.embedding_service import EmbeddingService
+from oboyu.indexer.services.embedding import EmbeddingService
 ```
 
 ### Testing Improvements

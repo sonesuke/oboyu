@@ -21,7 +21,7 @@ except ImportError:
     HAS_JAPANESE_TOKENIZER = False
 
 # Import Japanese stop words from separate module
-from .stop_words import DEFAULT_JAPANESE_STOP_WORDS
+from ..data.stop_words import DEFAULT_JAPANESE_STOP_WORDS
 
 logger = logging.getLogger(__name__)
 

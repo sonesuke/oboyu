@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from oboyu.indexer.storage.repositories import StatisticsRepository
+from oboyu.indexer.storage.consolidated_repositories import StatisticsRepository
 
 
 @pytest.fixture

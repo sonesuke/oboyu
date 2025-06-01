@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, Mock
 import pytest
 
 from oboyu.indexer.core.document_processor import Chunk
-from oboyu.indexer.storage.repositories import ChunkRepository
+from oboyu.indexer.storage.consolidated_repositories import ChunkRepository
 
 
 @pytest.fixture

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, Mock
 import numpy as np
 import pytest
 
-from oboyu.indexer.storage.repositories import EmbeddingRepository
+from oboyu.indexer.storage.consolidated_repositories import EmbeddingRepository
 
 
 @pytest.fixture

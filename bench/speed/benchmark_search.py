@@ -13,7 +13,7 @@ from bench.config import BENCHMARK_CONFIG, QUERIES_DIR
 from bench.speed.results import SearchBenchmarkResult, SearchResult
 from bench.utils import SystemMonitor, Timer, calculate_statistics, print_metric, print_section
 from oboyu.indexer.storage.database_service import Database
-from oboyu.indexer.models.embedding_service import EmbeddingGenerator
+from oboyu.indexer.services.embedding import EmbeddingService
 
 console = Console()
 
@@ -39,7 +39,7 @@ class SearchBenchmark:
         # Initialize database and embedding model
         self.db = Database(db_path=db_path)
         self.db.setup()  # Ensure connection is established
-        self.embedding_model = EmbeddingGenerator()
+        self.embedding_model = EmbeddingService()
         
         # Get dataset info
         self.dataset_info = self._get_dataset_info()

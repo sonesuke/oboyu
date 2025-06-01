@@ -3,8 +3,8 @@
 import pytest
 from unittest.mock import Mock
 
-from oboyu.indexer.core.hybrid_search_combiner import HybridSearchCombiner
-from oboyu.indexer.core.score_normalizer import ScoreNormalizer
+from oboyu.indexer.search.hybrid_search_combiner import HybridSearchCombiner
+from oboyu.indexer.search.score_normalizer import ScoreNormalizer
 from oboyu.indexer.search.search_result import SearchResult
 
 

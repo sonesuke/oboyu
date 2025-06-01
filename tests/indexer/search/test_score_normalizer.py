@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 from unittest.mock import patch
 
-from oboyu.indexer.core.score_normalizer import (
+from oboyu.indexer.search.score_normalizer import (
     NormalizationMethod,
     ScoreNormalizer,
 )
