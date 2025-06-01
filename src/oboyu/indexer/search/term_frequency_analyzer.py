@@ -7,7 +7,7 @@ for documents using tokenization services.
 import logging
 from typing import Dict, Set
 
-from oboyu.indexer.models.tokenizer_service import TokenizerService
+from oboyu.indexer.services.tokenizer import TokenizerService
 
 logger = logging.getLogger(__name__)
 

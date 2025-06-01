@@ -1,8 +1,33 @@
-"""Model service components."""
+"""Data model components."""
 
-from oboyu.indexer.models.embedding_service import EmbeddingCache, EmbeddingService
+# Import data models
+from oboyu.indexer.models.database import ChunkRecord, EmbeddingRecord, VocabularyRecord
+from oboyu.indexer.models.search import (
+    EmbeddingModel,
+    IndexingStatus,
+    EmbeddingVector,
+)
 
-# Legacy aliases for tests
-EmbeddingGenerator = EmbeddingService
+# Legacy imports for backward compatibility  
+try:
+    from oboyu.indexer.services.embedding import EmbeddingCache, EmbeddingService
+    # Legacy aliases for tests
+    EmbeddingGenerator = EmbeddingService
+except ImportError:
+    EmbeddingCache = None
+    EmbeddingService = None
+    EmbeddingGenerator = None
 
-__all__ = ["EmbeddingService", "EmbeddingCache", "EmbeddingGenerator"]
+__all__ = [
+    # Data models
+    "ChunkRecord",
+    "EmbeddingRecord", 
+    "VocabularyRecord",
+    "EmbeddingModel",
+    "IndexingStatus",
+    "EmbeddingVector",
+    # Legacy compatibility
+    "EmbeddingService",
+    "EmbeddingCache", 
+    "EmbeddingGenerator",
+]

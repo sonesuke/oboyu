@@ -1,7 +1,7 @@
 """Type-safe query builder for Oboyu indexer database operations.
 
 This module provides backward compatibility by re-exporting all query functionality
-from the organized sub-modules. The original QueryBuilder class is now implemented
+from the consolidated queries module. The original QueryBuilder class is now implemented
 by delegating to specialized query classes.
 
 Key features:
@@ -12,5 +12,5 @@ Key features:
 - Built-in validation and error handling
 """
 
-# Re-export everything from the queries package for backward compatibility
-from .queries import *  # noqa: F403,F401
+# Re-export everything from the consolidated queries for backward compatibility
+from .consolidated_queries import *  # noqa: F403,F401

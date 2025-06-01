@@ -17,7 +17,7 @@ from bench.accuracy.rag_accuracy.reranker_evaluator import RerankerEvaluator
 from bench.logger import BenchmarkLogger
 from oboyu.indexer import LegacyIndexer as Indexer
 from oboyu.indexer.config import IndexerConfig
-from oboyu.indexer.models.reranker_service import create_reranker
+from oboyu.indexer.services.reranker import create_reranker
 from oboyu.indexer.search.search_result import SearchResult
 
 

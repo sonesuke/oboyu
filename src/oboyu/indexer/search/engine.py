@@ -1,4 +1,4 @@
-"""Search orchestrator for coordinating search operations across different modes."""
+"""Consolidated search engine combining SearchEngine and SearchOrchestrator functionality."""
 
 import logging
 from typing import List, Optional, Union
@@ -6,33 +6,159 @@ from typing import List, Optional, Union
 import numpy as np
 from numpy.typing import NDArray
 
+from oboyu.indexer.search.hybrid_search_combiner import HybridSearchCombiner
+from oboyu.indexer.search.result_merger import ResultMerger
+from oboyu.indexer.search.score_normalizer import ScoreNormalizer
 from oboyu.indexer.search.search_context import SearchContext, SystemDefaults
 from oboyu.indexer.search.search_mode import SearchMode
-from oboyu.indexer.orchestrators.service_registry import ServiceRegistry
+from oboyu.indexer.search.mode_router import SearchModeRouter
+from oboyu.indexer.search.bm25_search import BM25Search
+from oboyu.indexer.search.hybrid_search import HybridSearch
 from oboyu.indexer.search.search_filters import SearchFilters
 from oboyu.indexer.search.search_result import SearchResult
+from oboyu.indexer.search.vector_search import VectorSearch
 
 logger = logging.getLogger(__name__)
 
 
-class SearchOrchestrator:
-    """Coordinates search operations across different modes."""
+class SearchEngine:
+    """Consolidated search engine that orchestrates all search operations.
     
-    def __init__(self, services: ServiceRegistry) -> None:
-        """Initialize the search orchestrator with services.
-        
+    This class combines the functionality from the original SearchEngine 
+    and SearchOrchestrator classes to provide a unified interface for
+    all search operations including vector search, BM25 search, and 
+    hybrid search with optional reranking.
+    """
+
+    def __init__(
+        self,
+        vector_search: VectorSearch,
+        bm25_search: BM25Search,
+        hybrid_search: HybridSearch,
+        embedding_service=None,
+        tokenizer_service=None,
+        reranker_service=None,
+        config=None,
+    ) -> None:
+        """Initialize search engine with required and optional services.
+
         Args:
-            services: Service registry providing dependencies
-            
+            vector_search: Vector similarity search service
+            bm25_search: BM25 keyword search service  
+            hybrid_search: Hybrid search combination service
+            embedding_service: Optional embedding service for query processing
+            tokenizer_service: Optional tokenizer service for query processing
+            reranker_service: Optional reranker service for result refinement
+            config: Optional configuration object
+
         """
-        self.services = services
-        self.search_engine = services.get_search_engine()
-        self.embedding_service = services.get_embedding_service()
-        self.tokenizer_service = services.get_tokenizer_service()
-        self.reranker_service = services.get_reranker_service()
-        self.config = services.config
+        # Core search services
+        self.vector_search = vector_search
+        self.bm25_search = bm25_search
+        self.hybrid_search = hybrid_search
         
+        # Optional high-level services
+        self.embedding_service = embedding_service
+        self.tokenizer_service = tokenizer_service
+        self.reranker_service = reranker_service
+        self.config = config
+        
+        # Initialize composed components
+        self.router = SearchModeRouter(vector_search, bm25_search)
+        self.merger = ResultMerger()
+        self.normalizer = ScoreNormalizer()
+        self.combiner = HybridSearchCombiner(
+            vector_weight=hybrid_search.vector_weight,
+            bm25_weight=hybrid_search.bm25_weight,
+            score_normalizer=self.normalizer,
+        )
+
     def search(
+        self,
+        query_vector: Optional[NDArray[np.float32]] = None,
+        query_terms: Optional[List[str]] = None,
+        mode: SearchMode = SearchMode.HYBRID,
+        limit: int = 10,
+        language_filter: Optional[str] = None,
+        top_k_multiplier: int = 2,
+        filters: Optional[SearchFilters] = None,
+    ) -> List[SearchResult]:
+        """Execute search using appropriate search mode with pre-processed inputs.
+
+        Args:
+            query_vector: Query embedding vector (required for vector and hybrid search)
+            query_terms: Query terms (required for BM25 and hybrid search)
+            mode: Search mode to use
+            limit: Maximum number of results to return
+            language_filter: Optional language filter
+            top_k_multiplier: Multiplier for initial retrieval in hybrid search
+            filters: Optional search filters for date range and path filtering
+
+        Returns:
+            List of search results
+
+        """
+        try:
+            # Route non-hybrid searches to appropriate implementation
+            if mode in (SearchMode.VECTOR, SearchMode.BM25):
+                return self.router.route(
+                    mode=mode,
+                    query_vector=query_vector,
+                    query_terms=query_terms,
+                    limit=limit,
+                    language_filter=language_filter,
+                    filters=filters,
+                )
+
+            elif mode == SearchMode.HYBRID:
+                if query_vector is None or query_terms is None:
+                    raise ValueError("Both query vector and terms are required for hybrid search")
+
+                # Get more results for hybrid combination
+                initial_limit = limit * top_k_multiplier
+
+                # Execute both searches through router
+                vector_results = self.router.route(
+                    mode=SearchMode.VECTOR,
+                    query_vector=query_vector,
+                    limit=initial_limit,
+                    language_filter=language_filter,
+                    filters=filters,
+                )
+
+                bm25_results = self.router.route(
+                    mode=SearchMode.BM25,
+                    query_terms=query_terms,
+                    limit=initial_limit,
+                    language_filter=language_filter,
+                    filters=filters,
+                )
+
+                # Combine results using the new combiner
+                combined_results = self.combiner.combine(
+                    vector_results=vector_results,
+                    bm25_results=bm25_results,
+                    limit=limit,
+                )
+                
+                # Also use the original hybrid search for backward compatibility
+                legacy_results = self.hybrid_search.search(
+                    vector_results=vector_results,
+                    bm25_results=bm25_results,
+                    limit=limit,
+                )
+                
+                # Merge both results to ensure backward compatibility
+                return self.merger.merge(combined_results, legacy_results, limit=limit)
+
+            else:
+                raise ValueError(f"Unknown search mode: {mode}")
+
+        except Exception as e:
+            logger.error(f"Search failed with mode {mode}: {e}")
+            return []
+
+    def search_with_query(
         self,
         query: str,
         mode: SearchMode = SearchMode.HYBRID,
@@ -43,10 +169,13 @@ class SearchOrchestrator:
         vector_weight: Optional[float] = None,
         bm25_weight: Optional[float] = None,
     ) -> List[SearchResult]:
-        """Execute search with specified mode and parameters.
+        """Execute search with query string processing and optional reranking.
+        
+        This method provides the high-level orchestration functionality
+        from the original SearchOrchestrator class.
         
         Args:
-            query: Search query
+            query: Search query string
             mode: Search mode (VECTOR, BM25, or HYBRID)
             limit: Maximum number of results
             use_reranker: Whether to use reranker (None uses config default)
@@ -59,6 +188,9 @@ class SearchOrchestrator:
             List of search results
             
         """
+        if not self.embedding_service or not self.tokenizer_service:
+            raise RuntimeError("Embedding and tokenizer services required for query processing")
+            
         try:
             # Prepare search inputs based on mode
             query_vector = None
@@ -72,15 +204,14 @@ class SearchOrchestrator:
                 
             # Determine result limit considering reranking
             search_limit = limit
-            if use_reranker is None:
+            if use_reranker is None and self.config:
                 use_reranker = self.config.use_reranker
                 
-            if use_reranker and self.reranker_service:
-                assert self.config.search is not None
+            if use_reranker and self.reranker_service and self.config and self.config.search:
                 search_limit = limit * self.config.search.top_k_multiplier
                 
             # Execute search
-            results = self.search_engine.search(
+            results = self.search(
                 query_vector=query_vector,
                 query_terms=query_terms,
                 mode=mode,
@@ -97,9 +228,9 @@ class SearchOrchestrator:
             return results[:limit]
             
         except Exception as e:
-            logger.error(f"Search failed: {e}")
+            logger.error(f"Search with query failed: {e}")
             return []
-    
+
     def search_with_context(
         self,
         query: str,
@@ -124,6 +255,9 @@ class SearchOrchestrator:
             List of search results
             
         """
+        if not self.embedding_service or not self.tokenizer_service:
+            raise RuntimeError("Embedding and tokenizer services required for query processing")
+            
         try:
             # Prepare search inputs based on mode
             query_vector = None
@@ -161,13 +295,12 @@ class SearchOrchestrator:
             
             # Determine result limit considering reranking
             search_limit = limit
-            if use_reranker and self.reranker_service:
-                assert self.config.search is not None
+            if use_reranker and self.reranker_service and self.config and self.config.search:
                 search_limit = limit * self.config.search.top_k_multiplier
                 logger.debug(f"🔧 Reranker enabled, expanding search limit to {search_limit}")
             
             # Execute search
-            results = self.search_engine.search(
+            results = self.search(
                 query_vector=query_vector,
                 query_terms=query_terms,
                 mode=mode,
@@ -214,11 +347,13 @@ class SearchOrchestrator:
         """
         # Handle both string queries and embedding vectors
         if isinstance(query, str):
+            if not self.embedding_service:
+                raise RuntimeError("Embedding service required for string query processing")
             query_embedding = self.embedding_service.generate_query_embedding(query)
         else:
             query_embedding = query
             
-        return self.search_engine.search(
+        return self.search(
             query_vector=query_embedding,
             mode=SearchMode.VECTOR,
             limit=limit,
@@ -245,11 +380,14 @@ class SearchOrchestrator:
             List of search results
             
         """
+        if not self.tokenizer_service:
+            raise RuntimeError("Tokenizer service required for BM25 search")
+            
         # Tokenize the query
         query_terms = self.tokenizer_service.tokenize_query(query)
         
         # Execute BM25 search
-        return self.search_engine.search(
+        return self.search(
             query_terms=query_terms,
             mode=SearchMode.BM25,
             limit=limit,
@@ -280,12 +418,15 @@ class SearchOrchestrator:
             List of search results
             
         """
+        if not self.embedding_service or not self.tokenizer_service:
+            raise RuntimeError("Embedding and tokenizer services required for hybrid search")
+            
         # Generate query embedding and tokenize query
         query_vector = self.embedding_service.generate_query_embedding(query)
         query_terms = self.tokenizer_service.tokenize_query(query)
         
         # Execute hybrid search
-        return self.search_engine.search(
+        return self.search(
             query_vector=query_vector,
             query_terms=query_terms,
             mode=SearchMode.HYBRID,
@@ -314,3 +455,7 @@ class SearchOrchestrator:
             return results
             
         return self.reranker_service.rerank(query, results)
+
+
+# Legacy aliases for backward compatibility
+SearchOrchestrator = SearchEngine  # Allow code to import SearchOrchestrator as alias

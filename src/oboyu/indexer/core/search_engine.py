@@ -6,11 +6,11 @@ from typing import List, Optional
 import numpy as np
 from numpy.typing import NDArray
 
-from oboyu.indexer.core.hybrid_search_combiner import HybridSearchCombiner
-from oboyu.indexer.core.result_merger import ResultMerger
-from oboyu.indexer.core.score_normalizer import ScoreNormalizer
-from oboyu.indexer.core.search_mode import SearchMode
-from oboyu.indexer.core.search_mode_router import SearchModeRouter
+from oboyu.indexer.search.hybrid_search_combiner import HybridSearchCombiner
+from oboyu.indexer.search.result_merger import ResultMerger
+from oboyu.indexer.search.score_normalizer import ScoreNormalizer
+from oboyu.indexer.search.search_mode import SearchMode
+from oboyu.indexer.search.mode_router import SearchModeRouter
 from oboyu.indexer.search.bm25_search import BM25Search
 from oboyu.indexer.search.hybrid_search import HybridSearch
 from oboyu.indexer.search.search_filters import SearchFilters

@@ -1,4 +1,4 @@
-"""Query service for handling all search-related business logic."""
+"""Consolidated query command functionality."""
 
 import time
 from dataclasses import dataclass
@@ -22,11 +22,11 @@ class QueryResult:
     total_results: int
 
 
-class QueryService:
-    """Service for handling query operations."""
+class QueryCommand:
+    """Consolidated query command service for search operations."""
     
     def __init__(self, config_manager: ConfigManager) -> None:
-        """Initialize the query service.
+        """Initialize the query command service.
         
         Args:
             config_manager: Configuration manager instance
@@ -44,21 +44,7 @@ class QueryService:
         db_path: Optional[Path] = None,
         rerank: Optional[bool] = None,
     ) -> QueryResult:
-        """Execute a search query.
-        
-        Args:
-            query: Search query text
-            mode: Search mode (vector, bm25, hybrid)
-            top_k: Number of results to return
-            vector_weight: Weight for vector search in hybrid mode
-            bm25_weight: Weight for BM25 search in hybrid mode
-            db_path: Optional database path override
-            rerank: Whether to use reranking
-            
-        Returns:
-            QueryResult with search results and metadata
-
-        """
+        """Execute a search query."""
         # Get query engine configuration
         query_config = self.config_manager.get_section("query")
         
@@ -137,22 +123,7 @@ class QueryService:
         db_path: Optional[Path] = None,
         rerank: Optional[bool] = None,
     ) -> QueryResult:
-        """Execute a search query using SearchContext pattern for explicit setting tracking.
-        
-        This method implements the Context Pattern to ensure user-specified
-        settings are never overridden by default values.
-        
-        Args:
-            query: Search query text
-            mode: Search mode (vector, bm25, hybrid)
-            top_k: Number of results to return
-            db_path: Optional database path override
-            rerank: Whether to use reranking
-            
-        Returns:
-            QueryResult with search results and metadata
-
-        """
+        """Execute a search query using SearchContext pattern for explicit setting tracking."""
         # Build search context from CLI arguments - only explicit values are set
         context_builder = ContextBuilder()
         
@@ -215,15 +186,7 @@ class QueryService:
             indexer.close()
     
     def get_database_path(self, db_path: Optional[Path] = None) -> str:
-        """Get the resolved database path.
-        
-        Args:
-            db_path: Optional database path override
-            
-        Returns:
-            Resolved database path as string
-
-        """
+        """Get the resolved database path."""
         query_config = self.config_manager.get_section("query")
         database_path = Path(db_path or query_config.get("database_path") or DEFAULT_DB_PATH)
         return str(database_path)
@@ -235,18 +198,7 @@ class QueryService:
         bm25_weight: Optional[float] = None,
         rerank: Optional[bool] = None,
     ) -> Dict[str, Any]:
-        """Get query configuration with overrides.
-        
-        Args:
-            top_k: Optional top_k override
-            vector_weight: Optional vector_weight override
-            bm25_weight: Optional bm25_weight override
-            rerank: Optional rerank override
-            
-        Returns:
-            Query configuration dictionary
-
-        """
+        """Get query configuration with overrides."""
         # Override with provided options
         cli_overrides: Dict[str, Any] = {}
         if top_k is not None:
@@ -259,3 +211,7 @@ class QueryService:
             cli_overrides["use_reranker"] = rerank
         
         return self.config_manager.merge_cli_overrides("query", cli_overrides)
+
+
+# Legacy alias for backward compatibility
+QueryService = QueryCommand
