@@ -142,7 +142,6 @@ def status(
                 patterns=crawler_config.include_patterns,
                 exclude_patterns=crawler_config.exclude_patterns,
                 max_depth=crawler_config.depth,
-                follow_symlinks=crawler_config.follow_symlinks,
             )
 
             # Detect changes (extract just paths from tuples)
@@ -265,7 +264,6 @@ def diff(
                 patterns=crawler_config.include_patterns,
                 exclude_patterns=crawler_config.exclude_patterns,
                 max_depth=crawler_config.depth,
-                follow_symlinks=crawler_config.follow_symlinks,
             )
 
             # Detect changes (extract just paths from tuples)
@@ -529,7 +527,6 @@ def index(
                 depth=max_depth or 10,
                 include_patterns=include_patterns or ["*.txt", "*.md", "*.html", "*.py", "*.java"],
                 exclude_patterns=exclude_patterns or ["*/node_modules/*", "*/venv/*"],
-                follow_symlinks=False,
                 max_workers=4,
                 respect_gitignore=True,
             )

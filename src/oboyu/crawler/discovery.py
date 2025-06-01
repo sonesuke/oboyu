@@ -19,14 +19,16 @@ except ImportError:
 # Type alias for document path and metadata
 DocumentInfo = Tuple[Path, Dict[str, object]]
 
+# Hard-coded values (no longer configurable)
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+FOLLOW_SYMLINKS = False
+
 
 def discover_documents(
     directory: Path,
     patterns: List[str],
     exclude_patterns: List[str],
     max_depth: int = 10,
-    max_file_size: int = 10 * 1024 * 1024,  # 10MB
-    follow_symlinks: bool = False,
     respect_gitignore: bool = True,
 ) -> List[DocumentInfo]:
     """Discover documents in a directory based on patterns.
@@ -36,12 +38,14 @@ def discover_documents(
         patterns: List of glob patterns to include (e.g., "*.txt")
         exclude_patterns: List of glob patterns to exclude (e.g., "*/node_modules/*")
         max_depth: Maximum directory traversal depth
-        max_file_size: Maximum file size in bytes
-        follow_symlinks: Whether to follow symbolic links
         respect_gitignore: Whether to respect .gitignore files (default: True)
 
     Returns:
         List of tuples with document path and metadata
+
+    Note:
+        max_file_size is hard-coded to 10MB and follow_symlinks is hard-coded to False
+        for consistency and security reasons.
 
     """
     if not directory.exists() or not directory.is_dir():
@@ -70,8 +74,8 @@ def discover_documents(
         exclude_patterns=exclude_patterns,
         current_depth=0,
         max_depth=max_depth,
-        max_file_size=max_file_size,
-        follow_symlinks=follow_symlinks,
+        max_file_size=MAX_FILE_SIZE,
+        follow_symlinks=FOLLOW_SYMLINKS,
         visited_dirs=visited_dirs,
         gitignore_matcher=gitignore_matcher,
         root_directory=directory,
@@ -148,7 +152,7 @@ def _walk_directory(
                     continue
 
             # Handle directories
-            if item.is_dir(follow_symlinks=follow_symlinks):
+            if item.is_dir(follow_symlinks=FOLLOW_SYMLINKS):
                 # Skip if we've already visited this directory (to avoid cycles)
                 if item_path in visited_dirs:
                     continue
@@ -168,14 +172,14 @@ def _walk_directory(
                 )
 
             # Handle files
-            elif item.is_file(follow_symlinks=follow_symlinks):
+            elif item.is_file(follow_symlinks=FOLLOW_SYMLINKS):
                 # Check if the file matches any of the include patterns
                 if _matches_patterns(item_path, patterns):
                     # Check file size
-                    file_size = item.stat(follow_symlinks=follow_symlinks).st_size
-                    if file_size <= max_file_size:
+                    file_size = item.stat(follow_symlinks=FOLLOW_SYMLINKS).st_size
+                    if file_size <= MAX_FILE_SIZE:
                         # Collect metadata
-                        metadata = _get_file_metadata(item, follow_symlinks)
+                        metadata = _get_file_metadata(item, FOLLOW_SYMLINKS)
                         yield (item_path, metadata)
     except PermissionError:
         # Skip directories we don't have permission to access

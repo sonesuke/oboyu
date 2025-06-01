@@ -31,11 +31,11 @@ def discover_documents(
     patterns: List[str],
     exclude_patterns: List[str],
     max_depth: int = 10,
-    follow_symlinks: bool = False,
     respect_gitignore: bool = True
 ) -> List[Tuple[Path, Dict[str, Any]]]:
     """Discover documents matching patterns with metadata."""
     # Returns list of (path, metadata) tuples
+    # Note: max_file_size is hard-coded to 10MB, follow_symlinks is hard-coded to False
 ```
 
 ### Content Extraction
@@ -120,11 +120,13 @@ crawler:
   exclude_patterns:              # Patterns to exclude
     - "*/node_modules/*"
     - "*/venv/*"
-  max_file_size: 10485760        # 10MB maximum file size
-  follow_symlinks: false         # Whether to follow symbolic links
   respect_gitignore: true        # Whether to respect .gitignore files
   # Japanese encoding detection is automatic
   max_workers: 4                 # Number of parallel workers for processing
+  
+  # Hard-coded values (no longer configurable):
+  # max_file_size: 10MB          # Maximum file size
+  # follow_symlinks: false       # Never follow symbolic links
 ```
 
 ## Performance Considerations

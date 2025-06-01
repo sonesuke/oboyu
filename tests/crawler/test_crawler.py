@@ -18,8 +18,6 @@ class TestCrawler:
         assert crawler.depth == 10
         assert "*.txt" in crawler.include_patterns
         assert "*/node_modules/*" in crawler.exclude_patterns
-        assert crawler.max_file_size == 10 * 1024 * 1024  # 10MB
-        assert not crawler.follow_symlinks
         assert crawler.max_workers == 4  # Default worker count
         
         # Test with custom parameters
@@ -27,15 +25,11 @@ class TestCrawler:
             depth=5,
             include_patterns=["*.csv"],
             exclude_patterns=["*/temp/*"],
-            max_file_size=1024,
-            follow_symlinks=True,
             max_workers=8,
         )
         assert crawler.depth == 5
         assert crawler.include_patterns == ["*.csv"]
         assert crawler.exclude_patterns == ["*/temp/*"]
-        assert crawler.max_file_size == 1024
-        assert crawler.follow_symlinks
         assert crawler.max_workers == 8
     
     def test_crawler_crawl(self) -> None:

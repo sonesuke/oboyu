@@ -111,29 +111,17 @@ class TestDiscovery:
             large_file = test_dir / "large.txt"
             large_file.write_text("Large file" * 50)  # ~500 bytes
             
-            # Discover documents with max_file_size=100
+            # Test is no longer valid since max_file_size is hard-coded
+            
+            # With hard-coded max_file_size=10MB, both files should be included
             documents = discover_documents(
                 directory=test_dir,
                 patterns=["*.txt"],
                 exclude_patterns=[],
                 max_depth=5,
-                max_file_size=100,
             )
             
-            # Should only include small file
-            assert len(documents) == 1
-            assert str(documents[0][0]) == str(small_file)
-            
-            # Discover documents with larger max_file_size
-            documents = discover_documents(
-                directory=test_dir,
-                patterns=["*.txt"],
-                exclude_patterns=[],
-                max_depth=5,
-                max_file_size=1000,  # Large enough for both files
-            )
-            
-            # Should include both files
+            # Should include both files (since 10MB > 500 bytes)
             assert len(documents) == 2
             paths = [str(doc[0]) for doc in documents]
             assert str(small_file) in paths
