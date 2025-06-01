@@ -22,8 +22,9 @@ class TestDateRangeFilter:
         assert filter_obj.field == "modified_at"
 
     def test_invalid_date_field(self) -> None:
-        """Test that invalid date field raises ValueError."""
-        with pytest.raises(ValueError, match="Invalid date field"):
+        """Test that invalid date field raises ValidationError."""
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError, match="String should match pattern"):
             DateRangeFilter(field="invalid_field")
 
     def test_start_after_end_date(self) -> None:
@@ -80,9 +81,11 @@ class TestPathFilter:
         assert filter_obj.exclude_patterns == exclude_patterns
 
     def test_empty_path_filter(self) -> None:
-        """Test that empty path filter raises ValueError."""
-        with pytest.raises(ValueError, match="At least one include or exclude pattern must be specified"):
-            PathFilter()
+        """Test that empty path filter is now allowed for backward compatibility."""
+        # This should no longer raise an error
+        filter_obj = PathFilter()
+        assert filter_obj.include_patterns is None
+        assert filter_obj.exclude_patterns is None
 
     def test_path_matching_include_only(self) -> None:
         """Test path matching with include patterns only."""

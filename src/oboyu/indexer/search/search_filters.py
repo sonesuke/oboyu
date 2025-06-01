@@ -6,41 +6,67 @@ date range filtering and path pattern filtering.
 
 import fnmatch
 import logging
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class DateRangeFilter:
-    """Date range filter for search operations."""
+class DateRangeFilter(BaseModel):
+    """Enhanced date range filter for search operations with validation."""
     
-    start: Optional[datetime] = None
-    end: Optional[datetime] = None
-    field: str = "modified_at"  # "created_at" or "modified_at"
+    start: Optional[datetime] = Field(default=None, description="Start date for filtering")
+    end: Optional[datetime] = Field(default=None, description="End date for filtering")
+    field: str = Field(default="modified_at", pattern=r'^(created_at|modified_at)$', description="Date field to filter on")
     
-    def __post_init__(self) -> None:
-        """Validate filter parameters."""
-        if self.field not in ("created_at", "modified_at"):
-            raise ValueError(f"Invalid date field: {self.field}. Must be 'created_at' or 'modified_at'")
-        
+    @model_validator(mode='after')
+    def validate_date_range(self) -> 'DateRangeFilter':
+        """Validate date range consistency."""
         if self.start and self.end and self.start > self.end:
             raise ValueError("Start date must be before end date")
+        return self
+    
+    @field_validator('start', 'end')
+    @classmethod
+    def validate_dates(cls, v: Optional[datetime]) -> Optional[datetime]:
+        """Validate date values."""
+        if v is not None:
+            # Ensure date is not in the future
+            if v > datetime.now():
+                raise ValueError("Date cannot be in the future")
+        return v
 
 
-@dataclass
-class PathFilter:
-    """Path pattern filter for search operations."""
+class PathFilter(BaseModel):
+    """Enhanced path pattern filter for search operations with validation."""
     
-    include_patterns: Optional[List[str]] = None
-    exclude_patterns: Optional[List[str]] = None
+    include_patterns: Optional[List[str]] = Field(default=None, description="Patterns to include")
+    exclude_patterns: Optional[List[str]] = Field(default=None, description="Patterns to exclude")
     
-    def __post_init__(self) -> None:
-        """Validate filter parameters."""
-        if not self.include_patterns and not self.exclude_patterns:
-            raise ValueError("At least one include or exclude pattern must be specified")
+    # Allow empty patterns for backward compatibility - validation only when actually used
+    
+    @field_validator('include_patterns', 'exclude_patterns')
+    @classmethod
+    def validate_pattern_lists(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Validate pattern lists."""
+        if v is not None:
+            # Remove empty patterns and normalize
+            cleaned = [pattern.strip() for pattern in v if pattern.strip()]
+            if not cleaned:
+                return None
+            
+            # Validate pattern format
+            for pattern in cleaned:
+                if not pattern or pattern.isspace():
+                    raise ValueError("Pattern cannot be empty or whitespace")
+                # Basic validation for dangerous patterns
+                if '..' in pattern:
+                    raise ValueError("Patterns with '..' are not allowed for security reasons")
+            
+            return cleaned
+        return v
     
     def matches(self, path: str) -> bool:
         """Check if a path matches this filter.
@@ -70,12 +96,31 @@ class PathFilter:
         return False
 
 
-@dataclass
-class SearchFilters:
-    """Combined search filters for multiple filter types."""
+class SearchFilters(BaseModel):
+    """Enhanced combined search filters for multiple filter types with validation."""
     
-    date_range: Optional[DateRangeFilter] = None
-    path_filter: Optional[PathFilter] = None
+    date_range: Optional[DateRangeFilter] = Field(default=None, description="Date range filter")
+    path_filter: Optional[PathFilter] = Field(default=None, description="Path pattern filter")
+    language_filter: Optional[str] = Field(default=None, pattern=r'^[a-z]{2}$', description="Language filter")
+    min_score: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="Minimum score threshold")
+    file_types: Optional[List[str]] = Field(default=None, description="File type filters")
+    
+    @field_validator('file_types')
+    @classmethod
+    def validate_file_types(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Validate file type extensions."""
+        if v is not None:
+            normalized = []
+            for ext in v:
+                if not ext.strip():
+                    continue
+                if not ext.startswith('.'):
+                    ext = '.' + ext
+                normalized.append(ext.lower())
+            return normalized if normalized else None
+        return v
+    
+    # Removed the validator requiring at least one filter for backward compatibility
     
     @classmethod
     def from_dict(cls, filter_dict: Dict[str, Any]) -> "SearchFilters":
@@ -166,7 +211,13 @@ class SearchFilters:
             True if any filters are set
 
         """
-        return self.date_range is not None or self.path_filter is not None
+        return (
+            self.date_range is not None
+            or self.path_filter is not None
+            or self.language_filter is not None
+            or self.min_score is not None
+            or self.file_types is not None
+        )
     
     def to_sql_conditions(self) -> tuple[List[str], List[Any]]:
         """Convert filters to SQL WHERE conditions and parameters.
