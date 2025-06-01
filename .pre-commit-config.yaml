@@ -29,6 +29,13 @@ repos:
       language: system
       pass_filenames: false
       always_run: true
+    - id: pylint-line-length
+      name: pylint line length check
+      entry: uv run pylint src
+      language: system
+      types: [python]
+      args: ["--disable=all", "--enable=too-many-lines"]
+      pass_filenames: false
     - id: mypy
       name: mypy
       entry: uv run mypy

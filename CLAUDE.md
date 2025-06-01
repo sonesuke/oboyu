@@ -51,3 +51,7 @@ The project uses:
 - Pytest for testing with coverage reporting
 - Pre-commit hooks for code quality and conventional commits
 - Repomix for code analysis and AI comprehension
+
+## Code Organization Guidelines
+- Keep source files under 500 lines to maintain readability
+- Each module should have a single responsibility and focus on one specific task

@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -212,6 +212,9 @@ class Indexer:
                 progress_callback("storing_embeddings", 0, len(chunk_ids))
                 
             self.database_service.store_embeddings(chunk_ids, embeddings, progress_callback=progress_callback)
+            
+            # Ensure HNSW index exists after storing embeddings
+            self.database_service.ensure_hnsw_index()
 
             # Update BM25 index with progress tracking
             if progress_callback:
@@ -295,25 +298,36 @@ class Indexer:
 
     def vector_search(
         self,
-        query_embedding: NDArray[np.float32],
-        limit: int = 10,
+        query: Union[str, NDArray[np.float32]],
+        top_k: int = 10,
+        limit: Optional[int] = None,
         language_filter: Optional[str] = None,
     ) -> List[SearchResult]:
-        """Direct vector search using query embedding.
+        """Vector search using query string or embedding.
 
         Args:
-            query_embedding: Pre-computed query embedding
-            limit: Maximum number of results
+            query: Search query string or pre-computed embedding
+            top_k: Maximum number of results (new parameter name)
+            limit: Deprecated parameter name for compatibility
             language_filter: Optional language filter
 
         Returns:
             List of search results
 
         """
+        # Handle legacy parameter name
+        result_limit = top_k if limit is None else limit
+        
+        # Handle both string queries and embedding vectors
+        if isinstance(query, str):
+            query_embedding = self.embedding_service.generate_query_embedding(query)
+        else:
+            query_embedding = query
+            
         return self.search_engine.search(
             query_vector=query_embedding,
             mode=SearchMode.VECTOR,
-            limit=limit,
+            limit=result_limit,
             language_filter=language_filter,
         )
 
@@ -356,3 +370,108 @@ class Indexer:
         """Close all services and connections."""
         if hasattr(self.database_service, "close"):
             self.database_service.close()
+
+    @classmethod
+    def from_path(cls, db_path: Union[str, Path]) -> "Indexer":
+        """Create an indexer from a database path.
+
+        Args:
+            db_path: Path to the database file
+
+        Returns:
+            Initialized Indexer instance
+
+        """
+        from oboyu.indexer.config.indexer_config import IndexerConfig
+        
+        config = IndexerConfig()
+        config.db_path = db_path  # Use the property which handles the assertion
+        return cls(config)
+
+    def get_database_stats(self) -> Dict[str, Any]:
+        """Get database statistics.
+
+        Returns:
+            Dictionary with database statistics
+
+        """
+        return self.database_service.get_database_stats()
+
+    def bm25_search(
+        self,
+        query: str,
+        top_k: int = 10,
+        language_filter: Optional[str] = None,
+    ) -> List[SearchResult]:
+        """BM25 search using query string.
+
+        Args:
+            query: Search query string
+            top_k: Maximum number of results
+            language_filter: Optional language filter
+
+        Returns:
+            List of search results
+
+        """
+        # Tokenize the query
+        query_terms = self.tokenizer_service.tokenize_query(query)
+        
+        # Execute BM25 search
+        return self.search_engine.search(
+            query_terms=query_terms,
+            mode=SearchMode.BM25,
+            limit=top_k,
+            language_filter=language_filter,
+        )
+
+    def hybrid_search(
+        self,
+        query: str,
+        top_k: int = 10,
+        vector_weight: float = 0.7,
+        bm25_weight: float = 0.3,
+        language_filter: Optional[str] = None,
+    ) -> List[SearchResult]:
+        """Hybrid search using query string.
+
+        Args:
+            query: Search query string
+            top_k: Maximum number of results
+            vector_weight: Weight for vector search component
+            bm25_weight: Weight for BM25 search component
+            language_filter: Optional language filter
+
+        Returns:
+            List of search results
+
+        """
+        # Generate query embedding and tokenize query
+        query_vector = self.embedding_service.generate_query_embedding(query)
+        query_terms = self.tokenizer_service.tokenize_query(query)
+        
+        # Execute hybrid search
+        return self.search_engine.search(
+            query_vector=query_vector,
+            query_terms=query_terms,
+            mode=SearchMode.HYBRID,
+            limit=top_k,
+            language_filter=language_filter,
+        )
+
+    def rerank_results(self, query: str, results: List[SearchResult]) -> List[SearchResult]:
+        """Rerank search results using the reranker service.
+
+        Args:
+            query: Original search query
+            results: Search results to rerank
+
+        Returns:
+            Reranked search results
+
+        """
+        if not self.reranker_service or not self.reranker_service.is_available():
+            logger.warning("Reranker service not available, returning original results")
+            return results
+            
+        return self.reranker_service.rerank(query, results)

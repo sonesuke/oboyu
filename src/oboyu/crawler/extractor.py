@@ -347,7 +347,7 @@ def _detect_language(text: str) -> str:
             
             return str(detected)
         
-    except Exception:
+    except Exception:  # noqa: S110
         # If FastText fails, fall back to simpler detection
         # This is expected behavior for graceful fallback
         pass
