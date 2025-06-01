@@ -3,13 +3,11 @@
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, List, Optional
+from typing import Callable, List, Optional
 
 from oboyu.cli.index_config import build_indexer_config, create_indexer_config
 from oboyu.cli.progress import create_indexer_progress_callback
-from oboyu.cli.services.configuration_service import ConfigurationService
 from oboyu.cli.services.console_manager import ConsoleManager
-from oboyu.cli.services.database_path_resolver import DatabasePathResolver
 from oboyu.cli.services.indexer_factory import IndexerFactory
 from oboyu.common.config import ConfigManager
 from oboyu.crawler.config import load_default_config
@@ -54,7 +52,7 @@ class IndexingService:
     """Service for handling indexing operations."""
     
     def __init__(
-        self, 
+        self,
         config_manager: ConfigManager,
         indexer_factory: Optional[IndexerFactory] = None,
         console_manager: Optional[ConsoleManager] = None,
