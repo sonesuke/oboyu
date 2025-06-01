@@ -9,7 +9,7 @@ from collections import defaultdict
 from typing import Callable, Dict, List, Optional, Tuple
 
 from oboyu.indexer.core.document_processor import Chunk
-from oboyu.indexer.models.tokenizer_service import create_tokenizer, TokenizerService
+from oboyu.indexer.models.tokenizer_service import TokenizerService, create_tokenizer
 from oboyu.indexer.search.bm25_statistics_calculator import BM25StatisticsCalculator
 from oboyu.indexer.search.inverted_index_builder import InvertedIndexBuilder
 from oboyu.indexer.search.term_frequency_analyzer import TermFrequencyAnalyzer
