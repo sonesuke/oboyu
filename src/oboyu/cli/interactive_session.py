@@ -218,6 +218,9 @@ class InteractiveQuerySession:
 
         setting = cmd_parts[1].lower()
         if setting in ["on", "true", "1"]:
+            # Check if reranker is available
+            if not self.indexer.reranker_service or not self.indexer.reranker_service.is_available():
+                self.console.print("[yellow]Warning: Reranker service is not available. Enable reranker in config first.[/yellow]")
             self.config["rerank"] = True
             self.console.print("[green]Reranking enabled[/green]")
         elif setting in ["off", "false", "0"]:
@@ -231,6 +234,13 @@ class InteractiveQuerySession:
         self.console.print("\n[bold blue]Current Settings:[/bold blue]")
         for key, value in self.config.items():
             self.console.print(f"  [cyan]{key}[/cyan]: {value}")
+        
+        # Show reranker availability
+        reranker_available = (
+            self.indexer.reranker_service and
+            self.indexer.reranker_service.is_available()
+        )
+        self.console.print(f"  [cyan]reranker_available[/cyan]: {reranker_available}")
         self.console.print()
 
     def _clear_screen(self) -> None:
@@ -290,10 +300,6 @@ class InteractiveQuerySession:
                 search_params["vector_weight"] = self.config.get("vector_weight", 0.7)
                 search_params["bm25_weight"] = self.config.get("bm25_weight", 0.3)
             
-            # Add reranking if enabled
-            if self.config.get("rerank", False):
-                search_params["enable_reranking"] = True
-            
             # Execute search based on mode
             if mode == "vector":
                 results = self.indexer.vector_search(query, **search_params)
@@ -301,6 +307,12 @@ class InteractiveQuerySession:
                 results = self.indexer.bm25_search(query, **search_params)
             else:  # hybrid
                 results = self.indexer.hybrid_search(query, **search_params)
+            
+            # Apply reranking if enabled and available
+            if (self.config.get("rerank", False) and results and 
+                self.indexer.reranker_service and 
+                self.indexer.reranker_service.is_available()):
+                results = self.indexer.rerank_results(query, results)
             
             elapsed_time = time.time() - start_time
             

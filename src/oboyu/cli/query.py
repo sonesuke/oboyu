@@ -78,9 +78,22 @@ def query(
             query_config = query_service.get_query_config(top_k, vector_weight, bm25_weight, rerank)
             database_path = query_service.get_database_path(db_path)
             
-            # Initialize indexer for interactive session
+            # Get indexer configuration and create indexer with proper config for interactive session
+            indexer_config = config_manager.get_section("indexer")
+            
+            from oboyu.indexer.config.indexer_config import IndexerConfig
             from oboyu.indexer import Indexer
-            indexer = Indexer.from_path(Path(database_path))
+            
+            config = IndexerConfig()
+            config.db_path = Path(database_path)
+            
+            # Apply configuration from file
+            if indexer_config.get("use_reranker", False):
+                config.search.use_reranker = True
+                config.model.use_reranker = True
+            
+            # Initialize indexer with proper configuration
+            indexer = Indexer(config)
             
             # Start interactive session
             session_config = {
