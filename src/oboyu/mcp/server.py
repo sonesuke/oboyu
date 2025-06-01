@@ -7,7 +7,7 @@ the system's Japanese-enhanced semantic search.
 
 import logging
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from oboyu.common.paths import DEFAULT_DB_PATH
 from oboyu.indexer import Indexer
@@ -15,6 +15,7 @@ from oboyu.indexer.config.indexer_config import IndexerConfig
 from oboyu.indexer.config.model_config import ModelConfig
 from oboyu.indexer.config.processing_config import ProcessingConfig
 from oboyu.indexer.config.search_config import SearchConfig
+from oboyu.indexer.search.snippet_processor import SnippetConfig, SnippetProcessor
 from oboyu.mcp.context import db_path_global, mcp
 
 # Configure logging
@@ -49,6 +50,7 @@ def search(
     top_k: int = 5,
     language: Optional[str] = None,
     db_path: Optional[str] = None,
+    snippet_config: Optional[Dict[str, object]] = None,
 ) -> Dict[str, object]:
     """Execute a semantic search query and return relevant documents.
 
@@ -58,6 +60,7 @@ def search(
         top_k: Maximum number of results to return
         language: Optional language filter (e.g., 'ja', 'en')
         db_path: Optional path to the database file
+        snippet_config: Optional configuration for snippet generation
 
     Returns:
         Dictionary containing search results and statistics
@@ -70,13 +73,29 @@ def search(
         # Execute search with specified mode
         results = indexer.search(query, limit=top_k, mode=mode, language_filter=language)
 
+        # Initialize snippet processor if config provided
+        snippet_processor = None
+        if snippet_config:
+            try:
+                # Convert dict to SnippetConfig with proper type handling
+                config_dict: Dict[str, Any] = snippet_config
+                config = SnippetConfig(**config_dict)
+                snippet_processor = SnippetProcessor(config)
+            except Exception as e:
+                logger.warning(f"Invalid snippet_config: {e}, using default content")
+
         # Format results for MCP output
         formatted_results = []
         for result in results:
+            # Process content with snippet processor if available
+            content = result.content
+            if snippet_processor:
+                content = snippet_processor.generate_snippet(result.content, query, result.score)
+            
             formatted_results.append(
                 {
                     "title": result.title,
-                    "content": result.content,
+                    "content": content,
                     "uri": f"file://{result.path}",
                     "score": result.score,
                     "language": result.language,
