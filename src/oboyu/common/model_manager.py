@@ -180,7 +180,7 @@ class ONNXModelCache:
         model_dir = cache_dir / "onnx" / model_name.replace("/", "_")
 
         if model_type == "embedding":
-            from oboyu.common.onnx_converter import convert_to_onnx
+            from oboyu.common.onnx.embedding_model import convert_to_onnx
 
             result = convert_to_onnx(
                 model_name,
@@ -190,7 +190,7 @@ class ONNXModelCache:
             )
             return result
         elif model_type == "reranker":
-            from oboyu.common.onnx_converter import convert_cross_encoder_to_onnx
+            from oboyu.common.onnx.cross_encoder_model import convert_cross_encoder_to_onnx
 
             result = convert_cross_encoder_to_onnx(
                 model_name,
@@ -281,7 +281,7 @@ class EmbeddingModelManager(ModelManager):
     def _load_model(self) -> Any:  # noqa: ANN401
         """Load embedding model (ONNX or PyTorch)."""
         if self.use_onnx:
-            from oboyu.common.onnx_converter import ONNXEmbeddingModel
+            from oboyu.common.onnx.embedding_model import ONNXEmbeddingModel
 
             # Get or convert ONNX model
             onnx_path = ONNXModelCache.get_or_convert_onnx_model(
@@ -366,7 +366,7 @@ class RerankerModelManager(ModelManager):
     def _load_model(self) -> Any:  # noqa: ANN401
         """Load reranker model (ONNX or PyTorch)."""
         if self.use_onnx:
-            from oboyu.common.onnx_converter import ONNXCrossEncoderModel
+            from oboyu.common.onnx.cross_encoder_model import ONNXCrossEncoderModel
 
             # Get or convert ONNX model
             onnx_path = ONNXModelCache.get_or_convert_onnx_model(

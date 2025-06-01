@@ -8,10 +8,12 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from oboyu.common.onnx_converter import (
+from oboyu.common.onnx.embedding_model import (
     ONNXEmbeddingModel,
     convert_to_onnx,
     get_or_convert_onnx_model,
+)
+from oboyu.common.onnx.quantization import (
     quantize_model_dynamic,
     QUANTIZATION_AVAILABLE,
 )
@@ -317,7 +319,7 @@ class TestONNXQuantization:
             
             # Verify quantize_dynamic was called with int8
             mock_quantize.assert_called_once()
-            from oboyu.common.onnx_converter import QuantType
+            from oboyu.common.onnx.quantization import QuantType
             assert mock_quantize.call_args.kwargs["weight_type"] == QuantType.QInt8
     
     @pytest.mark.skipif(QUANTIZATION_AVAILABLE, reason="Testing without quantization tools")

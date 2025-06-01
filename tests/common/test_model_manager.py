@@ -77,7 +77,7 @@ class TestEmbeddingModelManager:
     """Test the EmbeddingModelManager class."""
 
     @patch("oboyu.common.model_manager.ONNXModelCache.get_or_convert_onnx_model")
-    @patch("oboyu.common.onnx_converter.ONNXEmbeddingModel")
+    @patch("oboyu.common.onnx.embedding_model.ONNXEmbeddingModel")
     def test_onnx_model_loading(self, mock_onnx_model, mock_get_onnx):
         """Test ONNX model loading."""
         mock_get_onnx.return_value = Path("/fake/path/model.onnx")
@@ -135,7 +135,7 @@ class TestRerankerModelManager:
     """Test the RerankerModelManager class."""
 
     @patch("oboyu.common.model_manager.ONNXModelCache.get_or_convert_onnx_model")
-    @patch("oboyu.common.onnx_converter.ONNXCrossEncoderModel")
+    @patch("oboyu.common.onnx.cross_encoder_model.ONNXCrossEncoderModel")
     def test_onnx_model_loading(self, mock_onnx_model, mock_get_onnx):
         """Test ONNX reranker model loading."""
         mock_get_onnx.return_value = Path("/fake/path/model.onnx")
@@ -242,7 +242,7 @@ class TestONNXModelCache:
                     cache_dir,
                 )
 
-    @patch("oboyu.common.onnx_converter.convert_to_onnx")
+    @patch("oboyu.common.onnx.embedding_model.convert_to_onnx")
     def test_convert_to_onnx_embedding(self, mock_convert):
         """Test ONNX conversion for embedding model."""
         mock_convert.return_value = Path("/fake/path/model.onnx")
@@ -256,7 +256,7 @@ class TestONNXModelCache:
         mock_convert.assert_called_once()
         assert result == Path("/fake/path/model.onnx")
 
-    @patch("oboyu.common.onnx_converter.convert_cross_encoder_to_onnx")
+    @patch("oboyu.common.onnx.cross_encoder_model.convert_cross_encoder_to_onnx")
     def test_convert_to_onnx_reranker(self, mock_convert):
         """Test ONNX conversion for reranker model."""
         mock_convert.return_value = Path("/fake/path/model.onnx")

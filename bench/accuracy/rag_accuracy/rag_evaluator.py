@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 from bench.logger import BenchmarkLogger
 from oboyu.indexer import LegacyIndexer as Indexer
 from oboyu.indexer.config import IndexerConfig
-from oboyu.indexer.database import Database
+from oboyu.indexer.storage.database_service import Database
 
 from .metrics_calculator import MetricsCalculator
 
