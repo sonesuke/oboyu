@@ -58,131 +58,177 @@ def bm25_results():
     ]
 
 
-def test_combiner_default_weights():
-    """Test combiner with default weights."""
+def test_combiner_default_rrf_k():
+    """Test combiner default RRF k parameter."""
     combiner = HybridSearchCombiner()
-    assert combiner.vector_weight == 0.7
-    assert combiner.bm25_weight == 0.3
+    assert combiner.rrf_k == 60  # Default value
 
 
-def test_combiner_custom_weights():
-    """Test combiner with custom weights."""
-    combiner = HybridSearchCombiner(vector_weight=0.6, bm25_weight=0.4)
-    assert combiner.vector_weight == 0.6
-    assert combiner.bm25_weight == 0.4
+def test_combiner_custom_rrf_k():
+    """Test combiner with custom RRF k parameter."""
+    combiner = HybridSearchCombiner(rrf_k=100)
+    assert combiner.rrf_k == 100
 
 
-def test_combiner_weight_normalization():
-    """Test automatic weight normalization."""
-    combiner = HybridSearchCombiner(vector_weight=0.8, bm25_weight=0.4)
-    # Should normalize to sum to 1.0
-    assert abs(combiner.vector_weight + combiner.bm25_weight - 1.0) < 1e-10
+def test_combiner_deprecated_weights_warning():
+    """Test that deprecated weight parameters issue a warning."""
+    with pytest.warns(DeprecationWarning, match="vector_weight and bm25_weight parameters are deprecated"):
+        combiner = HybridSearchCombiner(vector_weight=0.8, bm25_weight=0.2)
+    assert combiner.rrf_k == 60  # Should still use default RRF
 
 
-def test_combiner_zero_weights():
-    """Test combiner with zero weights fallback."""
-    combiner = HybridSearchCombiner(vector_weight=0.0, bm25_weight=0.0)
-    # Should use default values
-    assert combiner.vector_weight == 0.7
-    assert combiner.bm25_weight == 0.3
+def test_combiner_rrf_k_validation():
+    """Test RRF k parameter validation."""
+    # Negative k should raise error
+    with pytest.raises(ValueError, match="rrf_k must be positive"):
+        HybridSearchCombiner(rrf_k=-1)
+    
+    # Zero k should raise error
+    with pytest.raises(ValueError, match="rrf_k must be positive"):
+        HybridSearchCombiner(rrf_k=0)
 
 
 def test_combine_overlapping_results(vector_results, bm25_results):
-    """Test combining results with overlapping chunks."""
-    combiner = HybridSearchCombiner(vector_weight=0.7, bm25_weight=0.3)
+    """Test combining results with overlapping documents using RRF."""
+    combiner = HybridSearchCombiner(rrf_k=60)
     combined = combiner.combine(vector_results, bm25_results, limit=10)
     
-    # Should have 3 unique chunks
+    # Should have 3 unique documents
     assert len(combined) == 3
     
-    # Check that overlapping chunk has combined score
-    chunk_1 = next(r for r in combined if r.chunk_id == "1")
-    expected_score = 0.9 * 0.7 + 0.8 * 0.3  # Combined weighted score
-    assert abs(chunk_1.score - expected_score) < 1e-10
+    # Check that chunk_id "1" has the highest score (appears in both)
+    # It has rank 1 in both vector and BM25, so RRF score = 1/(60+1) + 1/(60+1)
+    assert combined[0].chunk_id == "1"
+    expected_score = 1.0 / (60 + 1) + 1.0 / (60 + 1)
+    assert abs(combined[0].score - expected_score) < 1e-5
     
-    # Check that results are sorted by combined score
-    assert combined[0].score >= combined[1].score >= combined[2].score
+    # Check other scores are lower
+    assert combined[1].score < combined[0].score
+    assert combined[2].score < combined[1].score
 
 
 def test_combine_with_limit(vector_results, bm25_results):
-    """Test combining with result limit."""
+    """Test limiting the number of combined results."""
     combiner = HybridSearchCombiner()
     combined = combiner.combine(vector_results, bm25_results, limit=2)
     
-    # Should respect the limit
+    # Should return top 2 results
     assert len(combined) == 2
-    
-    # Should return top 2 by combined score
-    assert combined[0].score >= combined[1].score
+    # First should be the overlapping document
+    assert combined[0].chunk_id == "1"
 
 
 def test_combine_empty_vector_results(bm25_results):
-    """Test combining with empty vector results."""
+    """Test combining with empty vector results using RRF."""
     combiner = HybridSearchCombiner()
     combined = combiner.combine([], bm25_results, limit=10)
     
-    # Should return BM25 results with weighted scores
+    # Should return BM25 results with RRF scores (only BM25 component)
     assert len(combined) == 2
-    # Use approximate equality for floating point comparison
-    for r, orig in zip(combined, bm25_results):
-        expected_score = orig.score * combiner.bm25_weight
-        assert abs(r.score - expected_score) < 1e-10
+    # First result should have score 1/(k+1), second should have 1/(k+2)
+    assert abs(combined[0].score - 1.0 / (60 + 1)) < 1e-5
+    assert abs(combined[1].score - 1.0 / (60 + 2)) < 1e-5
 
 
 def test_combine_empty_bm25_results(vector_results):
-    """Test combining with empty BM25 results."""
+    """Test combining with empty BM25 results using RRF."""
     combiner = HybridSearchCombiner()
     combined = combiner.combine(vector_results, [], limit=10)
     
-    # Should return vector results with weighted scores
+    # Should return vector results with RRF scores (only vector component)
     assert len(combined) == 2
-    # Use approximate equality for floating point comparison
-    for r, orig in zip(combined, vector_results):
-        expected_score = orig.score * combiner.vector_weight
-        assert abs(r.score - expected_score) < 1e-10
+    # First result should have score 1/(k+1), second should have 1/(k+2)
+    assert abs(combined[0].score - 1.0 / (60 + 1)) < 1e-5
+    assert abs(combined[1].score - 1.0 / (60 + 2)) < 1e-5
 
 
 def test_combine_both_empty():
-    """Test combining with both result lists empty."""
+    """Test combining with both empty results."""
     combiner = HybridSearchCombiner()
     combined = combiner.combine([], [], limit=10)
     
+    # Should return empty list
     assert len(combined) == 0
 
 
 def test_combine_with_score_normalizer(vector_results, bm25_results):
     """Test combining with score normalizer."""
-    mock_normalizer = Mock(spec=ScoreNormalizer)
-    mock_normalizer.normalize_scores.side_effect = lambda results, method: results
+    normalizer = Mock(spec=ScoreNormalizer)
+    normalizer.normalize.side_effect = lambda results: results  # No-op
     
-    combiner = HybridSearchCombiner(score_normalizer=mock_normalizer)
+    combiner = HybridSearchCombiner(score_normalizer=normalizer)
     combined = combiner.combine(vector_results, bm25_results, limit=10)
     
-    # Should call normalizer for both result sets
-    assert mock_normalizer.normalize_scores.call_count == 2
-    mock_normalizer.normalize_scores.assert_any_call(vector_results, "vector")
-    mock_normalizer.normalize_scores.assert_any_call(bm25_results, "bm25")
+    # Score normalizer should be called twice (once for each result set)
+    assert normalizer.normalize.call_count == 2
     
+    # Should still produce valid results
     assert len(combined) == 3
 
 
-def test_combine_exception_handling(vector_results, bm25_results):
-    """Test error handling in combination."""
-    # Create a combiner that will cause an exception
-    combiner = HybridSearchCombiner()
+def test_combine_exception_handling(vector_results):
+    """Test exception handling during combination."""
+    # Create a result with invalid data that might cause issues
+    invalid_results = [
+        SearchResult(
+            chunk_id=None,  # Invalid chunk_id
+            path="/test.txt",
+            title="Test",
+            content="Content",
+            chunk_index=0,
+            language="en",
+            score=0.5,
+        )
+    ]
     
-    # Pass invalid results that should cause an error but be handled gracefully
-    result = combiner.combine([None], bm25_results, limit=10)
-    # Should fallback to vector_results (which is [None][:10] = [None])
-    assert len(result) == 1
-    assert result[0] is None
+    combiner = HybridSearchCombiner()
+    # Should handle gracefully and return valid results only
+    combined = combiner.combine(vector_results, invalid_results, limit=10)
+    
+    # Should still return vector results (valid ones)
+    assert len(combined) >= len(vector_results)
 
 
-def test_combine_fallback_on_exception(vector_results):
-    """Test fallback behavior on exception."""
-    combiner = HybridSearchCombiner()
+def test_combine_fallback_on_exception():
+    """Test fallback behavior when combination fails."""
+    # Mock score normalizer to raise exception
+    normalizer = Mock(spec=ScoreNormalizer)
+    normalizer.normalize.side_effect = Exception("Normalization failed")
     
-    # This should trigger the exception handling and fallback to vector_results
-    result = combiner.combine(vector_results, [None], limit=10)
-    assert len(result) == 2
-    assert result[0].chunk_id == "1"
+    combiner = HybridSearchCombiner(score_normalizer=normalizer)
+    
+    # Should not raise exception but handle gracefully
+    combined = combiner.combine([], [], limit=10)
+    assert combined == []
+
+
+def test_rrf_scoring_order():
+    """Test that RRF scoring preserves expected order."""
+    # Create results with clear ranking
+    vector_results = [
+        SearchResult(chunk_id=f"v{i}", path=f"/v{i}.txt", title=f"V{i}", 
+                    content=f"Vector {i}", chunk_index=0, language="en", score=1.0-i*0.1)
+        for i in range(5)
+    ]
+    
+    bm25_results = [
+        SearchResult(chunk_id=f"b{i}", path=f"/b{i}.txt", title=f"B{i}", 
+                    content=f"BM25 {i}", chunk_index=0, language="en", score=1.0-i*0.1)
+        for i in range(5)
+    ]
+    
+    combiner = HybridSearchCombiner(rrf_k=60)
+    combined = combiner.combine(vector_results, bm25_results, limit=10)
+    
+    # All results should be present
+    assert len(combined) == 10
+    
+    # Check RRF scores are correctly calculated
+    for result in combined:
+        if result.chunk_id.startswith('v'):
+            rank = int(result.chunk_id[1:]) + 1
+            expected_score = 1.0 / (60 + rank)
+        else:  # BM25 result
+            rank = int(result.chunk_id[1:]) + 1
+            expected_score = 1.0 / (60 + rank)
+        assert abs(result.score - expected_score) < 1e-5

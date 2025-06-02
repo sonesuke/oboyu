@@ -19,9 +19,8 @@ class QueryConfig:
     # Search mode settings
     default_search_mode: str = "hybrid"
     
-    # Hybrid search weights
-    vector_weight: float = 0.7
-    bm25_weight: float = 0.3
+    # RRF (Reciprocal Rank Fusion) parameter
+    rrf_k: int = 60
     
     # Performance settings
     timeout: int = 30
@@ -29,18 +28,13 @@ class QueryConfig:
 
     def __post_init__(self) -> None:
         """Post-initialization validation."""
-        # Normalize search weights
-        total_weight = self.vector_weight + self.bm25_weight
-        if total_weight > 0:
-            self.vector_weight = self.vector_weight / total_weight
-            self.bm25_weight = self.bm25_weight / total_weight
-        else:
-            self.vector_weight = 0.7
-            self.bm25_weight = 0.3
-            
         # Validate top_k
         if self.top_k <= 0:
             self.top_k = 10
+            
+        # Validate RRF k parameter
+        if self.rrf_k <= 0:
+            self.rrf_k = 60
 
 
 # Default configuration

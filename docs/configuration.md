@@ -157,8 +157,7 @@ Controls search behavior and result formatting.
 query:
   # Search settings
   default_mode: "hybrid"
-  vector_weight: 0.7
-  bm25_weight: 0.3
+  rrf_k: 60  # RRF parameter for hybrid search
   top_k: 5
   
   # Reranking settings
@@ -179,8 +178,7 @@ query:
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `default_mode` | str | "hybrid" | Default search mode (vector, bm25, hybrid) |
-| `vector_weight` | float | 0.7 | Weight for vector search in hybrid mode |
-| `bm25_weight` | float | 0.3 | Weight for BM25 search in hybrid mode |
+| `rrf_k` | int | 60 | RRF parameter for hybrid search (lower = more aggressive fusion) |
 | `top_k` | int | 5 | Number of results to return |
 | `use_reranker` | bool | true | Enable reranking by default |
 | `reranker_top_k` | int | 15 | Number of results to rerank |
@@ -221,8 +219,7 @@ indexer:
 
 query:
   default_mode: "hybrid"
-  vector_weight: 0.8  # Favor vector search for Japanese
-  bm25_weight: 0.2
+  rrf_k: 30  # More aggressive fusion for Japanese content
   language_filter: "ja"
 ```
 
@@ -284,8 +281,8 @@ Example:
 # Override database path and chunk size
 oboyu index ./docs --db-path custom.db --chunk-size 2048
 
-# Override search mode and weights
-oboyu query "search term" --mode hybrid --vector-weight 0.8 --bm25-weight 0.2
+# Override search mode and RRF parameter
+oboyu query "search term" --mode hybrid --rrf-k 30
 ```
 
 ## Configuration Validation
@@ -295,7 +292,7 @@ Oboyu validates configuration on startup and provides helpful error messages for
 - Numeric values must be positive
 - File paths must be accessible
 - Model names must be valid Hugging Face model IDs
-- Weights must sum to reasonable values in hybrid mode
+- RRF parameter `rrf_k` must be positive (values between 10-200 are typical)
 
 Invalid configurations will fall back to safe defaults with warnings.
 

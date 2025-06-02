@@ -67,9 +67,13 @@ class SearchEngine:
         self.router = SearchModeRouter(vector_search, bm25_search)
         self.merger = ResultMerger()
         self.normalizer = ScoreNormalizer()
+        # Get RRF parameter from config, fallback to hybrid_search or default
+        rrf_k = 60  # default
+        if self.config and hasattr(self.config, 'search') and hasattr(self.config.search, 'rrf_k'):
+            rrf_k = self.config.search.rrf_k
+        
         self.combiner = HybridSearchCombiner(
-            vector_weight=hybrid_search.vector_weight,
-            bm25_weight=hybrid_search.bm25_weight,
+            rrf_k=rrf_k,
             score_normalizer=self.normalizer,
         )
 
@@ -134,22 +138,12 @@ class SearchEngine:
                     filters=filters,
                 )
 
-                # Combine results using the new combiner
-                combined_results = self.combiner.combine(
+                # Combine results using RRF (Reciprocal Rank Fusion)
+                return self.combiner.combine(
                     vector_results=vector_results,
                     bm25_results=bm25_results,
                     limit=limit,
                 )
-                
-                # Also use the original hybrid search for backward compatibility
-                legacy_results = self.hybrid_search.search(
-                    vector_results=vector_results,
-                    bm25_results=bm25_results,
-                    limit=limit,
-                )
-                
-                # Merge both results to ensure backward compatibility
-                return self.merger.merge(combined_results, legacy_results, limit=limit)
 
             else:
                 raise ValueError(f"Unknown search mode: {mode}")
@@ -166,8 +160,6 @@ class SearchEngine:
         use_reranker: Optional[bool] = None,
         language_filter: Optional[str] = None,
         filters: Optional[SearchFilters] = None,
-        vector_weight: Optional[float] = None,
-        bm25_weight: Optional[float] = None,
     ) -> List[SearchResult]:
         """Execute search with query string processing and optional reranking.
         
@@ -181,8 +173,6 @@ class SearchEngine:
             use_reranker: Whether to use reranker (None uses config default)
             language_filter: Optional language filter
             filters: Optional search filters for date range and path filtering
-            vector_weight: Optional weight for vector search in hybrid mode
-            bm25_weight: Optional weight for BM25 search in hybrid mode
             
         Returns:
             List of search results
@@ -399,18 +389,14 @@ class SearchEngine:
         self,
         query: str,
         limit: int = 10,
-        vector_weight: float = 0.7,
-        bm25_weight: float = 0.3,
         language_filter: Optional[str] = None,
         filters: Optional[SearchFilters] = None,
     ) -> List[SearchResult]:
-        """Execute hybrid search combining vector and BM25 search.
+        """Execute hybrid search combining vector and BM25 search using RRF.
         
         Args:
             query: Search query string
             limit: Maximum number of results
-            vector_weight: Weight for vector search component
-            bm25_weight: Weight for BM25 search component
             language_filter: Optional language filter
             filters: Optional search filters
             

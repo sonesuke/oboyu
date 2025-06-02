@@ -39,8 +39,7 @@ class QueryCommand:
         query: str,
         mode: str = "hybrid",
         top_k: Optional[int] = None,
-        vector_weight: Optional[float] = None,
-        bm25_weight: Optional[float] = None,
+        rrf_k: Optional[int] = None,
         db_path: Optional[Path] = None,
         rerank: Optional[bool] = None,
     ) -> QueryResult:
@@ -52,10 +51,8 @@ class QueryCommand:
         cli_overrides: Dict[str, Any] = {}
         if top_k is not None:
             cli_overrides["top_k"] = top_k
-        if vector_weight is not None:
-            cli_overrides["vector_weight"] = vector_weight
-        if bm25_weight is not None:
-            cli_overrides["bm25_weight"] = bm25_weight
+        if rrf_k is not None:
+            cli_overrides["rrf_k"] = rrf_k
         if rerank is not None:
             cli_overrides["use_reranker"] = rerank
         
@@ -82,27 +79,38 @@ class QueryCommand:
         try:
             start_time = time.time()
             
-            # Execute search based on mode
-            if mode == "vector":
-                results = retriever.vector_search(query, top_k=query_config.get("top_k", 10))
-            elif mode == "bm25":
-                results = retriever.bm25_search(query, top_k=query_config.get("top_k", 10))
-            else:  # hybrid
-                results = retriever.hybrid_search(
-                    query,
-                    top_k=query_config.get("top_k", 10),
-                    vector_weight=query_config.get("vector_weight", 0.7),
-                    bm25_weight=query_config.get("bm25_weight", 0.3),
-                )
+            try:
+                # Execute search based on mode
+                if mode == "vector":
+                    results = retriever.vector_search(query, top_k=query_config.get("top_k", 10))
+                elif mode == "bm25":
+                    results = retriever.bm25_search(query, top_k=query_config.get("top_k", 10))
+                else:  # hybrid
+                    results = retriever.hybrid_search(
+                        query,
+                        top_k=query_config.get("top_k", 10),
+                    )
+                
+                # Apply reranking if enabled
+                if query_config.get("use_reranker", False) and results:
+                    try:
+                        results = retriever.rerank_results(query, results)
+                    except Exception as e:
+                        # Check if this is a model loading error
+                        if isinstance(e, RuntimeError) and "Failed to load" in str(e) and "model" in str(e):
+                            import logging
+                            logging.error(f"❌ Reranking failed due to model loading error: {e}")
+                            logging.warning("Continuing with search results without reranking.")
+                        else:
+                            import logging
+                            logging.warning(f"Reranking failed: {e}")
             
-            # Apply reranking if enabled
-            if query_config.get("use_reranker", False) and results:
-                try:
-                    results = retriever.rerank_results(query, results)
-                except Exception as e:
-                    # Log reranking failure but continue with original results
-                    import logging
-                    logging.warning(f"Reranking failed: {e}")
+            except RuntimeError as e:
+                # Check if this is a model loading error from our services
+                if "Failed to load" in str(e) and "model" in str(e):
+                    raise RuntimeError(f"❌ Search failed due to model loading error:\n{str(e)}") from e
+                else:
+                    raise
             
             elapsed_time = time.time() - start_time
             
@@ -128,6 +136,7 @@ class QueryCommand:
         query: str,
         mode: str = "hybrid",
         top_k: Optional[int] = None,
+        rrf_k: Optional[int] = None,
         db_path: Optional[Path] = None,
         rerank: Optional[bool] = None,
     ) -> QueryResult:
@@ -137,6 +146,9 @@ class QueryCommand:
         
         if top_k is not None:
             context_builder.with_top_k(top_k, SettingSource.CLI_ARGUMENT)
+        if rrf_k is not None:
+            # For now, we'll use the regular execute_query method since SearchContext doesn't support RRF yet
+            return self.execute_query(query, mode, top_k, rrf_k, db_path, rerank)
         if rerank is not None:
             context_builder.with_reranker(rerank, SettingSource.CLI_ARGUMENT)
             
@@ -168,19 +180,27 @@ class QueryCommand:
         try:
             start_time = time.time()
             
-            # Convert mode string to SearchMode enum
-            search_mode = SearchMode.HYBRID
-            if mode == "vector":
-                search_mode = SearchMode.VECTOR
-            elif mode == "bm25":
-                search_mode = SearchMode.BM25
-            
-            # Execute search using context pattern
-            results = retriever.search_orchestrator.search_with_context(
-                query=query,
-                context=context,
-                mode=search_mode,
-            )
+            try:
+                # Convert mode string to SearchMode enum
+                search_mode = SearchMode.HYBRID
+                if mode == "vector":
+                    search_mode = SearchMode.VECTOR
+                elif mode == "bm25":
+                    search_mode = SearchMode.BM25
+                
+                # Execute search using context pattern
+                results = retriever.search_orchestrator.search_with_context(
+                    query=query,
+                    context=context,
+                    mode=search_mode,
+                )
+                
+            except RuntimeError as e:
+                # Check if this is a model loading error from our services
+                if "Failed to load" in str(e) and "model" in str(e):
+                    raise RuntimeError(f"❌ Search failed due to model loading error:\n{str(e)}") from e
+                else:
+                    raise
             
             elapsed_time = time.time() - start_time
             
@@ -210,8 +230,7 @@ class QueryCommand:
     def get_query_config(
         self,
         top_k: Optional[int] = None,
-        vector_weight: Optional[float] = None,
-        bm25_weight: Optional[float] = None,
+        rrf_k: Optional[int] = None,
         rerank: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """Get query configuration with overrides."""
@@ -219,10 +238,8 @@ class QueryCommand:
         cli_overrides: Dict[str, Any] = {}
         if top_k is not None:
             cli_overrides["top_k"] = top_k
-        if vector_weight is not None:
-            cli_overrides["vector_weight"] = vector_weight
-        if bm25_weight is not None:
-            cli_overrides["bm25_weight"] = bm25_weight
+        if rrf_k is not None:
+            cli_overrides["rrf_k"] = rrf_k
         if rerank is not None:
             cli_overrides["use_reranker"] = rerank
         

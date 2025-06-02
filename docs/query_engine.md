@@ -108,69 +108,46 @@ oboyu query --mode bm25 "REST API implementation"
 
 ### Hybrid Search (Default)
 
-Hybrid search combines both approaches for optimal results by leveraging the strengths of both vector and BM25 search:
+Hybrid search combines both approaches for optimal results using **RRF (Reciprocal Rank Fusion)**, a proven rank-based fusion method:
 
 - **Parallel Execution**: Executes both vector and BM25 searches simultaneously for efficiency
-- **Score Normalization**: Uses min-max normalization to ensure fair combination of different scoring systems
-- **Configurable Weights**: Combines results with adjustable weights (default: 70% vector, 30% BM25)
-- **Result Fusion**: Merges and re-ranks results from both methods to provide comprehensive coverage
-- **Best for**: most general queries, balanced precision and recall, complex information needs
+- **Rank-based Fusion**: Uses RRF algorithm instead of score-based weighting for more robust results
+- **Configurable RRF Parameter**: Uses a configurable `k` parameter (default: 60) to control fusion behavior
+- **Result Fusion**: Merges and re-ranks results using ranks rather than scores for better handling of different scoring systems
+- **Best for**: most general queries, balanced precision and recall, complex information needs, proper nouns and technical terms
 
-**How Hybrid Search Works:**
+**How RRF Hybrid Search Works:**
 
 1. **Query Processing**: The same query is processed for both search methods
-2. **Parallel Search**: Vector and BM25 searches execute simultaneously
-3. **Score Normalization**: Each method's scores are normalized to 0-1 range using min-max scaling
-4. **Weight Application**: Normalized scores are multiplied by their respective weights
-5. **Result Combination**: Final score = (vector_score × vector_weight) + (bm25_score × bm25_weight)
-6. **Ranking**: Results are sorted by combined score and top-k selected
+2. **Parallel Search**: Vector and BM25 searches execute simultaneously  
+3. **Rank Assignment**: Each method assigns ranks to documents (1st, 2nd, 3rd, etc.)
+4. **RRF Calculation**: Final score = 1/(k + rank_vector) + 1/(k + rank_bm25)
+5. **Result Combination**: Documents are scored using RRF formula where k=60 by default
+6. **Ranking**: Results are sorted by RRF score (higher is better) and top-k selected
 
-**Weight Configuration Strategies:**
+**RRF Configuration:**
 
 ```bash
-# Default hybrid search (recommended for most use cases)
+# Default RRF hybrid search (recommended for most use cases)
 oboyu query "Pythonでの非同期処理の実装方法"
 
-# Semantic-focused: Better for conceptual queries
-oboyu query --vector-weight 0.8 --bm25-weight 0.2 "database optimization techniques"
-
-# Keyword-focused: Better for specific term searches
-oboyu query --vector-weight 0.3 --bm25-weight 0.7 "REST API status codes"
-
-# Balanced approach: Equal weight to both methods
-oboyu query --vector-weight 0.5 --bm25-weight 0.5 "システム設計の原則"
+# Custom RRF parameter for different fusion behavior
+oboyu query --rrf-k 30 "database optimization techniques"  # More aggressive fusion
+oboyu query --rrf-k 100 "REST API status codes"           # More conservative fusion
 ```
 
-**Interactive Weight Tuning:**
-```bash
-# Start interactive session for weight experimentation
-oboyu query --interactive --mode hybrid
+**RRF Parameter Effects:**
 
-> /weights 0.8 0.2
-✅ Weights changed to: Vector=0.8, BM25=0.2
-
-> machine learning algorithms
-# See results with semantic focus
-
-> /weights 0.3 0.7
-✅ Weights changed to: Vector=0.3, BM25=0.7
-
-> machine learning algorithms
-# See results with keyword focus
-```
-
-**When to use different weight configurations:**
-
-- **Vector-heavy (0.8/0.2)**: Conceptual queries, cross-language search, synonym matching
-- **Balanced (0.5/0.5)**: Mixed queries with both semantic and keyword requirements
-- **BM25-heavy (0.2/0.8)**: Precise technical terms, specific API names, exact matches
-- **Default (0.7/0.3)**: General purpose searches, most common scenario
+- **Lower k (e.g., 30)**: More aggressive fusion, higher weight to top-ranked results from each method
+- **Higher k (e.g., 100)**: More conservative fusion, more balanced contribution from all ranks
+- **Default k=60**: Optimal balance for most content types and query patterns
 
 **Performance Benefits:**
 - **Comprehensive Coverage**: Finds both semantically similar and keyword-matching documents
-- **Robustness**: Reduces risk of missing relevant results due to single-method limitations
-- **Flexibility**: Easily tunable for different content types and query styles
+- **Robustness**: Rank-based fusion is more stable than score-based weighting across different content types
+- **Better Term Handling**: Superior performance on proper nouns and technical terminology
 - **Efficiency**: Parallel execution means minimal performance penalty over single methods
+- **Parameter Simplicity**: Single `k` parameter is easier to tune than dual weight system
 
 ## Japanese Query Support
 
@@ -236,8 +213,7 @@ The Query Engine is configured through the following settings in `config.yaml`:
 ```yaml
 query:
   default_mode: "hybrid"         # Default search mode
-  vector_weight: 0.7             # Weight for vector scores in hybrid search
-  bm25_weight: 0.3               # Weight for BM25 scores in hybrid search
+  rrf_k: 60                      # RRF parameter for hybrid search (default: 60)
   top_k: 5                       # Number of results to return
   snippet_length: 160            # Character length for snippets
   highlight_matches: true        # Whether to highlight matching terms
@@ -265,8 +241,8 @@ oboyu query --mode hybrid "machine learning algorithms"
 # Control number of results
 oboyu query --limit 10 "Python programming best practices"
 
-# Adjust hybrid search weights
-oboyu query --vector-weight 0.8 --bm25-weight 0.2 "システム設計"
+# Adjust RRF parameter for hybrid search
+oboyu query --rrf-k 30 "システム設計"  # More aggressive fusion
 
 # Use different language settings
 oboyu query --language ja "英語ドキュメントの日本語検索"
@@ -283,8 +259,7 @@ oboyu query [OPTIONS] QUERY
 Options:
   --mode [vector|bm25|hybrid]     Search mode (default: hybrid)
   --limit INTEGER                 Number of results (default: 10)
-  --vector-weight FLOAT          Weight for vector scores (default: 0.7)
-  --bm25-weight FLOAT            Weight for BM25 scores (default: 0.3)
+  --rrf-k INTEGER                RRF parameter for hybrid search (default: 60)
   --language TEXT                Language hint for processing
   --use-reranker / --no-reranker Enable reranking (default: auto)
   --help                         Show this message and exit
@@ -302,8 +277,8 @@ oboyu query --mode bm25 "REST API status codes 404"
 # Balanced search for documentation
 oboyu query "Pythonでの例外処理のベストプラクティス"
 
-# Technical documentation with custom weights
-oboyu query --vector-weight 0.3 --bm25-weight 0.7 --limit 15 "database normalization rules"
+# Technical documentation with custom RRF parameter
+oboyu query --rrf-k 30 --limit 15 "database normalization rules"
 ```
 
 
@@ -333,20 +308,20 @@ oboyu query --vector-weight 0.3 --bm25-weight 0.7 --limit 15 "database normaliza
 
 For **large Japanese document collections** (>50K docs):
 ```bash
-# Favor BM25 for better scaling
-oboyu query --vector-weight 0.4 --bm25-weight 0.6 "検索クエリ"
-```
-
-For **multilingual content**:
-```bash
-# Favor vector search for cross-language understanding
-oboyu query --vector-weight 0.8 --bm25-weight 0.2 "technical concepts"
+# Use conservative RRF for better scaling
+oboyu query --rrf-k 100 "検索クエリ"
 ```
 
 For **precise technical documentation**:
 ```bash
-# Balanced approach works best
-oboyu query --mode hybrid "API documentation patterns"
+# Use aggressive RRF for better top-result fusion
+oboyu query --rrf-k 30 "API documentation patterns"
+```
+
+For **general purpose searches**:
+```bash
+# Default RRF parameter works best
+oboyu query --mode hybrid "technical concepts"
 ```
 
 ## Integration with Other Components

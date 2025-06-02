@@ -261,18 +261,16 @@ class SearchOrchestrator:
         self,
         query: str,
         limit: int = 10,
-        vector_weight: float = 0.7,
-        bm25_weight: float = 0.3,
+        rrf_k: Optional[int] = None,
         language_filter: Optional[str] = None,
         filters: Optional[SearchFilters] = None,
     ) -> List[SearchResult]:
-        """Execute hybrid search combining vector and BM25 search.
+        """Execute hybrid search combining vector and BM25 search with RRF.
         
         Args:
             query: Search query string
             limit: Maximum number of results
-            vector_weight: Weight for vector search component
-            bm25_weight: Weight for BM25 search component
+            rrf_k: RRF parameter for rank fusion (default: from config)
             language_filter: Optional language filter
             filters: Optional search filters
             

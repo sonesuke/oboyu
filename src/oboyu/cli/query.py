@@ -16,8 +16,8 @@ from typing_extensions import Annotated
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from oboyu.cli.base import BaseCommand
+from oboyu.cli.commands.query import QueryCommand
 from oboyu.cli.interactive_session import InteractiveQuerySession
-from oboyu.cli.services.query_service import QueryService
 from oboyu.retriever.search.search_result import SearchResult
 
 # Create Typer app
@@ -47,8 +47,7 @@ def query(
     top_k: Optional[int] = None,
     explain: bool = False,
     format: str = "text",
-    vector_weight: Optional[float] = None,
-    bm25_weight: Optional[float] = None,
+    rrf_k: Optional[int] = None,
     db_path: Optional[Path] = None,
     rerank: Optional[bool] = None,
     interactive: bool = False,
@@ -70,12 +69,12 @@ def query(
 
     # Get configuration manager and query service
     config_manager = base_command.get_config_manager()
-    query_service = QueryService(config_manager)
+    query_service = QueryCommand(config_manager)
 
     try:
         if interactive:
             # Get query configuration for interactive session
-            query_config = query_service.get_query_config(top_k, vector_weight, bm25_weight, rerank)
+            query_config = query_service.get_query_config(top_k, rrf_k, rerank)
             database_path = query_service.get_database_path(db_path)
             
             # Get indexer configuration and create indexer with proper config for interactive session
@@ -101,8 +100,7 @@ def query(
             session_config = {
                 "mode": mode,
                 "top_k": query_config.get("top_k", 10),
-                "vector_weight": query_config.get("vector_weight", 0.7),
-                "bm25_weight": query_config.get("bm25_weight", 0.3),
+                "rrf_k": query_config.get("rrf_k", 60),
                 "rerank": query_config.get("use_reranker", False),
             }
             session = InteractiveQuerySession(retriever, session_config, base_command.console)
@@ -116,6 +114,7 @@ def query(
                 query=query,
                 mode=mode,
                 top_k=top_k,
+                rrf_k=rrf_k,
                 db_path=db_path,
                 rerank=rerank,
             )
