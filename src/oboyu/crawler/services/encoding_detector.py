@@ -12,10 +12,6 @@ import neologdn  # type: ignore[import-not-found]
 class EncodingDetector:
     """Service responsible for handling encoding detection and conversion for Japanese files."""
 
-    def __init__(self) -> None:
-        """Initialize the encoding detector."""
-        pass
-
     def detect_encoding(self, content: str, preferred_encodings: Optional[List[str]] = None) -> str:
         """Detect the encoding of Japanese text.
         

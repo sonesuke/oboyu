@@ -4,11 +4,15 @@ This module handles language-specific text preparation, including
 special processing for Japanese text and other language-specific operations.
 """
 
-from oboyu.crawler.japanese import process_japanese_text
+from oboyu.crawler.services.encoding_detector import EncodingDetector
 
 
 class LanguageProcessor:
     """Handles language-specific text preparation."""
+
+    def __init__(self) -> None:
+        """Initialize the language processor."""
+        self.encoding_detector = EncodingDetector()
 
     def prepare_text(self, text: str, language: str) -> str:
         """Prepare text based on its language.
@@ -24,7 +28,7 @@ class LanguageProcessor:
         # Apply special processing for Japanese text
         if language == "ja":
             # Use the Japanese text processing from the crawler component
-            return process_japanese_text(text, "utf-8")
+            return self.encoding_detector.process_japanese_text(text, "utf-8")
             
         # For other languages, return as-is (can be extended in the future)
         return text

@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 
 from oboyu.crawler.crawler import CrawlerResult
 from oboyu.indexer.config.indexer_config import IndexerConfig

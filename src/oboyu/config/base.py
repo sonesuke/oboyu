@@ -12,6 +12,11 @@ from oboyu.config.schema import (
     IndexerConfigSchema,
     QueryConfigSchema,
 )
+from oboyu.config.simplified_schema import (
+    AutoOptimizer,
+    BackwardCompatibilityMapper,
+    SimplifiedConfig,
+)
 
 QUERY_ENGINE_DEFAULTS = {
     "top_k": 10,
@@ -27,15 +32,18 @@ T = TypeVar("T", CrawlerConfigSchema, IndexerConfigSchema, QueryConfigSchema)
 class ConfigManager:
     """Unified configuration manager with proper precedence handling."""
 
-    def __init__(self, config_path: Optional[Path] = None) -> None:
+    def __init__(self, config_path: Optional[Path] = None, use_simplified: bool = True) -> None:
         """Initialize the configuration manager.
 
         Args:
             config_path: Path to configuration file. Uses default if not provided.
+            use_simplified: Whether to use simplified configuration schema (recommended).
 
         """
         self._config_path = config_path or DEFAULT_CONFIG_PATH
         self._config_data: Optional[Dict[str, Any]] = None
+        self._use_simplified = use_simplified
+        self._simplified_config: Optional[SimplifiedConfig] = None
         self._defaults = self._build_defaults()
 
     def _build_defaults(self) -> Dict[str, Any]:
@@ -201,3 +209,120 @@ class ConfigManager:
             return schema.query
         else:
             raise ValueError(f"Invalid configuration section: {section}")
+
+    def get_simplified_config(self) -> SimplifiedConfig:
+        """Get simplified configuration with backward compatibility.
+
+        Returns:
+            Simplified configuration object with auto-optimized defaults.
+
+        """
+        if self._simplified_config is not None:
+            return self._simplified_config
+
+        if self._use_simplified:
+            # Load raw config data
+            raw_config = self.load_config()
+            
+            # Apply backward compatibility migration
+            self._simplified_config = BackwardCompatibilityMapper.migrate_config(raw_config)
+        else:
+            # Fallback to default simplified config
+            self._simplified_config = SimplifiedConfig()
+
+        return self._simplified_config
+
+    def get_auto_optimized_config(self, section: str) -> Dict[str, Any]:
+        """Get configuration with auto-optimized parameters for removed options.
+
+        Args:
+            section: Configuration section name.
+
+        Returns:
+            Configuration with auto-optimized values for performance parameters.
+
+        """
+        if self._use_simplified:
+            simplified = self.get_simplified_config()
+            base_config = getattr(simplified, section).model_dump()
+        else:
+            base_config = self.get_section(section)
+
+        # Add auto-optimized parameters based on section
+        if section == "indexer":
+            auto_params = {
+                "batch_size": AutoOptimizer.get_optimal_batch_size(),
+                "max_workers": AutoOptimizer.get_optimal_max_workers(),
+                **AutoOptimizer.get_optimal_hnsw_params(),
+                **AutoOptimizer.get_optimal_bm25_params(),
+                "reranker_batch_size": min(16, AutoOptimizer.get_optimal_batch_size() // 4),
+                "reranker_max_length": 512,
+                "use_onnx": True,
+                "onnx_quantization": {"enabled": True, "method": "dynamic"},
+            }
+            base_config.update(auto_params)
+            
+        elif section == "crawler":
+            auto_params = {
+                "max_workers": AutoOptimizer.get_optimal_max_workers(),
+                "timeout": 30,
+                "max_depth": 10,
+                "min_doc_length": 50,
+                "max_file_size": 10 * 1024 * 1024,  # 10MB
+                "follow_symlinks": False,
+                "encoding": "utf-8",  # Auto-detected at runtime
+            }
+            base_config.update(auto_params)
+            
+        elif section == "query":
+            auto_params = {
+                "rrf_k": 60,
+                "show_scores": False,
+                "interactive": False,
+                "snippet_length": 200,
+                "highlight_matches": True,
+            }
+            base_config.update(auto_params)
+
+        return base_config
+
+    def save_simplified_config(self, config: Optional[SimplifiedConfig] = None) -> None:
+        """Save simplified configuration to file.
+
+        Args:
+            config: Simplified configuration to save. Uses current if not provided.
+
+        """
+        config_to_save = config or self.get_simplified_config()
+        
+        # Ensure parent directory exists
+        self._config_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Convert to dict and save
+        config_dict = config_to_save.to_dict()
+        with open(self._config_path, "w") as f:
+            yaml.safe_dump(config_dict, f, default_flow_style=False, sort_keys=False)
+
+    def migrate_to_simplified(self) -> None:
+        """Migrate current configuration to simplified format and save.
+        
+        This will load the current config, migrate it to simplified format,
+        and save the new version. Deprecated options will be removed.
+        """
+        if self._config_path.exists():
+            # Load current config
+            with open(self._config_path) as f:
+                old_config = yaml.safe_load(f) or {}
+            
+            # Migrate to simplified
+            simplified = BackwardCompatibilityMapper.migrate_config(old_config)
+            
+            # Save new simplified config
+            self.save_simplified_config(simplified)
+            
+            print(f"Configuration migrated to simplified format and saved to {self._config_path}")
+        else:
+            # Create new simplified config with defaults
+            simplified = SimplifiedConfig()
+            self.save_simplified_config(simplified)
+            print(f"New simplified configuration created at {self._config_path}")

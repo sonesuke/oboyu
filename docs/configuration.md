@@ -1,331 +1,249 @@
 # Oboyu Configuration
 
-Oboyu supports extensive configuration through YAML configuration files. Configuration can be provided via command-line options, configuration files, or environment variables.
+Oboyu has been significantly simplified to provide a better user experience. The configuration system now focuses on essential options while automatically optimizing advanced parameters behind the scenes.
+
+## Quick Start
+
+For most users, Oboyu works great with zero configuration. Simply run:
+
+```bash
+oboyu index /path/to/documents
+oboyu query "your search"
+```
+
+If you need to customize behavior, create a simple configuration file.
 
 ## Configuration File Location
 
-Oboyu looks for configuration files in the following order:
+Oboyu looks for configuration files in this order:
 
 1. File specified with `--config` or `-c` command-line option
 2. `~/.config/oboyu/config.yaml` (XDG-compliant default location)
-3. Built-in defaults
+3. Built-in defaults (works out of the box)
 
-## Configuration Structure
+## Simplified Configuration Format
 
-The configuration file uses YAML format with three main sections:
+The new simplified configuration focuses on what users actually need to change:
 
 ```yaml
-# Crawler settings for document discovery and processing
-crawler:
-  # ... crawler options
-
-# Indexer settings for embedding generation and storage
+# Essential indexer settings (most important)
 indexer:
-  # ... indexer options
+  db_path: "~/.oboyu/index.db"          # Where to store the search index
+  chunk_size: 1024                      # Document chunk size for processing
+  chunk_overlap: 256                    # Overlap between chunks
+  embedding_model: "cl-nagoya/ruri-v3-30m"  # Which embedding model to use
+  use_reranker: true                    # Enable reranking for better quality
 
-# Query settings for search behavior
-query:
-  # ... query options
-```
-
-## Crawler Configuration
-
-Controls how Oboyu discovers and processes documents during indexing.
-
-```yaml
+# Essential crawler settings
 crawler:
-  # Maximum directory traversal depth
-  depth: 10
-  
-  # File patterns to include (glob patterns)
-  include_patterns:
+  include_patterns:                     # File types to index
     - "*.txt"
-    - "*.md"
-    - "*.html"
+    - "*.md" 
     - "*.py"
-    - "*.java"
-    - "*.js"
-    - "*.ts"
-    - "*.yaml"
-    - "*.yml"
-    - "*.json"
-    - "*.toml"
     - "*.rst"
     - "*.ipynb"
-  
-  # Patterns to exclude (glob patterns)
-  exclude_patterns:
+  exclude_patterns:                     # Directories/files to skip
     - "*/node_modules/*"
-    - "*/.venv/*"
+    - "*/.git/*" 
+    - "*/venv/*"
     - "*/__pycache__/*"
-    - "*/.git/*"
-    - "*/build/*"
-    - "*/dist/*"
-  
-  # Maximum file size in bytes (10MB default)
-  max_file_size: 10485760
-  
-  # Whether to follow symbolic links
-  follow_symlinks: false
-  
-  # Japanese encoding detection is automatic - no configuration needed
-  
-  # Number of worker threads for parallel processing
-  max_workers: 4
-  
-  # Whether to respect .gitignore files
-  respect_gitignore: true
-```
 
-### Crawler Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `depth` | int | 10 | Maximum directory traversal depth |
-| `include_patterns` | list[str] | [*.txt, *.md, ...] | File patterns to include (glob syntax) |
-| `exclude_patterns` | list[str] | [*/node_modules/*, ...] | Patterns to exclude (glob syntax) |
-| `max_file_size` | int | 10485760 | Maximum file size in bytes |
-| `follow_symlinks` | bool | false | Whether to follow symbolic links |
-| `max_workers` | int | 4 | Number of worker threads |
-| `respect_gitignore` | bool | true | Whether to respect .gitignore files |
-
-## Indexer Configuration
-
-Controls embedding generation, model loading, and database storage.
-
-```yaml
-indexer:
-  # Text chunking settings
-  chunk_size: 1024
-  chunk_overlap: 256
-  
-  # Embedding model configuration
-  embedding_model: "cl-nagoya/ruri-v3-30m"
-  embedding_device: "cpu"
-  batch_size: 8
-  
-  # Database configuration
-  db_path: "~/.oboyu/index.db"
-  
-  # Reranker settings
-  use_reranker: true
-  reranker_model: "cl-nagoya/ruri-reranker-small"
-  reranker_use_onnx: true
-  reranker_top_k_multiplier: 3
-  reranker_score_threshold: 0.5
-  
-  # Change detection for incremental indexing
-  change_detection_strategy: "smart"  # "timestamp", "hash", or "smart"
-  cleanup_deleted_files: true
-  
-  # Performance settings
-  enable_onnx_optimization: true
-  onnx_cache_dir: "~/.cache/oboyu/onnx"
-```
-
-### Indexer Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `chunk_size` | int | 1024 | Size of text chunks in characters |
-| `chunk_overlap` | int | 256 | Overlap between chunks in characters |
-| `embedding_model` | str | "cl-nagoya/ruri-v3-30m" | Hugging Face model ID for embeddings |
-| `embedding_device` | str | "cpu" | Device for embedding generation (cpu/cuda) |
-| `batch_size` | int | 8 | Batch size for embedding generation |
-| `db_path` | str | "~/.oboyu/index.db" | Path to the database file |
-| `use_reranker` | bool | true | Enable reranking for improved accuracy |
-| `reranker_model` | str | "cl-nagoya/ruri-reranker-small" | Hugging Face model ID for reranker |
-| `reranker_use_onnx` | bool | true | Use ONNX optimization for reranker |
-| `reranker_top_k_multiplier` | int | 3 | Multiplier for initial retrieval before reranking |
-| `reranker_score_threshold` | float | 0.5 | Minimum score threshold for reranking |
-| `change_detection_strategy` | str | "smart" | Strategy for detecting file changes |
-| `cleanup_deleted_files` | bool | true | Remove deleted files from index |
-| `enable_onnx_optimization` | bool | true | Enable ONNX optimization for models |
-| `onnx_cache_dir` | str | "~/.cache/oboyu/onnx" | Directory for ONNX model cache |
-
-### Change Detection Strategies
-
-- **`timestamp`**: Use file modification time to detect changes (fastest)
-- **`hash`**: Use content hash to detect changes (most accurate, slower)
-- **`smart`**: Use timestamp for most files, hash for critical files (balanced)
-
-## Query Configuration
-
-Controls search behavior and result formatting.
-
-```yaml
+# Essential query settings  
 query:
-  # Search settings
-  default_mode: "hybrid"
-  rrf_k: 60  # RRF parameter for hybrid search
-  top_k: 5
-  
-  # Reranking settings
-  use_reranker: true
-  reranker_top_k: 15  # Number of results to rerank
-  
-  # Output formatting
-  snippet_length: 160
-  highlight_matches: true
-  show_scores: false
-  
-  # Language filtering
-  language_filter: null  # null for all languages, or "ja", "en", etc.
+  default_mode: "hybrid"                # Search mode: vector, bm25, or hybrid
+  top_k: 5                             # Number of results to return
 ```
 
-### Query Options
+## What's Been Simplified
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `default_mode` | str | "hybrid" | Default search mode (vector, bm25, hybrid) |
-| `rrf_k` | int | 60 | RRF parameter for hybrid search (lower = more aggressive fusion) |
-| `top_k` | int | 5 | Number of results to return |
-| `use_reranker` | bool | true | Enable reranking by default |
-| `reranker_top_k` | int | 15 | Number of results to rerank |
-| `snippet_length` | int | 160 | Length of result snippets in characters |
-| `highlight_matches` | bool | true | Highlight query terms in snippets |
-| `show_scores` | bool | false | Show relevance scores in results |
-| `language_filter` | str\|null | null | Filter results by language |
+The new configuration removes ~60% of options that were rarely changed:
 
-## Example Configurations
+### Auto-Optimized Parameters
+These are now automatically optimized based on your system:
+- `batch_size` - Optimized based on available memory
+- `max_workers` - Optimized based on CPU cores  
+- `ef_construction`, `ef_search`, `m` - Vector index parameters
+- `bm25_k1`, `bm25_b` - Search algorithm parameters
+- `reranker_batch_size`, `reranker_max_length` - Model parameters
 
-### Minimal Configuration
+### Hard-Coded Sensible Defaults
+These use proven defaults that work well for 99% of cases:
+- `max_file_size: 10MB` - Prevents memory issues
+- `follow_symlinks: false` - Security best practice
+- `encoding: utf-8` - Auto-detected at runtime
+- `timeout: 30s` - Reasonable for file operations
 
-```yaml
-# Basic configuration for general use
-indexer:
-  db_path: "./my_index.db"
-  
-query:
-  top_k: 10
-  use_reranker: false  # Disable for faster searches
+### Runtime-Only Options
+These are now CLI flags only (not in config files):
+- `show_scores` - Use `--show-scores` flag
+- `interactive` - Use `--interactive` flag  
+- `snippet_length` - Use `--snippet-length` flag
+- `language_filter` - Use `--language` flag
+
+### Replaced by Better Algorithms
+- `vector_weight`, `bm25_weight` - Replaced by RRF (Reciprocal Rank Fusion)
+- `change_detection_strategy` - Smart default handles all cases
+
+## Backward Compatibility
+
+Existing configuration files continue to work with automatic migration:
+
+```bash
+# Your old config will be automatically migrated
+oboyu index /path/to/docs
+
+# To permanently migrate your config file:
+oboyu config migrate
 ```
 
-### Japanese-Optimized Configuration
-
-```yaml
-# Optimized for Japanese content
-crawler:
-  include_patterns:
-    - "*.txt"
-    - "*.md"
-    - "*.html"
-  # Japanese encoding detection is automatic
-
-indexer:
-  chunk_size: 512  # Smaller chunks for Japanese
-  chunk_overlap: 128
-  use_reranker: true  # Essential for Japanese accuracy
-
-query:
-  default_mode: "hybrid"
-  rrf_k: 30  # More aggressive fusion for Japanese content
-  language_filter: "ja"
+Deprecated options will show warnings with explanations:
 ```
-
-### Performance-Optimized Configuration
-
-```yaml
-# Optimized for speed
-crawler:
-  max_workers: 8  # More parallel processing
-
-indexer:
-  batch_size: 16  # Larger batches
-  use_reranker: false  # Skip reranking for speed
-  enable_onnx_optimization: true
-  change_detection_strategy: "timestamp"  # Fastest change detection
-
-query:
-  default_mode: "vector"  # Vector-only for speed
-  use_reranker: false
-  top_k: 3  # Fewer results
-```
-
-### Accuracy-Optimized Configuration
-
-```yaml
-# Optimized for accuracy
-indexer:
-  chunk_size: 512  # Smaller chunks for precision
-  chunk_overlap: 128
-  use_reranker: true
-  reranker_model: "cl-nagoya/ruri-reranker-large"  # Larger reranker
-  reranker_top_k_multiplier: 5  # More candidates for reranking
-  change_detection_strategy: "hash"  # Most accurate change detection
-
-query:
-  default_mode: "hybrid"
-  use_reranker: true
-  reranker_top_k: 30  # Rerank more candidates
-  top_k: 10  # More results
+Warning: indexer.batch_size is deprecated - now auto-optimized based on system memory
+Warning: query.vector_weight is deprecated - replaced by RRF algorithm
 ```
 
 ## Environment Variables
 
-Some configuration options can be overridden with environment variables:
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `OBOYU_DB_PATH` | Database file path | `export OBOYU_DB_PATH="/path/to/index.db"` |
-| `OBOYU_CONFIG` | Configuration file path | `export OBOYU_CONFIG="/path/to/config.yaml"` |
-| `OBOYU_EMBEDDING_MODEL` | Embedding model | `export OBOYU_EMBEDDING_MODEL="custom-model"` |
-| `TOKENIZERS_PARALLELISM` | Tokenizer parallelism | `export TOKENIZERS_PARALLELISM="false"` |
-
-## Command-Line Overrides
-
-Most configuration options can be overridden via command-line arguments. Command-line options take precedence over configuration files.
-
-Example:
-```bash
-# Override database path and chunk size
-oboyu index ./docs --db-path custom.db --chunk-size 2048
-
-# Override search mode and RRF parameter
-oboyu query "search term" --mode hybrid --rrf-k 30
-```
-
-## Configuration Validation
-
-Oboyu validates configuration on startup and provides helpful error messages for invalid settings:
-
-- Numeric values must be positive
-- File paths must be accessible
-- Model names must be valid Hugging Face model IDs
-- RRF parameter `rrf_k` must be positive (values between 10-200 are typical)
-
-Invalid configurations will fall back to safe defaults with warnings.
-
-## Advanced Features
-
-### Model Caching
-
-Oboyu caches downloaded models in `~/.cache/huggingface/` by default. You can configure this with the `HF_HOME` environment variable:
+Essential settings can be overridden with environment variables:
 
 ```bash
-export HF_HOME="/custom/cache/path"
+export OBOYU_DB_PATH="/custom/path/index.db"
+export OBOYU_EMBEDDING_MODEL="custom-model"
+export OBOYU_CHUNK_SIZE="2048"
 ```
 
-### ONNX Optimization
+## Advanced Configuration
 
-ONNX optimization provides 2-4x speed improvements. Configure the cache directory:
+If you need advanced control, you can still access all parameters programmatically:
 
-```yaml
-indexer:
-  enable_onnx_optimization: true
-  onnx_cache_dir: "~/.cache/oboyu/onnx"
+```python
+from oboyu.config import ConfigManager
+
+# Get auto-optimized config with all advanced parameters
+config_mgr = ConfigManager()
+full_config = config_mgr.get_auto_optimized_config('indexer')
+
+print(f"Auto-optimized batch size: {full_config['batch_size']}")
+print(f"Auto-optimized HNSW params: {full_config['ef_construction']}")
 ```
 
-### Memory Management
+## Configuration Examples
 
-For large document collections, consider these memory-conscious settings:
+### Minimal Configuration
+```yaml
+# Just override the essentials
+indexer:
+  db_path: "/tmp/my_index.db"
+  chunk_size: 512
+```
 
+### Documentation Project
 ```yaml
 indexer:
-  batch_size: 4  # Smaller batches
-  embedding_device: "cpu"  # Use CPU to avoid GPU memory issues
+  db_path: "~/docs_index.db"
+  chunk_size: 2048              # Larger chunks for documentation
+  embedding_model: "cl-nagoya/ruri-v3-30m"
 
 crawler:
-  max_workers: 2  # Fewer parallel workers
-  max_file_size: 5242880  # 5MB limit
+  include_patterns:
+    - "*.md"
+    - "*.rst" 
+    - "*.txt"
+  exclude_patterns:
+    - "*/build/*"
+    - "*/dist/*"
+
+query:
+  default_mode: "hybrid"
+  top_k: 10
 ```
+
+### Code Project  
+```yaml
+indexer:
+  db_path: "~/code_index.db"
+  chunk_size: 1024              # Good for code files
+  use_reranker: true            # Better for technical content
+
+crawler:
+  include_patterns:
+    - "*.py"
+    - "*.js" 
+    - "*.ts"
+    - "*.java"
+    - "*.md"
+  exclude_patterns:
+    - "*/node_modules/*"
+    - "*/.git/*"
+    - "*/venv/*"
+    - "*/__pycache__/*"
+    - "*/target/*"
+    - "*/build/*"
+
+query:
+  default_mode: "hybrid"
+  top_k: 8
+```
+
+## Migration Guide
+
+### From Version 0.x
+If you're upgrading from an older version with complex configuration:
+
+1. **Back up your old config**:
+   ```bash
+   cp ~/.config/oboyu/config.yaml ~/.config/oboyu/config.yaml.backup
+   ```
+
+2. **Run migration**:
+   ```bash
+   oboyu config migrate
+   ```
+
+3. **Review the simplified config**:
+   ```bash
+   cat ~/.config/oboyu/config.yaml
+   ```
+
+4. **Test everything still works**:
+   ```bash
+   oboyu query "test search"
+   ```
+
+### Removed Options Reference
+
+| Old Option | Status | Replacement |
+|------------|--------|-------------|
+| `indexer.batch_size` | Auto-optimized | Based on system memory |
+| `indexer.max_workers` | Auto-optimized | Based on CPU cores |
+| `indexer.ef_construction` | Auto-optimized | Performance-tuned default |
+| `indexer.bm25_k1` | Hard-coded | Proven default (1.2) |
+| `crawler.max_workers` | Auto-optimized | Based on CPU cores |
+| `crawler.timeout` | Hard-coded | 30 seconds |
+| `crawler.max_file_size` | Hard-coded | 10MB |
+| `query.vector_weight` | Removed | RRF algorithm |
+| `query.bm25_weight` | Removed | RRF algorithm |
+| `query.show_scores` | Runtime flag | `--show-scores` |
+| `query.interactive` | Runtime flag | `--interactive` |
+
+## Troubleshooting
+
+### "Configuration option not found"
+If you see warnings about deprecated options:
+1. Check the migration guide above
+2. Remove the deprecated options from your config file
+3. Use the new simplified options or CLI flags
+
+### "Performance seems slower"
+The auto-optimized parameters should perform better, but if needed:
+1. Check system resources (memory, CPU)
+2. Try increasing `chunk_size` for larger documents
+3. Ensure `use_reranker: true` for better quality
+
+### "Old behavior not working"
+Some advanced options are now hard-coded for stability:
+1. File size limit is now always 10MB (prevents memory issues)
+2. Symlinks are never followed (security best practice)
+3. RRF algorithm is always used (better than weighted combining)
+
+For any other issues, please check the [troubleshooting guide](troubleshooting.md) or file an issue.
