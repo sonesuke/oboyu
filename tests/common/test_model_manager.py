@@ -23,14 +23,12 @@ class TestModelManager:
         # Create concrete implementations for testing
         manager1 = EmbeddingModelManager(
             model_name="test-model",
-            device="cpu",
             use_onnx=True,
             max_seq_length=512,
         )
         
         manager2 = EmbeddingModelManager(
             model_name="test-model",
-            device="cpu",
             use_onnx=True,
             max_seq_length=512,
         )
@@ -41,7 +39,6 @@ class TestModelManager:
         # Different configuration should generate different cache key
         manager3 = EmbeddingModelManager(
             model_name="test-model",
-            device="cpu",
             use_onnx=False,  # Changed to different config to generate different key
             max_seq_length=512,
         )
@@ -318,7 +315,6 @@ class TestCreateModelManager:
         manager = create_model_manager(
             "embedding",
             "test-model",
-            device="cpu",
             use_onnx=True,
             max_seq_length=512,
         )
@@ -333,14 +329,13 @@ class TestCreateModelManager:
         manager = create_model_manager(
             "reranker",
             "test-reranker",
-            device="cpu",  # Fixed to CPU only
             use_onnx=False,
             max_length=256,
         )
         
         assert isinstance(manager, RerankerModelManager)
         assert manager.model_name == "test-reranker"
-        assert manager.device == "cpu"  # Fixed to CPU only
+        assert manager.device == "cpu"  # Always CPU-only
         assert manager.use_onnx is False
 
     def test_create_invalid_type(self):

@@ -66,15 +66,13 @@ class CrawlerConfigSchema(BaseModel):
 
 class IndexerConfigSchema(BaseModel):
     """Schema for indexer configuration."""
+    
+    model_config = {"extra": "forbid"}
 
     embedding_model: str = Field(
         default="cl-nagoya/ruri-v3-30m",
         description="Name or path of embedding model",
         pattern=r'^[\w\-./]+[\w\-/]+$'
-    )
-    embedding_device: Optional[Literal["cpu"]] = Field(
-        default="cpu",
-        description="Device for embedding generation (CPU only)"
     )
     batch_size: int = Field(default=128, ge=1, le=1024, description="Batch size for processing")
     max_length: int = Field(default=8192, ge=256, le=32768, description="Maximum sequence length")
@@ -95,15 +93,6 @@ class IndexerConfigSchema(BaseModel):
         # Be more lenient for testing - allow any non-empty string
         return v
 
-    @field_validator('embedding_device')
-    @classmethod
-    def validate_device(cls, v: Optional[str]) -> Optional[str]:
-        """Validate device is CPU (GPU support removed)."""
-        if v is not None and v != 'cpu':
-            import warnings
-            warnings.warn(f'Invalid device {v}, only CPU is supported. Falling back to CPU')
-            return 'cpu'
-        return v
 
     @field_validator('db_path')
     @classmethod

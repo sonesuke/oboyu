@@ -37,13 +37,11 @@ class BaseReranker:
     def __init__(
         self,
         model_name: str = "cl-nagoya/ruri-reranker-small",
-        device: str = "cpu",
         batch_size: int = 8,
         max_length: int = 512,
     ) -> None:
         """Initialize the base reranker."""
         self.model_name = model_name
-        self.device = device
         self.batch_size = batch_size
         self.max_length = max_length
         self._model: Optional[Any] = None
@@ -65,19 +63,17 @@ class CrossEncoderReranker(BaseReranker):
     def __init__(
         self,
         model_name: str = "cl-nagoya/ruri-reranker-small",
-        device: str = "cpu",
         batch_size: int = 8,
         max_length: int = 512,
     ) -> None:
         """Initialize the CrossEncoder reranker with lazy loading."""
-        super().__init__(model_name, device, batch_size, max_length)
+        super().__init__(model_name, batch_size, max_length)
         logger.debug(f"Initializing CrossEncoder reranker with model: {model_name}")
 
         # Create model manager for unified model loading
         try:
             self.model_manager = RerankerModelManager(
                 model_name=model_name,
-                device=device,
                 use_onnx=False,  # This is the PyTorch version
                 max_length=max_length,
             )
@@ -172,7 +168,6 @@ class ONNXCrossEncoderReranker(BaseReranker):
     def __init__(
         self,
         model_name: str = "cl-nagoya/ruri-reranker-small",
-        device: str = "cpu",
         batch_size: int = 8,
         max_length: int = 512,
         cache_dir: Optional[Path] = None,
@@ -180,14 +175,13 @@ class ONNXCrossEncoderReranker(BaseReranker):
         optimization_level: str = "none",
     ) -> None:
         """Initialize the ONNX CrossEncoder reranker with lazy loading."""
-        super().__init__(model_name, device, batch_size, max_length)
+        super().__init__(model_name, batch_size, max_length)
         logger.debug(f"Initializing ONNX CrossEncoder reranker with model: {model_name}")
 
         # Create model manager for unified model loading
         try:
             self.model_manager = RerankerModelManager(
                 model_name=model_name,
-                device=device,
                 use_onnx=True,
                 max_length=max_length,
                 cache_dir=cache_dir,
@@ -267,7 +261,6 @@ class RerankerService:
         self,
         model_name: str = "cl-nagoya/ruri-reranker-small",
         use_onnx: bool = False,
-        device: str = "cpu",
         batch_size: int = 16,
         max_length: int = 512,
         quantization_config: Optional[Dict[str, Any]] = None,
@@ -277,7 +270,6 @@ class RerankerService:
         """Initialize reranker service."""
         self.model_name = model_name
         self.use_onnx = use_onnx
-        self.device = device
         self.batch_size = batch_size
         self.max_length = max_length
 
@@ -287,7 +279,6 @@ class RerankerService:
             if use_onnx:
                 self.reranker = ONNXCrossEncoderReranker(
                     model_name=model_name,
-                    device=device,
                     batch_size=batch_size,
                     max_length=max_length,
                     cache_dir=cache_dir,
@@ -297,7 +288,6 @@ class RerankerService:
             else:
                 self.reranker = CrossEncoderReranker(
                     model_name=model_name,
-                    device=device,
                     batch_size=batch_size,
                     max_length=max_length,
                 )
@@ -345,7 +335,6 @@ class RerankerService:
 def create_reranker(
     model_name: str = "cl-nagoya/ruri-reranker-small",
     use_onnx: bool = True,
-    device: str = "cpu",
     batch_size: int = 8,
     max_length: int = 512,
     cache_dir: Optional[Path] = None,
@@ -356,7 +345,6 @@ def create_reranker(
     if use_onnx:
         return ONNXCrossEncoderReranker(
             model_name=model_name,
-            device=device,
             batch_size=batch_size,
             max_length=max_length,
             cache_dir=cache_dir,
@@ -366,7 +354,6 @@ def create_reranker(
     else:
         return CrossEncoderReranker(
             model_name=model_name,
-            device=device,
             batch_size=batch_size,
             max_length=max_length,
         )
