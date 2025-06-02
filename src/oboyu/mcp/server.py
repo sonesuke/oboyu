@@ -15,10 +15,11 @@ from oboyu.indexer.config.indexer_config import IndexerConfig
 from oboyu.indexer.config.model_config import ModelConfig
 from oboyu.indexer.config.processing_config import ProcessingConfig
 from oboyu.indexer.config.search_config import SearchConfig
-from oboyu.indexer.search.search_filters import SearchFilters
-from oboyu.indexer.search.snippet_processor import SnippetProcessor
-from oboyu.indexer.search.snippet_types import SnippetConfig
 from oboyu.mcp.context import db_path_global, mcp
+from oboyu.retriever.retriever import Retriever
+from oboyu.retriever.search.search_filters import SearchFilters
+from oboyu.retriever.search.snippet_processor import SnippetProcessor
+from oboyu.retriever.search.snippet_types import SnippetConfig
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -43,6 +44,27 @@ def get_indexer(db_path: Optional[str] = None) -> Indexer:
 
     # Create and return indexer
     return Indexer(config=indexer_config)
+
+
+def get_retriever(db_path: Optional[str] = None) -> Retriever:
+    """Create and initialize a Retriever instance.
+
+    Args:
+        db_path: Optional path to the database file
+
+    Returns:
+        Initialized Retriever instance
+
+    """
+    # Use supplied path, global variable, or default (in that order)
+    actual_db_path = db_path or db_path_global.value or str(DEFAULT_DB_PATH)
+
+    # Create retriever configuration with minimal settings
+    processing_config = ProcessingConfig(db_path=Path(actual_db_path))
+    retriever_config = IndexerConfig(model=ModelConfig(), search=SearchConfig(), processing=processing_config)
+
+    # Create and return retriever
+    return Retriever(config=retriever_config)
 
 
 @mcp.tool()
@@ -143,8 +165,8 @@ def search(
 
     """
     try:
-        # Initialize indexer
-        indexer = get_indexer(db_path)
+        # Initialize retriever
+        retriever = get_retriever(db_path)
         
         # Parse filters if provided
         search_filters = None
@@ -155,22 +177,8 @@ def search(
                 logger.warning(f"Invalid filters: {e}, proceeding without filters")
                 search_filters = None
 
-        try:
-            # Execute search with specified mode
-            results = indexer.search(query, limit=top_k, mode=mode, language_filter=language, filters=search_filters)
-        except RuntimeError as e:
-            # Check if this is a model loading error from our services
-            if "Failed to load" in str(e) and "model" in str(e):
-                error_msg = f"❌ Search failed due to model loading error: {str(e)}"
-                logger.error(error_msg)
-                return {
-                    "error": error_msg,
-                    "error_type": "model_loading_error",
-                    "results": [],
-                    "stats": {"count": 0, "query": query, "language_filter": language or "none"}
-                }
-            else:
-                raise
+        # Execute search with specified mode
+        results = retriever.search(query, limit=top_k, mode=mode, language_filter=language, filters=search_filters)
 
         # Initialize snippet processor if config provided
         snippet_processor = None
@@ -278,11 +286,11 @@ def get_index_info(db_path: Optional[str] = None) -> Dict[str, object]:
 
     """
     try:
-        # Initialize indexer
-        indexer = get_indexer(db_path)
-
-        # Query database for statistics using NewIndexer API
-        db_stats = indexer.get_stats()
+        # Create retriever to get stats (since stats include search-related info)
+        retriever = get_retriever(db_path)
+        
+        # Query database for statistics
+        db_stats = retriever.get_stats()
 
         # Return formatted statistics
         return {
@@ -290,7 +298,7 @@ def get_index_info(db_path: Optional[str] = None) -> Dict[str, object]:
             "chunk_count": db_stats.get("total_chunks", 0),
             "languages": ["unknown"],  # Not available in NewIndexer stats yet
             "embedding_model": db_stats.get("embedding_model", "unknown"),
-            "db_path": str(indexer.config.processing.db_path) if indexer.config.processing else "unknown",
+            "db_path": str(retriever.config.processing.db_path) if retriever.config.processing else "unknown",
             "last_updated": "unknown",  # Not available in NewIndexer stats yet
         }
     except Exception as e:

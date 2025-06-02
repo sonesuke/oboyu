@@ -18,7 +18,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from oboyu.cli.base import BaseCommand
 from oboyu.cli.interactive_session import InteractiveQuerySession
 from oboyu.cli.services.query_service import QueryService
-from oboyu.indexer.search.search_result import SearchResult
+from oboyu.retriever.search.search_result import SearchResult
 
 # Create Typer app
 app = typer.Typer(
@@ -81,8 +81,8 @@ def query(
             # Get indexer configuration and create indexer with proper config for interactive session
             indexer_config = config_manager.get_section("indexer")
             
-            from oboyu.indexer import Indexer
             from oboyu.indexer.config.indexer_config import IndexerConfig
+            from oboyu.retriever.retriever import Retriever
             
             config = IndexerConfig()
             config.db_path = Path(database_path)
@@ -94,8 +94,8 @@ def query(
                 config.search.use_reranker = True
                 config.model.use_reranker = True
             
-            # Initialize indexer with proper configuration
-            indexer = Indexer(config)
+            # Initialize retriever with proper configuration
+            retriever = Retriever(config)
             
             # Start interactive session
             session_config = {
@@ -105,7 +105,7 @@ def query(
                 "bm25_weight": query_config.get("bm25_weight", 0.3),
                 "rerank": query_config.get("use_reranker", False),
             }
-            session = InteractiveQuerySession(indexer, session_config, base_command.console)
+            session = InteractiveQuerySession(retriever, session_config, base_command.console)
             session.run()
         else:
             # Execute single query using service

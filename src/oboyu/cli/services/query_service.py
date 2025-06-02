@@ -7,9 +7,9 @@ from typing import Any, Dict, List, Optional
 
 from oboyu.common.config import ConfigManager
 from oboyu.common.paths import DEFAULT_DB_PATH
-from oboyu.indexer import Indexer
-from oboyu.indexer.search.search_context import ContextBuilder, SettingSource
-from oboyu.indexer.search.search_result import SearchResult
+from oboyu.retriever.retriever import Retriever
+from oboyu.retriever.search.search_context import ContextBuilder, SettingSource
+from oboyu.retriever.search.search_result import SearchResult
 
 
 @dataclass
@@ -78,7 +78,7 @@ class QueryService:
         # Determine database path
         database_path = Path(db_path or query_config.get("database_path") or DEFAULT_DB_PATH)
         
-        # Initialize indexer with proper configuration including reranker settings
+        # Initialize retriever with proper configuration including reranker settings
         from oboyu.indexer.config.indexer_config import IndexerConfig
         
         config = IndexerConfig()
@@ -91,18 +91,18 @@ class QueryService:
             config.search.use_reranker = True
             config.model.use_reranker = True
         
-        indexer = Indexer(config)
+        retriever = Retriever(config)
         
         try:
             start_time = time.time()
             
             # Execute search based on mode
             if mode == "vector":
-                results = indexer.vector_search(query, top_k=query_config.get("top_k", 10))
+                results = retriever.vector_search(query, top_k=query_config.get("top_k", 10))
             elif mode == "bm25":
-                results = indexer.bm25_search(query, top_k=query_config.get("top_k", 10))
+                results = retriever.bm25_search(query, top_k=query_config.get("top_k", 10))
             else:  # hybrid
-                results = indexer.hybrid_search(
+                results = retriever.hybrid_search(
                     query,
                     top_k=query_config.get("top_k", 10),
                     vector_weight=query_config.get("vector_weight", 0.7),
@@ -112,7 +112,7 @@ class QueryService:
             # Apply reranking if enabled
             if query_config.get("use_reranker", False) and results:
                 try:
-                    results = indexer.rerank_results(query, results)
+                    results = retriever.rerank_results(query, results)
                 except Exception as e:
                     # Log reranking failure but continue with original results
                     import logging
@@ -127,7 +127,7 @@ class QueryService:
                 total_results=len(results),
             )
         finally:
-            indexer.close()
+            retriever.close()
     
     def execute_query_with_context(
         self,
@@ -169,9 +169,9 @@ class QueryService:
         # Determine database path
         database_path = Path(db_path or query_config.get("database_path") or DEFAULT_DB_PATH)
         
-        # Initialize indexer with proper configuration
+        # Initialize retriever with proper configuration
         from oboyu.indexer.config.indexer_config import IndexerConfig
-        from oboyu.indexer.search.search_mode import SearchMode
+        from oboyu.retriever.search.search_mode import SearchMode
         
         config = IndexerConfig()
         config.db_path = database_path
@@ -184,7 +184,7 @@ class QueryService:
             config.search.use_reranker = True
             config.model.use_reranker = True
         
-        indexer = Indexer(config)
+        retriever = Retriever(config)
         
         try:
             start_time = time.time()
@@ -197,7 +197,7 @@ class QueryService:
                 search_mode = SearchMode.BM25
             
             # Execute search using context pattern
-            results = indexer.search_orchestrator.search_with_context(
+            results = retriever.search_orchestrator.search_with_context(
                 query=query,
                 context=context,
                 mode=search_mode,
@@ -212,7 +212,7 @@ class QueryService:
                 total_results=len(results),
             )
         finally:
-            indexer.close()
+            retriever.close()
     
     def get_database_path(self, db_path: Optional[Path] = None) -> str:
         """Get the resolved database path.

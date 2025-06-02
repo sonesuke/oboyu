@@ -12,8 +12,8 @@ from prompt_toolkit.history import FileHistory
 from rich.console import Console
 from rich.text import Text
 
-from oboyu.indexer import Indexer
-from oboyu.indexer.search.search_result import SearchResult
+from oboyu.retriever.retriever import Retriever
+from oboyu.retriever.search.search_result import SearchResult
 
 
 class InteractiveQuerySession:
@@ -21,19 +21,19 @@ class InteractiveQuerySession:
 
     def __init__(
         self,
-        indexer: Indexer,
+        retriever: Retriever,
         initial_config: Dict[str, Any],
         console: Console,
     ) -> None:
         """Initialize the interactive session.
 
         Args:
-            indexer: The initialized indexer instance
+            retriever: The initialized retriever instance
             initial_config: Initial configuration settings
             console: Rich console for output
 
         """
-        self.indexer = indexer
+        self.retriever = retriever
         self.config = initial_config.copy()
         self.console = console
 
@@ -219,7 +219,7 @@ class InteractiveQuerySession:
         setting = cmd_parts[1].lower()
         if setting in ["on", "true", "1"]:
             # Check if reranker is available
-            if not self.indexer.reranker_service or not self.indexer.reranker_service.is_available():
+            if not self.retriever.reranker_service or not self.retriever.reranker_service.is_available():
                 self.console.print("[yellow]Warning: Reranker service is not available. Enable reranker in config first.[/yellow]")
             self.config["rerank"] = True
             self.console.print("[green]Reranking enabled[/green]")
@@ -237,8 +237,8 @@ class InteractiveQuerySession:
         
         # Show reranker availability
         reranker_available = (
-            self.indexer.reranker_service and
-            self.indexer.reranker_service.is_available()
+            self.retriever.reranker_service and
+            self.retriever.reranker_service.is_available()
         )
         self.console.print(f"  [cyan]reranker_available[/cyan]: {reranker_available}")
         self.console.print()
@@ -258,7 +258,7 @@ class InteractiveQuerySession:
     def _show_stats(self) -> None:
         """Show database statistics."""
         try:
-            stats = self.indexer.get_database_stats()
+            stats = self.retriever.get_database_stats()
             self.console.print("\n[bold blue]Database Statistics:[/bold blue]")
             
             # Format basic stats
@@ -302,17 +302,17 @@ class InteractiveQuerySession:
             
             # Execute search based on mode
             if mode == "vector":
-                results = self.indexer.vector_search(query, **search_params)
+                results = self.retriever.vector_search(query, **search_params)
             elif mode == "bm25":
-                results = self.indexer.bm25_search(query, **search_params)
+                results = self.retriever.bm25_search(query, **search_params)
             else:  # hybrid
-                results = self.indexer.hybrid_search(query, **search_params)
+                results = self.retriever.hybrid_search(query, **search_params)
             
             # Apply reranking if enabled and available
             if (self.config.get("rerank", False) and results and
-                self.indexer.reranker_service and
-                self.indexer.reranker_service.is_available()):
-                results = self.indexer.rerank_results(query, results)
+                self.retriever.reranker_service and
+                self.retriever.reranker_service.is_available()):
+                results = self.retriever.rerank_results(query, results)
             
             elapsed_time = time.time() - start_time
             

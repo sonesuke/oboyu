@@ -7,7 +7,7 @@ import pytest
 
 from oboyu.cli.services.query_service import QueryService
 from oboyu.common.config import ConfigManager
-from oboyu.indexer.search.search_result import SearchResult
+from oboyu.retriever.search.search_result import SearchResult
 
 
 @pytest.fixture
@@ -114,12 +114,12 @@ class TestQueryService:
         
         query_service.config_manager.merge_cli_overrides.assert_called_once_with("query", expected_overrides)
     
-    @patch('oboyu.cli.services.query_service.Indexer')
-    def test_execute_query_vector(self, mock_indexer_class, query_service, mock_search_results):
+    @patch('oboyu.cli.services.query_service.Retriever')
+    def test_execute_query_vector(self, mock_retriever_class, query_service, mock_search_results):
         """Test vector query execution."""
-        mock_indexer = Mock()
-        mock_indexer.vector_search.return_value = mock_search_results
-        mock_indexer_class.return_value = mock_indexer
+        mock_retriever = Mock()
+        mock_retriever.vector_search.return_value = mock_search_results
+        mock_retriever_class.return_value = mock_retriever
         
         result = query_service.execute_query("test query", mode="vector")
         
@@ -128,51 +128,51 @@ class TestQueryService:
         assert result.total_results == 2
         assert result.elapsed_time > 0
         
-        mock_indexer.vector_search.assert_called_once_with("test query", top_k=10)
-        mock_indexer.close.assert_called_once()
+        mock_retriever.vector_search.assert_called_once_with("test query", top_k=10)
+        mock_retriever.close.assert_called_once()
     
-    @patch('oboyu.cli.services.query_service.Indexer')
-    def test_execute_query_bm25(self, mock_indexer_class, query_service, mock_search_results):
+    @patch('oboyu.cli.services.query_service.Retriever')
+    def test_execute_query_bm25(self, mock_retriever_class, query_service, mock_search_results):
         """Test BM25 query execution."""
-        mock_indexer = Mock()
-        mock_indexer.bm25_search.return_value = mock_search_results
-        mock_indexer_class.return_value = mock_indexer
+        mock_retriever = Mock()
+        mock_retriever.bm25_search.return_value = mock_search_results
+        mock_retriever_class.return_value = mock_retriever
         
         result = query_service.execute_query("test query", mode="bm25")
         
         assert result.results == mock_search_results
         assert result.mode == "bm25"
         
-        mock_indexer.bm25_search.assert_called_once_with("test query", top_k=10)
-        mock_indexer.close.assert_called_once()
+        mock_retriever.bm25_search.assert_called_once_with("test query", top_k=10)
+        mock_retriever.close.assert_called_once()
     
-    @patch('oboyu.cli.services.query_service.Indexer')
-    def test_execute_query_hybrid(self, mock_indexer_class, query_service, mock_search_results):
+    @patch('oboyu.cli.services.query_service.Retriever')
+    def test_execute_query_hybrid(self, mock_retriever_class, query_service, mock_search_results):
         """Test hybrid query execution."""
-        mock_indexer = Mock()
-        mock_indexer.hybrid_search.return_value = mock_search_results
-        mock_indexer_class.return_value = mock_indexer
+        mock_retriever = Mock()
+        mock_retriever.hybrid_search.return_value = mock_search_results
+        mock_retriever_class.return_value = mock_retriever
         
         result = query_service.execute_query("test query", mode="hybrid")
         
         assert result.results == mock_search_results
         assert result.mode == "hybrid"
         
-        mock_indexer.hybrid_search.assert_called_once_with(
+        mock_retriever.hybrid_search.assert_called_once_with(
             "test query",
             top_k=10,
             vector_weight=0.7,
             bm25_weight=0.3
         )
-        mock_indexer.close.assert_called_once()
+        mock_retriever.close.assert_called_once()
     
-    @patch('oboyu.cli.services.query_service.Indexer')
-    def test_execute_query_with_reranking(self, mock_indexer_class, query_service, mock_search_results):
+    @patch('oboyu.cli.services.query_service.Retriever')
+    def test_execute_query_with_reranking(self, mock_retriever_class, query_service, mock_search_results):
         """Test query execution with reranking enabled."""
-        mock_indexer = Mock()
-        mock_indexer.hybrid_search.return_value = mock_search_results
-        mock_indexer.rerank_results.return_value = mock_search_results[:1]  # Reranked results
-        mock_indexer_class.return_value = mock_indexer
+        mock_retriever = Mock()
+        mock_retriever.hybrid_search.return_value = mock_search_results
+        mock_retriever.rerank_results.return_value = mock_search_results[:1]  # Reranked results
+        mock_retriever_class.return_value = mock_retriever
         
         # Override config to enable reranking
         query_service.config_manager.merge_cli_overrides.return_value = {
@@ -185,18 +185,18 @@ class TestQueryService:
         
         result = query_service.execute_query("test query", mode="hybrid", rerank=True)
         
-        mock_indexer.hybrid_search.assert_called_once()
-        mock_indexer.rerank_results.assert_called_once_with("test query", mock_search_results)
+        mock_retriever.hybrid_search.assert_called_once()
+        mock_retriever.rerank_results.assert_called_once_with("test query", mock_search_results)
         assert len(result.results) == 1  # Reranked results
-        mock_indexer.close.assert_called_once()
+        mock_retriever.close.assert_called_once()
     
-    @patch('oboyu.cli.services.query_service.Indexer')
-    def test_execute_query_reranking_failure(self, mock_indexer_class, query_service, mock_search_results):
+    @patch('oboyu.cli.services.query_service.Retriever')
+    def test_execute_query_reranking_failure(self, mock_retriever_class, query_service, mock_search_results):
         """Test query execution when reranking fails."""
-        mock_indexer = Mock()
-        mock_indexer.hybrid_search.return_value = mock_search_results
-        mock_indexer.rerank_results.side_effect = Exception("Reranking failed")
-        mock_indexer_class.return_value = mock_indexer
+        mock_retriever = Mock()
+        mock_retriever.hybrid_search.return_value = mock_search_results
+        mock_retriever.rerank_results.side_effect = Exception("Reranking failed")
+        mock_retriever_class.return_value = mock_retriever
         
         # Override config to enable reranking
         query_service.config_manager.merge_cli_overrides.return_value = {
@@ -211,14 +211,14 @@ class TestQueryService:
         
         # Should return original results when reranking fails
         assert result.results == mock_search_results
-        mock_indexer.close.assert_called_once()
+        mock_retriever.close.assert_called_once()
     
-    @patch('oboyu.cli.services.query_service.Indexer')
-    def test_execute_query_with_overrides(self, mock_indexer_class, query_service, mock_search_results):
+    @patch('oboyu.cli.services.query_service.Retriever')
+    def test_execute_query_with_overrides(self, mock_retriever_class, query_service, mock_search_results):
         """Test query execution with parameter overrides."""
-        mock_indexer = Mock()
-        mock_indexer.hybrid_search.return_value = mock_search_results
-        mock_indexer_class.return_value = mock_indexer
+        mock_retriever = Mock()
+        mock_retriever.hybrid_search.return_value = mock_search_results
+        mock_retriever_class.return_value = mock_retriever
         
         result = query_service.execute_query(
             "test query",
@@ -229,8 +229,8 @@ class TestQueryService:
             db_path=Path("/custom/db.db")
         )
         
-        # Verify indexer was created
-        mock_indexer_class.assert_called_once()
+        # Verify retriever was created
+        mock_retriever_class.assert_called_once()
         
         # Verify overrides were applied (through merge_cli_overrides call)
         expected_overrides = {
