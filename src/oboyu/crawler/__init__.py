@@ -8,7 +8,6 @@ from oboyu.crawler.config import CrawlerConfig, load_config_from_file, load_defa
 from oboyu.crawler.crawler import Crawler, CrawlerResult
 from oboyu.crawler.discovery import discover_documents
 from oboyu.crawler.extractor import extract_content
-from oboyu.crawler.japanese import detect_encoding, process_japanese_text
 
 __all__ = [
     "Crawler",
@@ -16,8 +15,6 @@ __all__ = [
     "CrawlerConfig",
     "discover_documents",
     "extract_content",
-    "process_japanese_text",
-    "detect_encoding",
     "load_default_config",
     "load_config_from_file",
 ]

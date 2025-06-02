@@ -22,6 +22,16 @@ from oboyu.config.schema import (
     QueryConfigSchema,
 )
 
+# Import simplified configuration system
+from oboyu.config.simplified_schema import (
+    AutoOptimizer,
+    BackwardCompatibilityMapper,
+    SimplifiedConfig,
+    SimplifiedCrawlerConfig,
+    SimplifiedIndexerConfig,
+    SimplifiedQueryConfig,
+)
+
 # Legacy imports for backward compatibility
 try:
     from oboyu.common.config import ConfigManager as LegacyConfigManager
@@ -55,6 +65,14 @@ __all__ = [
     "CrawlerConfigSchema",
     "IndexerConfigSchema",
     "QueryConfigSchema",
+    
+    # Simplified configuration system
+    "SimplifiedConfig",
+    "SimplifiedIndexerConfig",
+    "SimplifiedCrawlerConfig",
+    "SimplifiedQueryConfig",
+    "BackwardCompatibilityMapper",
+    "AutoOptimizer",
     
     # Component configurations
     "CrawlerConfig",
