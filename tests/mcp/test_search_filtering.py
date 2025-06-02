@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from oboyu.mcp.server import search
-from oboyu.indexer.search.search_filters import SearchFilters
+from oboyu.retriever.search.search_filters import SearchFilters
 
 
 @pytest.fixture
@@ -265,16 +265,19 @@ class TestSearchFiltersValidation:
         with pytest.raises(ValueError):
             SearchFilters.from_dict(invalid_filter)
 
-    def test_invalid_path_filter(self) -> None:
-        """Test invalid path filter raises appropriate error."""
-        invalid_filter = {
+    def test_empty_path_filter_allowed(self) -> None:
+        """Test that empty path filters are allowed for backward compatibility."""
+        filter_with_empty_path = {
             "path_filter": {
-                # No include or exclude patterns
+                # No include or exclude patterns - this is now allowed
             }
         }
         
-        with pytest.raises(ValueError):
-            SearchFilters.from_dict(invalid_filter)
+        # This should not raise an error
+        filters = SearchFilters.from_dict(filter_with_empty_path)
+        assert filters.path_filter is not None
+        assert filters.path_filter.include_patterns is None
+        assert filters.path_filter.exclude_patterns is None
 
 
 class TestSearchFiltersExamples:

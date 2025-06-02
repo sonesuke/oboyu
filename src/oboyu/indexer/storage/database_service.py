@@ -22,11 +22,11 @@ from numpy.typing import NDArray
 
 from oboyu.indexer.config import DEFAULT_BATCH_SIZE
 from oboyu.indexer.core.document_processor import Chunk
-from oboyu.indexer.search.search_filters import SearchFilters
 from oboyu.indexer.storage.consolidated_repositories import ChunkRepository, EmbeddingRepository, StatisticsRepository
 from oboyu.indexer.storage.database_manager import DatabaseManager
-from oboyu.indexer.storage.database_search_service import DatabaseSearchService
 from oboyu.indexer.storage.index_manager import HNSWIndexParams, IndexManager
+from oboyu.retriever.search.search_filters import SearchFilters
+from oboyu.retriever.storage.database_search_service import DatabaseSearchService
 
 logger = logging.getLogger(__name__)
 

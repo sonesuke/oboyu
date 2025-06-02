@@ -7,9 +7,9 @@ from typing import Any, Dict, List, Optional
 
 from oboyu.common.config import ConfigManager
 from oboyu.common.paths import DEFAULT_DB_PATH
-from oboyu.indexer import Indexer
-from oboyu.indexer.search.search_context import ContextBuilder, SettingSource
-from oboyu.indexer.search.search_result import SearchResult
+from oboyu.retriever.retriever import Retriever
+from oboyu.retriever.search.search_context import ContextBuilder, SettingSource
+from oboyu.retriever.search.search_result import SearchResult
 
 
 @dataclass
@@ -64,7 +64,7 @@ class QueryCommand:
         # Determine database path
         database_path = Path(db_path or query_config.get("database_path") or DEFAULT_DB_PATH)
         
-        # Initialize indexer with proper configuration including reranker settings
+        # Initialize retriever with proper configuration including reranker settings
         from oboyu.indexer.config.indexer_config import IndexerConfig
         
         config = IndexerConfig()
@@ -77,45 +77,32 @@ class QueryCommand:
             config.search.use_reranker = True
             config.model.use_reranker = True
         
-        indexer = Indexer(config)
+        retriever = Retriever(config)
         
         try:
             start_time = time.time()
             
-            try:
-                # Execute search based on mode
-                if mode == "vector":
-                    results = indexer.vector_search(query, top_k=query_config.get("top_k", 10))
-                elif mode == "bm25":
-                    results = indexer.bm25_search(query, top_k=query_config.get("top_k", 10))
-                else:  # hybrid
-                    results = indexer.hybrid_search(
-                        query,
-                        top_k=query_config.get("top_k", 10),
-                        vector_weight=query_config.get("vector_weight", 0.7),
-                        bm25_weight=query_config.get("bm25_weight", 0.3),
-                    )
-                
-                # Apply reranking if enabled
-                if query_config.get("use_reranker", False) and results:
-                    try:
-                        results = indexer.rerank_results(query, results)
-                    except Exception as e:
-                        # Check if this is a model loading error
-                        if isinstance(e, RuntimeError) and "Failed to load" in str(e) and "model" in str(e):
-                            import logging
-                            logging.error(f"❌ Reranking failed due to model loading error: {e}")
-                            logging.warning("Continuing with search results without reranking.")
-                        else:
-                            import logging
-                            logging.warning(f"Reranking failed: {e}")
+            # Execute search based on mode
+            if mode == "vector":
+                results = retriever.vector_search(query, top_k=query_config.get("top_k", 10))
+            elif mode == "bm25":
+                results = retriever.bm25_search(query, top_k=query_config.get("top_k", 10))
+            else:  # hybrid
+                results = retriever.hybrid_search(
+                    query,
+                    top_k=query_config.get("top_k", 10),
+                    vector_weight=query_config.get("vector_weight", 0.7),
+                    bm25_weight=query_config.get("bm25_weight", 0.3),
+                )
             
-            except RuntimeError as e:
-                # Check if this is a model loading error from our services
-                if "Failed to load" in str(e) and "model" in str(e):
-                    raise RuntimeError(f"❌ Search failed due to model loading error:\n{str(e)}") from e
-                else:
-                    raise
+            # Apply reranking if enabled
+            if query_config.get("use_reranker", False) and results:
+                try:
+                    results = retriever.rerank_results(query, results)
+                except Exception as e:
+                    # Log reranking failure but continue with original results
+                    import logging
+                    logging.warning(f"Reranking failed: {e}")
             
             elapsed_time = time.time() - start_time
             
@@ -128,13 +115,13 @@ class QueryCommand:
         except Exception:
             # Ensure clean shutdown
             try:
-                indexer.close()
+                retriever.close()
             except Exception:
                 # Ignore errors during cleanup
                 pass
             raise
         finally:
-            indexer.close()
+            retriever.close()
     
     def execute_query_with_context(
         self,
@@ -161,9 +148,9 @@ class QueryCommand:
         # Determine database path
         database_path = Path(db_path or query_config.get("database_path") or DEFAULT_DB_PATH)
         
-        # Initialize indexer with proper configuration
+        # Initialize retriever with proper configuration
         from oboyu.indexer.config.indexer_config import IndexerConfig
-        from oboyu.indexer.search.search_mode import SearchMode
+        from oboyu.retriever.search.search_mode import SearchMode
         
         config = IndexerConfig()
         config.db_path = database_path
@@ -176,32 +163,24 @@ class QueryCommand:
             config.search.use_reranker = True
             config.model.use_reranker = True
         
-        indexer = Indexer(config)
+        retriever = Retriever(config)
         
         try:
             start_time = time.time()
             
-            try:
-                # Convert mode string to SearchMode enum
-                search_mode = SearchMode.HYBRID
-                if mode == "vector":
-                    search_mode = SearchMode.VECTOR
-                elif mode == "bm25":
-                    search_mode = SearchMode.BM25
-                
-                # Execute search using context pattern
-                results = indexer.search_orchestrator.search_with_context(
-                    query=query,
-                    context=context,
-                    mode=search_mode,
-                )
-                
-            except RuntimeError as e:
-                # Check if this is a model loading error from our services
-                if "Failed to load" in str(e) and "model" in str(e):
-                    raise RuntimeError(f"❌ Search failed due to model loading error:\n{str(e)}") from e
-                else:
-                    raise
+            # Convert mode string to SearchMode enum
+            search_mode = SearchMode.HYBRID
+            if mode == "vector":
+                search_mode = SearchMode.VECTOR
+            elif mode == "bm25":
+                search_mode = SearchMode.BM25
+            
+            # Execute search using context pattern
+            results = retriever.search_orchestrator.search_with_context(
+                query=query,
+                context=context,
+                mode=search_mode,
+            )
             
             elapsed_time = time.time() - start_time
             
@@ -214,13 +193,13 @@ class QueryCommand:
         except Exception:
             # Ensure clean shutdown
             try:
-                indexer.close()
+                retriever.close()
             except Exception:
                 # Ignore errors during cleanup
                 pass
             raise
         finally:
-            indexer.close()
+            retriever.close()
     
     def get_database_path(self, db_path: Optional[Path] = None) -> str:
         """Get the resolved database path."""
@@ -252,4 +231,3 @@ class QueryCommand:
 
 # Legacy alias for backward compatibility
 QueryService = QueryCommand
-

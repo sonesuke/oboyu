@@ -303,4 +303,3 @@ class IndexCommand:
 
 # Legacy alias for backward compatibility
 IndexingService = IndexCommand
-
