@@ -29,8 +29,7 @@ class SearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=1000, description="Search query text")
     mode: SearchMode = Field(default=SearchMode.HYBRID, description="Search mode")
     top_k: int = Field(default=5, ge=1, le=100, description="Number of results to return")
-    vector_weight: float = Field(default=0.7, ge=0.0, le=1.0, description="Weight for vector search")
-    bm25_weight: float = Field(default=0.3, ge=0.0, le=1.0, description="Weight for BM25 search")
+    rrf_k: int = Field(default=60, ge=1, le=1000, description="RRF parameter for hybrid search")
     language: Optional[str] = Field(default=None, pattern=r'^[a-z]{2}$', description="Language filter")
     db_path: Optional[Path] = Field(default=None, description="Database path")
     rerank: bool = Field(default=True, description="Enable reranking")
@@ -49,11 +48,11 @@ class SearchRequest(BaseModel):
         return normalized
     
     @model_validator(mode='after')
-    def validate_weights(self) -> 'SearchRequest':
-        """Validate that weights sum to 1.0 for hybrid mode."""
+    def validate_rrf_k(self) -> 'SearchRequest':
+        """Validate RRF parameter for hybrid mode."""
         if self.mode == SearchMode.HYBRID:
-            if abs(self.vector_weight + self.bm25_weight - 1.0) > 0.001:
-                raise ValueError('vector_weight + bm25_weight must equal 1.0 for hybrid mode')
+            if self.rrf_k <= 0:
+                raise ValueError('rrf_k must be positive for hybrid mode')
         return self
     
     @field_validator('db_path')
