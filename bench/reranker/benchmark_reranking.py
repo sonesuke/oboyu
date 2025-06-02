@@ -28,7 +28,6 @@ class OboyuRerankerAdapter:
         self,
         model_name: str = "cl-nagoya/ruri-v3-reranker-310m",
         use_onnx: bool = True,
-        device: str = "cpu",
         batch_size: int = 8,
     ) -> None:
         """Initialize the Oboyu reranker adapter.
@@ -36,14 +35,12 @@ class OboyuRerankerAdapter:
         Args:
             model_name: Reranker model name
             use_onnx: Whether to use ONNX optimization
-            device: Device to run on (cpu/cuda)
             batch_size: Batch size for reranking
         
         """
         self.reranker = create_reranker(
             model_name=model_name,
             use_onnx=use_onnx,
-            device=device,
             batch_size=batch_size,
         )
         self.model_name = model_name
@@ -193,7 +190,6 @@ def benchmark_reranking_performance(
         reranker = OboyuRerankerAdapter(
             model_name=config.get("model_name", "cl-nagoya/ruri-v3-reranker-310m"),
             use_onnx=config.get("use_onnx", True),
-            device=config.get("device", "cpu"),
             batch_size=config.get("batch_size", 8),
         )
         
@@ -336,14 +332,12 @@ def main():
                 "name": "ruri-v3-reranker-310m-onnx",
                 "model_name": "cl-nagoya/ruri-v3-reranker-310m",
                 "use_onnx": True,
-                "device": "cpu",
                 "batch_size": 8,
             },
             {
                 "name": "ruri-v3-reranker-310m-pytorch",
                 "model_name": "cl-nagoya/ruri-v3-reranker-310m",
                 "use_onnx": False,
-                "device": "cpu",
                 "batch_size": 8,
             },
         ]

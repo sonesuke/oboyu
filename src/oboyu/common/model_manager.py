@@ -30,7 +30,6 @@ class ModelManager(ABC):
         self,
         model_name: str,
         model_type: str,
-        device: str = "cpu",
         use_onnx: bool = True,
         cache_dir: Optional[Union[str, Path]] = None,
         **kwargs: Any,  # noqa: ANN401
@@ -40,7 +39,6 @@ class ModelManager(ABC):
         Args:
             model_name: Name of the model to load
             model_type: Type of model (embedding, reranker)
-            device: Device to run the model on
             use_onnx: Whether to use ONNX optimization
             cache_dir: Directory to cache models (defaults to XDG cache path)
             **kwargs: Additional model-specific configuration
@@ -48,8 +46,8 @@ class ModelManager(ABC):
         """
         self.model_name = model_name
         self.model_type = model_type
-        self.device = device
-        self.use_onnx = use_onnx and device == "cpu"  # ONNX most beneficial for CPU
+        self.device = "cpu"  # Always CPU-only
+        self.use_onnx = use_onnx
         self.cache_dir = Path(cache_dir) if cache_dir else EMBEDDING_CACHE_DIR / "models"
         self.config = kwargs
 
@@ -259,7 +257,6 @@ class EmbeddingModelManager(ModelManager):
     def __init__(
         self,
         model_name: str = "cl-nagoya/ruri-v3-30m",
-        device: str = "cpu",
         use_onnx: bool = True,
         max_seq_length: int = 8192,
         cache_dir: Optional[Union[str, Path]] = None,
@@ -271,7 +268,6 @@ class EmbeddingModelManager(ModelManager):
 
         Args:
             model_name: Name of the embedding model
-            device: Device to run the model on
             use_onnx: Whether to use ONNX optimization
             max_seq_length: Maximum sequence length
             cache_dir: Directory to cache models
@@ -283,7 +279,6 @@ class EmbeddingModelManager(ModelManager):
         super().__init__(
             model_name=model_name,
             model_type="embedding",
-            device=device,
             use_onnx=use_onnx,
             cache_dir=cache_dir,
             max_seq_length=max_seq_length,
@@ -337,7 +332,7 @@ class EmbeddingModelManager(ModelManager):
                 def download_model() -> SentenceTransformer:
                     return SentenceTransformer(
                         self.model_name,
-                        device=self.device,
+                        device="cpu",  # Fixed to CPU only
                         cache_folder=str(model_cache_dir),
                     )
 
@@ -371,7 +366,6 @@ class RerankerModelManager(ModelManager):
     def __init__(
         self,
         model_name: str = "cl-nagoya/ruri-reranker-small",
-        device: str = "cpu",
         use_onnx: bool = True,
         max_length: int = 512,
         cache_dir: Optional[Union[str, Path]] = None,
@@ -383,7 +377,6 @@ class RerankerModelManager(ModelManager):
 
         Args:
             model_name: Name of the reranker model
-            device: Device to run the model on
             use_onnx: Whether to use ONNX optimization
             max_length: Maximum sequence length
             cache_dir: Directory to cache models
@@ -395,7 +388,6 @@ class RerankerModelManager(ModelManager):
         super().__init__(
             model_name=model_name,
             model_type="reranker",
-            device=device,
             use_onnx=use_onnx,
             cache_dir=cache_dir,
             max_length=max_length,
@@ -444,7 +436,7 @@ class RerankerModelManager(ModelManager):
                 def download_model() -> CrossEncoder:
                     return CrossEncoder(
                         self.model_name,
-                        device=self.device,
+                        device="cpu",  # Fixed to CPU only
                         max_length=self.max_length,
                         trust_remote_code=True,
                     )
@@ -471,7 +463,6 @@ class RerankerModelManager(ModelManager):
 def create_model_manager(
     model_type: str,
     model_name: str,
-    device: str = "cpu",
     use_onnx: bool = True,
     cache_dir: Optional[Union[str, Path]] = None,
     **kwargs: Any,  # noqa: ANN401
@@ -481,7 +472,6 @@ def create_model_manager(
     Args:
         model_type: Type of model (embedding, reranker)
         model_name: Name of the model
-        device: Device to run the model on
         use_onnx: Whether to use ONNX optimization
         cache_dir: Directory to cache models
         **kwargs: Additional model-specific configuration
@@ -496,7 +486,6 @@ def create_model_manager(
     if model_type == "embedding":
         return EmbeddingModelManager(
             model_name=model_name,
-            device=device,
             use_onnx=use_onnx,
             cache_dir=cache_dir,
             **kwargs,
@@ -504,7 +493,6 @@ def create_model_manager(
     elif model_type == "reranker":
         return RerankerModelManager(
             model_name=model_name,
-            device=device,
             use_onnx=use_onnx,
             cache_dir=cache_dir,
             **kwargs,

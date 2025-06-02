@@ -10,7 +10,6 @@ class ModelConfig:
 
     # Embedding model settings
     embedding_model: str = "cl-nagoya/ruri-v3-30m"
-    embedding_device: str = "cpu"
     batch_size: int = 64
     max_seq_length: int = 8192
     use_onnx: bool = True
@@ -29,7 +28,6 @@ class ModelConfig:
     reranker_model: str = "cl-nagoya/ruri-reranker-small"
     use_reranker: bool = False
     reranker_use_onnx: bool = False
-    reranker_device: str = "cpu"
     reranker_batch_size: int = 16
     reranker_max_length: int = 512
 

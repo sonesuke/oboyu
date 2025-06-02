@@ -94,7 +94,6 @@ class EmbeddingService:
     def __init__(
         self,
         model_name: str = "cl-nagoya/ruri-v3-30m",
-        device: str = "cpu",
         batch_size: int = 64,
         max_seq_length: int = 8192,
         query_prefix: str = "検索クエリ: ",
@@ -107,7 +106,6 @@ class EmbeddingService:
 
         Args:
             model_name: Name of the embedding model
-            device: Device to run model on (cpu/cuda)
             batch_size: Batch size for embedding generation
             max_seq_length: Maximum sequence length
             query_prefix: Prefix for search queries
@@ -118,7 +116,6 @@ class EmbeddingService:
 
         """
         self.model_name = model_name
-        self.device = device
         self.batch_size = batch_size
         self.max_seq_length = max_seq_length
         self.query_prefix = query_prefix
@@ -130,7 +127,6 @@ class EmbeddingService:
             self.model_manager = EmbeddingModelManager(
                 model_name=model_name,
                 models_dir=EMBEDDING_MODELS_DIR,
-                device=device,
                 max_seq_length=max_seq_length,
                 use_onnx=use_onnx,
                 quantization_config=onnx_quantization_config,

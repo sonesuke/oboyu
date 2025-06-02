@@ -20,7 +20,6 @@ class TestIndexerConfig:
         assert config.chunk_size == 1024
         assert config.chunk_overlap == 256
         assert config.embedding_model == "cl-nagoya/ruri-v3-30m"
-        assert config.embedding_device == "cpu"
         assert config.use_reranker is False
 
     def test_config_with_custom_values(self) -> None:
@@ -28,7 +27,6 @@ class TestIndexerConfig:
         # Create custom sub-configs
         model_config = ModelConfig(
             embedding_model="custom-model",
-            embedding_device="cuda",
             use_onnx=False,
         )
         
@@ -53,7 +51,6 @@ class TestIndexerConfig:
         assert config.chunk_size == 512
         assert config.chunk_overlap == 128
         assert config.embedding_model == "custom-model"
-        assert config.embedding_device == "cuda"
         assert config.use_reranker is True
         assert str(config.db_path) == "custom.db"
 
