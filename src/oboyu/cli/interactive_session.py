@@ -54,7 +54,7 @@ class InteractiveQuerySession:
                     "/mode",
                     "/topk",
                     "/top-k",
-                    "/weights",
+                    "/rrf",
                     "/rerank",
                     "/settings",
                     "/clear",
@@ -120,9 +120,9 @@ class InteractiveQuerySession:
             self._handle_mode_command(cmd_parts)
         elif cmd in ["/topk", "/top-k", "/k"]:
             self._handle_topk_command(cmd_parts)
-        elif cmd in ["/weights", "/w"]:
-            self._handle_weights_command(cmd_parts)
-        elif cmd in ["/rerank", "/r"]:
+        elif cmd in ["/rrf", "/r"]:
+            self._handle_rrf_command(cmd_parts)
+        elif cmd in ["/rerank", "/rerank"]:
             self._handle_rerank_command(cmd_parts)
         elif cmd in ["/settings", "/config", "/s"]:
             self._show_settings()
@@ -144,8 +144,8 @@ class InteractiveQuerySession:
 [bold green]Search Commands:[/bold green]
   [cyan]/mode <vector|bm25|hybrid>[/cyan]     Set search mode
   [cyan]/topk <number>[/cyan]                 Set number of results (1-100)
-  [cyan]/weights <vector> <bm25>[/cyan]       Set hybrid search weights (0.0-1.0)
-  [cyan]/rerank <on|off>[/cyan]               Enable/disable reranking
+  [cyan]/rrf <k>[/cyan]                     Set RRF parameter for hybrid search (10-200)
+  [cyan]/rerank <on|off>[/cyan]              Enable/disable reranking
 
 [bold green]Utility Commands:[/bold green]
   [cyan]/settings[/cyan]                      Show current settings
@@ -191,24 +191,27 @@ class InteractiveQuerySession:
         except ValueError:
             self.console.print("[red]Invalid number format[/red]")
 
-    def _handle_weights_command(self, cmd_parts: list[str]) -> None:
-        """Handle weights command."""
-        if len(cmd_parts) < 3:
-            self.console.print("[yellow]Usage: /weights <vector_weight> <bm25_weight>[/yellow]")
+    def _handle_rrf_command(self, cmd_parts: list[str]) -> None:
+        """Handle RRF parameter command."""
+        if len(cmd_parts) < 2:
+            self.console.print("[yellow]Usage: /rrf <k_value>[/yellow]")
+            self.console.print("[dim]Example: /rrf 60 (default), /rrf 30 (more aggressive), /rrf 100 (more conservative)[/dim]")
             return
 
         try:
-            vector_weight = float(cmd_parts[1])
-            bm25_weight = float(cmd_parts[2])
+            rrf_k = int(cmd_parts[1])
             
-            if 0.0 <= vector_weight <= 1.0 and 0.0 <= bm25_weight <= 1.0:
-                self.config["vector_weight"] = vector_weight
-                self.config["bm25_weight"] = bm25_weight
-                self.console.print(f"[green]Weights set to: vector={vector_weight}, bm25={bm25_weight}[/green]")
+            if 1 <= rrf_k <= 1000:  # Reasonable range for RRF k parameter
+                self.config["rrf_k"] = rrf_k
+                self.console.print(f"[green]RRF parameter set to: k={rrf_k}[/green]")
+                if rrf_k < 30:
+                    self.console.print("[yellow]Low k value - more aggressive fusion of top results[/yellow]")
+                elif rrf_k > 100:
+                    self.console.print("[yellow]High k value - more conservative, balanced fusion[/yellow]")
             else:
-                self.console.print("[red]Weights must be between 0.0 and 1.0[/red]")
+                self.console.print("[red]RRF k parameter must be between 1 and 1000 (typical range: 10-200)[/red]")
         except ValueError:
-            self.console.print("[red]Invalid weight format[/red]")
+            self.console.print("[red]Invalid RRF parameter format - must be an integer[/red]")
 
     def _handle_rerank_command(self, cmd_parts: list[str]) -> None:
         """Handle rerank command."""
@@ -296,9 +299,7 @@ class InteractiveQuerySession:
             
             # Add mode-specific parameters
             mode = self.config.get("mode", "hybrid")
-            if mode == "hybrid":
-                search_params["vector_weight"] = self.config.get("vector_weight", 0.7)
-                search_params["bm25_weight"] = self.config.get("bm25_weight", 0.3)
+            # Note: RRF parameter is configured at the indexer level, not passed as search parameter
             
             # Execute search based on mode
             if mode == "vector":

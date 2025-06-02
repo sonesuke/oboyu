@@ -25,7 +25,7 @@ class ServiceRegistry:
             
         """
         self.config = config
-        self._services: dict[str, object] = {}
+        self._services: dict = {}
         self._initialize_services()
         
     def _initialize_services(self) -> None:
@@ -35,51 +35,40 @@ class ServiceRegistry:
         assert self.config.model is not None, "ModelConfig should be initialized"
         assert self.config.search is not None, "SearchConfig should be initialized"
         
-        # Initialize document processor
-        self._services["document_processor"] = DocumentProcessor(
-            chunk_size=self.config.processing.chunk_size,
-            chunk_overlap=self.config.processing.chunk_overlap,
-            document_prefix=self.config.model.document_prefix,
+        # Initialize database service
+        self._services["database_service"] = DatabaseService(
+            db_path=self.config.processing.db_path,
+            hnsw_params=HNSWIndexParams(),
         )
         
         # Initialize embedding service
         self._services["embedding_service"] = EmbeddingService(
             model_name=self.config.model.embedding_model,
             device=self.config.model.embedding_device,
-            batch_size=self.config.model.batch_size,
-            max_seq_length=self.config.model.max_seq_length,
-            query_prefix=self.config.model.query_prefix,
+            batch_size=self.config.model.embedding_batch_size,
             use_onnx=self.config.model.use_onnx,
-            onnx_quantization_config=self.config.model.onnx_quantization,
-            onnx_optimization_level=self.config.model.onnx_optimization_level,
+            cache_dir=self.config.model.model_cache_dir,
+            quantization_config=self.config.model.onnx_quantization,
+            optimization_level=self.config.model.onnx_optimization_level,
         )
         
-        # Initialize database service
-        embedding_dims = self.get_embedding_service().dimensions or 256
-        hnsw_params = HNSWIndexParams(
-            ef_construction=self.config.processing.ef_construction,
-            ef_search=self.config.processing.ef_search,
-            m=self.config.processing.m,
-            m0=self.config.processing.m0,
+        # Initialize document processor
+        self._services["document_processor"] = DocumentProcessor(
+            embedding_service=self.get_embedding_service(),
+            database_service=self.get_database_service(),
+            chunk_size=self.config.processing.chunk_size,
+            chunk_overlap=self.config.processing.chunk_overlap,
+            max_file_size=self.config.processing.max_file_size,
         )
-        
-        self._services["database_service"] = DatabaseService(
-            db_path=self.config.processing.db_path,
-            embedding_dimensions=embedding_dims,
-            hnsw_params=hnsw_params,
-        )
-        
-        # Initialize database
-        self.get_database_service().initialize()
         
         # Initialize BM25 indexer
         self._services["bm25_indexer"] = BM25Indexer(
-            k1=self.config.search.bm25_k1,
-            b=self.config.search.bm25_b,
-            tokenizer_kwargs={
-                "min_token_length": self.config.search.bm25_min_token_length,
+            language="ja",  # Default to Japanese
+            bm25_params={
+                "k1": self.config.search.bm25_k1,
+                "b": self.config.search.bm25_b,
             },
-            use_stopwords=True,
+            min_token_length=self.config.search.bm25_min_token_length,
             min_doc_frequency=2,
             store_positions=False,
         )
@@ -148,9 +137,3 @@ class ServiceRegistry:
             
         """
         return self._services["change_detector"]  # type: ignore
-        
-    def close(self) -> None:
-        """Close all services that require cleanup."""
-        database_service = self.get_database_service()
-        if hasattr(database_service, "close"):
-            database_service.close()

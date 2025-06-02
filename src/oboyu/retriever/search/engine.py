@@ -138,22 +138,12 @@ class SearchEngine:
                     filters=filters,
                 )
 
-                # Combine results using the new combiner
-                combined_results = self.combiner.combine(
+                # Combine results using RRF (Reciprocal Rank Fusion)
+                return self.combiner.combine(
                     vector_results=vector_results,
                     bm25_results=bm25_results,
                     limit=limit,
                 )
-                
-                # Also use the original hybrid search for backward compatibility
-                legacy_results = self.hybrid_search.search(
-                    vector_results=vector_results,
-                    bm25_results=bm25_results,
-                    limit=limit,
-                )
-                
-                # Merge both results to ensure backward compatibility
-                return self.merger.merge(combined_results, legacy_results, limit=limit)
 
             else:
                 raise ValueError(f"Unknown search mode: {mode}")

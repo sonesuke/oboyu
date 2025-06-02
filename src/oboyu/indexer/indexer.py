@@ -62,13 +62,46 @@ class Indexer:
             Number of chunks deleted
 
         """
-        return self.database_service.delete_chunks_by_path(path)
+        return self.database_service.delete_document(path)
 
-    def get_stats(self) -> Dict[str, Any]:
-        """Get indexer statistics.
+    def get_paths_with_chunks(self) -> List[str]:
+        """Get all paths that have chunks in the database.
 
         Returns:
-            Dictionary with indexer statistics
+            List of file paths
+
+        """
+        return self.database_service.get_paths_with_chunks()
+
+    def check_index_health(self) -> Dict[str, Any]:
+        """Check the health of the index.
+
+        Returns:
+            Health check results including index statistics and status
+
+        """
+        return self.database_service.check_health()
+
+    def close(self) -> None:
+        """Close all resources properly."""
+        # Database service handles all connection closures
+        if hasattr(self, 'database_service') and self.database_service:
+            self.database_service.close()
+
+    def __enter__(self) -> "Indexer":
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """Context manager exit."""
+        self.close()
+
+    # Compatibility methods
+    def get_index_stats(self) -> Dict[str, Any]:
+        """Get index statistics.
+
+        Returns:
+            Dictionary with index statistics
 
         """
         # Ensure config is properly initialized
@@ -79,33 +112,6 @@ class Indexer:
             "indexed_paths": len(self.database_service.get_paths_with_chunks()),
             "embedding_model": self.config.model.embedding_model,
         }
-
-    def clear_index(self) -> None:
-        """Clear all indexed data."""
-        self.database_service.clear_database()
-        if hasattr(self.bm25_indexer, "clear"):
-            self.bm25_indexer.clear()
-
-    def close(self) -> None:
-        """Close all services and connections."""
-        self.services.close()
-
-    @classmethod
-    def from_path(cls, db_path: Union[str, Path]) -> "Indexer":
-        """Create an indexer from a database path.
-
-        Args:
-            db_path: Path to the database file
-
-        Returns:
-            Initialized Indexer instance
-
-        """
-        from oboyu.indexer.config.indexer_config import IndexerConfig
-        
-        config = IndexerConfig()
-        config.db_path = db_path  # Use the property which handles the assertion
-        return cls(config)
 
     def get_database_stats(self) -> Dict[str, Any]:
         """Get database statistics.
