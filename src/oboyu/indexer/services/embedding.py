@@ -8,6 +8,9 @@ from typing import Callable, Dict, List, Optional, Union
 import numpy as np
 from numpy.typing import NDArray
 
+from oboyu.common.huggingface_utils import (
+    get_fallback_models,
+)
 from oboyu.common.model_manager import EmbeddingModelManager
 from oboyu.common.paths import EMBEDDING_CACHE_DIR, EMBEDDING_MODELS_DIR
 
@@ -122,16 +125,27 @@ class EmbeddingService:
         self.use_onnx = use_onnx
         self.use_cache = use_cache
 
-        # Initialize model manager
-        self.model_manager = EmbeddingModelManager(
-            model_name=model_name,
-            models_dir=EMBEDDING_MODELS_DIR,
-            device=device,
-            max_seq_length=max_seq_length,
-            use_onnx=use_onnx,
-            quantization_config=onnx_quantization_config,
-            optimization_level=onnx_optimization_level,
-        )
+        # Initialize model manager (lazy loading, actual errors occur when model property is accessed)
+        try:
+            self.model_manager = EmbeddingModelManager(
+                model_name=model_name,
+                models_dir=EMBEDDING_MODELS_DIR,
+                device=device,
+                max_seq_length=max_seq_length,
+                use_onnx=use_onnx,
+                quantization_config=onnx_quantization_config,
+                optimization_level=onnx_optimization_level,
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize embedding model manager for {model_name}: {e}")
+            # Suggest fallback models
+            fallbacks = get_fallback_models("embedding")
+            if fallbacks:
+                fallback_msg = "Suggested fallback embedding models:\n"
+                for model_id, description in fallbacks[:3]:
+                    fallback_msg += f"• {model_id}: {description}\n"
+                logger.error(fallback_msg)
+            raise RuntimeError(f"Failed to initialize embedding service with model '{model_name}': {e}") from e
 
         # Initialize cache if enabled
         self.cache = EmbeddingCache() if use_cache else None
@@ -225,11 +239,27 @@ class EmbeddingService:
                         result_embeddings[idx] = embedding
 
             except Exception as e:
-                logger.error(f"Failed to generate embeddings: {e}")
-                # Fill with zeros for failed embeddings
-                zero_embedding = np.zeros(self.dimensions or 256, dtype=np.float32)
-                for idx in indices_to_process:
-                    result_embeddings[idx] = zero_embedding
+                if isinstance(e, RuntimeError) and "Failed to load embedding model" in str(e):
+                    # This is likely a HuggingFace error from model_manager
+                    logger.error(f"Model loading failed: {e}")
+                    # Try to suggest fallback models
+                    fallbacks = get_fallback_models("embedding")
+                    if fallbacks:
+                        fallback_msg = "\n\nSuggested fallback models:\n"
+                        for model_id, description in fallbacks[:3]:
+                            fallback_msg += f"• {model_id}: {description}\n"
+                        logger.error(fallback_msg)
+                    
+                    # Don't fill with zeros - re-raise for proper error handling at higher levels
+                    raise RuntimeError(
+                        f"Embedding service failed to load model '{self.model_name}'. {str(e)}"
+                    ) from e
+                else:
+                    logger.error(f"Failed to generate embeddings: {e}")
+                    # Fill with zeros for failed embeddings (non-model errors)
+                    zero_embedding = np.zeros(self.dimensions or 256, dtype=np.float32)
+                    for idx in indices_to_process:
+                        result_embeddings[idx] = zero_embedding
 
         # Convert dictionary back to ordered list
         return [result_embeddings[i] for i in range(len(texts))]

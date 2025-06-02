@@ -82,27 +82,40 @@ class QueryCommand:
         try:
             start_time = time.time()
             
-            # Execute search based on mode
-            if mode == "vector":
-                results = indexer.vector_search(query, top_k=query_config.get("top_k", 10))
-            elif mode == "bm25":
-                results = indexer.bm25_search(query, top_k=query_config.get("top_k", 10))
-            else:  # hybrid
-                results = indexer.hybrid_search(
-                    query,
-                    top_k=query_config.get("top_k", 10),
-                    vector_weight=query_config.get("vector_weight", 0.7),
-                    bm25_weight=query_config.get("bm25_weight", 0.3),
-                )
+            try:
+                # Execute search based on mode
+                if mode == "vector":
+                    results = indexer.vector_search(query, top_k=query_config.get("top_k", 10))
+                elif mode == "bm25":
+                    results = indexer.bm25_search(query, top_k=query_config.get("top_k", 10))
+                else:  # hybrid
+                    results = indexer.hybrid_search(
+                        query,
+                        top_k=query_config.get("top_k", 10),
+                        vector_weight=query_config.get("vector_weight", 0.7),
+                        bm25_weight=query_config.get("bm25_weight", 0.3),
+                    )
+                
+                # Apply reranking if enabled
+                if query_config.get("use_reranker", False) and results:
+                    try:
+                        results = indexer.rerank_results(query, results)
+                    except Exception as e:
+                        # Check if this is a model loading error
+                        if isinstance(e, RuntimeError) and "Failed to load" in str(e) and "model" in str(e):
+                            import logging
+                            logging.error(f"❌ Reranking failed due to model loading error: {e}")
+                            logging.warning("Continuing with search results without reranking.")
+                        else:
+                            import logging
+                            logging.warning(f"Reranking failed: {e}")
             
-            # Apply reranking if enabled
-            if query_config.get("use_reranker", False) and results:
-                try:
-                    results = indexer.rerank_results(query, results)
-                except Exception as e:
-                    # Log reranking failure but continue with original results
-                    import logging
-                    logging.warning(f"Reranking failed: {e}")
+            except RuntimeError as e:
+                # Check if this is a model loading error from our services
+                if "Failed to load" in str(e) and "model" in str(e):
+                    raise RuntimeError(f"❌ Search failed due to model loading error:\n{str(e)}") from e
+                else:
+                    raise
             
             elapsed_time = time.time() - start_time
             
@@ -112,6 +125,14 @@ class QueryCommand:
                 mode=mode,
                 total_results=len(results),
             )
+        except Exception:
+            # Ensure clean shutdown
+            try:
+                indexer.close()
+            except Exception:
+                # Ignore errors during cleanup
+                pass
+            raise
         finally:
             indexer.close()
     
@@ -160,19 +181,27 @@ class QueryCommand:
         try:
             start_time = time.time()
             
-            # Convert mode string to SearchMode enum
-            search_mode = SearchMode.HYBRID
-            if mode == "vector":
-                search_mode = SearchMode.VECTOR
-            elif mode == "bm25":
-                search_mode = SearchMode.BM25
-            
-            # Execute search using context pattern
-            results = indexer.search_orchestrator.search_with_context(
-                query=query,
-                context=context,
-                mode=search_mode,
-            )
+            try:
+                # Convert mode string to SearchMode enum
+                search_mode = SearchMode.HYBRID
+                if mode == "vector":
+                    search_mode = SearchMode.VECTOR
+                elif mode == "bm25":
+                    search_mode = SearchMode.BM25
+                
+                # Execute search using context pattern
+                results = indexer.search_orchestrator.search_with_context(
+                    query=query,
+                    context=context,
+                    mode=search_mode,
+                )
+                
+            except RuntimeError as e:
+                # Check if this is a model loading error from our services
+                if "Failed to load" in str(e) and "model" in str(e):
+                    raise RuntimeError(f"❌ Search failed due to model loading error:\n{str(e)}") from e
+                else:
+                    raise
             
             elapsed_time = time.time() - start_time
             
@@ -182,6 +211,14 @@ class QueryCommand:
                 mode=mode,
                 total_results=len(results),
             )
+        except Exception:
+            # Ensure clean shutdown
+            try:
+                indexer.close()
+            except Exception:
+                # Ignore errors during cleanup
+                pass
+            raise
         finally:
             indexer.close()
     
@@ -215,3 +252,4 @@ class QueryCommand:
 
 # Legacy alias for backward compatibility
 QueryService = QueryCommand
+

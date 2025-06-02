@@ -7,6 +7,9 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
 
+from oboyu.common.huggingface_utils import (
+    get_fallback_models,
+)
 from oboyu.common.model_manager import RerankerModelManager
 
 if TYPE_CHECKING:
@@ -71,12 +74,23 @@ class CrossEncoderReranker(BaseReranker):
         logger.debug(f"Initializing CrossEncoder reranker with model: {model_name}")
 
         # Create model manager for unified model loading
-        self.model_manager = RerankerModelManager(
-            model_name=model_name,
-            device=device,
-            use_onnx=False,  # This is the PyTorch version
-            max_length=max_length,
-        )
+        try:
+            self.model_manager = RerankerModelManager(
+                model_name=model_name,
+                device=device,
+                use_onnx=False,  # This is the PyTorch version
+                max_length=max_length,
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize reranker model manager for {model_name}: {e}")
+            # Suggest fallback models
+            fallbacks = get_fallback_models("reranker")
+            if fallbacks:
+                fallback_msg = "Suggested fallback reranker models:\n"
+                for model_id, description in fallbacks[:3]:
+                    fallback_msg += f"• {model_id}: {description}\n"
+                logger.error(fallback_msg)
+            raise RuntimeError(f"Failed to initialize CrossEncoder reranker with model '{model_name}': {e}") from e
 
     @property
     def model(self) -> Any:  # noqa: ANN401
@@ -170,15 +184,26 @@ class ONNXCrossEncoderReranker(BaseReranker):
         logger.debug(f"Initializing ONNX CrossEncoder reranker with model: {model_name}")
 
         # Create model manager for unified model loading
-        self.model_manager = RerankerModelManager(
-            model_name=model_name,
-            device=device,
-            use_onnx=True,
-            max_length=max_length,
-            cache_dir=cache_dir,
-            quantization_config=quantization_config or {"enabled": True, "weight_type": "uint8"},
-            optimization_level=optimization_level,
-        )
+        try:
+            self.model_manager = RerankerModelManager(
+                model_name=model_name,
+                device=device,
+                use_onnx=True,
+                max_length=max_length,
+                cache_dir=cache_dir,
+                quantization_config=quantization_config or {"enabled": True, "weight_type": "uint8"},
+                optimization_level=optimization_level,
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize ONNX reranker model manager for {model_name}: {e}")
+            # Suggest fallback models
+            fallbacks = get_fallback_models("reranker")
+            if fallbacks:
+                fallback_msg = "Suggested fallback reranker models:\n"
+                for model_id, description in fallbacks[:3]:
+                    fallback_msg += f"• {model_id}: {description}\n"
+                logger.error(fallback_msg)
+            raise RuntimeError(f"Failed to initialize ONNX CrossEncoder reranker with model '{model_name}': {e}") from e
 
     @property
     def model(self) -> Any:  # noqa: ANN401
@@ -277,7 +302,15 @@ class RerankerService:
                     max_length=max_length,
                 )
         except Exception as e:
-            logger.error(f"Failed to initialize reranker: {e}")
+            logger.error(f"Failed to initialize reranker service: {e}")
+            # Log fallback suggestions but don't fail initialization
+            fallbacks = get_fallback_models("reranker")
+            if fallbacks:
+                fallback_msg = "Suggested fallback reranker models:\n"
+                for model_id, description in fallbacks[:3]:
+                    fallback_msg += f"• {model_id}: {description}\n"
+                logger.error(fallback_msg)
+            logger.warning("Reranker service will be disabled. Search results will not be reranked.")
 
     def rerank(
         self,
@@ -293,7 +326,14 @@ class RerankerService:
         try:
             return self.reranker.rerank(query, results, top_k, threshold)
         except Exception as e:
-            logger.error(f"Reranking failed: {e}")
+            # Check if this is a model loading error
+            if isinstance(e, RuntimeError) and "Failed to load reranker model" in str(e):
+                logger.error(f"Reranking failed due to model loading error: {e}")
+                # Suggest user to try different model or check connectivity
+                logger.error("Consider checking your internet connection or trying a different reranker model.")
+            else:
+                logger.error(f"Reranking failed: {e}")
+            logger.warning("Returning original search results without reranking.")
             return results
 
     def is_available(self) -> bool:

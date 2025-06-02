@@ -6,9 +6,9 @@ from typing import List, Optional
 import numpy as np
 from numpy.typing import NDArray
 
-from oboyu.indexer.search.search_mode import SearchMode
 from oboyu.indexer.search.bm25_search import BM25Search
 from oboyu.indexer.search.search_filters import SearchFilters
+from oboyu.indexer.search.search_mode import SearchMode
 from oboyu.indexer.search.search_result import SearchResult
 from oboyu.indexer.search.vector_search import VectorSearch
 

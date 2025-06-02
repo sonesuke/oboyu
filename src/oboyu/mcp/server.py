@@ -155,8 +155,22 @@ def search(
                 logger.warning(f"Invalid filters: {e}, proceeding without filters")
                 search_filters = None
 
-        # Execute search with specified mode
-        results = indexer.search(query, limit=top_k, mode=mode, language_filter=language, filters=search_filters)
+        try:
+            # Execute search with specified mode
+            results = indexer.search(query, limit=top_k, mode=mode, language_filter=language, filters=search_filters)
+        except RuntimeError as e:
+            # Check if this is a model loading error from our services
+            if "Failed to load" in str(e) and "model" in str(e):
+                error_msg = f"❌ Search failed due to model loading error: {str(e)}"
+                logger.error(error_msg)
+                return {
+                    "error": error_msg,
+                    "error_type": "model_loading_error",
+                    "results": [],
+                    "stats": {"count": 0, "query": query, "language_filter": language or "none"}
+                }
+            else:
+                raise
 
         # Initialize snippet processor if config provided
         snippet_processor = None
@@ -192,8 +206,13 @@ def search(
         return {"results": formatted_results, "stats": {"count": len(formatted_results), "query": query, "language_filter": language or "none"}}
     except Exception as e:
         logger.error(f"Error executing search: {str(e)}")
-        # Return error information
-        return {"error": str(e), "results": [], "stats": {"count": 0, "query": query}}
+        # Return structured error information
+        return {
+            "error": str(e),
+            "error_type": "search_error",
+            "results": [],
+            "stats": {"count": 0, "query": query, "language_filter": language or "none"}
+        }
 
 
 @mcp.tool()

@@ -61,5 +61,5 @@ class ConsoleManager:
         return True
 
 
-# Legacy alias for backward compatibility  
+# Legacy alias for backward compatibility
 ConsoleManager = ConsoleManager

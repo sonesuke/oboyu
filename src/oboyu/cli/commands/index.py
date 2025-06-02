@@ -144,16 +144,35 @@ class IndexCommand:
                         scan_op_id
                     )
                 
-                result = indexer.index_documents(crawler_results, indexer_progress_callback)
+                try:
+                    result = indexer.index_documents(crawler_results, indexer_progress_callback)
+                    
+                    chunks_indexed = result.get("indexed_chunks", 0)
+                    files_processed = result.get("total_documents", 0)
+                    
+                    total_chunks += chunks_indexed
+                    total_files += files_processed
+                    
+                    if progress_callback:
+                        progress_callback(f"Indexed {chunks_indexed} chunks from {files_processed} documents")
                 
-                chunks_indexed = result.get("indexed_chunks", 0)
-                files_processed = result.get("total_documents", 0)
-                
-                total_chunks += chunks_indexed
-                total_files += files_processed
-                
-                if progress_callback:
-                    progress_callback(f"Indexed {chunks_indexed} chunks from {files_processed} documents")
+                except RuntimeError as e:
+                    # Check if this is a model loading error from our services
+                    if "Failed to load" in str(e) and "model" in str(e):
+                        error_msg = f"❌ Indexing failed due to model loading error:\n{str(e)}"
+                        if progress_callback:
+                            progress_callback(error_msg)
+                        raise RuntimeError(error_msg) from e
+                    else:
+                        raise
+        except Exception:
+            # Ensure clean shutdown
+            try:
+                indexer.close()
+            except Exception:
+                # Ignore errors during cleanup
+                pass
+            raise
         finally:
             indexer.close()
         
@@ -284,3 +303,4 @@ class IndexCommand:
 
 # Legacy alias for backward compatibility
 IndexingService = IndexCommand
+

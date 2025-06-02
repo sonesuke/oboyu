@@ -10,6 +10,11 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
+from oboyu.common.huggingface_utils import (
+    HuggingFaceError,
+    get_user_friendly_error_message,
+    safe_model_download,
+)
 from oboyu.common.paths import EMBEDDING_CACHE_DIR
 
 logger = logging.getLogger(__name__)
@@ -161,7 +166,7 @@ class ONNXModelCache:
         apply_quantization: bool = True,
         quantization_config: Optional[Dict[str, Any]] = None,
     ) -> Path:
-        """Convert model to ONNX format.
+        """Convert model to ONNX format with error handling.
 
         Args:
             model_name: Name of the model to convert
@@ -179,28 +184,40 @@ class ONNXModelCache:
 
         model_dir = cache_dir / "onnx" / model_name.replace("/", "_")
 
-        if model_type == "embedding":
-            from oboyu.common.onnx.embedding_model import convert_to_onnx
+        def convert_model() -> Path:
+            if model_type == "embedding":
+                from oboyu.common.onnx.embedding_model import convert_to_onnx
 
-            result = convert_to_onnx(
-                model_name,
-                model_dir,
-                apply_quantization=apply_quantization,
-                quantization_config=quantization_config,
-            )
-            return result
-        elif model_type == "reranker":
-            from oboyu.common.onnx.cross_encoder_model import convert_cross_encoder_to_onnx
+                return convert_to_onnx(
+                    model_name,
+                    model_dir,
+                    apply_quantization=apply_quantization,
+                    quantization_config=quantization_config,
+                )
+            elif model_type == "reranker":
+                from oboyu.common.onnx.cross_encoder_model import convert_cross_encoder_to_onnx
 
-            result = convert_cross_encoder_to_onnx(
+                return convert_cross_encoder_to_onnx(
+                    model_name,
+                    model_dir,
+                    apply_quantization=apply_quantization,
+                    quantization_config=quantization_config,
+                )
+            else:
+                raise ValueError(f"Unsupported model type: {model_type}")
+
+        try:
+            return safe_model_download(
                 model_name,
-                model_dir,
-                apply_quantization=apply_quantization,
-                quantization_config=quantization_config,
+                convert_model,
+                cache_dir=cache_dir,
             )
-            return result
-        else:
-            raise ValueError(f"Unsupported model type: {model_type}")
+        except HuggingFaceError:
+            # Re-raise HuggingFace errors as-is for consistent handling
+            raise
+        except Exception as e:
+            logger.exception(f"Failed to convert {model_type} model {model_name} to ONNX")
+            raise RuntimeError(f"ONNX conversion failed for model '{model_name}': {e}") from e
 
     @staticmethod
     def get_or_convert_onnx_model(
@@ -279,42 +296,69 @@ class EmbeddingModelManager(ModelManager):
         self.optimization_level = optimization_level
 
     def _load_model(self) -> Any:  # noqa: ANN401
-        """Load embedding model (ONNX or PyTorch)."""
-        if self.use_onnx:
-            from oboyu.common.onnx.embedding_model import ONNXEmbeddingModel
+        """Load embedding model (ONNX or PyTorch) with error handling."""
+        try:
+            if self.use_onnx:
+                from oboyu.common.onnx.embedding_model import ONNXEmbeddingModel
 
-            # Get or convert ONNX model
-            onnx_path = ONNXModelCache.get_or_convert_onnx_model(
-                self.model_name,
-                "embedding",
-                self.cache_dir,
-                apply_quantization=self.quantization_config.get("enabled", True),
-                quantization_config=self.quantization_config,
-            )
+                # Get or convert ONNX model with safe download
+                def download_and_convert() -> Path:
+                    return ONNXModelCache.get_or_convert_onnx_model(
+                        self.model_name,
+                        "embedding",
+                        self.cache_dir,
+                        apply_quantization=self.quantization_config.get("enabled", True),
+                        quantization_config=self.quantization_config,
+                    )
 
-            return ONNXEmbeddingModel(
-                onnx_path,
-                max_seq_length=self.max_seq_length,
-                optimization_level=self.optimization_level,
-            )
-        else:
-            # Load PyTorch model
-            try:
-                from sentence_transformers import SentenceTransformer
+                onnx_path = safe_model_download(
+                    self.model_name,
+                    download_and_convert,
+                    cache_dir=self.cache_dir,
+                )
 
-                # Silence SentenceTransformer logging
-                logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
-            except ImportError as e:
-                raise ImportError("sentence_transformers is required for embedding generation. Install with: pip install sentence_transformers") from e
+                return ONNXEmbeddingModel(
+                    onnx_path,
+                    max_seq_length=self.max_seq_length,
+                    optimization_level=self.optimization_level,
+                )
+            else:
+                # Load PyTorch model with safe download
+                try:
+                    from sentence_transformers import SentenceTransformer
 
-            model_cache_dir = self.get_cache_dir()
-            model = SentenceTransformer(
-                self.model_name,
-                device=self.device,
-                cache_folder=str(model_cache_dir),
-            )
-            model.max_seq_length = self.max_seq_length
-            return model
+                    # Silence SentenceTransformer logging
+                    logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
+                except ImportError as e:
+                    raise ImportError("sentence_transformers is required for embedding generation. Install with: pip install sentence_transformers") from e
+
+                model_cache_dir = self.get_cache_dir()
+
+                def download_model() -> SentenceTransformer:
+                    return SentenceTransformer(
+                        self.model_name,
+                        device=self.device,
+                        cache_folder=str(model_cache_dir),
+                    )
+
+                model = safe_model_download(
+                    self.model_name,
+                    download_model,
+                    cache_dir=self.cache_dir,
+                )
+                model.max_seq_length = self.max_seq_length
+                return model
+
+        except HuggingFaceError as e:
+            logger.error(f"Failed to load embedding model {self.model_name}: {e}")
+            # Re-raise with context for higher-level error handling
+            raise RuntimeError(
+                f"Failed to load embedding model '{self.model_name}'. "
+                f"Error: {get_user_friendly_error_message(e)}"
+            ) from e
+        except Exception as e:
+            logger.exception(f"Unexpected error loading embedding model {self.model_name}")
+            raise RuntimeError(f"Failed to load embedding model '{self.model_name}': {e}") from e
 
     def get_dimensions(self) -> int:
         """Get the embedding dimensions."""
@@ -364,37 +408,64 @@ class RerankerModelManager(ModelManager):
         self.optimization_level = optimization_level
 
     def _load_model(self) -> Any:  # noqa: ANN401
-        """Load reranker model (ONNX or PyTorch)."""
-        if self.use_onnx:
-            from oboyu.common.onnx.cross_encoder_model import ONNXCrossEncoderModel
+        """Load reranker model (ONNX or PyTorch) with error handling."""
+        try:
+            if self.use_onnx:
+                from oboyu.common.onnx.cross_encoder_model import ONNXCrossEncoderModel
 
-            # Get or convert ONNX model
-            onnx_path = ONNXModelCache.get_or_convert_onnx_model(
-                self.model_name,
-                "reranker",
-                self.cache_dir,
-                apply_quantization=self.quantization_config.get("enabled", True),
-                quantization_config=self.quantization_config,
-            )
+                # Get or convert ONNX model with safe download
+                def download_and_convert() -> Path:
+                    return ONNXModelCache.get_or_convert_onnx_model(
+                        self.model_name,
+                        "reranker",
+                        self.cache_dir,
+                        apply_quantization=self.quantization_config.get("enabled", True),
+                        quantization_config=self.quantization_config,
+                    )
 
-            return ONNXCrossEncoderModel(
-                onnx_path,
-                max_seq_length=self.max_length,
-                optimization_level=self.optimization_level,
-            )
-        else:
-            # Load PyTorch model
-            try:
-                from sentence_transformers import CrossEncoder
-            except ImportError as e:
-                raise ImportError("sentence_transformers is required for reranking. Install with: pip install sentence_transformers") from e
+                onnx_path = safe_model_download(
+                    self.model_name,
+                    download_and_convert,
+                    cache_dir=self.cache_dir,
+                )
 
-            return CrossEncoder(
-                self.model_name,
-                device=self.device,
-                max_length=self.max_length,
-                trust_remote_code=True,
-            )
+                return ONNXCrossEncoderModel(
+                    onnx_path,
+                    max_seq_length=self.max_length,
+                    optimization_level=self.optimization_level,
+                )
+            else:
+                # Load PyTorch model with safe download
+                try:
+                    from sentence_transformers import CrossEncoder
+                except ImportError as e:
+                    raise ImportError("sentence_transformers is required for reranking. Install with: pip install sentence_transformers") from e
+
+                def download_model() -> CrossEncoder:
+                    return CrossEncoder(
+                        self.model_name,
+                        device=self.device,
+                        max_length=self.max_length,
+                        trust_remote_code=True,
+                    )
+
+                result = safe_model_download(
+                    self.model_name,
+                    download_model,
+                    cache_dir=self.cache_dir,
+                )
+                return result  # type: ignore[no-any-return]
+
+        except HuggingFaceError as e:
+            logger.error(f"Failed to load reranker model {self.model_name}: {e}")
+            # Re-raise with context for higher-level error handling
+            raise RuntimeError(
+                f"Failed to load reranker model '{self.model_name}'. "
+                f"Error: {get_user_friendly_error_message(e)}"
+            ) from e
+        except Exception as e:
+            logger.exception(f"Unexpected error loading reranker model {self.model_name}")
+            raise RuntimeError(f"Failed to load reranker model '{self.model_name}': {e}") from e
 
 
 def create_model_manager(

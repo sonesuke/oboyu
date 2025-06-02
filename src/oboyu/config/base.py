@@ -5,13 +5,13 @@ from typing import Any, Dict, Optional, TypeVar, Union
 
 import yaml
 
+from oboyu.common.paths import DEFAULT_CONFIG_PATH, DEFAULT_DB_PATH
 from oboyu.config.schema import (
     ConfigSchema,
     CrawlerConfigSchema,
     IndexerConfigSchema,
     QueryConfigSchema,
 )
-from oboyu.common.paths import DEFAULT_CONFIG_PATH, DEFAULT_DB_PATH
 
 QUERY_ENGINE_DEFAULTS = {
     "top_k": 10,
@@ -47,14 +47,14 @@ class ConfigManager:
         """
         # Import defaults here to avoid circular imports
         from oboyu.config.crawler import DEFAULT_CONFIG as CRAWLER_DEFAULTS
-        from oboyu.config.indexer import DEFAULT_CONFIG as INDEXER_DEFAULTS  
+        from oboyu.config.indexer import DEFAULT_CONFIG as INDEXER_DEFAULTS
         from oboyu.config.query import DEFAULT_CONFIG as QUERY_DEFAULTS
         
         return {
             "crawler": CRAWLER_DEFAULTS["crawler"].__dict__.copy(),
             "indexer": {
                 "model": INDEXER_DEFAULTS["indexer"]["model"].__dict__.copy(),
-                "search": INDEXER_DEFAULTS["indexer"]["search"].__dict__.copy(), 
+                "search": INDEXER_DEFAULTS["indexer"]["search"].__dict__.copy(),
                 "processing": INDEXER_DEFAULTS["indexer"]["processing"].__dict__.copy(),
             },
             "query": QUERY_DEFAULTS["query"].__dict__.copy(),

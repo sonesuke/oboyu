@@ -5,7 +5,7 @@ from oboyu.cli.commands.query import QueryCommand, QueryService  # Legacy alias
 
 __all__ = [
     "IndexCommand",
-    "QueryCommand", 
+    "QueryCommand",
     # Legacy aliases for backward compatibility
     "IndexingService",
     "QueryService",
