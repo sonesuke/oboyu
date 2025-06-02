@@ -72,9 +72,9 @@ class IndexerConfigSchema(BaseModel):
         description="Name or path of embedding model",
         pattern=r'^[\w\-./]+[\w\-/]+$'
     )
-    embedding_device: Optional[Literal["cpu", "cuda"]] = Field(
+    embedding_device: Optional[Literal["cpu"]] = Field(
         default="cpu",
-        description="Device for embedding generation"
+        description="Device for embedding generation (CPU only)"
     )
     batch_size: int = Field(default=128, ge=1, le=1024, description="Batch size for processing")
     max_length: int = Field(default=8192, ge=256, le=32768, description="Maximum sequence length")
@@ -98,20 +98,11 @@ class IndexerConfigSchema(BaseModel):
     @field_validator('embedding_device')
     @classmethod
     def validate_device(cls, v: Optional[str]) -> Optional[str]:
-        """Validate that CUDA is available if specified."""
-        if v == 'cuda':
-            try:
-                import torch
-                if not torch.cuda.is_available():
-                    # Just warn, don't fail validation in tests
-                    import warnings
-                    warnings.warn('CUDA not available on this system, falling back to CPU')
-                    return 'cpu'
-            except ImportError:
-                # Just warn, don't fail validation in tests
-                import warnings
-                warnings.warn('PyTorch not available, falling back to CPU')
-                return 'cpu'
+        """Validate device is CPU (GPU support removed)."""
+        if v is not None and v != 'cpu':
+            import warnings
+            warnings.warn(f'Invalid device {v}, only CPU is supported. Falling back to CPU')
+            return 'cpu'
         return v
 
     @field_validator('db_path')

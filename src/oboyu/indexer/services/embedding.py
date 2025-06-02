@@ -107,7 +107,7 @@ class EmbeddingService:
 
         Args:
             model_name: Name of the embedding model
-            device: Device to run model on (cpu/cuda)
+            device: Device to run model on (CPU only)
             batch_size: Batch size for embedding generation
             max_seq_length: Maximum sequence length
             query_prefix: Prefix for search queries

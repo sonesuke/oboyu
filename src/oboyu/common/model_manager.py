@@ -40,7 +40,7 @@ class ModelManager(ABC):
         Args:
             model_name: Name of the model to load
             model_type: Type of model (embedding, reranker)
-            device: Device to run the model on
+            device: Device to run the model on (CPU only)
             use_onnx: Whether to use ONNX optimization
             cache_dir: Directory to cache models (defaults to XDG cache path)
             **kwargs: Additional model-specific configuration
@@ -48,8 +48,8 @@ class ModelManager(ABC):
         """
         self.model_name = model_name
         self.model_type = model_type
-        self.device = device
-        self.use_onnx = use_onnx and device == "cpu"  # ONNX most beneficial for CPU
+        self.device = "cpu"  # Fixed to CPU only
+        self.use_onnx = use_onnx  # ONNX always available on CPU
         self.cache_dir = Path(cache_dir) if cache_dir else EMBEDDING_CACHE_DIR / "models"
         self.config = kwargs
 
@@ -337,7 +337,7 @@ class EmbeddingModelManager(ModelManager):
                 def download_model() -> SentenceTransformer:
                     return SentenceTransformer(
                         self.model_name,
-                        device=self.device,
+                        device="cpu",  # Fixed to CPU only
                         cache_folder=str(model_cache_dir),
                     )
 
@@ -444,7 +444,7 @@ class RerankerModelManager(ModelManager):
                 def download_model() -> CrossEncoder:
                     return CrossEncoder(
                         self.model_name,
-                        device=self.device,
+                        device="cpu",  # Fixed to CPU only
                         max_length=self.max_length,
                         trust_remote_code=True,
                     )

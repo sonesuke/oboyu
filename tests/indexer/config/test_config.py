@@ -28,7 +28,7 @@ class TestIndexerConfig:
         # Create custom sub-configs
         model_config = ModelConfig(
             embedding_model="custom-model",
-            embedding_device="cuda",
+            embedding_device="cpu",  # Fixed to CPU only
             use_onnx=False,
         )
         
@@ -53,7 +53,7 @@ class TestIndexerConfig:
         assert config.chunk_size == 512
         assert config.chunk_overlap == 128
         assert config.embedding_model == "custom-model"
-        assert config.embedding_device == "cuda"
+        assert config.embedding_device == "cpu"  # Fixed to CPU only
         assert config.use_reranker is True
         assert str(config.db_path) == "custom.db"
 

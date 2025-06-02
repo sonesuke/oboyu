@@ -36,14 +36,14 @@ class OboyuRerankerAdapter:
         Args:
             model_name: Reranker model name
             use_onnx: Whether to use ONNX optimization
-            device: Device to run on (cpu/cuda)
+            device: Device to run on (CPU only)
             batch_size: Batch size for reranking
         
         """
         self.reranker = create_reranker(
             model_name=model_name,
             use_onnx=use_onnx,
-            device=device,
+            device="cpu",  # Fixed to CPU only
             batch_size=batch_size,
         )
         self.model_name = model_name
