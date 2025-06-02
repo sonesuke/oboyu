@@ -2,6 +2,10 @@
 
 import json
 import uuid
+
+# Data Models
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -10,11 +14,6 @@ from numpy.typing import NDArray
 from oboyu.indexer.core.document_processor import Chunk
 
 from .utils import DateTimeEncoder
-
-
-# Data Models
-from dataclasses import dataclass
-from datetime import datetime
 
 
 @dataclass

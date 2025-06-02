@@ -1,8 +1,7 @@
 """Consolidated crawler configuration."""
 
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import List
 
 
 @dataclass
@@ -39,7 +38,7 @@ class CrawlerConfig:
         if self.include_patterns is None:
             self.include_patterns = [
                 "*.txt",
-                "*.md", 
+                "*.md",
                 "*.html",
                 "*.py",
                 "*.java",
@@ -56,7 +55,7 @@ class CrawlerConfig:
         if self.exclude_dirs is None:
             self.exclude_dirs = [
                 "__pycache__",
-                ".git", 
+                ".git",
                 "node_modules",
                 ".venv",
                 "venv",
@@ -64,7 +63,7 @@ class CrawlerConfig:
             
         if self.include_extensions is None:
             self.include_extensions = [
-                ".py", ".md", ".txt", ".yaml", ".yml", 
+                ".py", ".md", ".txt", ".yaml", ".yml",
                 ".json", ".toml", ".cfg", ".ini", ".rst", ".ipynb"
             ]
 

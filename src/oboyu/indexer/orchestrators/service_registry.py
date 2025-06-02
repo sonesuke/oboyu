@@ -5,14 +5,14 @@ from typing import Optional
 
 from oboyu.indexer.config.indexer_config import IndexerConfig
 from oboyu.indexer.core.document_processor import DocumentProcessor
+from oboyu.indexer.search.bm25_indexer import BM25Indexer
+from oboyu.indexer.search.bm25_search import BM25Search
 from oboyu.indexer.search.engine import SearchEngine
+from oboyu.indexer.search.hybrid_search import HybridSearch
+from oboyu.indexer.search.vector_search import VectorSearch
 from oboyu.indexer.services.embedding import EmbeddingService
 from oboyu.indexer.services.reranker import RerankerService
 from oboyu.indexer.services.tokenizer import TokenizerService
-from oboyu.indexer.search.bm25_indexer import BM25Indexer
-from oboyu.indexer.search.bm25_search import BM25Search
-from oboyu.indexer.search.hybrid_search import HybridSearch
-from oboyu.indexer.search.vector_search import VectorSearch
 from oboyu.indexer.storage.change_detector import FileChangeDetector
 from oboyu.indexer.storage.database_service import DatabaseService
 from oboyu.indexer.storage.index_manager import HNSWIndexParams

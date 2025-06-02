@@ -3,24 +3,24 @@
 # Import base configuration management
 from oboyu.config.base import ConfigManager
 
-# Import configuration schemas  
+# Import component-specific configurations
+from oboyu.config.crawler import DEFAULT_CONFIG as CRAWLER_DEFAULTS, CrawlerConfig
+from oboyu.config.indexer import (
+    DEFAULT_CONFIG as INDEXER_DEFAULTS,
+    IndexerConfig,
+    ModelConfig,
+    ProcessingConfig,
+    SearchConfig,
+)
+from oboyu.config.query import DEFAULT_CONFIG as QUERY_DEFAULTS, QueryConfig
+
+# Import configuration schemas
 from oboyu.config.schema import (
     ConfigSchema,
     CrawlerConfigSchema,
     IndexerConfigSchema,
     QueryConfigSchema,
 )
-
-# Import component-specific configurations
-from oboyu.config.crawler import CrawlerConfig, DEFAULT_CONFIG as CRAWLER_DEFAULTS
-from oboyu.config.indexer import (
-    IndexerConfig,
-    ModelConfig,
-    SearchConfig,
-    ProcessingConfig,
-    DEFAULT_CONFIG as INDEXER_DEFAULTS,
-)
-from oboyu.config.query import QueryConfig, DEFAULT_CONFIG as QUERY_DEFAULTS
 
 # Legacy imports for backward compatibility
 try:
@@ -35,7 +35,7 @@ except ImportError:
     # If old config doesn't exist, use new ones
     LegacyConfigManager = ConfigManager
     LegacyConfigSchema = ConfigSchema
-    LegacyCrawlerConfigSchema = CrawlerConfigSchema  
+    LegacyCrawlerConfigSchema = CrawlerConfigSchema
     LegacyIndexerConfigSchema = IndexerConfigSchema
     LegacyQueryConfigSchema = QueryConfigSchema
 
@@ -52,7 +52,7 @@ __all__ = [
     
     # Configuration schemas
     "ConfigSchema",
-    "CrawlerConfigSchema", 
+    "CrawlerConfigSchema",
     "IndexerConfigSchema",
     "QueryConfigSchema",
     
@@ -60,13 +60,13 @@ __all__ = [
     "CrawlerConfig",
     "IndexerConfig",
     "ModelConfig",
-    "SearchConfig", 
+    "SearchConfig",
     "ProcessingConfig",
     "QueryConfig",
     
     # Defaults
     "CRAWLER_DEFAULTS",
-    "INDEXER_DEFAULTS", 
+    "INDEXER_DEFAULTS",
     "QUERY_DEFAULTS",
     "UNIFIED_DEFAULTS",
     

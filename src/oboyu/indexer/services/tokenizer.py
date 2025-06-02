@@ -320,6 +320,11 @@ class TokenizerService:
         # Initialize tokenizer
         try:
             self.tokenizer = self._create_tokenizer(language, **self.tokenizer_kwargs)
+        except ImportError as e:
+            logger.error(f"Failed to initialize tokenizer due to missing dependencies: {e}")
+            logger.warning("Consider installing required packages: pip install fugashi[unidic-lite] jaconv")
+            logger.warning("Falling back to basic tokenization functionality.")
+            self.tokenizer = None
         except Exception as e:
             logger.error(f"Failed to initialize tokenizer: {e}")
             self.tokenizer = None
