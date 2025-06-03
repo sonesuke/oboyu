@@ -3,7 +3,6 @@
 This module provides a common model management system to reduce code duplication
 and improve consistency across embedding and reranker implementations.
 """
-
 import hashlib
 import logging
 from abc import ABC, abstractmethod

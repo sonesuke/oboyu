@@ -2,13 +2,15 @@
 
 import json
 import logging
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 import numpy as np
 from numpy.typing import NDArray
 
-from oboyu.indexer.storage.database_service import DatabaseService
 from oboyu.retriever.search.search_filters import SearchFilters
+
+if TYPE_CHECKING:
+    from oboyu.indexer.storage.database_service import DatabaseService
 from oboyu.retriever.search.search_result import SearchResult
 
 logger = logging.getLogger(__name__)
@@ -17,7 +19,7 @@ logger = logging.getLogger(__name__)
 class VectorSearch:
     """Vector similarity search service."""
 
-    def __init__(self, database_service: DatabaseService) -> None:
+    def __init__(self, database_service: "DatabaseService") -> None:
         """Initialize vector search.
 
         Args:

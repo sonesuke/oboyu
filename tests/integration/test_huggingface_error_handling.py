@@ -11,7 +11,7 @@ from oboyu.common.huggingface_utils import (
     safe_model_download,
 )
 from oboyu.indexer.services.embedding import EmbeddingService
-from oboyu.indexer.services.reranker import RerankerService
+from oboyu.retriever.services.reranker import RerankerService
 
 
 class TestHuggingFaceErrorHandlingIntegration:

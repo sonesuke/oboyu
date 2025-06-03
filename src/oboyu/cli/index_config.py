@@ -37,10 +37,8 @@ def create_model_config(config_dict: dict[str, Any]) -> ModelConfig:
     """Create ModelConfig from configuration dictionary."""
     return ModelConfig(
         embedding_model=config_dict.get("embedding_model", "cl-nagoya/ruri-v3-30m"),
-        embedding_device=config_dict.get("embedding_device", "cpu"),
         use_onnx=config_dict.get("use_onnx", True),
         reranker_model=config_dict.get("reranker_model", "cl-nagoya/ruri-reranker-small"),
-        reranker_device=config_dict.get("reranker_device", "cpu"),
         reranker_use_onnx=config_dict.get("reranker_use_onnx", True),
     )
 

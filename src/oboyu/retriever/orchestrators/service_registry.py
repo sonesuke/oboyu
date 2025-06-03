@@ -1,12 +1,14 @@
 """Service registry for managing retriever dependencies."""
 
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from oboyu.indexer.config.indexer_config import IndexerConfig
 from oboyu.indexer.services.embedding import EmbeddingService
-from oboyu.indexer.storage.database_service import DatabaseService
 from oboyu.indexer.storage.index_manager import HNSWIndexParams
+
+if TYPE_CHECKING:
+    from oboyu.indexer.storage.database_service import DatabaseService
 from oboyu.retriever.search.bm25_search import BM25Search
 from oboyu.retriever.search.engine import SearchEngine
 from oboyu.retriever.search.hybrid_search import HybridSearch
@@ -58,6 +60,9 @@ class ServiceRegistry:
             m=self.config.processing.m,
             m0=self.config.processing.m0,
         )
+        
+        # Import at runtime to avoid circular dependency
+        from oboyu.indexer.storage.database_service import DatabaseService
         
         self._services["database_service"] = DatabaseService(
             db_path=self.config.processing.db_path,
@@ -111,7 +116,7 @@ class ServiceRegistry:
             hybrid_search=hybrid_search,
         )
         
-    def get_database_service(self) -> DatabaseService:
+    def get_database_service(self) -> "DatabaseService":
         """Get the database service instance.
         
         Returns:

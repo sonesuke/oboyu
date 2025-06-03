@@ -1,5 +1,6 @@
 """Consolidated indexing command functionality."""
 
+import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +16,8 @@ from oboyu.crawler.crawler import Crawler
 from oboyu.crawler.discovery import discover_documents
 from oboyu.indexer import Indexer
 from oboyu.indexer.config.indexer_config import IndexerConfig
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -169,9 +172,9 @@ class IndexCommand:
             # Ensure clean shutdown
             try:
                 indexer.close()
-            except Exception:
-                # Ignore errors during cleanup
-                pass
+            except Exception as cleanup_error:
+                # Ignore errors during cleanup but log for debugging
+                logger.debug(f"Error during indexer cleanup: {cleanup_error}")
             raise
         finally:
             indexer.close()

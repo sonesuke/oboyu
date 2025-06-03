@@ -1,5 +1,6 @@
 """Consolidated query command functionality."""
 
+import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,6 +11,8 @@ from oboyu.common.paths import DEFAULT_DB_PATH
 from oboyu.retriever.retriever import Retriever
 from oboyu.retriever.search.search_context import ContextBuilder, SettingSource
 from oboyu.retriever.search.search_result import SearchResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -124,9 +127,9 @@ class QueryCommand:
             # Ensure clean shutdown
             try:
                 retriever.close()
-            except Exception:
-                # Ignore errors during cleanup
-                pass
+            except Exception as cleanup_error:
+                # Ignore errors during cleanup but log for debugging
+                logger.debug(f"Error during retriever cleanup: {cleanup_error}")
             raise
         finally:
             retriever.close()
@@ -214,9 +217,9 @@ class QueryCommand:
             # Ensure clean shutdown
             try:
                 retriever.close()
-            except Exception:
-                # Ignore errors during cleanup
-                pass
+            except Exception as cleanup_error:
+                # Ignore errors during cleanup but log for debugging
+                logger.debug(f"Error during retriever cleanup: {cleanup_error}")
             raise
         finally:
             retriever.close()

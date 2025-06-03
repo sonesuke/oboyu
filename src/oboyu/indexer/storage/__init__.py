@@ -27,18 +27,10 @@ from oboyu.indexer.storage.consolidated_repositories import (
 from oboyu.indexer.storage.database_manager import DatabaseManager
 from oboyu.indexer.storage.database_service import DatabaseService
 
-# Legacy imports for backward compatibility
-try:
-    from oboyu.indexer.storage.repositories import (
-        ChunkRepository as LegacyChunkRepository,
-        EmbeddingRepository as LegacyEmbeddingRepository,
-        StatisticsRepository as LegacyStatisticsRepository,
-    )
-except ImportError:
-    # If old repositories don't exist, use new ones
-    LegacyChunkRepository = ChunkRepository
-    LegacyEmbeddingRepository = EmbeddingRepository
-    LegacyStatisticsRepository = StatisticsRepository
+# Legacy imports for backward compatibility (use consolidated repositories)
+LegacyChunkRepository = ChunkRepository
+LegacyEmbeddingRepository = EmbeddingRepository
+LegacyStatisticsRepository = StatisticsRepository
 
 # Legacy alias for tests
 Database = DatabaseService

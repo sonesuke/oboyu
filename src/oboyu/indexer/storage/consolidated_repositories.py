@@ -1,4 +1,5 @@
 """Consolidated repository classes for database operations."""
+# pylint: disable=too-many-lines
 
 import json
 import logging

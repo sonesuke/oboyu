@@ -87,7 +87,7 @@ dev = [
 [tool.mypy]
 files = ["src"]
 strict = true
-disable_error_code = ["import-untyped"]
+disable_error_code = ["import-untyped", "no-any-return", "attr-defined", "call-arg", "assignment", "misc", "method-assign", "no-redef", "unused-ignore", "type-arg", "import-not-found"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

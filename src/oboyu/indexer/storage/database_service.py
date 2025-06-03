@@ -14,7 +14,7 @@ Key features:
 import logging
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, List, Optional, Union
 
 import numpy as np
 from duckdb import DuckDBPyConnection
@@ -25,8 +25,10 @@ from oboyu.indexer.core.document_processor import Chunk
 from oboyu.indexer.storage.consolidated_repositories import ChunkRepository, EmbeddingRepository, StatisticsRepository
 from oboyu.indexer.storage.database_manager import DatabaseManager
 from oboyu.indexer.storage.index_manager import HNSWIndexParams, IndexManager
-from oboyu.retriever.search.search_filters import SearchFilters
 from oboyu.retriever.storage.database_search_service import DatabaseSearchService
+
+if TYPE_CHECKING:
+    from oboyu.retriever.search.search_filters import SearchFilters
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +183,7 @@ class DatabaseService:
         limit: int = 10,
         language_filter: Optional[str] = None,
         similarity_threshold: float = 0.0,
-        filters: Optional[SearchFilters] = None,
+        filters: Optional["SearchFilters"] = None,
     ) -> List[Dict[str, Any]]:
         """Execute vector similarity search.
 
@@ -209,7 +211,7 @@ class DatabaseService:
         terms: List[str],
         limit: int = 10,
         language_filter: Optional[str] = None,
-        filters: Optional[SearchFilters] = None,
+        filters: Optional["SearchFilters"] = None,
     ) -> List[Dict[str, Any]]:
         """Execute BM25 text search.
 
