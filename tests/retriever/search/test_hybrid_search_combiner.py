@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 from oboyu.retriever.search.hybrid_search_combiner import HybridSearchCombiner
 from oboyu.retriever.search.score_normalizer import ScoreNormalizer
-from oboyu.retriever.search.search_result import SearchResult
+from oboyu.common.types import SearchResult
 
 
 @pytest.fixture

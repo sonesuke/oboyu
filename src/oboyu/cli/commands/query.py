@@ -8,9 +8,9 @@ from typing import Any, Dict, List, Optional
 
 from oboyu.common.config import ConfigManager
 from oboyu.common.paths import DEFAULT_DB_PATH
+from oboyu.common.types import SearchResult
 from oboyu.retriever.retriever import Retriever
 from oboyu.retriever.search.search_context import ContextBuilder, SettingSource
-from oboyu.retriever.search.search_result import SearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -164,8 +164,8 @@ class QueryCommand:
         database_path = Path(db_path or query_config.get("database_path") or DEFAULT_DB_PATH)
         
         # Initialize retriever with proper configuration
+        from oboyu.common.types import SearchMode
         from oboyu.indexer.config.indexer_config import IndexerConfig
-        from oboyu.retriever.search.search_mode import SearchMode
         
         config = IndexerConfig()
         config.db_path = database_path

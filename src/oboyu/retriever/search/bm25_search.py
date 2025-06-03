@@ -4,11 +4,11 @@ import json
 import logging
 from typing import TYPE_CHECKING, List, Optional
 
-from oboyu.retriever.search.search_filters import SearchFilters
+from oboyu.common.types import SearchFilters
 
 if TYPE_CHECKING:
     from oboyu.indexer.storage.database_service import DatabaseService
-from oboyu.retriever.search.search_result import SearchResult
+from oboyu.common.types import SearchResult
 
 logger = logging.getLogger(__name__)
 

@@ -8,7 +8,7 @@ from oboyu.retriever.search.score_normalizer import (
     NormalizationMethod,
     ScoreNormalizer,
 )
-from oboyu.retriever.search.search_result import SearchResult
+from oboyu.common.types import SearchResult
 
 
 @pytest.fixture

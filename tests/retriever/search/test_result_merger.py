@@ -3,7 +3,7 @@
 import pytest
 
 from oboyu.retriever.search.result_merger import ResultMerger
-from oboyu.retriever.search.search_result import SearchResult
+from oboyu.common.types import SearchResult
 
 
 @pytest.fixture

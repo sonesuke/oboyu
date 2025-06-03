@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import Mock, MagicMock
 
-from oboyu.indexer.search.term_frequency_analyzer import TermFrequencyAnalyzer
+from oboyu.indexer.algorithm.term_frequency_analyzer import TermFrequencyAnalyzer
 
 
 class TestTermFrequencyAnalyzer:

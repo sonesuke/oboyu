@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 
 from oboyu.indexer.storage.database_service import DatabaseService as Database
-from oboyu.indexer.core.document_processor import Chunk
+from oboyu.common.types import Chunk
 
 
 class TestDatabase:

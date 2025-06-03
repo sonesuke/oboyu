@@ -11,7 +11,7 @@ import uuid
 
 import numpy as np
 from oboyu.indexer.storage.database_service import DatabaseService as Database
-from oboyu.indexer.core.document_processor import Chunk
+from oboyu.common.types import Chunk
 
 
 def random_string(length=100):

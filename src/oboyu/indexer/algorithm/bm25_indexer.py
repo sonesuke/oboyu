@@ -8,11 +8,11 @@ import logging
 from collections import defaultdict
 from typing import Callable, Dict, List, Optional, Tuple
 
-from oboyu.indexer.core.document_processor import Chunk
-from oboyu.indexer.search.bm25_statistics_calculator import BM25StatisticsCalculator
-from oboyu.indexer.search.inverted_index_builder import InvertedIndexBuilder
-from oboyu.indexer.search.term_frequency_analyzer import TermFrequencyAnalyzer
-from oboyu.retriever.services.tokenizer import TokenizerService, create_tokenizer
+from oboyu.common.services import TokenizerService, create_tokenizer
+from oboyu.common.types import Chunk
+from oboyu.indexer.algorithm.bm25_statistics_calculator import BM25StatisticsCalculator
+from oboyu.indexer.algorithm.inverted_index_builder import InvertedIndexBuilder
+from oboyu.indexer.algorithm.term_frequency_analyzer import TermFrequencyAnalyzer
 
 logger = logging.getLogger(__name__)
 

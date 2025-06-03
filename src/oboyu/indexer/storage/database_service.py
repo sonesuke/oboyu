@@ -20,15 +20,15 @@ import numpy as np
 from duckdb import DuckDBPyConnection
 from numpy.typing import NDArray
 
+from oboyu.common.types import Chunk
 from oboyu.indexer.config import DEFAULT_BATCH_SIZE
-from oboyu.indexer.core.document_processor import Chunk
 from oboyu.indexer.storage.consolidated_repositories import ChunkRepository, EmbeddingRepository, StatisticsRepository
 from oboyu.indexer.storage.database_manager import DatabaseManager
 from oboyu.indexer.storage.index_manager import HNSWIndexParams, IndexManager
 from oboyu.retriever.storage.database_search_service import DatabaseSearchService
 
 if TYPE_CHECKING:
-    from oboyu.retriever.search.search_filters import SearchFilters
+    from oboyu.common.types import SearchFilters
 
 logger = logging.getLogger(__name__)
 

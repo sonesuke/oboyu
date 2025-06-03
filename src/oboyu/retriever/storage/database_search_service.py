@@ -7,7 +7,7 @@ import numpy as np
 from duckdb import DuckDBPyConnection
 from numpy.typing import NDArray
 
-from oboyu.retriever.search.search_filters import SearchFilters
+from oboyu.common.types import SearchFilters
 
 logger = logging.getLogger(__name__)
 

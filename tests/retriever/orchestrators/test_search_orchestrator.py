@@ -5,10 +5,10 @@ from unittest.mock import MagicMock
 import numpy as np
 
 from oboyu.indexer.config.indexer_config import IndexerConfig
-from oboyu.retriever.search.search_mode import SearchMode
+from oboyu.common.types import SearchMode
 from oboyu.retriever.orchestrators.search_orchestrator import SearchOrchestrator
 from oboyu.retriever.orchestrators.service_registry import ServiceRegistry
-from oboyu.retriever.search.search_result import SearchResult
+from oboyu.common.types import SearchResult
 
 
 @pytest.fixture

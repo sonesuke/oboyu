@@ -9,7 +9,7 @@ import numpy as np
 from duckdb import DuckDBPyConnection
 from numpy.typing import NDArray
 
-from oboyu.indexer.core.document_processor import Chunk
+from oboyu.common.types import Chunk
 from oboyu.indexer.storage.utils import DateTimeEncoder
 
 

@@ -12,8 +12,8 @@ from prompt_toolkit.history import FileHistory
 from rich.console import Console
 from rich.text import Text
 
+from oboyu.common.types import SearchResult
 from oboyu.retriever.retriever import Retriever
-from oboyu.retriever.search.search_result import SearchResult
 
 
 class InteractiveQuerySession:

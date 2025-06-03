@@ -18,7 +18,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from oboyu.cli.base import BaseCommand
 from oboyu.cli.commands.query import QueryCommand
 from oboyu.cli.interactive_session import InteractiveQuerySession
-from oboyu.retriever.search.search_result import SearchResult
+from oboyu.common.types import SearchResult
 
 # Create Typer app
 app = typer.Typer(

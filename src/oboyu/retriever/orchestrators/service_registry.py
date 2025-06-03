@@ -9,12 +9,12 @@ from oboyu.indexer.storage.index_manager import HNSWIndexParams
 
 if TYPE_CHECKING:
     from oboyu.indexer.storage.database_service import DatabaseService
+from oboyu.common.services import TokenizerService
 from oboyu.retriever.search.bm25_search import BM25Search
-from oboyu.retriever.search.engine import SearchEngine
+from oboyu.retriever.search.search_engine import SearchEngine
 from oboyu.retriever.search.hybrid_search import HybridSearch
 from oboyu.retriever.search.vector_search import VectorSearch
 from oboyu.retriever.services.reranker import RerankerService
-from oboyu.retriever.services.tokenizer import TokenizerService
 
 logger = logging.getLogger(__name__)
 

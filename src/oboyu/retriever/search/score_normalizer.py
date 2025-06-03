@@ -4,7 +4,7 @@ import logging
 from enum import Enum
 from typing import List
 
-from oboyu.retriever.search.search_result import SearchResult
+from oboyu.common.types import SearchResult
 
 logger = logging.getLogger(__name__)
 

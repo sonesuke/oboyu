@@ -2,14 +2,14 @@
 
 import logging
 
+from oboyu.common.services import TokenizerService
+from oboyu.indexer.algorithm.bm25_indexer import BM25Indexer
 from oboyu.indexer.config.indexer_config import IndexerConfig
 from oboyu.indexer.core.document_processor import DocumentProcessor
 from oboyu.indexer.services.embedding import EmbeddingService
 from oboyu.indexer.storage.change_detector import FileChangeDetector
 from oboyu.indexer.storage.database_service import DatabaseService
 from oboyu.indexer.storage.index_manager import HNSWIndexParams
-from oboyu.indexer.search.bm25_indexer import BM25Indexer
-from oboyu.retriever.services.tokenizer import TokenizerService
 
 logger = logging.getLogger(__name__)
 
