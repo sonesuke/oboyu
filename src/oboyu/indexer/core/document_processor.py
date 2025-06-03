@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from oboyu.common.types import Chunk
+
 from .document_chunker import DocumentChunker
 from .embedding_prefix_handler import EmbeddingPrefixHandler
 from .language_processor import LanguageProcessor

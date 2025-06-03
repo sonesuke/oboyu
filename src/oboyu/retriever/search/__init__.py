@@ -4,7 +4,6 @@
 # Core search functionality
 from oboyu.common.types import SearchFilters, SearchMode, SearchResult
 from oboyu.retriever.search.bm25_search import BM25Search
-from oboyu.retriever.search.search_engine import SearchEngine
 from oboyu.retriever.search.hybrid_search import HybridSearch
 from oboyu.retriever.search.hybrid_search_combiner import HybridSearchCombiner
 
@@ -13,6 +12,7 @@ from oboyu.retriever.search.mode_router import SearchModeRouter
 from oboyu.retriever.search.result_merger import ResultMerger
 from oboyu.retriever.search.score_normalizer import ScoreNormalizer
 from oboyu.retriever.search.search_context import SearchContext
+from oboyu.retriever.search.search_engine import SearchEngine
 
 # Text processing components
 from oboyu.retriever.search.snippet_extractor import SnippetExtractor
