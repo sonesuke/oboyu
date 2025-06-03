@@ -1,7 +1,7 @@
 """Indexer service implementations."""
 
 from oboyu.indexer.services.embedding import EmbeddingService
-from oboyu.indexer.services.tokenizer import TokenizerService
+from oboyu.common.services import TokenizerService
 
 __all__ = [
     "EmbeddingService",
