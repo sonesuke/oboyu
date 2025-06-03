@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from oboyu.indexer.storage.database_service import DatabaseService
 from oboyu.common.services import TokenizerService
 from oboyu.retriever.search.bm25_search import BM25Search
-from oboyu.retriever.search.hybrid_search import HybridSearch
 from oboyu.retriever.search.search_engine import SearchEngine
 from oboyu.retriever.search.vector_search import VectorSearch
 from oboyu.retriever.services.reranker import RerankerService
@@ -43,7 +42,6 @@ class ServiceRegistry:
         # Initialize embedding service (needed for query embeddings)
         self._services["embedding_service"] = EmbeddingService(
             model_name=self.config.model.embedding_model,
-            device=self.config.model.embedding_device,
             batch_size=self.config.model.batch_size,
             max_seq_length=self.config.model.max_seq_length,
             query_prefix=self.config.model.query_prefix,
@@ -86,7 +84,6 @@ class ServiceRegistry:
             self._services["reranker_service"] = RerankerService(
                 model_name=self.config.model.reranker_model,
                 use_onnx=self.config.model.reranker_use_onnx,
-                device=self.config.model.reranker_device,
                 batch_size=self.config.model.reranker_batch_size,
                 max_length=self.config.model.reranker_max_length,
                 quantization_config=self.config.model.onnx_quantization,
@@ -104,16 +101,12 @@ class ServiceRegistry:
         # Create search components
         vector_search = VectorSearch(self.get_database_service())
         bm25_search = BM25Search(self.get_database_service())
-        hybrid_search = HybridSearch(
-            vector_weight=self.config.search.vector_weight,
-            bm25_weight=self.config.search.bm25_weight,
-        )
         
         # Create search engine
         self._services["search_engine"] = SearchEngine(
             vector_search=vector_search,
             bm25_search=bm25_search,
-            hybrid_search=hybrid_search,
+            rrf_k=self.config.search.rrf_k,
         )
         
     def get_database_service(self) -> "DatabaseService":

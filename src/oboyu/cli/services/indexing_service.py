@@ -1,5 +1,6 @@
 """Indexing service for handling all indexing-related business logic."""
 
+import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +16,8 @@ from oboyu.crawler.crawler import Crawler
 from oboyu.crawler.discovery import discover_documents
 from oboyu.indexer import Indexer
 from oboyu.indexer.config.indexer_config import IndexerConfig
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -157,9 +160,7 @@ class IndexingService:
                 elif progress_callback:
                     progress_callback(f"Scanning directory {directory}...")
                 
-                # Note: detection_strategy and should_cleanup would be used in actual change detection
-                # For now, using basic crawler without change detection integration
-                
+                # First, discover all files in the directory
                 crawler = Crawler(
                     depth=max_depth or 10,
                     include_patterns=include_patterns or ["*.txt", "*.md", "*.html", "*.py", "*.java"],
@@ -168,7 +169,44 @@ class IndexingService:
                     respect_gitignore=True,
                 )
                 
-                crawler_results = crawler.crawl(directory)
+                all_crawler_results = crawler.crawl(directory)
+                
+                # Apply change detection unless force is True
+                if force:
+                    crawler_results = all_crawler_results
+                    if progress_callback:
+                        progress_callback(f"Force mode: processing all {len(crawler_results)} files")
+                else:
+                    # Use change detection to filter files
+                    file_paths = [result.path for result in all_crawler_results]
+                    changes = indexer.change_detector.detect_changes(
+                        file_paths,
+                        strategy=change_detection or "smart"
+                    )
+                    
+                    # Process only new and modified files
+                    files_to_process = set(changes.new_files + changes.modified_files)
+                    crawler_results = [r for r in all_crawler_results if r.path in files_to_process]
+                    
+                    # Clean up deleted files if requested
+                    if cleanup_deleted and changes.deleted_files:
+                        for deleted_path in changes.deleted_files:
+                            try:
+                                indexer.database_service.delete_chunks_by_path(deleted_path)
+                                logger.info(f"Cleaned up deleted file: {deleted_path}")
+                            except Exception as e:
+                                logger.error(f"Failed to clean up deleted file {deleted_path}: {e}")
+                    
+                    if progress_callback:
+                        msg = (f"Change detection: {len(changes.new_files)} new, "
+                              f"{len(changes.modified_files)} modified, "
+                              f"{len(changes.deleted_files)} deleted files")
+                        progress_callback(msg)
+                    
+                    if not crawler_results:
+                        if progress_callback:
+                            progress_callback("No changes detected, skipping directory")
+                        continue
                 
                 # Create indexer progress callback if console manager is available
                 indexer_progress_callback = None

@@ -23,6 +23,7 @@ class QueryResult:
     elapsed_time: float
     mode: str
     total_results: int
+    reranker_used: bool = False
 
 
 class QueryCommand:
@@ -117,11 +118,15 @@ class QueryCommand:
             
             elapsed_time = time.time() - start_time
             
+            # Check if reranking was actually applied
+            reranker_used = query_config.get("use_reranker", False) and len(results) > 0
+            
             return QueryResult(
                 results=results,
                 elapsed_time=elapsed_time,
                 mode=mode,
                 total_results=len(results),
+                reranker_used=reranker_used,
             )
         except Exception:
             # Ensure clean shutdown
@@ -207,11 +212,17 @@ class QueryCommand:
             
             elapsed_time = time.time() - start_time
             
+            # Check if reranking was applied using SearchContext
+            reranker_used = False
+            if context.is_explicitly_set('reranker_enabled'):
+                reranker_used = context.get_reranker_setting() and len(results) > 0
+            
             return QueryResult(
                 results=results,
                 elapsed_time=elapsed_time,
                 mode=mode,
                 total_results=len(results),
+                reranker_used=reranker_used,
             )
         except Exception:
             # Ensure clean shutdown

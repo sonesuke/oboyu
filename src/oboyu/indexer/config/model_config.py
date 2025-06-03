@@ -28,6 +28,7 @@ class ModelConfig:
     reranker_model: str = "cl-nagoya/ruri-reranker-small"
     use_reranker: bool = False
     reranker_use_onnx: bool = False
+    reranker_device: str = "cpu"
     reranker_batch_size: int = 16
     reranker_max_length: int = 512
 

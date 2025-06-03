@@ -44,33 +44,25 @@ class ServiceRegistry:
         # Initialize embedding service
         self._services["embedding_service"] = EmbeddingService(
             model_name=self.config.model.embedding_model,
-            device=self.config.model.embedding_device,
-            batch_size=self.config.model.embedding_batch_size,
+            batch_size=self.config.model.batch_size,
             use_onnx=self.config.model.use_onnx,
-            cache_dir=self.config.model.model_cache_dir,
-            quantization_config=self.config.model.onnx_quantization,
-            optimization_level=self.config.model.onnx_optimization_level,
+            onnx_quantization_config=self.config.model.onnx_quantization,
+            onnx_optimization_level=self.config.model.onnx_optimization_level,
         )
         
         # Initialize document processor
         self._services["document_processor"] = DocumentProcessor(
-            embedding_service=self.get_embedding_service(),
-            database_service=self.get_database_service(),
             chunk_size=self.config.processing.chunk_size,
             chunk_overlap=self.config.processing.chunk_overlap,
-            max_file_size=self.config.processing.max_file_size,
+            document_prefix=self.config.model.document_prefix,
         )
         
         # Initialize BM25 indexer
         self._services["bm25_indexer"] = BM25Indexer(
-            language="ja",  # Default to Japanese
-            bm25_params={
-                "k1": self.config.search.bm25_k1,
-                "b": self.config.search.bm25_b,
-            },
-            min_token_length=self.config.search.bm25_min_token_length,
+            k1=self.config.search.bm25_k1,
+            b=self.config.search.bm25_b,
             min_doc_frequency=2,
-            store_positions=False,
+            use_stopwords=False,
         )
         
         # Initialize tokenizer service

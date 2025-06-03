@@ -310,15 +310,17 @@ class InteractiveQuerySession:
                 results = self.retriever.hybrid_search(query, **search_params)
             
             # Apply reranking if enabled and available
+            reranker_used = False
             if (self.config.get("rerank", False) and results and
                 self.retriever.reranker_service and
                 self.retriever.reranker_service.is_available()):
                 results = self.retriever.rerank_results(query, results)
+                reranker_used = True
             
             elapsed_time = time.time() - start_time
             
             # Display results
-            self._display_results(results, elapsed_time, mode)
+            self._display_results(results, elapsed_time, mode, reranker_used)
             
         except Exception as e:
             self.console.print(f"[red]Search error: {e}[/red]")
@@ -328,15 +330,17 @@ class InteractiveQuerySession:
         self,
         results: list[SearchResult],
         elapsed_time: float,
-        mode: str
+        mode: str,
+        reranker_used: bool = False
     ) -> None:
         """Display search results."""
         if not results:
             self.console.print("[yellow]No results found.[/yellow]")
             return
         
-        # Header
-        self.console.print(f"\n[bold green]Found {len(results)} results[/bold green] ([dim]{mode} search, {elapsed_time:.3f}s[/dim])\n")
+        # Header with reranker indication
+        reranker_suffix = " with reranker" if reranker_used else ""
+        self.console.print(f"\n[bold green]Found {len(results)} results[/bold green] ([dim]{mode} search{reranker_suffix}, {elapsed_time:.3f}s[/dim])\n")
         
         # Results
         for i, result in enumerate(results, 1):

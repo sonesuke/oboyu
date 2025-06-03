@@ -1,11 +1,13 @@
 """Indexing pipeline for coordinating document processing and indexing operations."""
 
 import logging
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from oboyu.crawler.crawler import CrawlerResult
 from oboyu.indexer.orchestrators.service_registry import ServiceRegistry
-from oboyu.indexer.storage.change_detector import ChangeResult
+from oboyu.indexer.storage.change_detector import ChangeResult, FileChangeDetector
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +54,8 @@ class IndexingPipeline:
             if not all_chunks:
                 return {"indexed_chunks": 0, "total_documents": len(crawler_results)}
                 
-            # Store chunks in database
-            self._store_chunks(all_chunks, progress_callback)
+            # Store chunks in database and update file metadata
+            self._store_chunks_with_metadata(all_chunks, crawler_results, progress_callback)
             
             # Generate and store embeddings
             self._generate_embeddings(all_chunks, progress_callback)
@@ -197,6 +199,56 @@ class IndexingPipeline:
             progress_callback("storing", 0, total_chunks)
             
         self.database_service.store_chunks(chunks, progress_callback=progress_callback)
+        
+    def _store_chunks_with_metadata(
+        self,
+        chunks: List[Any],
+        crawler_results: List[CrawlerResult],
+        progress_callback: Optional[Callable[[str, int, int], None]] = None,
+    ) -> None:
+        """Store chunks in the database and update file metadata for change detection.
+        
+        Args:
+            chunks: Chunks to store
+            crawler_results: Original crawler results with file metadata
+            progress_callback: Optional callback for progress updates
+            
+        """
+        # Store chunks first
+        self._store_chunks(chunks, progress_callback)
+        
+        # Create a map from file path to crawler result for easy lookup
+        path_to_result = {result.path: result for result in crawler_results}
+        
+        # Group chunks by file path and store file metadata
+        chunks_by_path: Dict[Path, List[Any]] = {}
+        for chunk in chunks:
+            if chunk.path not in chunks_by_path:
+                chunks_by_path[chunk.path] = []
+            chunks_by_path[chunk.path].append(chunk)
+        
+        # Update file metadata for each processed file
+        for file_path, file_chunks in chunks_by_path.items():
+            try:
+                crawler_result = path_to_result.get(file_path)
+                if crawler_result:
+                    # Calculate file hash from crawler result metadata or file
+                    file_stats = file_path.stat()
+                    content_hash = FileChangeDetector.calculate_file_hash(file_path)
+                    
+                    # Store file metadata
+                    self.database_service.store_file_metadata(
+                        path=file_path,
+                        file_size=file_stats.st_size,
+                        file_modified_at=datetime.fromtimestamp(file_stats.st_mtime),
+                        content_hash=content_hash,
+                        chunk_count=len(file_chunks)
+                    )
+                    logger.debug(f"Updated metadata for {file_path} with {len(file_chunks)} chunks")
+                else:
+                    logger.warning(f"No crawler result found for {file_path}")
+            except Exception as e:
+                logger.error(f"Failed to update metadata for {file_path}: {e}")
         
     def _generate_embeddings(
         self,
