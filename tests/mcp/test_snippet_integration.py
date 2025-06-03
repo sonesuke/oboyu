@@ -6,7 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from oboyu.retriever.search.search_result import SearchResult
+from oboyu.common.types import SearchResult
 from oboyu.mcp.server import search
 
 

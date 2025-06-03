@@ -6,14 +6,12 @@ from typing import List, Optional
 import numpy as np
 from numpy.typing import NDArray
 
+from oboyu.common.types import SearchFilters, SearchMode, SearchResult
 from oboyu.retriever.search.bm25_search import BM25Search
 from oboyu.retriever.search.hybrid_search_combiner import HybridSearchCombiner
 from oboyu.retriever.search.mode_router import SearchModeRouter
 from oboyu.retriever.search.result_merger import ResultMerger
 from oboyu.retriever.search.score_normalizer import ScoreNormalizer
-from oboyu.retriever.search.search_filters import SearchFilters
-from oboyu.retriever.search.search_mode import SearchMode
-from oboyu.retriever.search.search_result import SearchResult
 from oboyu.retriever.search.vector_search import VectorSearch
 
 logger = logging.getLogger(__name__)

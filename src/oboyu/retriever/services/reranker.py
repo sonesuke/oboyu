@@ -13,7 +13,7 @@ from oboyu.common.huggingface_utils import (
 from oboyu.common.model_manager import RerankerModelManager
 
 if TYPE_CHECKING:
-    from oboyu.retriever.search.search_result import SearchResult
+    from oboyu.common.types import SearchResult
 
 logger = logging.getLogger(__name__)
 

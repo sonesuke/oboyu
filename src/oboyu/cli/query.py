@@ -18,7 +18,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from oboyu.cli.base import BaseCommand
 from oboyu.cli.commands.query import QueryCommand
 from oboyu.cli.interactive_session import InteractiveQuerySession
-from oboyu.retriever.search.search_result import SearchResult
+from oboyu.common.types import SearchResult
 
 # Create Typer app
 app = typer.Typer(
@@ -120,7 +120,7 @@ def query(
             )
 
             # Display results
-            _display_results(base_command.console, result.results, result.elapsed_time, result.mode, explain, format)
+            _display_results(base_command.console, result.results, result.elapsed_time, result.mode, explain, format, result.reranker_used)
 
     except Exception as e:
         base_command.console.print(f"❌ Search failed: {e}", style="red")
@@ -135,16 +135,18 @@ def _display_results(
     mode: str,
     explain: bool,
     format: str,
+    reranker_used: bool = False,
 ) -> None:
     """Display search results."""
     if not results:
         console.print("❌ No results found.")
         return
 
-    # Header
+    # Header with reranker indication
+    reranker_suffix = " with reranker" if reranker_used else ""
     console.print(
         f"\n🎯 Found [bold green]{len(results)}[/bold green] results "
-        f"([dim]{mode} search, {elapsed_time:.3f}s[/dim])\n"
+        f"([dim]{mode} search{reranker_suffix}, {elapsed_time:.3f}s[/dim])\n"
     )
 
     # Display results

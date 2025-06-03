@@ -4,7 +4,7 @@ import pytest
 from datetime import datetime
 from typing import Dict, Any
 
-from oboyu.retriever.search.search_filters import DateRangeFilter, PathFilter, SearchFilters
+from oboyu.common.types import DateRangeFilter, PathFilter, SearchFilters
 
 
 class TestDateRangeFilter:

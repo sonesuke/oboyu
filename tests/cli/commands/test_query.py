@@ -7,7 +7,7 @@ import pytest
 
 from oboyu.cli.services.query_service import QueryService
 from oboyu.common.config import ConfigManager
-from oboyu.retriever.search.search_result import SearchResult
+from oboyu.common.types import SearchResult
 
 
 @pytest.fixture

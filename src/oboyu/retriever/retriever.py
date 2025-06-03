@@ -6,12 +6,10 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 from numpy.typing import NDArray
 
+from oboyu.common.types import SearchFilters, SearchMode, SearchResult
 from oboyu.indexer.config.indexer_config import IndexerConfig
 from oboyu.retriever.orchestrators.search_orchestrator import SearchOrchestrator
 from oboyu.retriever.orchestrators.service_registry import ServiceRegistry
-from oboyu.retriever.search.search_filters import SearchFilters
-from oboyu.retriever.search.search_mode import SearchMode
-from oboyu.retriever.search.search_result import SearchResult
 
 logger = logging.getLogger(__name__)
 

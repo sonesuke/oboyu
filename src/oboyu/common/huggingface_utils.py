@@ -15,6 +15,11 @@ from huggingface_hub.errors import (
     RepositoryNotFoundError,
 )
 
+# Import HuggingFace utils with fallback for older versions
+EntryNotFoundError: type[Exception]
+LocalEntryNotFoundError: type[Exception]
+OfflineModeIsEnabled: type[Exception]
+
 try:
     from huggingface_hub.utils import (
         EntryNotFoundError,
@@ -23,13 +28,19 @@ try:
     )
 except ImportError:
     # Fallback for older versions of huggingface_hub
-    class EntryNotFoundError(Exception):  # type: ignore[misc]
+    class EntryNotFoundError(Exception):  # type: ignore[misc,no-redef]
+        """Fallback exception for entry not found errors."""
+
         pass
     
-    class LocalEntryNotFoundError(Exception):  # type: ignore[misc]
+    class LocalEntryNotFoundError(Exception):  # type: ignore[misc,no-redef]
+        """Fallback exception for local entry not found errors."""
+
         pass
     
-    class OfflineModeIsEnabled(Exception):  # type: ignore[misc]
+    class OfflineModeIsEnabled(Exception):  # type: ignore[misc,no-redef]
+        """Fallback exception for offline mode errors."""
+
         pass
 
 if TYPE_CHECKING:

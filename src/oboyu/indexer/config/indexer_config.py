@@ -59,9 +59,8 @@ class IndexerConfig:
 
     @property
     def embedding_device(self) -> str:
-        """Embedding device."""
-        assert self.model is not None, "ModelConfig should be initialized"
-        return self.model.embedding_device
+        """Embedding device (CPU only)."""
+        return "cpu"
 
     @property
     def use_reranker(self) -> bool:

@@ -1,4 +1,5 @@
 """Consolidated database query builders for all storage operations."""
+# pylint: disable=too-many-lines
 
 import json
 import uuid
@@ -11,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 from numpy.typing import NDArray
 
-from oboyu.indexer.core.document_processor import Chunk
+from oboyu.common.types import Chunk
 
 from .utils import DateTimeEncoder
 

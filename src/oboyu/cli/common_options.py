@@ -173,7 +173,6 @@ VectorWeightOption = Annotated[
         help="DEPRECATED: Weight for vector scores in hybrid search. RRF algorithm is now used instead.",
         min=0.0,
         max=1.0,
-        deprecated=True,
     ),
 ]
 
@@ -185,7 +184,6 @@ BM25WeightOption = Annotated[
         help="DEPRECATED: Weight for BM25 scores in hybrid search. RRF algorithm is now used instead.",
         min=0.0,
         max=1.0,
-        deprecated=True,
     ),
 ]
 

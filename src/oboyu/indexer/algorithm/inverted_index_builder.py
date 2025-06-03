@@ -7,7 +7,7 @@ import logging
 from collections import defaultdict
 from typing import Dict, List, Optional, Set, Tuple
 
-from oboyu.indexer.core.document_processor import Chunk
+from oboyu.common.types import Chunk
 
 logger = logging.getLogger(__name__)
 

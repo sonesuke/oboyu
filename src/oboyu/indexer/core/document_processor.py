@@ -5,50 +5,16 @@ for embedding generation with special handling for Japanese content.
 """
 
 import uuid
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+from oboyu.common.types import Chunk
 
 from .document_chunker import DocumentChunker
 from .embedding_prefix_handler import EmbeddingPrefixHandler
 from .language_processor import LanguageProcessor
 from .text_normalizer import TextNormalizer
-
-
-@dataclass
-class Chunk:
-    """Document chunk for indexing."""
-
-    id: str
-    """Unique identifier for the chunk."""
-
-    path: Path
-    """Path to the source document."""
-
-    title: str
-    """Title of the document or chunk."""
-
-    content: str
-    """Chunk text content."""
-
-    chunk_index: int
-    """Position of this chunk in the original document."""
-
-    language: str
-    """Language code of the content."""
-
-    created_at: datetime
-    """Timestamp when the chunk was created."""
-
-    modified_at: datetime
-    """Timestamp when the chunk was last modified."""
-
-    metadata: Dict[str, object]
-    """Additional metadata about the chunk."""
-
-    prefix_content: Optional[str] = None
-    """Content with prefix applied, ready for embedding."""
 
 
 class DocumentProcessor:

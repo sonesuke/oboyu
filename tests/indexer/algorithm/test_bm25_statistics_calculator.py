@@ -3,7 +3,7 @@
 import pytest
 import math
 
-from oboyu.retriever.search.bm25_statistics_calculator import BM25StatisticsCalculator
+from oboyu.indexer.algorithm.bm25_statistics_calculator import BM25StatisticsCalculator
 
 
 class TestBM25StatisticsCalculator:

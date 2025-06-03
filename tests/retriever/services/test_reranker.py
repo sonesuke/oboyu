@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from oboyu.retriever.search.search_result import SearchResult
+from oboyu.common.types import SearchResult
 from oboyu.retriever.services.reranker import (
     BaseReranker,
     CrossEncoderReranker,

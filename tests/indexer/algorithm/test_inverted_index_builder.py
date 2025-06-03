@@ -4,8 +4,8 @@ import pytest
 from datetime import datetime
 from pathlib import Path
 
-from oboyu.retriever.search.inverted_index_builder import InvertedIndexBuilder
-from oboyu.indexer.core.document_processor import Chunk
+from oboyu.indexer.algorithm.inverted_index_builder import InvertedIndexBuilder
+from oboyu.common.types import Chunk
 
 
 class TestInvertedIndexBuilder:

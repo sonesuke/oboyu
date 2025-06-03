@@ -1,6 +1,6 @@
 """Consolidated crawler configuration."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List
 
 
@@ -14,8 +14,8 @@ class CrawlerConfig:
     respect_gitignore: bool = True
     
     # File filtering
-    include_patterns: List[str] = None
-    exclude_patterns: List[str] = None
+    include_patterns: List[str] = field(default_factory=list)
+    exclude_patterns: List[str] = field(default_factory=list)
     
     # Processing settings
     max_file_size: int = 10 * 1024 * 1024  # 10MB
@@ -30,42 +30,42 @@ class CrawlerConfig:
     use_japanese_tokenizer: bool = True
     
     # Directories and extensions
-    exclude_dirs: List[str] = None
-    include_extensions: List[str] = None
+    exclude_dirs: List[str] = field(default_factory=list)
+    include_extensions: List[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         """Post-initialization to set default lists."""
-        if self.include_patterns is None:
-            self.include_patterns = [
+        if not self.include_patterns:
+            self.include_patterns.extend([
                 "*.txt",
                 "*.md",
                 "*.html",
                 "*.py",
                 "*.java",
-            ]
+            ])
             
-        if self.exclude_patterns is None:
-            self.exclude_patterns = [
+        if not self.exclude_patterns:
+            self.exclude_patterns.extend([
                 "*/node_modules/*",
                 "*/.venv/*",
                 "*/__pycache__/*",
                 "*/.git/*",
-            ]
+            ])
             
-        if self.exclude_dirs is None:
-            self.exclude_dirs = [
+        if not self.exclude_dirs:
+            self.exclude_dirs.extend([
                 "__pycache__",
                 ".git",
                 "node_modules",
                 ".venv",
                 "venv",
-            ]
+            ])
             
-        if self.include_extensions is None:
-            self.include_extensions = [
+        if not self.include_extensions:
+            self.include_extensions.extend([
                 ".py", ".md", ".txt", ".yaml", ".yml",
                 ".json", ".toml", ".cfg", ".ini", ".rst", ".ipynb"
-            ]
+            ])
 
     def validate(self) -> None:
         """Validate configuration values."""

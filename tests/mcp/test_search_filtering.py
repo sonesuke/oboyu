@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from oboyu.mcp.server import search
-from oboyu.retriever.search.search_filters import SearchFilters
+from oboyu.common.types import SearchFilters
 
 
 @pytest.fixture

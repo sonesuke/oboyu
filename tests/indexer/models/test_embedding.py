@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 
 from oboyu.indexer.services.embedding import EmbeddingService
-from oboyu.indexer.core.document_processor import Chunk
+from oboyu.common.types import Chunk
 
 
 class TestEmbeddingCache:

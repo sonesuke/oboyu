@@ -3,8 +3,8 @@
 import logging
 from typing import Dict, List, Optional
 
+from oboyu.common.types import SearchResult
 from oboyu.retriever.search.score_normalizer import ScoreNormalizer
-from oboyu.retriever.search.search_result import SearchResult
 
 logger = logging.getLogger(__name__)
 

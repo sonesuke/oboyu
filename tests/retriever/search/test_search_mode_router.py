@@ -4,9 +4,9 @@ import pytest
 from unittest.mock import Mock, patch
 import numpy as np
 
-from oboyu.retriever.search.search_mode import SearchMode
+from oboyu.common.types import SearchMode
 from oboyu.retriever.search.mode_router import SearchModeRouter
-from oboyu.retriever.search.search_result import SearchResult
+from oboyu.common.types import SearchResult
 
 
 @pytest.fixture

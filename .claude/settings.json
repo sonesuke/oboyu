@@ -6,6 +6,7 @@
       "Bash(gh issue develop:*)",
       "mcp__repomix__pack_codebase",
       "mcp__repomix__read_repomix_output",
+      "mcp__repomix__grep_repomix_output",
       "Bash(gh issue create:*)",
       "Bash(mkdir:*)",
       "Bash(uv run pytest:*)",

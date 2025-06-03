@@ -1,5 +1,6 @@
 """Consolidated query command functionality."""
 
+import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -7,9 +8,11 @@ from typing import Any, Dict, List, Optional
 
 from oboyu.common.config import ConfigManager
 from oboyu.common.paths import DEFAULT_DB_PATH
+from oboyu.common.types import SearchResult
 from oboyu.retriever.retriever import Retriever
 from oboyu.retriever.search.search_context import ContextBuilder, SettingSource
-from oboyu.retriever.search.search_result import SearchResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -20,6 +23,7 @@ class QueryResult:
     elapsed_time: float
     mode: str
     total_results: int
+    reranker_used: bool = False
 
 
 class QueryCommand:
@@ -114,19 +118,23 @@ class QueryCommand:
             
             elapsed_time = time.time() - start_time
             
+            # Check if reranking was actually applied
+            reranker_used = query_config.get("use_reranker", False) and len(results) > 0
+            
             return QueryResult(
                 results=results,
                 elapsed_time=elapsed_time,
                 mode=mode,
                 total_results=len(results),
+                reranker_used=reranker_used,
             )
         except Exception:
             # Ensure clean shutdown
             try:
                 retriever.close()
-            except Exception:
-                # Ignore errors during cleanup
-                pass
+            except Exception as cleanup_error:
+                # Ignore errors during cleanup but log for debugging
+                logger.debug(f"Error during retriever cleanup: {cleanup_error}")
             raise
         finally:
             retriever.close()
@@ -161,8 +169,8 @@ class QueryCommand:
         database_path = Path(db_path or query_config.get("database_path") or DEFAULT_DB_PATH)
         
         # Initialize retriever with proper configuration
+        from oboyu.common.types import SearchMode
         from oboyu.indexer.config.indexer_config import IndexerConfig
-        from oboyu.retriever.search.search_mode import SearchMode
         
         config = IndexerConfig()
         config.db_path = database_path
@@ -204,19 +212,25 @@ class QueryCommand:
             
             elapsed_time = time.time() - start_time
             
+            # Check if reranking was applied using SearchContext
+            reranker_used = False
+            if context.is_explicitly_set('reranker_enabled'):
+                reranker_used = context.get_reranker_setting() and len(results) > 0
+            
             return QueryResult(
                 results=results,
                 elapsed_time=elapsed_time,
                 mode=mode,
                 total_results=len(results),
+                reranker_used=reranker_used,
             )
         except Exception:
             # Ensure clean shutdown
             try:
                 retriever.close()
-            except Exception:
-                # Ignore errors during cleanup
-                pass
+            except Exception as cleanup_error:
+                # Ignore errors during cleanup but log for debugging
+                logger.debug(f"Error during retriever cleanup: {cleanup_error}")
             raise
         finally:
             retriever.close()

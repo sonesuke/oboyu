@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from oboyu.common.paths import DEFAULT_DB_PATH
+from oboyu.common.types import SearchFilters
 from oboyu.indexer import Indexer
 from oboyu.indexer.config.indexer_config import IndexerConfig
 from oboyu.indexer.config.model_config import ModelConfig
@@ -17,7 +18,6 @@ from oboyu.indexer.config.processing_config import ProcessingConfig
 from oboyu.indexer.config.search_config import SearchConfig
 from oboyu.mcp.context import db_path_global, mcp
 from oboyu.retriever.retriever import Retriever
-from oboyu.retriever.search.search_filters import SearchFilters
 from oboyu.retriever.search.snippet_processor import SnippetProcessor
 from oboyu.retriever.search.snippet_types import SnippetConfig
 

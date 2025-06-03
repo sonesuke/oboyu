@@ -13,20 +13,23 @@ Key features:
 
 import logging
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, List, Optional, Union
 
 import numpy as np
 from duckdb import DuckDBPyConnection
 from numpy.typing import NDArray
 
+from oboyu.common.types import Chunk
 from oboyu.indexer.config import DEFAULT_BATCH_SIZE
-from oboyu.indexer.core.document_processor import Chunk
 from oboyu.indexer.storage.consolidated_repositories import ChunkRepository, EmbeddingRepository, StatisticsRepository
 from oboyu.indexer.storage.database_manager import DatabaseManager
 from oboyu.indexer.storage.index_manager import HNSWIndexParams, IndexManager
-from oboyu.retriever.search.search_filters import SearchFilters
 from oboyu.retriever.storage.database_search_service import DatabaseSearchService
+
+if TYPE_CHECKING:
+    from oboyu.common.types import SearchFilters
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +184,7 @@ class DatabaseService:
         limit: int = 10,
         language_filter: Optional[str] = None,
         similarity_threshold: float = 0.0,
-        filters: Optional[SearchFilters] = None,
+        filters: Optional["SearchFilters"] = None,
     ) -> List[Dict[str, Any]]:
         """Execute vector similarity search.
 
@@ -209,7 +212,7 @@ class DatabaseService:
         terms: List[str],
         limit: int = 10,
         language_filter: Optional[str] = None,
-        filters: Optional[SearchFilters] = None,
+        filters: Optional["SearchFilters"] = None,
     ) -> List[Dict[str, Any]]:
         """Execute BM25 text search.
 
@@ -244,34 +247,6 @@ class DatabaseService:
         
         assert self.chunk_repository is not None
         return self.chunk_repository.get_chunk_by_id(chunk_id)
-
-    def delete_chunks_by_path(self, path: Union[str, Path]) -> int:
-        """Delete all chunks for a specific file path.
-
-        Args:
-            path: File path to delete chunks for
-
-        Returns:
-            Number of chunks deleted
-
-        """
-        if not self._is_initialized:
-            self.initialize()
-
-        try:
-            with self.transaction():
-                assert self.embedding_repository is not None
-                assert self.chunk_repository is not None
-                
-                # Delete embeddings first
-                self.embedding_repository.delete_embeddings_by_path(str(path))
-                
-                # Delete chunks and get count
-                return self.chunk_repository.delete_chunks_by_path(path)
-
-        except Exception as e:
-            logger.error(f"Failed to delete chunks by path: {e}")
-            return 0
 
     def get_chunk_count(self) -> int:
         """Get total number of chunks in the database."""
@@ -355,6 +330,79 @@ class DatabaseService:
     def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
         """Context manager exit."""
         self.close()
+    
+    def store_file_metadata(self, path: Path, file_size: int, file_modified_at: datetime, content_hash: str, chunk_count: int) -> None:
+        """Store or update file metadata for change detection.
+        
+        Args:
+            path: Path to the file
+            file_size: Size of the file in bytes
+            file_modified_at: File modification timestamp
+            content_hash: SHA-256 hash of file content
+            chunk_count: Number of chunks created from this file
+            
+        """
+        if not self._is_initialized:
+            self.initialize()
+            
+        conn = self._ensure_connection()
+        
+        # Use UPSERT pattern for file metadata
+        now = datetime.now()
+        conn.execute("""
+            INSERT INTO file_metadata (
+                path, last_processed_at, file_modified_at, file_size,
+                content_hash, chunk_count, processing_status, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 'completed', ?)
+            ON CONFLICT (path) DO UPDATE SET
+                last_processed_at = EXCLUDED.last_processed_at,
+                file_modified_at = EXCLUDED.file_modified_at,
+                file_size = EXCLUDED.file_size,
+                content_hash = EXCLUDED.content_hash,
+                chunk_count = EXCLUDED.chunk_count,
+                processing_status = 'completed',
+                updated_at = ?,
+                error_message = NULL
+        """, [str(path), now, file_modified_at, file_size, content_hash, chunk_count, now, now])
+        
+        logger.debug(f"Updated file metadata for {path}")
+    
+    def delete_chunks_by_path(self, path: Path) -> int:
+        """Delete all chunks for a specific file path.
+        
+        Args:
+            path: Path to the file whose chunks should be deleted
+            
+        Returns:
+            Number of chunks deleted
+            
+        """
+        if not self._is_initialized:
+            self.initialize()
+            
+        conn = self._ensure_connection()
+        
+        # Delete embeddings first (due to foreign key constraint)
+        conn.execute("""
+            DELETE FROM embeddings
+            WHERE chunk_id IN (
+                SELECT id FROM chunks WHERE path = ?
+            )
+        """, [str(path)])
+        
+        # Delete chunks and get count
+        result = conn.execute("SELECT COUNT(*) FROM chunks WHERE path = ?", [str(path)])
+        row = result.fetchone()
+        deleted_count = row[0] if row else 0
+        
+        if deleted_count > 0:
+            conn.execute("DELETE FROM chunks WHERE path = ?", [str(path)])
+        
+        # Delete file metadata
+        conn.execute("DELETE FROM file_metadata WHERE path = ?", [str(path)])
+        
+        logger.info(f"Deleted {deleted_count} chunks for path {path}")
+        return deleted_count
     
     def _ensure_connection(self) -> DuckDBPyConnection:
         """Ensure database connection is available (backward compatibility)."""

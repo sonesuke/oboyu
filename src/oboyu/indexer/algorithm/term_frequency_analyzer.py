@@ -7,7 +7,7 @@ for documents using tokenization services.
 import logging
 from typing import Dict, Set
 
-from oboyu.retriever.services.tokenizer import TokenizerService
+from oboyu.common.services import TokenizerService
 
 logger = logging.getLogger(__name__)
 

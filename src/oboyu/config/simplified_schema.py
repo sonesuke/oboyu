@@ -41,7 +41,7 @@ class SimplifiedIndexerConfig(BaseModel):
 
     @field_validator('chunk_overlap')
     @classmethod
-    def validate_chunk_overlap(cls, v: int, values: Any) -> int:
+    def validate_chunk_overlap(cls, v: int) -> int:
         """Ensure chunk_overlap is less than chunk_size."""
         # Note: This validation is also done at the model level in model_validator
         return v
@@ -174,79 +174,88 @@ class BackwardCompatibilityMapper:
     @classmethod
     def migrate_config(cls, old_config: Dict[str, Any]) -> SimplifiedConfig:
         """Migrate old configuration to simplified structure with warnings."""
-        # Track which deprecated options were found
-        found_deprecated = []
+        found_deprecated: list[tuple[str, str]] = []
+        new_config_data: dict[str, Any] = {"indexer": {}, "crawler": {}, "query": {}}
         
-        # Extract essential values from old config
-        new_config_data = {
-            "indexer": {},
-            "crawler": {},
-            "query": {}
-        }
-        
-        # Handle indexer section
-        if "indexer" in old_config:
-            indexer_data = old_config["indexer"]
-            
-            # Keep essential indexer options
-            if "db_path" in indexer_data:
-                new_config_data["indexer"]["db_path"] = indexer_data["db_path"]
-            if "chunk_size" in indexer_data:
-                new_config_data["indexer"]["chunk_size"] = indexer_data["chunk_size"]
-            if "chunk_overlap" in indexer_data:
-                new_config_data["indexer"]["chunk_overlap"] = indexer_data["chunk_overlap"]
-            if "embedding_model" in indexer_data:
-                new_config_data["indexer"]["embedding_model"] = indexer_data["embedding_model"]
-            if "use_reranker" in indexer_data:
-                new_config_data["indexer"]["use_reranker"] = indexer_data["use_reranker"]
-                
-            # Check for deprecated options
-            for key in indexer_data:
-                deprecated_key = f"indexer.{key}"
-                if deprecated_key in cls.DEPRECATED_MAPPINGS:
-                    found_deprecated.append((deprecated_key, cls.DEPRECATED_MAPPINGS[deprecated_key]))
-        
-        # Handle crawler section
-        if "crawler" in old_config:
-            crawler_data = old_config["crawler"]
-            
-            # Keep essential crawler options
-            if "include_patterns" in crawler_data:
-                new_config_data["crawler"]["include_patterns"] = crawler_data["include_patterns"]
-            if "exclude_patterns" in crawler_data:
-                new_config_data["crawler"]["exclude_patterns"] = crawler_data["exclude_patterns"]
-                
-            # Check for deprecated options
-            for key in crawler_data:
-                deprecated_key = f"crawler.{key}"
-                if deprecated_key in cls.DEPRECATED_MAPPINGS:
-                    found_deprecated.append((deprecated_key, cls.DEPRECATED_MAPPINGS[deprecated_key]))
-        
-        # Handle query section
-        if "query" in old_config:
-            query_data = old_config["query"]
-            
-            # Keep essential query options
-            if "default_mode" in query_data:
-                new_config_data["query"]["default_mode"] = query_data["default_mode"]
-            if "top_k" in query_data:
-                new_config_data["query"]["top_k"] = query_data["top_k"]
-                
-            # Check for deprecated options
-            for key in query_data:
-                deprecated_key = f"query.{key}"
-                if deprecated_key in cls.DEPRECATED_MAPPINGS:
-                    found_deprecated.append((deprecated_key, cls.DEPRECATED_MAPPINGS[deprecated_key]))
-        
-        # Issue warnings for deprecated options
-        if found_deprecated:
-            warning_message = "The following configuration options have been deprecated and removed:\n"
-            for option, replacement in found_deprecated:
-                warning_message += f"  - {option}: {replacement}\n"
-            warning_message += "\nYour configuration will be automatically migrated. Update your config file to remove these warnings."
-            warnings.warn(warning_message, DeprecationWarning, stacklevel=2)
+        cls._migrate_indexer_section(old_config, new_config_data, found_deprecated)
+        cls._migrate_crawler_section(old_config, new_config_data, found_deprecated)
+        cls._migrate_query_section(old_config, new_config_data, found_deprecated)
+        cls._warn_deprecated_options(found_deprecated)
         
         return SimplifiedConfig.from_dict(new_config_data)
+    
+    @classmethod
+    def _migrate_indexer_section(cls, old_config: Dict[str, Any],
+                                new_config_data: Dict[str, Any],
+                                found_deprecated: list[tuple[str, str]]) -> None:
+        """Migrate indexer section of configuration."""
+        if "indexer" not in old_config:
+            return
+            
+        indexer_data = old_config["indexer"]
+        essential_keys = ["db_path", "chunk_size", "chunk_overlap", "embedding_model", "use_reranker"]
+        
+        for key in essential_keys:
+            if key in indexer_data:
+                new_config_data["indexer"][key] = indexer_data[key]
+        
+        cls._check_deprecated_options(indexer_data, "indexer", found_deprecated)
+    
+    @classmethod
+    def _migrate_crawler_section(cls, old_config: Dict[str, Any],
+                                new_config_data: Dict[str, Any],
+                                found_deprecated: list[tuple[str, str]]) -> None:
+        """Migrate crawler section of configuration."""
+        if "crawler" not in old_config:
+            return
+            
+        crawler_data = old_config["crawler"]
+        essential_keys = ["include_patterns", "exclude_patterns"]
+        
+        for key in essential_keys:
+            if key in crawler_data:
+                new_config_data["crawler"][key] = crawler_data[key]
+        
+        cls._check_deprecated_options(crawler_data, "crawler", found_deprecated)
+    
+    @classmethod
+    def _migrate_query_section(cls, old_config: Dict[str, Any],
+                              new_config_data: Dict[str, Any],
+                              found_deprecated: list[tuple[str, str]]) -> None:
+        """Migrate query section of configuration."""
+        if "query" not in old_config:
+            return
+            
+        query_data = old_config["query"]
+        essential_keys = ["default_mode", "top_k"]
+        
+        for key in essential_keys:
+            if key in query_data:
+                new_config_data["query"][key] = query_data[key]
+        
+        cls._check_deprecated_options(query_data, "query", found_deprecated)
+    
+    @classmethod
+    def _check_deprecated_options(cls, section_data: Dict[str, Any],
+                                 section_name: str,
+                                 found_deprecated: list[tuple[str, str]]) -> None:
+        """Check for deprecated options in a config section."""
+        for key in section_data:
+            deprecated_key = f"{section_name}.{key}"
+            if deprecated_key in cls.DEPRECATED_MAPPINGS:
+                found_deprecated.append((deprecated_key, cls.DEPRECATED_MAPPINGS[deprecated_key]))
+    
+    @classmethod
+    def _warn_deprecated_options(cls, found_deprecated: list[tuple[str, str]]) -> None:
+        """Issue warnings for deprecated options."""
+        if not found_deprecated:
+            return
+            
+        warning_message = "The following configuration options have been deprecated and removed:\n"
+        for option, replacement in found_deprecated:
+            warning_message += f"  - {option}: {replacement}\n"
+        warning_message += "\nYour configuration will be automatically migrated. Update your config file to remove these warnings."
+        warnings.warn(warning_message, DeprecationWarning, stacklevel=2)
 
 
 # Auto-optimization functions for removed parameters
