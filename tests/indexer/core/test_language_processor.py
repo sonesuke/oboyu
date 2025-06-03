@@ -25,7 +25,7 @@ class TestLanguageProcessor:
         result = processor.prepare_text(text, "unknown")
         assert result == text
 
-    @patch("oboyu.indexer.core.language_processor.process_japanese_text")
+    @patch("oboyu.crawler.services.encoding_detector.EncodingDetector.process_japanese_text")
     def test_prepare_text_japanese(self, mock_process_japanese: MagicMock) -> None:
         """Test that Japanese text is processed correctly."""
         processor = LanguageProcessor()

@@ -29,6 +29,9 @@ class HybridSearchCombiner:
             bm25_weight: DEPRECATED - RRF doesn't use weights
 
         """
+        if rrf_k <= 0:
+            raise ValueError("rrf_k must be positive")
+        
         self.rrf_k = rrf_k
         self.score_normalizer = score_normalizer
         

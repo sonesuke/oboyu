@@ -7,7 +7,7 @@ for embedding generation with special handling for Japanese content.
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from oboyu.common.types import Chunk
 
@@ -191,7 +191,7 @@ class DocumentProcessor:
 
 
 def chunk_documents(
-    documents: List[Tuple[Path, str, str, str, Dict[str, object]]],
+    documents: Union[List[Tuple[Path, str, str, str, Dict[str, object]]], List[Dict[str, object]]],
     chunk_size: int = 1024,
     chunk_overlap: int = 256,
     document_prefix: str = "検索文書: ",
@@ -199,7 +199,7 @@ def chunk_documents(
     """Process multiple documents into chunks.
 
     Args:
-        documents: List of (path, content, title, language, metadata) tuples
+        documents: List of (path, content, title, language, metadata) tuples or list of document dicts
         chunk_size: Maximum size of each chunk in characters
         chunk_overlap: Overlap between consecutive chunks in characters
         document_prefix: Prefix to add to document chunks for embedding
@@ -215,7 +215,22 @@ def chunk_documents(
     )
 
     all_chunks = []
-    for path, content, title, language, metadata in documents:
+    
+    for doc in documents:
+        if isinstance(doc, dict):
+            # Handle dictionary format
+            path = Path(str(doc["path"]))
+            content = str(doc["content"])
+            title = str(doc["title"])
+            language = str(doc["language"])
+            metadata = doc.get("metadata", {})
+            # Ensure metadata is the right type
+            if not isinstance(metadata, dict):
+                metadata = {}
+        else:
+            # Handle tuple format
+            path, content, title, language, metadata = doc
+            
         chunks = processor.process_document(path, content, title, language, metadata)
         all_chunks.extend(chunks)
 

@@ -4,13 +4,29 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from oboyu.mcp.context import mcp
-from oboyu.mcp.server import get_indexer, search, get_index_info, index_directory
+from oboyu.mcp.server import get_indexer, get_retriever, search, get_index_info, index_directory
 
 
 @pytest.fixture
 def mock_indexer():
     """Create a mock indexer for testing."""
     indexer = MagicMock()
+    
+    # Setup the database statistics
+    db_stats = {
+        "indexed_paths": 10,
+        "total_chunks": 50,
+        "embedding_model": "test-model",
+    }
+    indexer.get_stats.return_value = db_stats
+    
+    return indexer
+
+
+@pytest.fixture
+def mock_retriever():
+    """Create a mock retriever for testing."""
+    retriever = MagicMock()
     
     # Mock search results
     search_result = MagicMock()
@@ -24,31 +40,23 @@ def mock_indexer():
     search_result.chunk_index = 1
     
     # Setup the search method to return the mock results
-    indexer.search.return_value = [search_result]
+    retriever.search.return_value = [search_result]
     
-    # Setup the database statistics
-    db_stats = {
-        "indexed_paths": 10,
-        "total_chunks": 50,
-        "embedding_model": "test-model",
-    }
-    indexer.get_stats.return_value = db_stats
-    
-    return indexer
+    return retriever
 
 
-@patch("oboyu.mcp.server.get_indexer")
-def test_search(mock_get_indexer, mock_indexer):
+@patch("oboyu.mcp.server.get_retriever")
+def test_search(mock_get_retriever, mock_retriever):
     """Test the search tool function."""
     # Setup the mock
-    mock_get_indexer.return_value = mock_indexer
+    mock_get_retriever.return_value = mock_retriever
     
     # Call the function
     result = search("test query", top_k=5)
     
-    # Verify the indexer was called with correct parameters
-    mock_get_indexer.assert_called_once_with(None)
-    mock_indexer.search.assert_called_once_with("test query", limit=5, mode="hybrid", language_filter=None, filters=None)
+    # Verify the retriever was called with correct parameters
+    mock_get_retriever.assert_called_once_with(None)
+    mock_retriever.search.assert_called_once_with("test query", limit=5, mode="hybrid", language_filter=None, filters=None)
     
     # Check the response format
     assert "results" in result
@@ -65,31 +73,31 @@ def test_search(mock_get_indexer, mock_indexer):
     assert first_result["metadata"] == {"source": "test"}
 
 
-@patch("oboyu.mcp.server.get_indexer")
-def test_search_with_language_filter(mock_get_indexer, mock_indexer):
+@patch("oboyu.mcp.server.get_retriever")
+def test_search_with_language_filter(mock_get_retriever, mock_retriever):
     """Test the search tool function with language filter."""
     # Setup the mock
-    mock_get_indexer.return_value = mock_indexer
+    mock_get_retriever.return_value = mock_retriever
     
     # Call the function with language filter
     result = search("test query", top_k=5, language="ja")
     
-    # Verify the indexer was called with correct parameters
-    mock_get_indexer.assert_called_once_with(None)
-    mock_indexer.search.assert_called_once_with("test query", limit=5, mode="hybrid", language_filter="ja", filters=None)
+    # Verify the retriever was called with correct parameters
+    mock_get_retriever.assert_called_once_with(None)
+    mock_retriever.search.assert_called_once_with("test query", limit=5, mode="hybrid", language_filter="ja", filters=None)
 
 
-@patch("oboyu.mcp.server.get_indexer")
-def test_search_with_custom_db_path(mock_get_indexer, mock_indexer):
+@patch("oboyu.mcp.server.get_retriever")
+def test_search_with_custom_db_path(mock_get_retriever, mock_retriever):
     """Test the search tool function with custom database path."""
     # Setup the mock
-    mock_get_indexer.return_value = mock_indexer
+    mock_get_retriever.return_value = mock_retriever
     
     # Call the function with custom db_path
     result = search("test query", db_path="/custom/path.db")
     
-    # Verify the indexer was called with correct parameters
-    mock_get_indexer.assert_called_once_with("/custom/path.db")
+    # Verify the retriever was called with correct parameters
+    mock_get_retriever.assert_called_once_with("/custom/path.db")
 
 
 @patch("oboyu.mcp.server.get_indexer")
@@ -139,18 +147,26 @@ def test_index_directory(mock_get_indexer, mock_indexer):
 
 
 
-@patch("oboyu.mcp.server.get_indexer")
-def test_get_index_info(mock_get_indexer, mock_indexer):
+@patch("oboyu.mcp.server.get_retriever")
+def test_get_index_info(mock_get_retriever, mock_retriever):
     """Test the get_index_info tool function."""
-    # Setup the mock
-    mock_get_indexer.return_value = mock_indexer
+    # Setup the mock retriever
+    mock_get_retriever.return_value = mock_retriever
+    
+    # Setup mock config and stats
+    mock_retriever.config.processing.db_path = "/test/path.db"
+    mock_retriever.get_stats.return_value = {
+        "indexed_paths": 10,
+        "total_chunks": 50,
+        "embedding_model": "test-model",
+    }
     
     # Call the function
     result = get_index_info()
     
-    # Verify the indexer was called
-    mock_get_indexer.assert_called_once_with(None)
-    mock_indexer.get_stats.assert_called_once()
+    # Verify the retriever was called
+    mock_get_retriever.assert_called_once_with(None)
+    mock_retriever.get_stats.assert_called_once()
     
     # Check the response format
     assert "document_count" in result

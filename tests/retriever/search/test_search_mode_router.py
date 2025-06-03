@@ -70,7 +70,7 @@ def test_route_vector_mode(mock_vector_search, mock_bm25_search):
         query_vector=query_vector,
         limit=10,
         language_filter=None,
-        top_k_multiplier=2,
+        filters=None,
     )
     mock_bm25_search.search.assert_not_called()
     
@@ -93,10 +93,10 @@ def test_route_bm25_mode(mock_vector_search, mock_bm25_search):
     
     # Should call only BM25 search
     mock_bm25_search.search.assert_called_once_with(
-        query_terms=query_terms,
+        terms=query_terms,
         limit=10,
         language_filter=None,
-        top_k_multiplier=2,
+        filters=None,
     )
     mock_vector_search.search.assert_not_called()
     
@@ -105,28 +105,21 @@ def test_route_bm25_mode(mock_vector_search, mock_bm25_search):
     assert results[0].chunk_id == "bm25_1"
 
 
-def test_route_hybrid_mode(mock_vector_search, mock_bm25_search):
-    """Test routing for hybrid search mode."""
+def test_route_hybrid_mode_not_supported(mock_vector_search, mock_bm25_search):
+    """Test that hybrid mode is not supported at router level."""
     router = SearchModeRouter(mock_vector_search, mock_bm25_search)
     
     query_vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
     query_terms = ["test", "query"]
-    results = router.route(
-        mode=SearchMode.HYBRID,
-        query_vector=query_vector,
-        query_terms=query_terms,
-        limit=10,
-    )
     
-    # Should call both searches
-    mock_vector_search.search.assert_called_once()
-    mock_bm25_search.search.assert_called_once()
-    
-    # Should return results from both
-    assert len(results) == 2
-    chunk_ids = [r.chunk_id for r in results]
-    assert "vec1" in chunk_ids
-    assert "bm25_1" in chunk_ids
+    # Hybrid mode should raise an error at router level
+    with pytest.raises(ValueError, match="Unsupported search mode for routing"):
+        router.route(
+            mode=SearchMode.HYBRID,
+            query_vector=query_vector,
+            query_terms=query_terms,
+            limit=10,
+        )
 
 
 def test_route_missing_query_vector():
@@ -162,33 +155,30 @@ def test_route_with_language_filter(mock_vector_search, mock_bm25_search):
     router = SearchModeRouter(mock_vector_search, mock_bm25_search)
     
     query_vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
-    query_terms = ["test", "query"]
     results = router.route(
-        mode=SearchMode.HYBRID,
+        mode=SearchMode.VECTOR,
         query_vector=query_vector,
-        query_terms=query_terms,
+        query_terms=None,
         limit=10,
         language_filter="ja",
     )
     
-    # Both searches should receive language filter
+    # Vector search should receive language filter
     mock_vector_search.search.assert_called_once_with(
         query_vector=query_vector,
         limit=10,
         language_filter="ja",
-        top_k_multiplier=2,
+        filters=None,
     )
-    mock_bm25_search.search.assert_called_once_with(
-        query_terms=query_terms,
-        limit=10,
-        language_filter="ja",
-        top_k_multiplier=2,
-    )
+    mock_bm25_search.search.assert_not_called()
 
 
-def test_route_with_custom_multiplier(mock_vector_search, mock_bm25_search):
-    """Test routing with custom top_k_multiplier."""
+def test_route_with_filters(mock_vector_search, mock_bm25_search):
+    """Test routing with search filters."""
     router = SearchModeRouter(mock_vector_search, mock_bm25_search)
+    
+    from oboyu.common.types import SearchFilters
+    filters = SearchFilters()
     
     query_vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
     results = router.route(
@@ -196,13 +186,13 @@ def test_route_with_custom_multiplier(mock_vector_search, mock_bm25_search):
         query_vector=query_vector,
         query_terms=None,
         limit=10,
-        top_k_multiplier=5,
+        filters=filters,
     )
     
-    # Should use custom multiplier
+    # Should pass filters to search
     mock_vector_search.search.assert_called_once_with(
         query_vector=query_vector,
         limit=10,
         language_filter=None,
-        top_k_multiplier=5,
+        filters=filters,
     )

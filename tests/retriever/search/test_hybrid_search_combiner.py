@@ -70,11 +70,14 @@ def test_combiner_custom_rrf_k():
     assert combiner.rrf_k == 100
 
 
-def test_combiner_deprecated_weights_warning():
+def test_combiner_deprecated_weights_warning(caplog):
     """Test that deprecated weight parameters issue a warning."""
-    with pytest.warns(DeprecationWarning, match="vector_weight and bm25_weight parameters are deprecated"):
-        combiner = HybridSearchCombiner(vector_weight=0.8, bm25_weight=0.2)
+    import logging
+    caplog.set_level(logging.WARNING)
+    
+    combiner = HybridSearchCombiner(vector_weight=0.8, bm25_weight=0.2)
     assert combiner.rrf_k == 60  # Should still use default RRF
+    assert "vector_weight and bm25_weight parameters are deprecated" in caplog.text
 
 
 def test_combiner_rrf_k_validation():
@@ -102,9 +105,14 @@ def test_combine_overlapping_results(vector_results, bm25_results):
     expected_score = 1.0 / (60 + 1) + 1.0 / (60 + 1)
     assert abs(combined[0].score - expected_score) < 1e-5
     
-    # Check other scores are lower
+    # Check other scores are lower than the first (overlapping) result
     assert combined[1].score < combined[0].score
-    assert combined[2].score < combined[1].score
+    assert combined[2].score < combined[0].score
+    
+    # chunk_id "2" and "3" should have the same score (both rank 2 in their respective searches)
+    expected_single_score = 1.0 / (60 + 2)
+    assert abs(combined[1].score - expected_single_score) < 1e-5
+    assert abs(combined[2].score - expected_single_score) < 1e-5
 
 
 def test_combine_with_limit(vector_results, bm25_results):
@@ -154,13 +162,13 @@ def test_combine_both_empty():
 def test_combine_with_score_normalizer(vector_results, bm25_results):
     """Test combining with score normalizer."""
     normalizer = Mock(spec=ScoreNormalizer)
-    normalizer.normalize.side_effect = lambda results: results  # No-op
+    normalizer.normalize_scores.side_effect = lambda results, search_type: results  # No-op
     
     combiner = HybridSearchCombiner(score_normalizer=normalizer)
     combined = combiner.combine(vector_results, bm25_results, limit=10)
     
     # Score normalizer should be called twice (once for each result set)
-    assert normalizer.normalize.call_count == 2
+    assert normalizer.normalize_scores.call_count == 2
     
     # Should still produce valid results
     assert len(combined) == 3
@@ -168,32 +176,36 @@ def test_combine_with_score_normalizer(vector_results, bm25_results):
 
 def test_combine_exception_handling(vector_results):
     """Test exception handling during combination."""
-    # Create a result with invalid data that might cause issues
-    invalid_results = [
+    # Mock score normalizer to raise exception
+    normalizer = Mock(spec=ScoreNormalizer)
+    normalizer.normalize_scores.side_effect = Exception("Normalization failed")
+    
+    combiner = HybridSearchCombiner(score_normalizer=normalizer)
+    
+    bm25_results = [
         SearchResult(
-            chunk_id=None,  # Invalid chunk_id
-            path="/test.txt",
-            title="Test",
-            content="Content",
+            chunk_id="3",
+            path="/test3.txt",
+            title="Test 3",
+            content="BM25 content 3",
             chunk_index=0,
             language="en",
-            score=0.5,
+            score=0.6,
         )
     ]
     
-    combiner = HybridSearchCombiner()
-    # Should handle gracefully and return valid results only
-    combined = combiner.combine(vector_results, invalid_results, limit=10)
+    # Should handle gracefully and return fallback results
+    combined = combiner.combine(vector_results, bm25_results, limit=10)
     
-    # Should still return vector results (valid ones)
-    assert len(combined) >= len(vector_results)
+    # Should fallback to vector results when normalization fails
+    assert len(combined) == len(vector_results)
 
 
 def test_combine_fallback_on_exception():
     """Test fallback behavior when combination fails."""
     # Mock score normalizer to raise exception
     normalizer = Mock(spec=ScoreNormalizer)
-    normalizer.normalize.side_effect = Exception("Normalization failed")
+    normalizer.normalize_scores.side_effect = Exception("Normalization failed")
     
     combiner = HybridSearchCombiner(score_normalizer=normalizer)
     

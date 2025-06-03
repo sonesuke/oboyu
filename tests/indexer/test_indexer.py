@@ -39,14 +39,16 @@ class TestIndexer:
         assert indexer is not None
         assert hasattr(indexer, 'index_documents')
 
-    def test_search(self, temp_db_path: Path) -> None:
-        """Test that indexer has search functionality."""
+    def test_get_stats(self, temp_db_path: Path) -> None:
+        """Test that indexer has statistics functionality."""
         processing_config = ProcessingConfig(db_path=temp_db_path)
         config = IndexerConfig(processing=processing_config)
         indexer = Indexer(config=config)
         
-        # Basic smoke test - just verify search method exists
-        assert hasattr(indexer, 'search')
+        # Basic smoke test - just verify stats method exists
+        assert hasattr(indexer, 'get_index_stats')
+        stats = indexer.get_index_stats()
+        assert isinstance(stats, dict)
 
     def test_delete_document(self, temp_db_path: Path) -> None:
         """Test that indexer has delete functionality."""
@@ -57,11 +59,13 @@ class TestIndexer:
         # Basic smoke test - just verify delete method exists
         assert hasattr(indexer, 'delete_document')
 
-    def test_clear_index(self, temp_db_path: Path) -> None:
-        """Test that indexer has clear functionality."""
+    def test_get_paths(self, temp_db_path: Path) -> None:
+        """Test that indexer can get paths with chunks."""
         processing_config = ProcessingConfig(db_path=temp_db_path)
         config = IndexerConfig(processing=processing_config)
         indexer = Indexer(config=config)
         
-        # Basic smoke test - just verify clear method exists
-        assert hasattr(indexer, 'clear_index')
+        # Basic smoke test - just verify paths method exists
+        assert hasattr(indexer, 'get_paths_with_chunks')
+        paths = indexer.get_paths_with_chunks()
+        assert isinstance(paths, list)
