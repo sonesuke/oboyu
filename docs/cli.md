@@ -2,6 +2,35 @@
 
 This document describes the available command-line interface (CLI) commands for Oboyu.
 
+## Quick Command Reference
+
+| Command | Description | Common Options |
+|---------|-------------|----------------|
+| `oboyu version` | Display version information | - |
+| `oboyu mcp` | Start MCP server for AI integration | `--transport`, `--port` |
+| `oboyu clear` | Clear index database | `--force` |
+| `oboyu index <path>` | Index documents | `--force`, `--chunk-size`, `--include-patterns` |
+| `oboyu index manage status` | Show indexing status | `--detailed` |
+| `oboyu index manage diff` | Preview indexing changes | `--change-detection` |
+| `oboyu index manage clear` | Clear index data | `--force` |
+| `oboyu query <text>` | Search indexed documents | `--mode`, `--top-k`, `--rerank` |
+| `oboyu query --interactive` | Interactive search session | `--mode`, `--rerank` |
+
+### Common Workflows
+
+```bash
+# Quick start: Index a codebase and search
+oboyu index ~/projects/myapp --include-patterns "*.py,*.js"
+oboyu query "database connection" --top-k 10
+
+# Incremental updates with cleanup
+oboyu index ~/documents --cleanup-deleted
+oboyu index manage status ~/documents --detailed
+
+# Interactive exploration with reranking
+oboyu query --interactive --rerank --mode hybrid
+```
+
 ## Global Options
 
 The following options are available for all commands:
@@ -122,6 +151,41 @@ Options:
 - `--verify-integrity`: Verify file integrity using content hashes (slower but more accurate)
 - `--quiet-progress`, `-q`: Minimal progress output to avoid screen flickering
 
+#### Practical Examples
+
+**Index a Python codebase excluding tests and cache:**
+```bash
+oboyu index ~/projects/myapp \
+  --include-patterns "*.py" \
+  --exclude-patterns "*test*,*__pycache__*,*.pyc" \
+  --chunk-size 2048
+```
+
+**Index documentation with language detection:**
+```bash
+oboyu index ~/docs \
+  --include-patterns "*.md,*.rst,*.txt" \
+  --encoding-detection \
+  --chunk-overlap 512
+```
+
+**Fast incremental update for large repositories:**
+```bash
+# First time: full index with hash-based change detection
+oboyu index ~/large-repo --change-detection hash
+
+# Daily updates: incremental with cleanup
+oboyu index ~/large-repo --cleanup-deleted --quiet-progress
+```
+
+**Index multiple project directories:**
+```bash
+# Index several projects at once
+oboyu index ~/work/project1 ~/work/project2 ~/personal/blog \
+  --recursive \
+  --max-depth 5
+```
+
 ## Index Management Commands
 
 ### `oboyu index manage clear`
@@ -224,6 +288,47 @@ Options:
 - `--db-path`: Path to database file
 - `--rerank/--no-rerank`: Enable or disable reranking of search results - default: enabled
 - `--interactive`: Start interactive search session for continuous queries
+
+#### Query Examples
+
+**Search for function definitions in code:**
+```bash
+# Find function definitions with specific names
+oboyu query "def process_data" --mode bm25 --top-k 20
+
+# Search for class implementations
+oboyu query "class DatabaseConnection" --explain
+```
+
+**Multi-language search with reranking:**
+```bash
+# Search across English and Japanese content
+oboyu query "machine learning 機械学習" --rerank --top-k 10
+```
+
+**Export results for processing:**
+```bash
+# Get JSON output for scripting
+oboyu query "error handling" --format json | jq '.results[].file_path'
+
+# Save results to file
+oboyu query "TODO" --top-k 50 --format json > todos.json
+```
+
+**Fine-tuned hybrid search:**
+```bash
+# Emphasize semantic similarity
+oboyu query "authentication flow" \
+  --mode hybrid \
+  --vector-weight 0.9 \
+  --bm25-weight 0.1
+
+# Balance keyword and semantic search
+oboyu query "database optimization techniques" \
+  --mode hybrid \
+  --vector-weight 0.5 \
+  --bm25-weight 0.5
+```
 
 #### Interactive Mode
 
@@ -365,3 +470,536 @@ Interactive mode provides significant performance advantages:
 - **Parameter Tuning**: Testing different search modes and weights
 - **Large Datasets**: When model loading time becomes significant
 - **Iterative Refinement**: Progressively refining search queries
+
+## Exit Codes
+
+Oboyu uses standard exit codes to indicate the result of operations:
+
+| Code | Meaning | Description |
+|------|---------|-------------|
+| 0 | Success | Command completed successfully |
+| 1 | General Error | Unspecified error occurred |
+| 2 | Invalid Arguments | Command line arguments were invalid |
+| 3 | File Not Found | Specified file or directory doesn't exist |
+| 4 | Permission Denied | Insufficient permissions for operation |
+| 5 | Database Error | Database operation failed |
+| 6 | Index Error | Indexing operation failed |
+| 7 | Query Error | Search query failed |
+| 8 | Configuration Error | Invalid configuration |
+| 9 | Model Loading Error | Failed to load ML models |
+| 10 | Network Error | Network operation failed (MCP server) |
+
+### Using Exit Codes in Scripts
+
+```bash
+#!/bin/bash
+# Script that indexes and searches with error handling
+
+# Index documents
+if oboyu index ~/documents --quiet-progress; then
+    echo "Indexing successful"
+else
+    exit_code=$?
+    case $exit_code in
+        3) echo "Error: Directory not found" ;;
+        4) echo "Error: Permission denied" ;;
+        6) echo "Error: Indexing failed" ;;
+        *) echo "Error: Unknown error (code: $exit_code)" ;;
+    esac
+    exit $exit_code
+fi
+
+# Search with error handling
+oboyu query "important document" --format json > results.json
+if [ $? -eq 0 ]; then
+    echo "Found $(jq '.total' results.json) results"
+else
+    echo "Search failed"
+    exit 1
+fi
+```
+
+## Shell Completion
+
+Oboyu supports shell completion for bash, zsh, and fish shells to help you type commands faster.
+
+### Bash
+
+Add to your `~/.bashrc`:
+
+```bash
+# Oboyu bash completion
+eval "$(_OBOYU_COMPLETE=bash_source oboyu)"
+```
+
+Or create a completion file:
+
+```bash
+_OBOYU_COMPLETE=bash_source oboyu > ~/.local/share/bash-completion/completions/oboyu
+```
+
+### Zsh
+
+Add to your `~/.zshrc`:
+
+```zsh
+# Oboyu zsh completion
+eval "$(_OBOYU_COMPLETE=zsh_source oboyu)"
+```
+
+Or create a completion file:
+
+```zsh
+_OBOYU_COMPLETE=zsh_source oboyu > ~/.zfunc/_oboyu
+```
+
+Make sure `~/.zfunc` is in your `fpath`:
+
+```zsh
+fpath=(~/.zfunc $fpath)
+autoload -Uz compinit && compinit
+```
+
+### Fish
+
+Create a completion file:
+
+```fish
+_OBOYU_COMPLETE=fish_source oboyu > ~/.config/fish/completions/oboyu.fish
+```
+
+### Testing Completion
+
+After setting up completion, test it:
+
+```bash
+# Type and press TAB
+oboyu <TAB>
+oboyu index --<TAB>
+oboyu query --mode <TAB>
+```
+
+## Troubleshooting
+
+### Common CLI Errors and Solutions
+
+#### "Database locked" error
+
+**Problem:** Multiple Oboyu processes trying to access the same database.
+
+**Solution:**
+```bash
+# Find and kill other Oboyu processes
+ps aux | grep oboyu
+kill <PID>
+
+# Or use a different database
+oboyu index ~/docs --db-path ~/alternative.db
+```
+
+#### "Model loading failed" error
+
+**Problem:** ML models couldn't be downloaded or loaded.
+
+**Solution:**
+```bash
+# Clear model cache
+rm -rf ~/.cache/huggingface/hub/*oboyu*
+
+# Retry with verbose output
+oboyu query "test" --verbose
+
+# Use a different model
+oboyu index ~/docs --embedding-model sentence-transformers/all-MiniLM-L6-v2
+```
+
+#### "Out of memory" during indexing
+
+**Problem:** Large files causing memory issues.
+
+**Solution:**
+```bash
+# Reduce chunk size
+oboyu index ~/large-docs --chunk-size 512 --chunk-overlap 128
+
+# Process fewer files at once
+oboyu index ~/large-docs --max-depth 2
+
+# Use quiet progress to reduce memory overhead
+oboyu index ~/large-docs --quiet-progress
+```
+
+#### "Permission denied" errors
+
+**Problem:** Insufficient permissions for files or database.
+
+**Solution:**
+```bash
+# Check file permissions
+ls -la ~/.oboyu/
+
+# Fix database permissions
+chmod 644 ~/.oboyu/index.db
+
+# Use a different database location
+export OBOYU_DB_PATH=~/my-oboyu.db
+oboyu index ~/docs
+```
+
+#### Slow incremental indexing
+
+**Problem:** Incremental indexing taking too long.
+
+**Solution:**
+```bash
+# Check what would be updated
+oboyu index manage diff ~/docs
+
+# Use hash-based detection for accuracy
+oboyu index ~/docs --change-detection hash
+
+# Or use timestamp for speed
+oboyu index ~/docs --change-detection timestamp
+```
+
+## Tips and Tricks
+
+### Advanced Usage Patterns
+
+#### 1. Parallel Indexing of Multiple Projects
+
+```bash
+# Index multiple projects in parallel
+for dir in ~/projects/*; do
+    oboyu index "$dir" --db-path "${dir##*/}.db" &
+done
+wait
+
+# Merge databases (future feature)
+```
+
+#### 2. Scheduled Incremental Updates
+
+Create a cron job for automatic updates:
+
+```bash
+# Add to crontab -e
+# Update index every night at 2 AM
+0 2 * * * /usr/local/bin/oboyu index ~/documents --cleanup-deleted --quiet-progress
+```
+
+#### 3. Search Aliases for Common Queries
+
+Add to your shell configuration:
+
+```bash
+# Quick search functions
+alias todos='oboyu query "TODO|FIXME" --mode bm25 --top-k 50'
+alias errors='oboyu query "error|exception|traceback" --rerank'
+alias recent='oboyu query --interactive --mode hybrid'
+
+# Project-specific search
+function search_project() {
+    oboyu query "$1" --db-path ~/projects/${2:-current}.db
+}
+```
+
+#### 4. Integration with Development Tools
+
+```bash
+# Find and open files in editor
+oboyu query "$1" --format json | \
+    jq -r '.results[0].file_path' | \
+    xargs code
+
+# Search and preview with bat
+oboyu query "$1" --format json | \
+    jq -r '.results[].file_path' | \
+    xargs bat --paging=never
+```
+
+#### 5. Performance Optimization
+
+```bash
+# Benchmark different search modes
+time oboyu query "database connection" --mode vector --no-rerank
+time oboyu query "database connection" --mode bm25 --no-rerank
+time oboyu query "database connection" --mode hybrid --rerank
+
+# Profile indexing performance
+time oboyu index ~/large-codebase --force
+time oboyu index ~/large-codebase  # incremental
+```
+
+#### 6. Custom Database Management
+
+```bash
+# Maintain separate databases for different contexts
+export WORK_DB=~/.oboyu/work.db
+export PERSONAL_DB=~/.oboyu/personal.db
+
+# Work searches
+alias work-search='oboyu query --db-path $WORK_DB'
+alias work-index='oboyu index --db-path $WORK_DB'
+
+# Personal searches
+alias personal-search='oboyu query --db-path $PERSONAL_DB'
+alias personal-index='oboyu index --db-path $PERSONAL_DB'
+```
+
+## Using Oboyu in Scripts and Automation
+
+### Basic Script Template
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+# Oboyu automation script template
+OBOYU_DB="${OBOYU_DB:-$HOME/.oboyu/index.db}"
+LOG_FILE="${LOG_FILE:-/tmp/oboyu-automation.log}"
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+}
+
+# Function to safely index with retries
+index_with_retry() {
+    local path=$1
+    local max_retries=3
+    local retry=0
+    
+    while [ $retry -lt $max_retries ]; do
+        if oboyu index "$path" --quiet-progress --db-path "$OBOYU_DB"; then
+            log "Successfully indexed: $path"
+            return 0
+        else
+            retry=$((retry + 1))
+            log "Indexing failed (attempt $retry/$max_retries): $path"
+            sleep 5
+        fi
+    done
+    
+    log "ERROR: Failed to index after $max_retries attempts: $path"
+    return 1
+}
+
+# Function to search and process results
+search_and_process() {
+    local query=$1
+    local results_file="/tmp/oboyu-results-$$.json"
+    
+    if oboyu query "$query" --format json --top-k 20 > "$results_file"; then
+        # Process results with jq
+        jq -r '.results[] | "\(.score)\t\(.file_path)"' "$results_file" | \
+        while IFS=$'\t' read -r score path; do
+            log "Found: $path (score: $score)"
+            # Add your processing logic here
+        done
+        rm -f "$results_file"
+    else
+        log "ERROR: Search failed for query: $query"
+        return 1
+    fi
+}
+
+# Main execution
+main() {
+    log "Starting Oboyu automation"
+    
+    # Example: Index multiple directories
+    for dir in "$@"; do
+        index_with_retry "$dir"
+    done
+    
+    # Example: Run searches
+    search_and_process "TODO"
+    search_and_process "FIXME"
+    
+    log "Automation complete"
+}
+
+# Run main function with all arguments
+main "$@"
+```
+
+### CI/CD Integration
+
+```yaml
+# GitHub Actions example
+name: Code Search Index
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install Oboyu
+        run: |
+          pip install oboyu
+          oboyu version
+      
+      - name: Index codebase
+        run: |
+          oboyu index . \
+            --include-patterns "*.py,*.js,*.md" \
+            --exclude-patterns "node_modules/*,venv/*" \
+            --db-path ./search-index.db
+      
+      - name: Run quality checks
+        run: |
+          # Search for TODOs
+          oboyu query "TODO" --format json > todos.json
+          
+          # Check for security issues
+          oboyu query "password|secret|api_key" --format json > security-check.json
+          
+          # Generate report
+          python scripts/analyze_search_results.py
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: search-results
+          path: |
+            search-index.db
+            todos.json
+            security-check.json
+```
+
+### Docker Integration
+
+```dockerfile
+# Dockerfile for Oboyu service
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install Oboyu
+RUN pip install oboyu
+
+# Create volume for persistent database
+VOLUME ["/data"]
+
+# Copy indexing script
+COPY index.sh /app/
+
+# Default command
+CMD ["oboyu", "mcp", "--db-path", "/data/index.db"]
+```
+
+```bash
+# Docker compose example
+# docker-compose.yml
+version: '3.8'
+
+services:
+  oboyu:
+    build: .
+    volumes:
+      - oboyu-data:/data
+      - ./documents:/documents:ro
+    environment:
+      - OBOYU_DB_PATH=/data/index.db
+    command: >
+      sh -c "oboyu index /documents --quiet-progress &&
+             oboyu mcp --db-path /data/index.db"
+
+volumes:
+  oboyu-data:
+```
+
+### Monitoring Script
+
+```python
+#!/usr/bin/env python3
+"""Monitor Oboyu index health and performance"""
+
+import json
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+
+def run_oboyu_command(args):
+    """Run an oboyu command and return output"""
+    result = subprocess.run(
+        ["oboyu"] + args,
+        capture_output=True,
+        text=True
+    )
+    return result.stdout, result.returncode
+
+def check_index_health(db_path):
+    """Check index health and statistics"""
+    # Get index status
+    output, code = run_oboyu_command([
+        "index", "manage", "status", ".", 
+        "--db-path", db_path,
+        "--detailed"
+    ])
+    
+    if code != 0:
+        print(f"Error checking index status: {code}")
+        return False
+    
+    # Run test queries
+    test_queries = ["test", "function", "class"]
+    for query in test_queries:
+        output, code = run_oboyu_command([
+            "query", query,
+            "--db-path", db_path,
+            "--format", "json",
+            "--top-k", "1"
+        ])
+        
+        if code != 0:
+            print(f"Query '{query}' failed with code: {code}")
+            return False
+            
+        try:
+            results = json.loads(output)
+            print(f"Query '{query}': {results.get('total', 0)} results")
+        except json.JSONDecodeError:
+            print(f"Invalid JSON response for query '{query}'")
+            return False
+    
+    return True
+
+def main():
+    db_path = sys.argv[1] if len(sys.argv) > 1 else "~/.oboyu/index.db"
+    db_path = Path(db_path).expanduser()
+    
+    print(f"Monitoring Oboyu index: {db_path}")
+    print(f"Timestamp: {datetime.now().isoformat()}")
+    print("-" * 50)
+    
+    if not db_path.exists():
+        print(f"ERROR: Database not found: {db_path}")
+        sys.exit(1)
+    
+    # Check database size
+    size_mb = db_path.stat().st_size / 1024 / 1024
+    print(f"Database size: {size_mb:.2f} MB")
+    
+    # Run health checks
+    if check_index_health(str(db_path)):
+        print("\nHealth check: PASSED")
+    else:
+        print("\nHealth check: FAILED")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+```
