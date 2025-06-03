@@ -1,5 +1,6 @@
 """Tests for MCP server snippet integration."""
 
+import logging
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock
@@ -15,8 +16,8 @@ class TestSnippetIntegration:
 
     def test_search_with_snippet_config(self, monkeypatch):
         """Test search with snippet configuration."""
-        # Mock indexer and search results
-        mock_indexer = Mock()
+        # Mock retriever and search results
+        mock_retriever = Mock()
         mock_search_result = SearchResult(
             chunk_id="test_chunk",
             path="/test/path.txt",
@@ -27,13 +28,13 @@ class TestSnippetIntegration:
             metadata={},
             score=0.85
         )
-        mock_indexer.search.return_value = [mock_search_result]
+        mock_retriever.search.return_value = [mock_search_result]
         
-        # Mock get_indexer function
-        def mock_get_indexer(db_path=None):
-            return mock_indexer
+        # Mock get_retriever function
+        def mock_get_retriever(db_path=None):
+            return mock_retriever
         
-        monkeypatch.setattr("oboyu.mcp.server.get_indexer", mock_get_indexer)
+        monkeypatch.setattr("oboyu.mcp.server.get_retriever", mock_get_retriever)
         
         # Test with snippet configuration
         snippet_config = {
@@ -59,8 +60,8 @@ class TestSnippetIntegration:
 
     def test_search_without_snippet_config(self, monkeypatch):
         """Test search without snippet configuration (backward compatibility)."""
-        # Mock indexer and search results
-        mock_indexer = Mock()
+        # Mock retriever and search results
+        mock_retriever = Mock()
         original_content = "This is the original content without modification."
         mock_search_result = SearchResult(
             chunk_id="test_chunk",
@@ -72,13 +73,13 @@ class TestSnippetIntegration:
             metadata={},
             score=0.85
         )
-        mock_indexer.search.return_value = [mock_search_result]
+        mock_retriever.search.return_value = [mock_search_result]
         
-        # Mock get_indexer function
-        def mock_get_indexer(db_path=None):
-            return mock_indexer
+        # Mock get_retriever function
+        def mock_get_retriever(db_path=None):
+            return mock_retriever
         
-        monkeypatch.setattr("oboyu.mcp.server.get_indexer", mock_get_indexer)
+        monkeypatch.setattr("oboyu.mcp.server.get_retriever", mock_get_retriever)
         
         result = search(query="test query")
         
@@ -91,8 +92,11 @@ class TestSnippetIntegration:
 
     def test_search_with_invalid_snippet_config(self, monkeypatch, caplog):
         """Test search with invalid snippet configuration."""
-        # Mock indexer and search results
-        mock_indexer = Mock()
+        # Set log level to capture warnings
+        caplog.set_level(logging.WARNING)
+        
+        # Mock retriever and search results
+        mock_retriever = Mock()
         original_content = "This is the original content."
         mock_search_result = SearchResult(
             chunk_id="test_chunk",
@@ -104,13 +108,13 @@ class TestSnippetIntegration:
             metadata={},
             score=0.85
         )
-        mock_indexer.search.return_value = [mock_search_result]
+        mock_retriever.search.return_value = [mock_search_result]
         
-        # Mock get_indexer function
-        def mock_get_indexer(db_path=None):
-            return mock_indexer
+        # Mock get_retriever function
+        def mock_get_retriever(db_path=None):
+            return mock_retriever
         
-        monkeypatch.setattr("oboyu.mcp.server.get_indexer", mock_get_indexer)
+        monkeypatch.setattr("oboyu.mcp.server.get_retriever", mock_get_retriever)
         
         # Test with invalid snippet configuration
         invalid_snippet_config = {
@@ -135,8 +139,8 @@ class TestSnippetIntegration:
 
     def test_search_with_japanese_snippet_config(self, monkeypatch):
         """Test search with Japanese-aware snippet configuration."""
-        # Mock indexer and search results
-        mock_indexer = Mock()
+        # Mock retriever and search results
+        mock_retriever = Mock()
         japanese_content = "これは機械学習についての重要な文書です。人工知能技術は急速に発展しています。この分野では多くの研究が行われています。データサイエンスの応用も広がっています。"
         mock_search_result = SearchResult(
             chunk_id="test_chunk",
@@ -148,13 +152,13 @@ class TestSnippetIntegration:
             metadata={},
             score=0.85
         )
-        mock_indexer.search.return_value = [mock_search_result]
+        mock_retriever.search.return_value = [mock_search_result]
         
-        # Mock get_indexer function
-        def mock_get_indexer(db_path=None):
-            return mock_indexer
+        # Mock get_retriever function
+        def mock_get_retriever(db_path=None):
+            return mock_retriever
         
-        monkeypatch.setattr("oboyu.mcp.server.get_indexer", mock_get_indexer)
+        monkeypatch.setattr("oboyu.mcp.server.get_retriever", mock_get_retriever)
         
         # Test with Japanese-aware snippet configuration
         snippet_config = {
@@ -183,8 +187,8 @@ class TestSnippetIntegration:
 
     def test_search_with_multi_level_snippet_config(self, monkeypatch):
         """Test search with multi-level snippet configuration."""
-        # Mock indexer and search results
-        mock_indexer = Mock()
+        # Mock retriever and search results
+        mock_retriever = Mock()
         long_content = "This is a very long document about machine learning and artificial intelligence. " * 10
         mock_search_result = SearchResult(
             chunk_id="test_chunk",
@@ -196,13 +200,13 @@ class TestSnippetIntegration:
             metadata={},
             score=0.85
         )
-        mock_indexer.search.return_value = [mock_search_result]
+        mock_retriever.search.return_value = [mock_search_result]
         
-        # Mock get_indexer function
-        def mock_get_indexer(db_path=None):
-            return mock_indexer
+        # Mock get_retriever function
+        def mock_get_retriever(db_path=None):
+            return mock_retriever
         
-        monkeypatch.setattr("oboyu.mcp.server.get_indexer", mock_get_indexer)
+        monkeypatch.setattr("oboyu.mcp.server.get_retriever", mock_get_retriever)
         
         # Test with multi-level snippet configuration
         snippet_config = {

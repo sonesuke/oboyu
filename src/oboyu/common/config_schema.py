@@ -74,17 +74,26 @@ class IndexerConfigSchema(BaseModel):
         description="Name or path of embedding model",
         pattern=r'^[\w\-./]+[\w\-/]+$'
     )
+    embedding_device: str = Field(default="cpu", description="Device for embedding model")
+    use_onnx: bool = Field(default=True, description="Use ONNX format for models")
     batch_size: int = Field(default=128, ge=1, le=1024, description="Batch size for processing")
     max_length: int = Field(default=8192, ge=256, le=32768, description="Maximum sequence length")
+    max_seq_length: int = Field(default=512, ge=256, le=32768, description="Maximum sequence length for tokenization")
     normalize_embeddings: bool = Field(default=True, description="Whether to normalize embeddings")
     show_progress: bool = Field(default=True, description="Show progress bars")
+    chunk_size: int = Field(default=1000, ge=100, le=5000, description="Chunk size for text processing")
+    chunk_overlap: int = Field(default=200, ge=0, le=1000, description="Overlap between chunks")
     bm25_k1: float = Field(default=1.5, ge=0.0, le=3.0, description="BM25 k1 parameter")
     bm25_b: float = Field(default=0.75, ge=0.0, le=1.0, description="BM25 b parameter")
     use_japanese_tokenizer: bool = Field(default=True, description="Use Japanese-specific tokenizer")
+    use_reranker: bool = Field(default=True, description="Use reranker for results")
+    reranker_model: str = Field(default="cl-nagoya/ruri-reranker-small", description="Reranker model name")
+    reranker_device: str = Field(default="cpu", description="Device for reranker model")
+    reranker_use_onnx: bool = Field(default=True, description="Use ONNX format for reranker")
     n_probe: int = Field(default=10, ge=1, le=100, description="Number of probes for vector search")
     db_path: Optional[Path] = Field(default=None, description="Database path")
 
-    @field_validator('embedding_model')
+    @field_validator('embedding_model', 'reranker_model')
     @classmethod
     def validate_model_name(cls, v: str) -> str:
         """Validate embedding model name format."""

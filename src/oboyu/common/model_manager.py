@@ -1,8 +1,4 @@
-"""Unified model management with lazy loading and caching.
-
-This module provides a common model management system to reduce code duplication
-and improve consistency across embedding and reranker implementations.
-"""
+"""Unified model management with lazy loading and caching."""
 import hashlib
 import logging
 from abc import ABC, abstractmethod
@@ -178,6 +174,10 @@ class ONNXModelCache:
         """
         if cache_dir is None:
             cache_dir = EMBEDDING_CACHE_DIR / "models"
+
+        # Validate model type before proceeding
+        if model_type not in ["embedding", "reranker"]:
+            raise ValueError(f"Unsupported model type: {model_type}")
 
         model_dir = cache_dir / "onnx" / model_name.replace("/", "_")
 
@@ -458,7 +458,6 @@ class RerankerModelManager(ModelManager):
             logger.exception(f"Unexpected error loading reranker model {self.model_name}")
             raise RuntimeError(f"Failed to load reranker model '{self.model_name}': {e}") from e
 
-
 def create_model_manager(
     model_type: str,
     model_name: str,
@@ -474,10 +473,8 @@ def create_model_manager(
         use_onnx: Whether to use ONNX optimization
         cache_dir: Directory to cache models
         **kwargs: Additional model-specific configuration
-
     Returns:
         Model manager instance
-
     Raises:
         ValueError: If model_type is not supported
 

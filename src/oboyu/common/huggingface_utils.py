@@ -159,13 +159,19 @@ def safe_model_download(
                 technical_details=str(e),
             ) from e
 
+        except EntryNotFoundError as e:
+            raise HuggingFaceModelNotFoundError(
+                message=f"File not found in model '{model_id}'",
+                technical_details=str(e),
+            ) from e
+
         except HfHubHTTPError as e:
-            if e.response.status_code == 401:
+            if e.response and e.response.status_code == 401:
                 raise HuggingFaceAuthenticationError(
                     message=f"Authentication required to access model '{model_id}'",
                     technical_details="This model may be private. Please set HF_TOKEN environment variable.",
                 ) from e
-            elif e.response.status_code == 429:
+            elif e.response and e.response.status_code == 429:
                 if attempt < max_retries:
                     # Extract retry-after header if available
                     retry_after = e.response.headers.get("retry-after")
@@ -196,6 +202,10 @@ def safe_model_download(
                 technical_details=str(e),
             ) from e
 
+        except HuggingFaceError:
+            # Re-raise Hugging Face errors directly (already properly typed)
+            raise
+            
         except Exception as e:
             logger.exception(f"Unexpected error downloading model {model_id}")
             last_error = e
@@ -343,7 +353,7 @@ def _is_model_cached(model_id: str, cache_dir: Path) -> bool:
 
     """
     # This is a simplified check - actual caching structure may vary
-    model_path = cache_dir / "models--" / model_id.replace("/", "--")
+    model_path = cache_dir / f"models--{model_id.replace('/', '--')}"
     return model_path.exists() and any(model_path.iterdir())
 
 

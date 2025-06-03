@@ -81,7 +81,6 @@ class SearchEngine:
                     query_terms=query_terms,
                     limit=limit,
                     language_filter=language_filter,
-                    top_k_multiplier=top_k_multiplier,
                     filters=filters,
                 )
             

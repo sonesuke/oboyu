@@ -34,7 +34,7 @@ class TestCheckHuggingFaceConnectivity:
     def test_connectivity_success(self, mock_client_class: Mock) -> None:
         """Test successful connectivity check."""
         mock_response = Mock(status_code=200)
-        mock_client = Mock()
+        mock_client = MagicMock()
         mock_client.get.return_value = mock_response
         mock_client.__enter__.return_value = mock_client
         mock_client_class.return_value = mock_client
@@ -44,7 +44,7 @@ class TestCheckHuggingFaceConnectivity:
     @patch("httpx.Client")
     def test_connectivity_failure_network_error(self, mock_client_class: Mock) -> None:
         """Test connectivity check with network error."""
-        mock_client = Mock()
+        mock_client = MagicMock()
         mock_client.get.side_effect = httpx.ConnectError("Connection failed")
         mock_client.__enter__.return_value = mock_client
         mock_client_class.return_value = mock_client
@@ -54,7 +54,7 @@ class TestCheckHuggingFaceConnectivity:
     @patch("httpx.Client")
     def test_connectivity_failure_timeout(self, mock_client_class: Mock) -> None:
         """Test connectivity check with timeout."""
-        mock_client = Mock()
+        mock_client = MagicMock()
         mock_client.get.side_effect = httpx.TimeoutException("Timeout")
         mock_client.__enter__.return_value = mock_client
         mock_client_class.return_value = mock_client
@@ -64,7 +64,7 @@ class TestCheckHuggingFaceConnectivity:
     @patch("httpx.Client")
     def test_connectivity_failure_dns_error(self, mock_client_class: Mock) -> None:
         """Test connectivity check with DNS resolution error."""
-        mock_client = Mock()
+        mock_client = MagicMock()
         mock_client.get.side_effect = socket.gaierror("DNS resolution failed")
         mock_client.__enter__.return_value = mock_client
         mock_client_class.return_value = mock_client
@@ -74,7 +74,7 @@ class TestCheckHuggingFaceConnectivity:
     @patch("httpx.Client")
     def test_connectivity_failure_unexpected_error(self, mock_client_class: Mock) -> None:
         """Test connectivity check with unexpected error."""
-        mock_client = Mock()
+        mock_client = MagicMock()
         mock_client.get.side_effect = RuntimeError("Unexpected error")
         mock_client.__enter__.return_value = mock_client
         mock_client_class.return_value = mock_client
@@ -200,7 +200,7 @@ class TestSafeModelDownload:
         with pytest.raises(HuggingFaceModelNotFoundError) as exc_info:
             safe_model_download("test/model", mock_func)
         
-        assert "Required files not found" in str(exc_info.value)
+        assert "File not found in model" in str(exc_info.value)
 
 
 class TestUserFriendlyErrorMessages:
