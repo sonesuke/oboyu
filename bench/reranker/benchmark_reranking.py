@@ -15,10 +15,10 @@ import yaml
 
 from bench.accuracy.rag_accuracy.reranker_evaluator import RerankerEvaluator
 from bench.logger import BenchmarkLogger
-from oboyu.indexer import LegacyIndexer as Indexer
-from oboyu.indexer.config import IndexerConfig
-from oboyu.indexer.services.reranker import create_reranker
-from oboyu.indexer.search.search_result import SearchResult
+from oboyu.common.types import SearchResult
+from oboyu.config.indexer import IndexerConfig, ProcessingConfig
+from oboyu.indexer import Indexer
+from oboyu.retriever.services.reranker import create_reranker
 
 
 class OboyuRerankerAdapter:
@@ -62,12 +62,12 @@ class OboyuRerankerAdapter:
         search_results = []
         for doc in documents:
             search_results.append(SearchResult(
-                id=doc.get("id", ""),
+                chunk_id=doc.get("id", ""),
                 path=doc.get("path", ""),
                 title=doc.get("title", ""),
                 content=doc.get("content", ""),
                 chunk_index=doc.get("chunk_index", 0),
-                language=doc.get("language", ""),
+                language=doc.get("language", "en"),
                 score=doc.get("score", 0.0),
                 metadata=doc.get("metadata", {}),
             ))
@@ -83,7 +83,7 @@ class OboyuRerankerAdapter:
         reranked_docs = []
         for result in reranked_results:
             reranked_docs.append({
-                "id": result.id,
+                "id": result.chunk_id,
                 "path": result.path,
                 "title": result.title,
                 "content": result.content,
@@ -344,7 +344,9 @@ def main():
     
     # Initialize indexer
     logger.info(f"Initializing indexer with database: {args.db_path}")
-    indexer_config = IndexerConfig(config_dict={"indexer": {"db_path": str(args.db_path)}})
+    indexer_config = IndexerConfig(
+        processing=ProcessingConfig(db_path=args.db_path)
+    )
     indexer = Indexer(config=indexer_config)
     
     # Run benchmark

@@ -12,8 +12,8 @@ from rich.progress import track
 from bench.config import BENCHMARK_CONFIG, QUERIES_DIR
 from bench.speed.results import SearchBenchmarkResult, SearchResult
 from bench.utils import SystemMonitor, Timer, calculate_statistics, print_metric, print_section
-from oboyu.indexer.storage.database_service import Database
-from oboyu.indexer.services.embedding import EmbeddingService
+from oboyu.config.indexer import IndexerConfig, ProcessingConfig
+from oboyu.retriever import Retriever
 
 console = Console()
 
@@ -36,10 +36,11 @@ class SearchBenchmark:
         # Load queries
         self.queries = self._load_queries()
         
-        # Initialize database and embedding model
-        self.db = Database(db_path=db_path)
-        self.db.setup()  # Ensure connection is established
-        self.embedding_model = EmbeddingService()
+        # Initialize retriever with proper config
+        config = IndexerConfig(
+            processing=ProcessingConfig(db_path=db_path)
+        )
+        self.retriever = Retriever(config=config)
         
         # Get dataset info
         self.dataset_info = self._get_dataset_info()
@@ -55,8 +56,9 @@ class SearchBenchmark:
     
     def _get_dataset_info(self) -> Dict[str, int]:
         """Get information about the indexed dataset."""
-        # Access the connection directly
-        conn = self.db.conn
+        # Use the database service from retriever
+        db_service = self.retriever.database_service
+        conn = db_service.conn
         
         # Count documents and chunks
         doc_count = conn.execute("SELECT COUNT(DISTINCT path) FROM chunks").fetchone()[0]
@@ -79,12 +81,13 @@ class SearchBenchmark:
             gc.collect()  # Force garbage collection for consistent timing
         
         with Timer("total_search") as total_timer:
-            # Generate query embedding
-            query_embedding = self.embedding_model.generate_query_embedding(query_text)
-            
-            # Perform vector search
+            # Use retriever to perform search
             with Timer("vector_search") as search_timer:
-                results = self.db.search(query_embedding, limit=top_k)
+                results = self.retriever.search(
+                    query=query_text,
+                    limit=top_k,
+                    mode="vector"  # Use vector search for benchmarking
+                )
             
             first_result_time = search_timer.elapsed if results else None
         
@@ -208,7 +211,8 @@ class SearchBenchmark:
     
     def close(self) -> None:
         """Close database connection."""
-        self.db.close()
+        # Retriever handles cleanup automatically
+        pass
 
 
 def benchmark_search(
@@ -266,7 +270,7 @@ if __name__ == "__main__":
         
         # Index it
         indexing = IndexingBenchmark("small", data_dir)
-        db_path, db = indexing._create_temp_db()
+        db_path = indexing._create_temp_db()
         
         # Run a simple indexing (simplified for testing)
         console.print("Indexing test data...")

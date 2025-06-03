@@ -5,18 +5,19 @@ import gc
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
-from bench.config import BENCHMARK_CONFIG, DATA_DIR, OBOYU_CONFIG
+from bench.config import BENCHMARK_CONFIG, DATA_DIR
 from bench.speed.results import IndexingResult
 from bench.utils import SystemMonitor, Timer, print_metric, print_section
+from oboyu.config.crawler import CrawlerConfig
+from oboyu.config.indexer import IndexerConfig, ModelConfig, ProcessingConfig
 from oboyu.crawler.crawler import Crawler
 from oboyu.crawler.discovery import discover_documents
-from oboyu.indexer import LegacyIndexer as Indexer
-from oboyu.indexer.storage.database_service import Database
+from oboyu.indexer import Indexer
 
 console = Console()
 
@@ -36,37 +37,32 @@ class IndexingBenchmark:
         if not self.dataset_dir.exists():
             raise ValueError(f"Dataset not found: {self.dataset_dir}")
     
-    def _create_temp_db(self) -> Tuple[Path, Database]:
-        """Create a temporary database for benchmarking."""
+    def _create_temp_db(self) -> Path:
+        """Create a temporary database path for benchmarking."""
         temp_dir = tempfile.mkdtemp(prefix="oboyu_bench_")
         db_path = Path(temp_dir) / "benchmark.db"
-        
-        # Create database with OBOYU_CONFIG settings
-        db = Database(db_path=db_path)
-        db.setup()
-        
-        return db_path, db
+        return db_path
     
-    def _cleanup_temp_db(self, db: Database, db_path: Path) -> None:
+    def _cleanup_temp_db(self, db_path: Path) -> None:
         """Clean up temporary database."""
-        try:
-            db.close()
-        except Exception:
-            pass  # Ignore cleanup errors
-        
         # Remove temp directory
         if db_path.parent.exists():
             shutil.rmtree(db_path.parent, ignore_errors=True)
     
     def _run_single_indexing(self, show_progress: bool = True) -> Dict[str, float]:
         """Run a single indexing operation and return timing metrics."""
-        db_path, db = self._create_temp_db()
+        db_path = self._create_temp_db()
         
         try:
             # Initialize components
-            crawler_config = OBOYU_CONFIG["crawler"].copy()
-            indexer_config = OBOYU_CONFIG["indexer"].copy()
-            indexer_config["db_path"] = db_path
+            crawler_config = CrawlerConfig(
+                depth=10,
+                max_workers=4,
+                max_file_size=10*1024*1024,
+                follow_symlinks=False,
+                include_patterns=["*"],
+                exclude_patterns=[]
+            )
             
             # Create progress indicator
             progress = None
@@ -89,19 +85,19 @@ class IndexingBenchmark:
                         task = progress.add_task("Discovering files...", total=None)
                         files = list(discover_documents(
                             Path(self.dataset_dir),
-                            patterns=crawler_config.get("include_patterns", ["*"]),
-                            exclude_patterns=crawler_config.get("exclude_patterns", []),
-                            max_depth=crawler_config.get("depth", 10),
-                            max_file_size=crawler_config.get("max_file_size", 10*1024*1024)
+                            patterns=crawler_config.include_patterns,
+                            exclude_patterns=crawler_config.exclude_patterns,
+                            max_depth=crawler_config.depth,
+                            max_file_size=crawler_config.max_file_size
                         ))
                         progress.update(task, completed=len(files))
                 else:
                     files = list(discover_documents(
                         Path(self.dataset_dir),
-                        patterns=crawler_config.get("include_patterns", ["*"]),
-                        exclude_patterns=crawler_config.get("exclude_patterns", []),
-                        max_depth=crawler_config.get("depth", 10),
-                        max_file_size=crawler_config.get("max_file_size", 10*1024*1024)
+                        patterns=crawler_config.include_patterns,
+                        exclude_patterns=crawler_config.exclude_patterns,
+                        max_depth=crawler_config.depth,
+                        max_file_size=crawler_config.max_file_size
                     ))
             metrics["file_discovery_time"] = timer.elapsed
             metrics["total_files"] = len(files)
@@ -109,13 +105,13 @@ class IndexingBenchmark:
             # 2. Content extraction
             # For benchmarking, we'll use the crawler to process all files
             crawler = Crawler(
-                depth=crawler_config.get("depth", 10),
-                include_patterns=crawler_config.get("include_patterns", ["*"]),
-                exclude_patterns=crawler_config.get("exclude_patterns", []),
-                max_file_size=crawler_config.get("max_file_size", 10*1024*1024),
-                follow_symlinks=crawler_config.get("follow_symlinks", False),
-                japanese_encodings=crawler_config.get("japanese_encodings", ["utf-8", "shift-jis", "euc-jp"]),
-                max_workers=crawler_config.get("max_workers", 4)
+                depth=crawler_config.depth,
+                include_patterns=crawler_config.include_patterns,
+                exclude_patterns=crawler_config.exclude_patterns,
+                max_file_size=crawler_config.max_file_size,
+                follow_symlinks=crawler_config.follow_symlinks,
+                japanese_encodings=["utf-8", "shift-jis", "euc-jp"],
+                max_workers=crawler_config.max_workers
             )
             
             with Timer("content_extraction") as timer:
@@ -125,15 +121,11 @@ class IndexingBenchmark:
             metrics["total_documents"] = len(documents)
             
             # 3. Indexing (embedding generation + database storage)
-            from oboyu.indexer.config import IndexerConfig
-            config_dict = {
-                "indexer": {
-                    **indexer_config,
-                    "db_path": str(db_path)
-                }
-            }
-            indexer_cfg = IndexerConfig(config_dict=config_dict)
-            indexer = Indexer(config=indexer_cfg)
+            indexer_config = IndexerConfig(
+                processing=ProcessingConfig(db_path=db_path),
+                model=ModelConfig(embedding_model="cl-nagoya/ruri-v3-30m")
+            )
+            indexer = Indexer(config=indexer_config)
             
             # Track total chunks processed
             total_chunks = 0
@@ -159,45 +151,66 @@ class IndexingBenchmark:
             return metrics
             
         finally:
-            self._cleanup_temp_db(db, db_path)
+            self._cleanup_temp_db(db_path)
     
     def _run_warmup(self) -> None:
         """Run warmup with minimal data to initialize models and libraries."""
         console.print("[dim]  Initializing models with dummy data...[/dim]")
         
         # Create temporary database
-        db_path, db = self._create_temp_db()
+        db_path = self._create_temp_db()
         
         try:
             # Create a few dummy documents using CrawlerResult
-            from oboyu.crawler.crawler import CrawlerResult
-            dummy_documents = [
-                CrawlerResult(
+            import hashlib
+            from datetime import datetime
+
+            from oboyu.crawler.models import CrawlerResult, DocumentMetadata, EncodingType, LanguageCode
+            
+            # Create dummy files first
+            for i in range(5):
+                dummy_path = Path(f"/tmp/dummy{i}.txt")
+                dummy_content = f"This is test document {i}. " * 10
+                dummy_path.parent.mkdir(parents=True, exist_ok=True)
+                dummy_path.write_text(dummy_content)
+            
+            dummy_documents = []
+            for i in range(5):
+                content = f"This is test document {i}. " * 10
+                content_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
+                doc = CrawlerResult(
                     path=Path(f"/tmp/dummy{i}.txt"),
                     title=f"Dummy Document {i}",
-                    content=f"This is test document {i}. " * 10,
-                    language="en",
-                    metadata={}
+                    content=content,
+                    language=LanguageCode.ENGLISH,
+                    metadata=DocumentMetadata(
+                        file_size=len(content),
+                        created_at=datetime.now(),
+                        modified_at=datetime.now(),
+                        encoding=EncodingType.UTF8,
+                        language=LanguageCode.ENGLISH,
+                        content_hash=content_hash
+                    )
                 )
-                for i in range(5)
-            ]
+                dummy_documents.append(doc)
             
             # Initialize indexer and process dummy documents
-            from oboyu.indexer.config import IndexerConfig
-            config_dict = {
-                "indexer": {
-                    **OBOYU_CONFIG["indexer"],
-                    "db_path": str(db_path)
-                }
-            }
-            indexer_cfg = IndexerConfig(config_dict=config_dict)
-            indexer = Indexer(config=indexer_cfg)
+            indexer_config = IndexerConfig(
+                processing=ProcessingConfig(db_path=db_path),
+                model=ModelConfig(embedding_model="cl-nagoya/ruri-v3-30m")
+            )
+            indexer = Indexer(config=indexer_config)
             
             # Index dummy documents to initialize models
             indexer.index_documents(dummy_documents)
             
         finally:
-            self._cleanup_temp_db(db, db_path)
+            self._cleanup_temp_db(db_path)
+            # Clean up dummy files
+            for i in range(5):
+                dummy_path = Path(f"/tmp/dummy{i}.txt")
+                if dummy_path.exists():
+                    dummy_path.unlink()
     
     def run(self, monitor_system: bool = True) -> IndexingResult:
         """Run the indexing benchmark."""

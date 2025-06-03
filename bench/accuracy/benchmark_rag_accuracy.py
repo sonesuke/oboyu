@@ -26,7 +26,7 @@ from bench.config import BENCHMARK_CONFIG
 from bench.logger import BenchmarkLogger
 
 # Remove utils import - we'll handle paths directly
-from oboyu.indexer.config import IndexerConfig
+from oboyu.config.indexer import IndexerConfig, ModelConfig, ProcessingConfig
 
 
 def parse_args() -> argparse.Namespace:
@@ -165,13 +165,12 @@ def main() -> None:
         logger.info(f"Cleaned up existing test database: {db_path}")
 
     indexer_config = IndexerConfig(
-        config_dict={
-            "indexer": {
-                "db_path": str(db_path),
-                "chunk_size": BENCHMARK_CONFIG.get("indexing", {}).get("chunk_size", 300),
-                "chunk_overlap": BENCHMARK_CONFIG.get("indexing", {}).get("chunk_overlap", 75),
-            }
-        }
+        processing=ProcessingConfig(
+            db_path=db_path,
+            chunk_size=BENCHMARK_CONFIG.get("indexing", {}).get("chunk_size", 300),
+            chunk_overlap=BENCHMARK_CONFIG.get("indexing", {}).get("chunk_overlap", 75)
+        ),
+        model=ModelConfig()
     )
 
     eval_config = RAGEvaluationConfig(
@@ -198,8 +197,9 @@ def main() -> None:
         try:
             # Recreate evaluator for each dataset to ensure clean state
             if i > 0:
-                # Close previous evaluator
-                evaluator.db.close()
+                # Close previous evaluator if it has a db attribute
+                if hasattr(evaluator, 'db'):
+                    evaluator.db.close()
                 
                 # Clean up database
                 if db_path.exists():
@@ -296,7 +296,8 @@ def main() -> None:
 
     # Final cleanup
     try:
-        evaluator.db.close()
+        if hasattr(evaluator, 'db'):
+            evaluator.db.close()
     except:
         pass
     
