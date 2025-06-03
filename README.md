@@ -1,134 +1,205 @@
 # Oboyu (覚ゆ)
 
-> A Japanese-enhanced semantic search system for your local documents.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
+[![PyPI Version](https://img.shields.io/pypi/v/oboyu.svg)](https://pypi.org/project/oboyu/)
+
+> Lightning-fast semantic search for your local documents with best-in-class Japanese support.
 
 ![demo](https://github.com/sonesuke/oboyu/blob/main/docs/assets/demo.gif?raw=true)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python Version](https://img.shields.io/badge/python-3.13%2B-blue)](https://www.python.org/downloads/)
-
 ## What is Oboyu?
 
-**Oboyu** (覚ゆ - meaning "to remember" or "to memorize" in ancient Japanese) is a semantic search system that creates an intelligent index of your text-based documents. Oboyu indexes directories of text files, embeds their content using vector representations, and retrieves the most relevant documents for your queries.
+**Oboyu** (覚ゆ - "to remember" in ancient Japanese) is a powerful local semantic search engine that helps you instantly find information in your documents using natural language queries. Unlike traditional keyword search, Oboyu understands the meaning behind your questions, making it perfect for finding relevant content even when you don't know the exact terms.
 
-With specialized support for Japanese language documents, Oboyu excels at processing content in both Japanese and English, making it an ideal solution for multilingual document collections.
+### Why Oboyu?
 
-The system provides both a comprehensive command-line interface for direct queries and an MCP server mode for AI assistant integration. While Oboyu works with any text-based documents, it is particularly optimized for Japanese language content, making it unique among semantic search tools.
+- 🚀 **Fast**: Indexes thousands of documents in seconds, searches in milliseconds
+- 🎯 **Accurate**: Semantic search finds what you mean, not just what you type
+- 🇯🇵 **Japanese Excellence**: First-class support with automatic encoding detection
+- 🔒 **Private**: Everything runs locally - your documents never leave your machine
+- 🤖 **AI-Ready**: Built-in MCP server for Claude, Cursor, and other AI assistants
 
+
+## Quick Start
+
+Get up and running in under 5 minutes:
+
+```bash
+# Install Oboyu
+pip install oboyu
+
+# Index your documents
+oboyu index ~/Documents
+
+# Search interactively
+oboyu query --interactive
+```
+
+That's it! See our [Quick Start Guide](docs/quickstart.md) for more examples.
 
 ## Key Features
 
-- **Local Directory Processing**: Index any directory of text-based documents on your local system with incremental updates
-- **Text Format Support**: Process plain text, markdown, code files, configuration files, Jupyter notebooks, and more
-- **Japanese Language Excellence**: First-class support for Japanese text with specialized tokenization, encoding detection, and optimized models
-- **Multiple Search Modes**: Choose between vector, BM25, or hybrid search with configurable weighting
-- **Advanced Reranking**: Improve search accuracy with lightweight Ruri Cross-Encoder reranker (enabled by default)
-- **Interactive Query Mode**: Persistent REPL interface with command history, auto-suggestions, and real-time configuration
-- **ONNX Optimization**: 2-4x faster inference with automatic ONNX conversion for both embedding and reranker models
-- **Incremental Indexing**: Smart change detection with timestamp, hash, or hybrid strategies for efficient updates
-- **MCP Server Integration**: Model Context Protocol server for seamless AI assistant integration
-- **Rich Command-Line Interface**: Comprehensive CLI with hierarchical progress display and extensive options
-- **Privacy-Focused**: Your documents stay on your machine - no data sent to external services by default
+### 🔍 Advanced Search Capabilities
+- **Hybrid Search**: Combines semantic understanding with keyword matching for best results
+- **Multiple Modes**: Switch between semantic, keyword, or hybrid search modes
+- **Smart Reranking**: Built-in AI reranker improves result accuracy
+- **Interactive Mode**: Real-time search with command history and auto-suggestions
+
+### 📚 Document Support
+- **Wide Format Support**: Plain text, Markdown, code files, PDFs, Jupyter notebooks, and more
+- **Incremental Indexing**: Only process new or changed files for lightning-fast updates
+- **Smart Chunking**: Intelligent document splitting for optimal search results
+- **Automatic Encoding**: Handles various text encodings seamlessly
+
+### 🇯🇵 Japanese Language Excellence
+- **Native Support**: Purpose-built for Japanese text processing
+- **Automatic Detection**: Detects and handles Shift-JIS, EUC-JP, and UTF-8
+- **Specialized Models**: Optimized embedding models for Japanese content
+- **Mixed Language**: Seamlessly handles Japanese and English in the same document
+
+### 🚀 Performance & Integration
+- **ONNX Acceleration**: 2-4x faster with automatic model optimization
+- **MCP Server**: Direct integration with Claude Desktop and AI coding assistants
+- **Rich CLI**: Beautiful terminal interface with progress tracking
+- **Low Memory**: Efficient processing even on modest hardware
 
 ## Installation
 
+### Using UV (Recommended)
 ```bash
-# Install from PyPI
-pip install oboyu
+uv tool install oboyu
+```
 
-# Or install from source
+### Using pip
+```bash
+pip install oboyu
+```
+
+### From Source
+```bash
 git clone https://github.com/sonesuke/oboyu.git
 cd oboyu
 pip install -e .
 ```
 
-### Requirements
+### System Requirements
 
-Oboyu requires several dependencies that are automatically installed:
+- **Python**: 3.10 or higher
+- **OS**: macOS, Linux (Windows via WSL)
+- **Memory**: 2GB RAM minimum
+- **Storage**: 1GB for models and index
 
-1. **sentencepiece**: Required for the Japanese tokenization used by the Ruri embedding model. This is pre-built on PyPI but may require compilation on some systems.
-2. **torch**: Required for running the embedding model.
-3. **duckdb**: Required for storing and retrieving the vector search database.
+> **Note**: Models are automatically downloaded on first use (~90MB).
 
-> **Note**: On the first run, Oboyu will download the Ruri v3 model (~90MB) and its required components from the Hugging Face model hub.
+## Usage Examples
 
-#### System Requirements
-
-- **OS**: Linux, macOS (Windows not officially supported)
-- **CPU**: x86_64 or ARM64 processor
-- **Memory**: 2GB+ RAM
-- **Storage**: 1GB free space
-
-## Quick Start
+### Basic Usage
 
 ```bash
-# Index a directory (automatic encoding detection for Japanese files)
-oboyu index /path/to/your/documents
+# Index a directory
+oboyu index ~/Documents/notes
 
-# Query your documents
-oboyu query "What are the key concepts?"
+# Search your documents
+oboyu query "machine learning optimization techniques"
 
-# Interactive query mode
+# Interactive mode (recommended!)
 oboyu query --interactive
-
-# Start MCP server for AI integration
-oboyu mcp
 ```
 
-For more examples, see the [CLI documentation](docs/cli.md).
-
-## Configuration
-
-Oboyu works out of the box with sensible defaults. For customization, create `~/.config/oboyu/config.yaml`:
-
-```yaml
-indexer:
-  chunk_size: 1024
-  embedding_model: "cl-nagoya/ruri-v3-30m"
-  use_reranker: true
-
-query:
-  default_mode: "hybrid"
-  top_k: 5
-```
-
-See the [configuration documentation](docs/configuration.md) for all available options.
-
-## Contributing
-
-We love your contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
-
-### Quick Start
+### Advanced Examples
 
 ```bash
-# Fork and clone the repository
-git clone https://github.com/YOUR_USERNAME/oboyu.git
-cd oboyu
+# Index only specific file types
+oboyu index ~/projects --include "*.md,*.txt"
 
-# Install dependencies
-uv sync
+# Search with filters
+oboyu query "API design" --filter "docs/"
 
-# Run fast tests
-uv run pytest -m "not slow"
+# Use semantic search mode
+oboyu query "concepts similar to dependency injection" --mode semantic
 
-# Make your changes and submit a PR!
+# Enable reranking for better accuracy
+oboyu query "complex technical topic" --rerank
 ```
+
+### MCP Server for AI Assistants
+
+```bash
+# Start MCP server
+oboyu mcp
+
+# Or configure in Claude Desktop's settings
+```
+
+See our [MCP Integration Guide](docs/mcp_server.md) for detailed setup instructions.
 
 ## Documentation
 
-### User Guides
-- [CLI Commands](docs/cli.md) - Complete command-line interface reference
-- [Configuration Options](docs/configuration.md) - YAML configuration and settings
-- [Japanese Language Support](docs/japanese.md) - Specialized Japanese text processing
-- [MCP Server Integration](docs/mcp_server.md) - AI assistant integration guide
-- [Reranker Guide](docs/reranker.md) - Advanced reranking for better accuracy
+### 🚀 Getting Started
+- [**Quick Start Guide**](docs/quickstart.md) - Get up and running in 5 minutes
+- [**Troubleshooting**](docs/troubleshooting.md) - Solutions to common issues
+- [**CLI Reference**](docs/cli.md) - Complete command-line interface documentation
 
-### Technical Documentation
-- [Architecture Overview](docs/architecture.md) - System design and components
-- [Query Engine](docs/query_engine.md) - Search algorithms and modes
-- [Indexer](docs/indexer.md) - Document processing and embedding generation
-- [Crawler](docs/crawler.md) - Document discovery and extraction
+### 📖 User Guides
+- [**Configuration**](docs/configuration.md) - Customize Oboyu for your needs
+- [**Japanese Support**](docs/japanese.md) - Working with Japanese documents
+- [**MCP Integration**](docs/mcp_server.md) - Setup for AI assistants
+- [**Reranker Guide**](docs/reranker.md) - Improve search accuracy
 
+### 🔧 Technical Documentation
+- [**Architecture**](docs/architecture.md) - System design and components
+- [**Query Engine**](docs/query_engine.md) - How search works
+- [**Indexer**](docs/indexer.md) - Document processing details
+- [**Crawler**](docs/crawler.md) - File discovery system
+
+## Common Use Cases
+
+### 📚 Academic Research
+Index and search through research papers, notes, and references:
+```bash
+oboyu index ~/research --include "*.pdf,*.md,*.txt"
+oboyu query "transformer architecture improvements"
+```
+
+### 💻 Code Documentation
+Search through project documentation and code comments:
+```bash
+oboyu index ~/projects/myapp --include "*.md,*.py"
+oboyu query "authentication implementation"
+```
+
+### 📝 Personal Knowledge Base
+Organize and search your notes and documents:
+```bash
+oboyu index ~/Documents/notes
+oboyu query "meeting notes from last week"
+```
+
+### 🌏 Multilingual Documents
+Perfect for mixed Japanese and English content:
+```bash
+oboyu index ~/Documents/bilingual
+oboyu query "プロジェクト管理 best practices"
+```
+
+## Contributing
+
+We welcome contributions! See our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+```bash
+# Quick start for contributors
+git clone https://github.com/YOUR_USERNAME/oboyu.git
+cd oboyu
+uv sync
+uv run pytest -m "not slow"
+```
+
+## Support
+
+- 📋 [GitHub Issues](https://github.com/sonesuke/oboyu/issues) - Report bugs or request features
+- 📖 [Documentation](docs/) - Comprehensive guides and references
+- 💬 [Discussions](https://github.com/sonesuke/oboyu/discussions) - Ask questions and share ideas
 
 ## License
 
@@ -136,6 +207,12 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ## Acknowledgments
 
-- The name "Oboyu" (覚ゆ) comes from ancient Japanese, meaning "to remember" or "to memorize"
-- Thanks to the open-source Japanese NLP community for their excellent tools and resources
-- Built with the inspiration of making knowledge more accessible regardless of language
+- The name "Oboyu" (覚ゆ) comes from ancient Japanese, meaning "to remember"
+- Built with ❤️ for the Japanese NLP community
+- Inspired by the goal of making knowledge accessible across languages
+
+---
+
+<p align="center">
+  Made with 🇯🇵 by <a href="https://github.com/sonesuke">sonesuke</a>
+</p>

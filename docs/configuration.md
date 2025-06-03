@@ -185,6 +185,522 @@ query:
   top_k: 8
 ```
 
+## Configuration Templates
+
+### Academic Research Setup
+```yaml
+# Optimized for research papers, theses, and academic documents
+indexer:
+  db_path: "~/research/index.db"
+  chunk_size: 2048              # Larger chunks for academic papers
+  chunk_overlap: 512            # More overlap for context preservation
+  embedding_model: "cl-nagoya/ruri-v3-30m"  # Good for mixed content
+  use_reranker: true            # Important for precise retrieval
+
+crawler:
+  include_patterns:
+    - "*.pdf"                   # Research papers
+    - "*.tex"                   # LaTeX documents
+    - "*.bib"                   # Bibliography files
+    - "*.md"                    # Notes and documentation
+    - "*.txt"                   # Plain text documents
+    - "*.docx"                  # Word documents
+  exclude_patterns:
+    - "*/backup/*"
+    - "*/drafts/*"
+    - "*/temp/*"
+    - "*/.git/*"
+
+query:
+  default_mode: "hybrid"        # Best for technical content
+  top_k: 10                     # More results for research
+```
+
+### Software Documentation Indexing
+```yaml
+# Optimized for API docs, README files, and technical documentation
+indexer:
+  db_path: "~/dev/docs_index.db"
+  chunk_size: 1536              # Balanced for code examples and text
+  chunk_overlap: 384            # Good overlap for context
+  embedding_model: "cl-nagoya/ruri-v3-30m"
+  use_reranker: true            # Better code understanding
+
+crawler:
+  include_patterns:
+    - "*.md"                    # Markdown documentation
+    - "*.rst"                   # reStructuredText
+    - "*.adoc"                  # AsciiDoc
+    - "README*"                 # All README files
+    - "CHANGELOG*"              # Changelog files
+    - "*.ipynb"                 # Jupyter notebooks
+    - "docs/**/*"               # Documentation folders
+    - "*.html"                  # Generated docs
+  exclude_patterns:
+    - "*/node_modules/*"
+    - "*/venv/*"
+    - "*/.git/*"
+    - "*/site-packages/*"
+    - "*/dist/*"
+    - "*/build/*"
+    - "*/_build/*"              # Sphinx build directory
+
+query:
+  default_mode: "hybrid"
+  top_k: 8
+```
+
+### Multilingual Document Collection
+```yaml
+# Optimized for documents in multiple languages
+indexer:
+  db_path: "~/multilingual/index.db"
+  chunk_size: 1024              # Smaller chunks for varied languages
+  chunk_overlap: 256            # Standard overlap
+  embedding_model: "cl-nagoya/ruri-v3-30m"  # Supports multiple languages
+  use_reranker: true            # Important for cross-lingual search
+
+crawler:
+  include_patterns:
+    - "*.txt"
+    - "*.md"
+    - "*.pdf"
+    - "*.docx"
+    - "*.odt"
+    - "*.rtf"
+  exclude_patterns:
+    - "*/temp/*"
+    - "*/.git/*"
+    - "*/cache/*"
+
+query:
+  default_mode: "hybrid"        # Works well across languages
+  top_k: 10
+```
+
+### Large-Scale Indexing
+```yaml
+# Optimized for indexing large document collections (100k+ files)
+indexer:
+  db_path: "/data/large_index.db"  # Use fast SSD storage
+  chunk_size: 1024              # Smaller chunks for memory efficiency
+  chunk_overlap: 128            # Minimal overlap to save space
+  embedding_model: "cl-nagoya/ruri-v3-30m"  # Efficient model
+  use_reranker: false           # Disable for initial indexing speed
+
+crawler:
+  include_patterns:
+    - "*.txt"
+    - "*.md"
+    - "*.pdf"
+    - "*.html"
+    - "*.xml"
+    - "*.json"
+  exclude_patterns:
+    - "*/logs/*"
+    - "*/cache/*"
+    - "*/tmp/*"
+    - "*/.git/*"
+    - "*.log"
+    - "*.bak"
+    - "*.tmp"
+
+query:
+  default_mode: "bm25"          # Faster for large collections
+  top_k: 20                     # Pre-filter more before reranking
+```
+
+### Performance-Optimized Setup
+```yaml
+# Optimized for maximum search speed
+indexer:
+  db_path: "/fast/ssd/index.db"  # Use SSD for best performance
+  chunk_size: 512               # Smaller chunks for faster processing
+  chunk_overlap: 64             # Minimal overlap
+  embedding_model: "cl-nagoya/ruri-v3-30m"  # Fast model
+  use_reranker: false           # Disable for speed
+
+crawler:
+  include_patterns:
+    - "*.txt"
+    - "*.md"
+  exclude_patterns:
+    - "*"                       # Very selective indexing
+
+query:
+  default_mode: "bm25"          # Fastest search mode
+  top_k: 5                      # Fewer results for speed
+```
+
+## Practical Examples
+
+### Example 1: Indexing a Python Project
+```yaml
+# Index Python project with documentation
+indexer:
+  db_path: "~/projects/myproject/.oboyu/index.db"
+  chunk_size: 1024
+  embedding_model: "cl-nagoya/ruri-v3-30m"
+  use_reranker: true
+
+crawler:
+  include_patterns:
+    - "*.py"                    # Python source files
+    - "*.pyi"                   # Type stub files
+    - "*.md"                    # Documentation
+    - "*.rst"                   # reStructuredText docs
+    - "*.ipynb"                 # Jupyter notebooks
+    - "requirements*.txt"       # Dependencies
+    - "pyproject.toml"          # Project config
+    - "setup.py"                # Setup files
+    - "setup.cfg"
+  exclude_patterns:
+    - "*/__pycache__/*"
+    - "*.pyc"
+    - "*/.pytest_cache/*"
+    - "*/.mypy_cache/*"
+    - "*/venv/*"
+    - "*/env/*"
+    - "*/.venv/*"
+    - "*/site-packages/*"
+    - "*/.tox/*"
+    - "*/dist/*"
+    - "*/build/*"
+    - "*.egg-info/*"
+
+query:
+  default_mode: "hybrid"
+  top_k: 8
+```
+
+### Example 2: Personal Knowledge Base
+```yaml
+# Index personal notes, documents, and references
+indexer:
+  db_path: "~/Documents/.oboyu/knowledge.db"
+  chunk_size: 1536              # Good for mixed content
+  chunk_overlap: 384
+  embedding_model: "cl-nagoya/ruri-v3-30m"
+  use_reranker: true
+
+crawler:
+  include_patterns:
+    - "*.md"                    # Markdown notes
+    - "*.txt"                   # Text files
+    - "*.pdf"                   # PDF documents
+    - "*.docx"                  # Word documents
+    - "*.org"                   # Org-mode files
+    - "*.rtf"                   # Rich text
+    - "notes/**/*"              # Notes directory
+    - "journal/**/*"            # Journal entries
+  exclude_patterns:
+    - "*/Archive/*"             # Archived content
+    - "*/.obsidian/*"           # Obsidian config
+    - "*/.trash/*"              # Trash folders
+    - "*.tmp"
+    - "~$*"                     # Temporary Word files
+
+query:
+  default_mode: "hybrid"
+  top_k: 10
+```
+
+### Example 3: Legal Document Repository
+```yaml
+# Index legal documents with high precision requirements
+indexer:
+  db_path: "/secure/legal_index.db"
+  chunk_size: 2048              # Larger chunks for context
+  chunk_overlap: 512            # More overlap for precision
+  embedding_model: "cl-nagoya/ruri-v3-30m"
+  use_reranker: true            # Critical for accuracy
+
+crawler:
+  include_patterns:
+    - "*.pdf"                   # Legal PDFs
+    - "*.docx"                  # Contracts
+    - "*.txt"                   # Plain text
+    - "contracts/**/*"          # Contracts folder
+    - "cases/**/*"              # Case files
+    - "statutes/**/*"           # Legal statutes
+  exclude_patterns:
+    - "*/drafts/*"              # Draft documents
+    - "*/temp/*"                # Temporary files
+    - "*.bak"                   # Backup files
+
+query:
+  default_mode: "hybrid"        # Maximum accuracy
+  top_k: 15                     # More results for thorough review
+```
+
+## Validation Rules and Constraints
+
+### Configuration Option Constraints
+
+#### indexer.db_path
+- **Type**: String (file path)
+- **Constraints**: 
+  - Must be a valid file path
+  - Directory must be writable
+  - Supports `~` expansion for home directory
+- **Performance Impact**: Use SSD storage for best performance
+
+#### indexer.chunk_size
+- **Type**: Integer
+- **Constraints**: 
+  - Minimum: 128
+  - Maximum: 8192
+  - Recommended: 512-2048
+- **Validation**: Must be power of 2 for optimal performance
+- **Performance Impact**: 
+  - Smaller chunks (512): More precise retrieval, higher memory usage
+  - Larger chunks (2048): Faster indexing, less precise retrieval
+
+#### indexer.chunk_overlap
+- **Type**: Integer
+- **Constraints**: 
+  - Minimum: 0
+  - Maximum: chunk_size / 2
+  - Recommended: chunk_size / 4
+- **Validation**: Must be less than chunk_size
+- **Performance Impact**: 
+  - More overlap: Better context preservation, larger index size
+  - Less overlap: Smaller index, possible context loss at boundaries
+
+#### indexer.embedding_model
+- **Type**: String
+- **Constraints**: 
+  - Must be a valid Hugging Face model ID
+  - Model must support sentence embeddings
+  - Recommended: "cl-nagoya/ruri-v3-30m"
+- **Validation**: Checked against Hugging Face model registry
+- **Performance Impact**: 
+  - Larger models: Better quality, slower indexing
+  - Smaller models: Faster processing, may reduce quality
+
+#### indexer.use_reranker
+- **Type**: Boolean
+- **Constraints**: true or false
+- **Performance Impact**: 
+  - true: Better search quality, 20-30% slower
+  - false: Faster searches, may miss relevant results
+
+#### crawler.include_patterns
+- **Type**: List of strings (glob patterns)
+- **Constraints**: 
+  - Must be valid glob patterns
+  - At least one pattern required
+- **Validation**: Patterns tested against file system
+- **Performance Impact**: More specific patterns = faster crawling
+
+#### crawler.exclude_patterns
+- **Type**: List of strings (glob patterns)
+- **Constraints**: 
+  - Must be valid glob patterns
+  - Optional (empty list allowed)
+- **Validation**: Patterns tested against file system
+- **Performance Impact**: More exclusions = faster crawling
+
+#### query.default_mode
+- **Type**: String (enum)
+- **Constraints**: 
+  - Must be one of: "vector", "bm25", "hybrid"
+- **Validation**: Checked against allowed values
+- **Performance Impact**: 
+  - vector: Semantic search, moderate speed
+  - bm25: Keyword search, fastest
+  - hybrid: Best quality, slowest
+
+#### query.top_k
+- **Type**: Integer
+- **Constraints**: 
+  - Minimum: 1
+  - Maximum: 100
+  - Recommended: 5-20
+- **Validation**: Must be positive integer
+- **Performance Impact**: Linear with value (2x top_k = ~2x time)
+
+## Environment Variables
+
+Oboyu supports environment variables for all essential configuration options. Environment variables take precedence over configuration file values.
+
+### Syntax Pattern
+All environment variables follow the pattern: `OBOYU_<SECTION>_<OPTION>`
+
+### Available Environment Variables
+
+```bash
+# Indexer settings
+export OBOYU_INDEXER_DB_PATH="/custom/path/index.db"
+export OBOYU_INDEXER_CHUNK_SIZE="1024"
+export OBOYU_INDEXER_CHUNK_OVERLAP="256"
+export OBOYU_INDEXER_EMBEDDING_MODEL="cl-nagoya/ruri-v3-30m"
+export OBOYU_INDEXER_USE_RERANKER="true"
+
+# Crawler settings
+export OBOYU_CRAWLER_INCLUDE_PATTERNS="*.md,*.txt,*.py"  # Comma-separated
+export OBOYU_CRAWLER_EXCLUDE_PATTERNS="*/node_modules/*,*/.git/*"
+
+# Query settings
+export OBOYU_QUERY_DEFAULT_MODE="hybrid"
+export OBOYU_QUERY_TOP_K="10"
+
+# Global settings
+export OBOYU_CONFIG_PATH="/path/to/config.yaml"  # Override config file location
+export OBOYU_LOG_LEVEL="INFO"  # DEBUG, INFO, WARNING, ERROR
+export OBOYU_CACHE_DIR="~/.cache/oboyu"  # Model cache directory
+```
+
+### Usage Examples
+
+```bash
+# Temporary override for a single command
+OBOYU_INDEXER_CHUNK_SIZE=2048 oboyu index /path/to/docs
+
+# Set for current session
+export OBOYU_QUERY_TOP_K=20
+oboyu query "search term"
+
+# Permanent setup (add to ~/.bashrc or ~/.zshrc)
+echo 'export OBOYU_INDEXER_DB_PATH="~/my_indices/main.db"' >> ~/.bashrc
+```
+
+### Docker Usage
+```dockerfile
+# In Dockerfile
+ENV OBOYU_INDEXER_DB_PATH=/data/index.db
+ENV OBOYU_INDEXER_CHUNK_SIZE=1024
+ENV OBOYU_QUERY_DEFAULT_MODE=hybrid
+```
+
+### CI/CD Usage
+```yaml
+# GitHub Actions example
+env:
+  OBOYU_INDEXER_USE_RERANKER: "false"  # Faster for CI
+  OBOYU_QUERY_TOP_K: "5"
+```
+
+## Performance Impact Notes
+
+### Indexing Performance
+
+| Setting | Impact | Recommendation |
+|---------|--------|----------------|
+| `chunk_size` | ↓ size = ↑ memory, ↑ precision | 1024 for balance |
+| `chunk_overlap` | ↑ overlap = ↑ index size | 25% of chunk_size |
+| `embedding_model` | Larger = slower but better | ruri-v3-30m for balance |
+| `use_reranker` | +20-30% index time | Enable for quality |
+| File patterns | More specific = faster | Be selective |
+
+### Query Performance
+
+| Setting | Impact | Recommendation |
+|---------|--------|----------------|
+| `default_mode` | hybrid > vector > bm25 | hybrid for quality |
+| `top_k` | Linear scaling | 5-10 for most cases |
+| Reranker enabled | +50-100ms latency | Worth it for quality |
+| Database location | SSD > HDD (10x faster) | Always use SSD |
+
+### Memory Usage
+
+| Component | Typical Usage | Scaling Factor |
+|-----------|--------------|----------------|
+| Indexing | 2-4 GB | ~1GB per 100k chunks |
+| Embedding model | 500MB-2GB | Depends on model size |
+| Query runtime | 500MB-1GB | Mostly model loading |
+| Database | 10-50 MB/1000 docs | Depends on content |
+
+### Optimization Tips
+
+1. **For Speed**: 
+   - Use BM25 mode
+   - Disable reranker
+   - Smaller chunk_size
+   - SSD storage
+
+2. **For Quality**:
+   - Use hybrid mode
+   - Enable reranker
+   - Larger chunk_size
+   - More chunk_overlap
+
+3. **For Large Scale**:
+   - Minimal chunk_overlap
+   - Specific file patterns
+   - Fast SSD storage
+   - Consider sharding
+
+## Configuration Error Troubleshooting
+
+### Common Configuration Errors
+
+#### "Invalid configuration file"
+**Cause**: YAML syntax error
+**Solution**: 
+```bash
+# Validate YAML syntax
+python -c "import yaml; yaml.safe_load(open('config.yaml'))"
+```
+
+#### "Model not found"
+**Cause**: Invalid embedding model name
+**Solution**: 
+- Check model exists on Hugging Face
+- Ensure internet connection for download
+- Try default: `cl-nagoya/ruri-v3-30m`
+
+#### "Permission denied for db_path"
+**Cause**: No write permissions
+**Solution**:
+```bash
+# Check permissions
+ls -la $(dirname ~/oboyu/index.db)
+# Create directory with proper permissions
+mkdir -p ~/oboyu && chmod 755 ~/oboyu
+```
+
+#### "Chunk size validation failed"
+**Cause**: Invalid chunk_size value
+**Solution**:
+- Ensure value is between 128 and 8192
+- Use power of 2 for best performance
+- Start with 1024 if unsure
+
+#### "Pattern matching no files"
+**Cause**: Include patterns too restrictive
+**Solution**:
+```bash
+# Test patterns
+find /path -name "*.md" -o -name "*.txt"
+# Use broader patterns
+include_patterns: ["*"]  # Then add exclusions
+```
+
+### Debugging Configuration
+
+```bash
+# Show effective configuration
+oboyu config show
+
+# Validate configuration
+oboyu config validate
+
+# Test with minimal config
+oboyu index /path --config minimal.yaml
+
+# Enable debug logging
+OBOYU_LOG_LEVEL=DEBUG oboyu index /path
+```
+
+### Getting Help
+
+If configuration issues persist:
+1. Check the [FAQ](faq.md)
+2. Review [examples](#configuration-examples) above
+3. Run diagnostic: `oboyu diagnose`
+4. File an issue with config and error output
+
 ## Migration Guide
 
 ### From Version 0.x
