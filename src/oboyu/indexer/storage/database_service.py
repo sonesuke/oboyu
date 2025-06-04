@@ -24,6 +24,7 @@ from numpy.typing import NDArray
 from oboyu.common.types import Chunk
 from oboyu.indexer.config import DEFAULT_BATCH_SIZE
 from oboyu.indexer.storage.consolidated_repositories import ChunkRepository, EmbeddingRepository, StatisticsRepository
+from oboyu.indexer.storage.database_lock import DatabaseLock
 from oboyu.indexer.storage.database_manager import DatabaseManager
 from oboyu.indexer.storage.index_manager import HNSWIndexParams, IndexManager
 from oboyu.retriever.storage.database_search_service import DatabaseSearchService
@@ -265,73 +266,55 @@ class DatabaseService:
         return self.chunk_repository.get_paths_with_chunks()
 
     def clear_database(self) -> None:
-        """Clear all data from the database."""
+        """Clear all data from the database with proper index management and locking."""
         if not self._is_initialized:
             self.initialize()
 
+        # Use a lock to prevent concurrent clear operations
+        lock = DatabaseLock(self.db_path, "clear")
+        
         try:
-            with self.transaction():
-                assert self.embedding_repository is not None
-                assert self.chunk_repository is not None
+            with lock.acquire(timeout=30.0):
+                logger.info("Acquired lock for clear operation")
                 
-                # Clear all data from database in dependency order
-                conn = self.db_manager.get_connection()
-                
-                try:
-                    # First, find all tables that reference chunks
-                    result = conn.execute("""
-                        SELECT table_name
-                        FROM information_schema.tables
-                        WHERE table_schema = 'main'
-                    """).fetchall()
+                # Clear all data from database within a transaction
+                with self.transaction():
+                    assert self.embedding_repository is not None
+                    assert self.chunk_repository is not None
                     
-                    existing_tables = [row[0] for row in result]
-                    logger.info(f"Existing tables: {existing_tables}")
+                    conn = self.db_manager.get_connection()
                     
-                    # Drop HNSW index first if it exists (this may hold references)
-                    try:
-                        conn.execute("DROP INDEX IF EXISTS hnsw_index")
-                    except Exception as e:
-                        logger.debug(f"Failed to drop HNSW index (might not exist): {e}")
+                    # First, drop the HNSW index if it exists
+                    # This prevents issues with foreign key constraints and speeds up deletion
+                    if self.index_manager and self.index_manager.hnsw_index_exists():
+                        logger.info("Dropping HNSW index before clearing data")
+                        self.index_manager.drop_hnsw_index()
                     
-                    # Clear all data from all existing tables first
-                    # This is safer than trying to respect foreign keys
-                    for table in existing_tables:
-                        if table != 'chunks':  # Clear non-chunks tables first
-                            try:
-                                conn.execute(f"DELETE FROM {table}")
-                                logger.debug(f"Cleared table: {table}")
-                            except Exception as e:
-                                logger.debug(f"Failed to clear {table}: {e}")
+                    # Clear embeddings first (they reference chunks)
+                    self.embedding_repository.clear_all_embeddings()
                     
-                    # Finally clear chunks table
-                    try:
-                        conn.execute("DELETE FROM chunks")
-                        logger.debug("Cleared chunks table")
-                    except Exception as e:
-                        logger.error(f"Failed to clear chunks: {e}")
-                        # If we still can't clear chunks, there's a structural issue
-                        # Let's just drop and recreate the tables
-                        logger.warning("Attempting to drop and recreate all tables")
-                        for table in existing_tables:
-                            try:
-                                conn.execute(f"DROP TABLE IF EXISTS {table}")
-                            except Exception as e:
-                                logger.debug(f"Failed to drop table {table}: {e}")
+                    # Then clear chunks
+                    self.chunk_repository.clear_all_chunks()
                     
-                except Exception as e:
-                    logger.error(f"Error during table clearing: {e}")
-                    raise
+                    # Clear file metadata
+                    conn.execute("DELETE FROM file_metadata")
+                    
+                    logger.info("Database cleared successfully")
             
             # Reset database state manager after clearing to ensure fresh state
             # for subsequent operations and cross-process reliability
-            self.db_manager.state_manager.reset_state()
-            logger.info("Database cleared and state reset for cross-process reliability")
-            
+            if hasattr(self.db_manager, 'state_manager'):
+                self.db_manager.state_manager.reset_state()
+                logger.info("Database state reset for cross-process reliability")
+                    
+        except TimeoutError as e:
+            logger.error(f"Could not acquire lock for clear operation: {e}")
+            raise RuntimeError("Another process is clearing the database. Please try again later.")
         except Exception as e:
             logger.error(f"Failed to clear database: {e}")
             # Reset state on error as well to ensure clean state
-            self.db_manager.state_manager.reset_state()
+            if hasattr(self.db_manager, 'state_manager'):
+                self.db_manager.state_manager.reset_state()
             raise
 
     def backup_database(self, backup_path: Union[str, Path]) -> bool:

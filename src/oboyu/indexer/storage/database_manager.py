@@ -3,7 +3,7 @@
 import logging
 import shutil
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 
 from duckdb import DuckDBPyConnection
 
@@ -114,9 +114,6 @@ class DatabaseManager(DatabaseConnection):
             # Memory and performance settings
             self.conn.execute("SET memory_limit='2GB'")
             self.conn.execute("SET threads=4")
-            
-            # Enable HNSW experimental persistence for file-based databases
-            self.conn.execute("SET hnsw_enable_experimental_persistence=true")
 
             # Enable experimental features if requested
             if self.enable_experimental_features:
@@ -139,20 +136,50 @@ class DatabaseManager(DatabaseConnection):
 
         except Exception as e:
             logger.warning(f"Failed to configure database settings: {e}")
+    
+    def _configure_vss_settings(self) -> None:
+        """Configure VSS-specific settings after extension is loaded."""
+        if not self.conn:
+            return
+            
+        try:
+            # Enable HNSW experimental persistence for file-based databases
+            # This must be done after VSS extension is loaded
+            self.conn.execute("SET hnsw_enable_experimental_persistence=true")
+            logger.debug("HNSW persistence configured")
+        except Exception as e:
+            logger.warning(f"Failed to configure VSS settings: {e}")
 
     def _setup_vss_extension(self) -> None:
-        """Install and load the VSS extension for vector operations."""
+        """Install and load the VSS extension for vector operations with state validation."""
         if not self.conn:
             return
 
         try:
-            # Install VSS extension
-            self.conn.execute("INSTALL vss")
-            self.conn.execute("LOAD vss")
+            # Check if VSS extension is already loaded
+            try:
+                # Try a simple VSS operation to check if it's loaded
+                self.conn.execute("SELECT array_to_vector([1.0, 2.0, 3.0])").fetchone()
+                logger.debug("VSS extension already loaded")
+            except Exception:
+                # VSS not loaded, need to install and load
+                logger.debug("VSS extension not loaded, installing...")
+                
+                # Install VSS extension if not already installed
+                try:
+                    self.conn.execute("INSTALL vss")
+                    logger.debug("VSS extension installed")
+                except Exception as install_error:
+                    # Installation might fail if already installed, which is fine
+                    if "already installed" not in str(install_error).lower():
+                        logger.warning(f"VSS installation warning: {install_error}")
+                
+                # Load VSS extension
+                self.conn.execute("LOAD vss")
+                logger.debug("VSS extension loaded")
             
-            # Enable HNSW persistence after loading VSS extension
-            self.conn.execute("SET hnsw_enable_experimental_persistence=true")
-            logger.debug("VSS extension loaded successfully with HNSW persistence enabled")
+            # Configure VSS-specific settings
+            self._configure_vss_settings()
 
         except Exception as e:
             logger.error(f"Failed to setup VSS extension: {e}")
@@ -198,6 +225,95 @@ class DatabaseManager(DatabaseConnection):
                 logger.info("HNSW index created successfully")
             else:
                 logger.warning("HNSW index creation failed")
+    
+    def validate_database_state(self) -> Dict[str, Any]:
+        """Validate the current database state and check for inconsistencies.
+        
+        Returns:
+            Dictionary with validation results and any issues found
+
+        """
+        validation_results: Dict[str, Any] = {
+            "is_valid": True,
+            "issues": [],
+            "warnings": [],
+            "stats": {}
+        }
+        
+        try:
+            # Check if connection is valid
+            if not self.conn:
+                validation_results["is_valid"] = False
+                validation_results["issues"].append("No database connection")
+                return validation_results
+            
+            # Test the connection
+            try:
+                self.conn.execute("SELECT 1").fetchone()
+            except Exception as e:
+                validation_results["is_valid"] = False
+                validation_results["issues"].append(f"Database connection test failed: {e}")
+                return validation_results
+            
+            # Check VSS extension
+            try:
+                # Try to create a simple vector to test VSS functionality
+                self.conn.execute("SELECT array_to_vector([1.0, 2.0, 3.0])").fetchone()
+                validation_results["stats"]["vss_loaded"] = True
+            except Exception as e:
+                if "vss" in str(e).lower() or "vector" in str(e).lower():
+                    validation_results["warnings"].append("VSS extension may not be loaded properly")
+                    validation_results["stats"]["vss_loaded"] = False
+                else:
+                    # VSS is loaded but there might be another issue
+                    validation_results["stats"]["vss_loaded"] = True
+            
+            # Check table existence
+            required_tables = ["chunks", "embeddings", "file_metadata"]
+            for table in required_tables:
+                try:
+                    result = self.conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
+                    count = result[0] if result else 0
+                    validation_results["stats"][f"{table}_count"] = count
+                except Exception as e:
+                    validation_results["is_valid"] = False
+                    validation_results["issues"].append(f"Table '{table}' missing or inaccessible: {e}")
+            
+            # Check HNSW index status
+            if self.index_manager:
+                has_index = self.index_manager.hnsw_index_exists()
+                should_have_index = self.index_manager._should_create_hnsw_index()
+                
+                validation_results["stats"]["hnsw_index_exists"] = has_index
+                validation_results["stats"]["hnsw_index_needed"] = should_have_index
+                
+                if should_have_index and not has_index:
+                    validation_results["warnings"].append("HNSW index missing but embeddings exist")
+            
+            # Check for orphaned embeddings
+            try:
+                result = self.conn.execute("""
+                    SELECT COUNT(*)
+                    FROM embeddings e
+                    LEFT JOIN chunks c ON e.chunk_id = c.id
+                    WHERE c.id IS NULL
+                """).fetchone()
+                orphaned = result[0] if result else 0
+                
+                if orphaned > 0:
+                    validation_results["warnings"].append(f"Found {orphaned} orphaned embeddings")
+                    validation_results["stats"]["orphaned_embeddings"] = orphaned
+            except Exception as e:
+                validation_results["warnings"].append(f"Could not check for orphaned embeddings: {e}")
+            
+            logger.info(f"Database validation completed: {validation_results}")
+            
+        except Exception as e:
+            validation_results["is_valid"] = False
+            validation_results["issues"].append(f"Validation failed: {e}")
+            logger.error(f"Database validation failed: {e}")
+        
+        return validation_results
 
     def backup_database(self, backup_path: Union[str, Path]) -> bool:
         """Create a backup of the database.

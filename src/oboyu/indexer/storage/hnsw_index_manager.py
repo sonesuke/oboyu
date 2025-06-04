@@ -48,7 +48,7 @@ class HNSWIndexManager:
         self._hnsw_params: Optional[HNSWIndexParams] = None
 
     def create_hnsw_index(self, params: HNSWIndexParams, force: bool = False) -> bool:
-        """Create HNSW vector similarity index.
+        """Create HNSW vector similarity index with concurrent access handling.
 
         Args:
             params: HNSW index parameters
@@ -58,48 +58,72 @@ class HNSWIndexManager:
             True if index was created successfully
 
         """
-        try:
-            # Check if index already exists
-            if not force and self.hnsw_index_exists():
-                logger.debug("HNSW index already exists - skipping creation")
-                return True
-
-            # Drop existing index if forcing recreation
-            if force:
-                self.drop_hnsw_index()
-
-            # Create the index
-            index_sql = self.schema.get_hnsw_index_sql(
-                ef_construction=params.ef_construction,
-                ef_search=params.ef_search,
-                m=params.m,
-                m0=params.m0
-            )
-
-            logger.info(
-                f"Creating HNSW index with parameters: ef_construction={params.ef_construction}, "
-                f"ef_search={params.ef_search}, m={params.m}, m0={params.m0}"
-            )
-
-            self.conn.execute(index_sql)
-            self._hnsw_params = params
-
-            logger.info("HNSW index created successfully")
-            return True
-
-        except Exception as e:
-            logger.error(f"Failed to create HNSW index: {e}")
-            logger.debug(f"Index SQL was: {index_sql}")
-            
-            # Check embeddings table status for debugging
+        import time
+        
+        max_retries = 3
+        retry_delay = 0.5  # 500ms initial delay
+        
+        for attempt in range(max_retries):
             try:
+                # Check if index already exists
+                if not force and self.hnsw_index_exists():
+                    logger.debug("HNSW index already exists - skipping creation")
+                    return True
+
+                # Drop existing index if forcing recreation
+                if force:
+                    self.drop_hnsw_index()
+
+                # Check if embeddings table has data
                 count_result = self.conn.execute("SELECT COUNT(*) FROM embeddings").fetchone()
                 count = count_result[0] if count_result else 0
-                logger.debug(f"Embeddings table has {count} rows")
-            except Exception as debug_e:
-                logger.debug(f"Could not check embeddings count: {debug_e}")
-            
-            return False
+                
+                if count == 0:
+                    logger.info("No embeddings found, skipping HNSW index creation")
+                    return True
+
+                # Create the index
+                index_sql = self.schema.get_hnsw_index_sql(
+                    ef_construction=params.ef_construction,
+                    ef_search=params.ef_search,
+                    m=params.m,
+                    m0=params.m0
+                )
+
+                logger.info(
+                    f"Creating HNSW index with parameters: ef_construction={params.ef_construction}, "
+                    f"ef_search={params.ef_search}, m={params.m}, m0={params.m0} (attempt {attempt + 1}/{max_retries})"
+                )
+
+                self.conn.execute(index_sql)
+                self._hnsw_params = params
+
+                logger.info("HNSW index created successfully")
+                return True
+
+            except Exception as e:
+                error_msg = str(e).lower()
+                
+                # Check if it's a concurrent access error
+                if ("lock" in error_msg or "concurrent" in error_msg or "already exists" in error_msg):
+                    if attempt < max_retries - 1:
+                        logger.warning(f"HNSW index creation failed due to concurrent access, retrying in {retry_delay}s: {e}")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
+                        
+                        # Check again if index was created by another process
+                        if self.hnsw_index_exists():
+                            logger.info("HNSW index was created by another process")
+                            return True
+                        continue
+                    
+                logger.error(f"Failed to create HNSW index after {attempt + 1} attempts: {e}")
+                if 'index_sql' in locals():
+                    logger.debug(f"Index SQL was: {index_sql}")
+                
+                return False
+                
+        return False
 
     def drop_hnsw_index(self) -> bool:
         """Drop the HNSW vector index.

@@ -79,9 +79,8 @@ def test_initialize_success(mock_connect, database_manager):
     mock_conn.execute.assert_any_call("SET threads=4")
     mock_conn.execute.assert_any_call("SET hnsw_enable_experimental_persistence=true")
     
-    # Verify VSS extension setup
-    mock_conn.execute.assert_any_call("INSTALL vss")
-    mock_conn.execute.assert_any_call("LOAD vss")
+    # Verify VSS extension setup - the new logic first checks if VSS is loaded
+    mock_conn.execute.assert_any_call("SELECT array_to_vector([1.0, 2.0, 3.0])")
     
     # Verify managers were initialized
     mock_migration.assert_called_once()

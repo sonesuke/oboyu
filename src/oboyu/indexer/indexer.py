@@ -82,6 +82,15 @@ class Indexer:
         """
         return self.database_service.check_health()
 
+    def clear_index(self) -> None:
+        """Clear all data from the index while preserving schema.
+        
+        This method clears all chunks and embeddings from the database
+        but keeps the database structure intact.
+        """
+        if hasattr(self, 'database_service') and self.database_service:
+            self.database_service.clear_database()
+    
     def close(self) -> None:
         """Close all resources properly."""
         # Database service handles all connection closures
