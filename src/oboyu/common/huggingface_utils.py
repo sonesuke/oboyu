@@ -113,6 +113,7 @@ def safe_model_download(
     initial_delay: float = 1.0,
     backoff_factor: float = 2.0,
     cache_dir: Path | None = None,
+    use_circuit_breaker: bool = True,
 ) -> T:
     """Safely download a model with retry logic and error handling.
 
@@ -123,6 +124,7 @@ def safe_model_download(
         initial_delay: Initial delay between retries in seconds.
         backoff_factor: Factor by which to multiply delay after each retry.
         cache_dir: Directory where models are cached.
+        use_circuit_breaker: Whether to use circuit breaker for reliability.
 
     Returns:
         The result of the download function.
@@ -131,6 +133,43 @@ def safe_model_download(
         HuggingFaceError: Various subclasses depending on the error type.
 
     """
+    # Use circuit breaker if enabled
+    if use_circuit_breaker:
+        from oboyu.common.circuit_breaker import (
+            CircuitBreakerError,
+            get_circuit_breaker_registry,
+        )
+        
+        registry = get_circuit_breaker_registry()
+        circuit_breaker = registry.get_or_create(f"huggingface_download_{model_id}")
+        
+        try:
+            return circuit_breaker.call(
+                lambda: _safe_model_download_impl(
+                    model_id, download_func, max_retries, initial_delay, backoff_factor, cache_dir
+                )
+            )
+        except CircuitBreakerError as e:
+            # Convert circuit breaker error to appropriate HuggingFace error
+            raise HuggingFaceNetworkError(
+                message=f"Circuit breaker is open for model '{model_id}' due to repeated failures",
+                technical_details=str(e),
+            ) from e
+    else:
+        return _safe_model_download_impl(
+            model_id, download_func, max_retries, initial_delay, backoff_factor, cache_dir
+        )
+
+
+def _safe_model_download_impl(
+    model_id: str,
+    download_func: Callable[[], T],
+    max_retries: int = 3,
+    initial_delay: float = 1.0,
+    backoff_factor: float = 2.0,
+    cache_dir: Path | None = None,
+) -> T:
+    """Internal implementation of safe model download without circuit breaker."""
     last_error: Exception | None = None
     delay = initial_delay
 
@@ -373,6 +412,47 @@ def _extract_model_id_from_error(error: HuggingFaceError) -> str:
     if match := re.search(r"'([^']+/[^']+)'", error.message):
         return match.group(1)
     return "unknown"
+
+
+def with_huggingface_circuit_breaker(
+    operation_name: str,
+    use_circuit_breaker: bool = True,
+) -> Callable[[Callable[[], T]], T]:
+    """Execute a function with HuggingFace circuit breaker protection.
+    
+    Args:
+        operation_name: Name of the operation for circuit breaker identification.
+        use_circuit_breaker: Whether to use circuit breaker protection.
+        
+    Returns:
+        Function result or raises appropriate HuggingFace error.
+        
+    Raises:
+        HuggingFaceError: Various subclasses depending on the error type.
+        
+    """
+    def wrapper(func: Callable[[], T]) -> T:
+        if not use_circuit_breaker:
+            return func()
+            
+        from oboyu.common.circuit_breaker import (
+            CircuitBreakerError,
+            get_circuit_breaker_registry,
+        )
+        
+        registry = get_circuit_breaker_registry()
+        circuit_breaker = registry.get_or_create(f"huggingface_{operation_name}")
+        
+        try:
+            return circuit_breaker.call(func)
+        except CircuitBreakerError as e:
+            # Convert circuit breaker error to appropriate HuggingFace error
+            raise HuggingFaceNetworkError(
+                message=f"Circuit breaker is open for '{operation_name}' due to repeated failures",
+                technical_details=str(e),
+            ) from e
+    
+    return wrapper
 
 
 def get_fallback_models(model_type: str) -> list[tuple[str, str]]:
