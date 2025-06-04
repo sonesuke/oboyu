@@ -124,6 +124,67 @@ class IndexerConfigSchema(BaseModel):
         return result
 
 
+class CircuitBreakerConfigSchema(BaseModel):
+    """Schema for circuit breaker configuration."""
+
+    enabled: bool = Field(default=True, description="Enable circuit breaker protection")
+    failure_threshold: int = Field(
+        default=5,
+        ge=1,
+        le=50,
+        description="Number of failures before opening circuit"
+    )
+    recovery_timeout_minutes: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=60.0,
+        description="Minutes to wait before trying half-open state"
+    )
+    success_threshold: int = Field(
+        default=3,
+        ge=1,
+        le=20,
+        description="Consecutive successes needed to close circuit"
+    )
+    request_timeout_seconds: float = Field(
+        default=30.0,
+        ge=1.0,
+        le=300.0,
+        description="Timeout for individual requests in seconds"
+    )
+    enable_fallback_services: bool = Field(
+        default=True,
+        description="Enable fallback to alternative models"
+    )
+    enable_local_fallback: bool = Field(
+        default=True,
+        description="Enable local deterministic fallback embeddings"
+    )
+    fallback_model_names: List[str] = Field(
+        default_factory=lambda: [
+            "cl-nagoya/ruri-v3-base",
+            "sentence-transformers/all-MiniLM-L6-v2",
+            "BAAI/bge-small-en-v1.5"
+        ],
+        description="List of fallback embedding model names"
+    )
+
+    @field_validator('fallback_model_names')
+    @classmethod
+    def validate_fallback_models(cls, v: List[str]) -> List[str]:
+        """Validate fallback model names."""
+        return [model.strip() for model in v if model.strip()]
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "CircuitBreakerConfigSchema":
+        """Create instance from dictionary."""
+        return cls(**data)
+
+    def to_dict(self) -> Dict[str, object]:
+        """Convert to dictionary."""
+        return self.model_dump()
+
+
 class QueryConfigSchema(BaseModel):
     """Schema for query engine configuration."""
 
@@ -153,6 +214,7 @@ class ConfigSchema(BaseModel):
     crawler: CrawlerConfigSchema = Field(default_factory=CrawlerConfigSchema)
     indexer: IndexerConfigSchema = Field(default_factory=IndexerConfigSchema)
     query: QueryConfigSchema = Field(default_factory=QueryConfigSchema)
+    circuit_breaker: CircuitBreakerConfigSchema = Field(default_factory=CircuitBreakerConfigSchema)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ConfigSchema":
@@ -160,11 +222,13 @@ class ConfigSchema(BaseModel):
         crawler_data = data.get("crawler", {}) if isinstance(data.get("crawler", {}), dict) else {}
         indexer_data = data.get("indexer", {}) if isinstance(data.get("indexer", {}), dict) else {}
         query_data = data.get("query", {}) if isinstance(data.get("query", {}), dict) else {}
+        circuit_breaker_data = data.get("circuit_breaker", {}) if isinstance(data.get("circuit_breaker", {}), dict) else {}
         
         return cls(
             crawler=CrawlerConfigSchema.from_dict(crawler_data),
             indexer=IndexerConfigSchema.from_dict(indexer_data),
             query=QueryConfigSchema.from_dict(query_data),
+            circuit_breaker=CircuitBreakerConfigSchema.from_dict(circuit_breaker_data),
         )
 
     def to_dict(self) -> Dict[str, object]:
@@ -173,4 +237,5 @@ class ConfigSchema(BaseModel):
             "crawler": self.crawler.to_dict(),
             "indexer": self.indexer.to_dict(),
             "query": self.query.to_dict(),
+            "circuit_breaker": self.circuit_breaker.to_dict(),
         }
