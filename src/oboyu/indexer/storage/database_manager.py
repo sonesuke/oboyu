@@ -5,10 +5,10 @@ import shutil
 from pathlib import Path
 from typing import Optional, Union
 
-import duckdb
 from duckdb import DuckDBPyConnection
 
 from oboyu.indexer.storage.database_connection import DatabaseConnection
+from oboyu.indexer.storage.database_state_manager import DatabaseStateManager
 from oboyu.indexer.storage.index_manager import HNSWIndexParams, IndexManager
 from oboyu.indexer.storage.migrations import MigrationManager
 from oboyu.indexer.storage.schema import DatabaseSchema
@@ -62,6 +62,14 @@ class DatabaseManager(DatabaseConnection):
         # Initialize schema
         self.schema = DatabaseSchema(embedding_dimensions)
 
+        # Initialize state manager for cross-process reliability
+        self.state_manager = DatabaseStateManager(
+            db_path=db_path,
+            embedding_dimensions=embedding_dimensions,
+            hnsw_params=self.hnsw_params,
+            enable_experimental_features=enable_experimental_features,
+        )
+
         # Managers will be initialized after connection is established
         self.migration_manager: Optional[MigrationManager] = None
         self.index_manager: Optional[IndexManager] = None
@@ -71,7 +79,7 @@ class DatabaseManager(DatabaseConnection):
         self._is_initialized = False
 
     def initialize(self) -> None:
-        """Initialize the database schema and extensions."""
+        """Initialize the database schema and extensions using state manager."""
         if self._is_initialized:
             return
 
@@ -79,38 +87,22 @@ class DatabaseManager(DatabaseConnection):
             # Ensure database directory exists
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
-            # Connect to database
-            self.conn = duckdb.connect(str(self.db_path))
+            # Use state manager to get validated connection
+            self.conn = self.state_manager.ensure_initialized()
             self._connection = self.conn  # Set the parent class connection
 
-            # Configure database settings
-            self._configure_database()
-
-            # Install and load VSS extension
-            self._setup_vss_extension()
-
-            # Initialize managers with connection
+            # Initialize managers with validated connection
             self.migration_manager = MigrationManager(self.conn, self.schema)
             self.index_manager = IndexManager(self.conn, self.schema)
-
-            # Create database schema
-            self._create_schema()
-
-            # Run migrations
-            self.migration_manager.run_migrations()
-
-            # Initialize standard indexes (HNSW will be created later when data is available)
-            self.index_manager.setup_all_indexes(self.hnsw_params)
 
             self._is_initialized = True
             logger.info(f"Database initialized successfully at {self.db_path}")
 
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
-            if self.conn:
-                self.conn.close()
-                self.conn = None
-                self._connection = None
+            self.state_manager.close()
+            self.conn = None
+            self._connection = None
             raise
 
     def _configure_database(self) -> None:
@@ -243,15 +235,14 @@ class DatabaseManager(DatabaseConnection):
 
     def close(self) -> None:
         """Close database connection and clean up resources."""
-        if self.conn:
-            try:
-                self.conn.close()
-                self.conn = None
-                self._connection = None
-                self._is_initialized = False
-                logger.debug("Database connection closed")
-            except Exception as e:
-                logger.error(f"Failed to close database: {e}")
+        try:
+            self.state_manager.close()
+            self.conn = None
+            self._connection = None
+            self._is_initialized = False
+            logger.debug("Database connection closed")
+        except Exception as e:
+            logger.error(f"Failed to close database: {e}")
 
     def __enter__(self) -> "DatabaseManager":
         """Context manager entry."""

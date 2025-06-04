@@ -274,10 +274,65 @@ class DatabaseService:
                 assert self.embedding_repository is not None
                 assert self.chunk_repository is not None
                 
-                self.embedding_repository.clear_all_embeddings()
-                self.chunk_repository.clear_all_chunks()
+                # Clear all data from database in dependency order
+                conn = self.db_manager.get_connection()
+                
+                try:
+                    # First, find all tables that reference chunks
+                    result = conn.execute("""
+                        SELECT table_name
+                        FROM information_schema.tables
+                        WHERE table_schema = 'main'
+                    """).fetchall()
+                    
+                    existing_tables = [row[0] for row in result]
+                    logger.info(f"Existing tables: {existing_tables}")
+                    
+                    # Drop HNSW index first if it exists (this may hold references)
+                    try:
+                        conn.execute("DROP INDEX IF EXISTS hnsw_index")
+                    except Exception as e:
+                        logger.debug(f"Failed to drop HNSW index (might not exist): {e}")
+                    
+                    # Clear all data from all existing tables first
+                    # This is safer than trying to respect foreign keys
+                    for table in existing_tables:
+                        if table != 'chunks':  # Clear non-chunks tables first
+                            try:
+                                conn.execute(f"DELETE FROM {table}")
+                                logger.debug(f"Cleared table: {table}")
+                            except Exception as e:
+                                logger.debug(f"Failed to clear {table}: {e}")
+                    
+                    # Finally clear chunks table
+                    try:
+                        conn.execute("DELETE FROM chunks")
+                        logger.debug("Cleared chunks table")
+                    except Exception as e:
+                        logger.error(f"Failed to clear chunks: {e}")
+                        # If we still can't clear chunks, there's a structural issue
+                        # Let's just drop and recreate the tables
+                        logger.warning("Attempting to drop and recreate all tables")
+                        for table in existing_tables:
+                            try:
+                                conn.execute(f"DROP TABLE IF EXISTS {table}")
+                            except Exception as e:
+                                logger.debug(f"Failed to drop table {table}: {e}")
+                    
+                except Exception as e:
+                    logger.error(f"Error during table clearing: {e}")
+                    raise
+            
+            # Reset database state manager after clearing to ensure fresh state
+            # for subsequent operations and cross-process reliability
+            self.db_manager.state_manager.reset_state()
+            logger.info("Database cleared and state reset for cross-process reliability")
+            
         except Exception as e:
             logger.error(f"Failed to clear database: {e}")
+            # Reset state on error as well to ensure clean state
+            self.db_manager.state_manager.reset_state()
+            raise
 
     def backup_database(self, backup_path: Union[str, Path]) -> bool:
         """Create a backup of the database.
