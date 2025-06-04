@@ -3,6 +3,10 @@
 # Import base configuration management
 from oboyu.config.base import ConfigManager
 
+# Import immutable configuration system
+from oboyu.config.configuration_builder import ConfigSource, ConfigurationBuilder, ConfigValue
+from oboyu.config.configuration_resolver import ConfigurationResolver, ResolvedIndexerConfig, ResolvedSearchConfig
+
 # Import component-specific configurations
 from oboyu.config.crawler import DEFAULT_CONFIG as CRAWLER_DEFAULTS, CrawlerConfig
 from oboyu.config.indexer import (
@@ -21,6 +25,7 @@ from oboyu.config.schema import (
     IndexerConfigSchema,
     QueryConfigSchema,
 )
+from oboyu.config.search_context import SearchContext
 
 # Import simplified configuration system
 from oboyu.config.simplified_schema import (
@@ -65,6 +70,15 @@ __all__ = [
     "CrawlerConfigSchema",
     "IndexerConfigSchema",
     "QueryConfigSchema",
+    
+    # Immutable configuration system
+    "ConfigurationBuilder",
+    "ConfigurationResolver",
+    "ConfigSource",
+    "ConfigValue",
+    "ResolvedSearchConfig",
+    "ResolvedIndexerConfig",
+    "SearchContext",
     
     # Simplified configuration system
     "SimplifiedConfig",
