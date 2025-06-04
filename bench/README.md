@@ -18,20 +18,22 @@ The easiest way to run benchmarks is using the unified runner:
 
 ```bash
 # Run all benchmarks quickly (reduced scope)
-uv run python bench/run_benchmarks.py all --quick
+PYTHONPATH=. uv run python bench/run_benchmarks.py all --quick
 
 # Run only speed benchmarks
-uv run python bench/run_benchmarks.py speed --datasets small medium
+PYTHONPATH=. uv run python bench/run_benchmarks.py speed --datasets small medium
 
 # Run only accuracy evaluation
-uv run python bench/run_benchmarks.py accuracy --datasets synthetic
+PYTHONPATH=. uv run python bench/run_benchmarks.py accuracy --datasets synthetic
 
 # Run comprehensive evaluation (full scope)
-uv run python bench/run_benchmarks.py all --comprehensive
+PYTHONPATH=. uv run python bench/run_benchmarks.py all --comprehensive
 
 # Run reranker-specific benchmarks
-uv run python bench/run_benchmarks.py reranker --models small large
+PYTHONPATH=. uv run python bench/run_benchmarks.py reranker --models small large
 ```
+
+**Note**: All benchmark commands require `PYTHONPATH=.` to be set from the project root directory to properly resolve imports.
 
 ### Individual Benchmark Modules
 
@@ -39,16 +41,16 @@ You can also run benchmarks individually for more control:
 
 ```bash
 # Speed benchmarks
-uv run python bench/speed/run_speed_benchmark.py --datasets small medium
+PYTHONPATH=. uv run python bench/speed/run_speed_benchmark.py --datasets small medium
 
 # Accuracy evaluation
-uv run python bench/accuracy/benchmark_rag_accuracy.py --datasets synthetic miracl-ja
+PYTHONPATH=. uv run python bench/accuracy/benchmark_rag_accuracy.py --datasets synthetic miracl-ja
 
 # Reranker evaluation
-uv run python bench/reranker/benchmark_reranking.py --models cl-nagoya/ruri-reranker-small
+PYTHONPATH=. uv run python bench/reranker/benchmark_reranking.py --models cl-nagoya/ruri-reranker-small
 
 # Analyze results
-uv run python bench/speed/analyze.py --latest 5
+PYTHONPATH=. uv run python bench/speed/analyze.py --latest 5
 ```
 
 ### Unified Runner Options
@@ -57,19 +59,19 @@ The `run_benchmarks.py` script provides several useful options:
 
 ```bash
 # Show help for all options
-uv run python bench/run_benchmarks.py --help
+PYTHONPATH=. uv run python bench/run_benchmarks.py --help
 
 # Quick benchmarks (reduced scope for faster execution)
-uv run python bench/run_benchmarks.py all --quick
+PYTHONPATH=. uv run python bench/run_benchmarks.py all --quick
 
 # Comprehensive benchmarks (full scope for thorough evaluation)  
-uv run python bench/run_benchmarks.py all --comprehensive
+PYTHONPATH=. uv run python bench/run_benchmarks.py all --comprehensive
 
 # Verbose output for debugging
-uv run python bench/run_benchmarks.py speed --verbose
+PYTHONPATH=. uv run python bench/run_benchmarks.py speed --verbose
 
 # Custom output directory
-uv run python bench/run_benchmarks.py accuracy --output-dir /custom/path
+PYTHONPATH=. uv run python bench/run_benchmarks.py accuracy --output-dir /custom/path
 ```
 
 ## Directory Structure
@@ -134,13 +136,13 @@ bench/
 
 ```bash
 # Generate all dataset sizes
-uv run python bench/speed/generate_test_data.py all
+PYTHONPATH=. uv run python bench/speed/generate_test_data.py all
 
 # Generate specific dataset size
-uv run python bench/speed/generate_test_data.py small medium
+PYTHONPATH=. uv run python bench/speed/generate_test_data.py small medium
 
 # Custom output directory
-uv run python bench/speed/generate_test_data.py small --output-dir /path/to/data
+PYTHONPATH=. uv run python bench/speed/generate_test_data.py small --output-dir /path/to/data
 ```
 
 Dataset characteristics:
@@ -152,10 +154,10 @@ Dataset characteristics:
 
 ```bash
 # Generate all query languages
-uv run python bench/speed/generate_queries.py
+PYTHONPATH=. uv run python bench/speed/generate_queries.py
 
 # Generate specific languages
-uv run python bench/speed/generate_queries.py --languages japanese english
+PYTHONPATH=. uv run python bench/speed/generate_queries.py --languages japanese english
 ```
 
 Query characteristics:
@@ -187,22 +189,22 @@ The RAG accuracy evaluation framework measures retrieval quality using standard 
 
 ```bash
 # Run via unified runner (recommended)
-uv run python bench/run_benchmarks.py accuracy --datasets synthetic miracl-ja
+PYTHONPATH=. uv run python bench/run_benchmarks.py accuracy --datasets synthetic miracl-ja
 
 # Or run directly
-uv run python bench/accuracy/benchmark_rag_accuracy.py
+PYTHONPATH=. uv run python bench/accuracy/benchmark_rag_accuracy.py
 
 # Evaluate specific datasets
-uv run python bench/accuracy/benchmark_rag_accuracy.py --datasets miracl-ja mldr-ja
+PYTHONPATH=. uv run python bench/accuracy/benchmark_rag_accuracy.py --datasets miracl-ja mldr-ja
 
 # Evaluate with specific search modes and top-k values
-uv run python bench/accuracy/benchmark_rag_accuracy.py --search-modes vector hybrid --top-k-values 1 5 10
+PYTHONPATH=. uv run python bench/accuracy/benchmark_rag_accuracy.py --search-modes vector hybrid --top-k-values 1 5 10
 
 # Generate report from existing results
-uv run python bench/accuracy/benchmark_rag_accuracy.py --report-only
+PYTHONPATH=. uv run python bench/accuracy/benchmark_rag_accuracy.py --report-only
 
 # Compare with previous results for regression detection
-uv run python bench/accuracy/benchmark_rag_accuracy.py --compare-with bench/results/accuracy_20250101_120000.json
+PYTHONPATH=. uv run python bench/accuracy/benchmark_rag_accuracy.py --compare-with bench/results/accuracy_20250101_120000.json
 ```
 
 ## Speed Benchmarks
@@ -212,7 +214,7 @@ uv run python bench/accuracy/benchmark_rag_accuracy.py --compare-with bench/resu
 #### Command Line Options
 
 ```bash
-uv run python bench/speed/run_speed_benchmark.py [options]
+PYTHONPATH=. uv run python bench/speed/run_speed_benchmark.py [options]
 ```
 
 Options:
@@ -228,13 +230,13 @@ Options:
 
 ```bash
 # Run benchmark on medium dataset with Japanese queries only
-uv run python bench/speed/run_speed_benchmark.py --datasets medium --languages japanese
+PYTHONPATH=. uv run python bench/speed/run_speed_benchmark.py --datasets medium --languages japanese
 
 # Skip indexing and use existing indexes for search benchmark
-uv run python bench/speed/run_speed_benchmark.py --skip-indexing --use-existing-indexes
+PYTHONPATH=. uv run python bench/speed/run_speed_benchmark.py --skip-indexing --use-existing-indexes
 
 # Force regenerate all test data and run benchmark
-uv run python bench/speed/run_speed_benchmark.py --datasets small medium large --force-regenerate
+PYTHONPATH=. uv run python bench/speed/run_speed_benchmark.py --datasets small medium large --force-regenerate
 ```
 
 ## Understanding Results
@@ -268,20 +270,20 @@ uv run python bench/speed/run_speed_benchmark.py --datasets small medium large -
 
 ```bash
 # Analyze last 5 runs
-uv run python bench/analyze.py --latest 5
+PYTHONPATH=. uv run python bench/analyze.py --latest 5
 
 # Analyze with custom results directory
-uv run python bench/analyze.py --results-dir /path/to/results
+PYTHONPATH=. uv run python bench/analyze.py --results-dir /path/to/results
 ```
 
 ### Compare Runs
 
 ```bash
 # Compare two specific runs
-uv run python bench/analyze.py --compare <run_id_1> <run_id_2>
+PYTHONPATH=. uv run python bench/analyze.py --compare <run_id_1> <run_id_2>
 
 # Set regression threshold (default: 10%)
-uv run python bench/analyze.py --compare <run_id_1> <run_id_2> --regression-threshold 0.05
+PYTHONPATH=. uv run python bench/analyze.py --compare <run_id_1> <run_id_2> --regression-threshold 0.05
 ```
 
 ### Performance Trends
@@ -316,7 +318,9 @@ Quick access summaries in `results/summary_*.json`:
 
 ## Configuration
 
-Edit `config.py` to customize:
+### Benchmark Configuration
+
+Edit `config.py` to customize benchmark settings:
 
 ```python
 # Dataset sizes
@@ -341,25 +345,69 @@ BENCHMARK_CONFIG = {
 }
 ```
 
+### Current Architecture Configuration
+
+The benchmarks now use the new type-safe configuration system with Pydantic models:
+
+```python
+from oboyu.config.indexer import IndexerConfig, ModelConfig, ProcessingConfig
+from oboyu.config.crawler import CrawlerConfig
+
+# Example configuration for benchmarks
+indexer_config = IndexerConfig(
+    processing=ProcessingConfig(
+        db_path=Path("benchmark.db"),
+        chunk_size=1000,
+        chunk_overlap=200
+    ),
+    model=ModelConfig(
+        embedding_model="cl-nagoya/ruri-v3-30m",
+        use_onnx=True,
+        reranker_model="cl-nagoya/ruri-reranker-small",
+        use_reranker=False
+    )
+)
+
+crawler_config = CrawlerConfig(
+    depth=10,
+    max_workers=4,
+    max_file_size=10*1024*1024,
+    include_patterns=["*.txt", "*.md", "*.py"]
+)
+```
+
+This replaces the old dict-based configuration system and provides:
+- Type safety with automatic validation
+- Clear documentation of available options
+- Better error messages for invalid configurations
+- IDE support with autocompletion
+
+### Key Changes from Legacy Configuration
+
+- **No more `config_dict` parameter**: Configurations are now created directly with named parameters
+- **Typed sub-configurations**: `ModelConfig`, `ProcessingConfig`, `SearchConfig` for organized settings
+- **Validation**: Invalid configurations raise clear errors immediately
+- **Backward compatibility**: Convenience properties maintain API compatibility where possible
+
 ## Integration with CI/CD
 
 ### Basic Integration
 
 ```bash
 # Run quick benchmark suite and check for regressions
-uv run python bench/run_benchmarks.py all --quick
-uv run python bench/speed/analyze.py --latest 2 --regression-threshold 0.1
+PYTHONPATH=. uv run python bench/run_benchmarks.py all --quick
+PYTHONPATH=. uv run python bench/speed/analyze.py --latest 2 --regression-threshold 0.1
 ```
 
 ### GitHub Actions Example
 
 ```yaml
 - name: Run Quick Performance Benchmark
-  run: uv run python bench/run_benchmarks.py all --quick
+  run: PYTHONPATH=. uv run python bench/run_benchmarks.py all --quick
   
 - name: Check for Speed Regressions
   run: |
-    uv run python bench/speed/analyze.py --latest 2 --regression-threshold 0.1
+    PYTHONPATH=. uv run python bench/speed/analyze.py --latest 2 --regression-threshold 0.1
     if [ $? -ne 0 ]; then
       echo "Performance regression detected!"
       exit 1
@@ -367,7 +415,7 @@ uv run python bench/speed/analyze.py --latest 2 --regression-threshold 0.1
 
 - name: Run Accuracy Benchmark (Weekly)
   if: github.event_name == 'schedule'
-  run: uv run python bench/run_benchmarks.py accuracy --comprehensive
+  run: PYTHONPATH=. uv run python bench/run_benchmarks.py accuracy --comprehensive
 ```
 
 ## Troubleshooting
@@ -381,12 +429,12 @@ uv run python bench/speed/analyze.py --latest 2 --regression-threshold 0.1
 
 2. **"Dataset not found"**
    ```bash
-   uv run python bench/speed/generate_test_data.py all
+   PYTHONPATH=. uv run python bench/speed/generate_test_data.py all
    ```
 
 3. **"Query file not found"**
    ```bash
-   uv run python bench/speed/generate_queries.py
+   PYTHONPATH=. uv run python bench/speed/generate_queries.py
    ```
 
 4. **Memory issues with large dataset**
@@ -398,10 +446,10 @@ uv run python bench/speed/analyze.py --latest 2 --regression-threshold 0.1
 Enable verbose output:
 ```bash
 # For unified runner
-uv run python bench/run_benchmarks.py speed --datasets small --verbose
+PYTHONPATH=. uv run python bench/run_benchmarks.py speed --datasets small --verbose
 
 # For individual benchmarks
-uv run python bench/speed/run_speed_benchmark.py --datasets small --verbose
+PYTHONPATH=. uv run python bench/speed/run_speed_benchmark.py --datasets small --verbose
 ```
 
 ## RAG Accuracy Evaluation
@@ -416,19 +464,19 @@ The RAG accuracy evaluation suite measures Oboyu's effectiveness as a complete R
 
 ```bash
 # Run via unified runner (recommended)
-uv run python bench/run_benchmarks.py accuracy --datasets synthetic
+PYTHONPATH=. uv run python bench/run_benchmarks.py accuracy --datasets synthetic
 
 # Run with synthetic dataset (quick test)
-uv run python bench/accuracy/benchmark_rag_accuracy.py --datasets synthetic
+PYTHONPATH=. uv run python bench/accuracy/benchmark_rag_accuracy.py --datasets synthetic
 
 # Run with Japanese evaluation datasets  
-uv run python bench/accuracy/benchmark_rag_accuracy.py --datasets miracl-ja mldr-ja jagovfaqs-22k
+PYTHONPATH=. uv run python bench/accuracy/benchmark_rag_accuracy.py --datasets miracl-ja mldr-ja jagovfaqs-22k
 
 # Evaluate specific search modes
-uv run python bench/accuracy/benchmark_rag_accuracy.py --search-modes vector hybrid
+PYTHONPATH=. uv run python bench/accuracy/benchmark_rag_accuracy.py --search-modes vector hybrid
 
 # Include reranking evaluation
-uv run python bench/accuracy/benchmark_rag_accuracy.py --evaluate-reranking
+PYTHONPATH=. uv run python bench/accuracy/benchmark_rag_accuracy.py --evaluate-reranking
 ```
 
 ### RAG Evaluation Datasets
@@ -445,7 +493,7 @@ Note: These are synthetic implementations that mimic the structure and character
 #### Custom Datasets
 ```bash
 # Evaluate with custom dataset
-uv run python bench/benchmark_rag_accuracy.py --datasets custom --custom-dataset-path /path/to/dataset.json
+PYTHONPATH=. uv run python bench/benchmark_rag_accuracy.py --datasets custom --custom-dataset-path /path/to/dataset.json
 ```
 
 ### RAG Metrics
@@ -466,13 +514,13 @@ uv run python bench/benchmark_rag_accuracy.py --datasets custom --custom-dataset
 
 ```bash
 # Generate report from existing results
-uv run python bench/accuracy/benchmark_rag_accuracy.py --report-only
+PYTHONPATH=. uv run python bench/accuracy/benchmark_rag_accuracy.py --report-only
 
 # Compare with previous run
-uv run python bench/accuracy/benchmark_rag_accuracy.py --compare-with bench/results/accuracy_20250101_120000.json
+PYTHONPATH=. uv run python bench/accuracy/benchmark_rag_accuracy.py --compare-with bench/results/accuracy_20250101_120000.json
 
 # Set custom regression threshold (default: 10%)
-uv run python bench/accuracy/benchmark_rag_accuracy.py --compare-with previous.json --regression-threshold 0.05
+PYTHONPATH=. uv run python bench/accuracy/benchmark_rag_accuracy.py --compare-with previous.json --regression-threshold 0.05
 ```
 
 ### Configuration
