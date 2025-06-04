@@ -79,13 +79,20 @@ class MigrationManager:
             return None
 
     def set_initial_version(self) -> None:
-        """Set the initial schema version."""
+        """Set the initial schema version with conflict handling."""
         try:
+            # Check if version already exists
+            current_version = self.get_current_version()
+            if current_version is not None:
+                logger.debug(f"Schema version already set to: {current_version}")
+                return
+            
             version_data = self.schema.get_initial_schema_version_data()
 
+            # Use INSERT OR IGNORE to handle concurrent access
             self.conn.execute(
                 """
-                INSERT INTO schema_version (version, description, applied_at, migration_checksum)
+                INSERT OR IGNORE INTO schema_version (version, description, applied_at, migration_checksum)
                 VALUES (?, ?, ?, ?)
             """,
                 version_data,
@@ -94,6 +101,12 @@ class MigrationManager:
             logger.info(f"Set initial schema version: {version_data[0]}")
 
         except Exception as e:
+            # Check if this is a concurrent access issue
+            error_str = str(e).lower()
+            if "duplicate" in error_str or "constraint violation" in error_str:
+                logger.debug("Initial version already set by another process")
+                return
+                
             logger.error(f"Failed to set initial schema version: {e}")
             raise MigrationError(f"Initial version setup failed: {e}") from e
 
