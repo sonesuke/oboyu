@@ -1,6 +1,7 @@
 """Factory for creating hexagonal architecture components."""
 
 import logging
+from typing import Any
 
 from ..adapters.config.configuration_adapter import ConfigurationAdapter
 from ..adapters.filesystem.local_filesystem_adapter import LocalFilesystemAdapter
@@ -14,9 +15,12 @@ class HexagonalArchitectureFactory:
     """Factory for creating hexagonal architecture components."""
     
     @staticmethod
-    def create_container(database_service, embedding_service,
-                        crawler_service, language_detector,
-                        config_service, reranker_service=None) -> Container:
+    def create_container(database_service: Any,  # noqa: ANN401
+                        embedding_service: Any,  # noqa: ANN401
+                        crawler_service: Any,  # noqa: ANN401
+                        language_detector: Any,  # noqa: ANN401
+                        config_service: Any,  # noqa: ANN401
+                        reranker_service: Any = None) -> Container:  # noqa: ANN401
         """Create a fully configured dependency injection container."""
         container = Container()
         
@@ -35,9 +39,12 @@ class HexagonalArchitectureFactory:
         return container
     
     @staticmethod
-    def create_facade(database_service, embedding_service,
-                     crawler_service, language_detector,
-                     config_service, reranker_service=None) -> HexagonalFacade:
+    def create_facade(database_service: Any,  # noqa: ANN401
+                     embedding_service: Any,  # noqa: ANN401
+                     crawler_service: Any,  # noqa: ANN401
+                     language_detector: Any,  # noqa: ANN401
+                     config_service: Any,  # noqa: ANN401
+                     reranker_service: Any = None) -> HexagonalFacade:  # noqa: ANN401
         """Create a hexagonal facade for backward compatibility."""
         container = HexagonalArchitectureFactory.create_container(
             database_service=database_service,
@@ -51,7 +58,7 @@ class HexagonalArchitectureFactory:
         return HexagonalFacade(container)
     
     @staticmethod
-    def create_from_existing_services(indexer, retriever) -> HexagonalFacade:
+    def create_from_existing_services(indexer: Any, retriever: Any) -> HexagonalFacade:  # noqa: ANN401
         """Create hexagonal facade from existing indexer and retriever services."""
         return HexagonalArchitectureFactory.create_facade(
             database_service=indexer.database_service,

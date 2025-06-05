@@ -3,6 +3,7 @@
 import logging
 from typing import Any, Dict
 
+from ...cli.services.configuration_service import ConfigurationService
 from ...ports.external.configuration_port import ConfigurationPort
 
 logger = logging.getLogger(__name__)
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 class ConfigurationAdapter(ConfigurationPort):
     """Configuration adapter that wraps existing configuration."""
     
-    def __init__(self, config_service):
+    def __init__(self, config_service: ConfigurationService) -> None:
         """Initialize with existing configuration service."""
         self._config_service = config_service
     
@@ -35,7 +36,7 @@ class ConfigurationAdapter(ConfigurationPort):
         """Get crawler configuration."""
         return self._config_service.get_crawler_config()
     
-    def get_value(self, key: str, default: Any = None) -> Any:
+    def get_value(self, key: str, default: Any = None) -> Any:  # noqa: ANN401
         """Get a specific configuration value."""
         return getattr(self._config_service, key, default)
     

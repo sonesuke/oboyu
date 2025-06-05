@@ -52,4 +52,5 @@ class ChunkId:
         return int(index_part)
     
     def __str__(self) -> str:
+        """Return string representation of the chunk ID."""
         return self.value

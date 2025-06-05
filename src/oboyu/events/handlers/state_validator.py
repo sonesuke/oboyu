@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class IndexStateValidator(EventHandler):
     """Validates index integrity after operations."""
     
-    def __init__(self, event_bus: Optional[Any] = None, database_path: Optional[Path] = None) -> None:
+    def __init__(self, event_bus: Optional[Any] = None, database_path: Optional[Path] = None) -> None:  # noqa: ANN401
         """Initialize the state validator.
         
         Args:
@@ -224,7 +224,7 @@ class IndexStateValidator(EventHandler):
                 severity="medium"
             )
     
-    def _check_orphaned_records(self, conn: Any, operation_id: str) -> None:
+    def _check_orphaned_records(self, conn: Any, operation_id: str) -> None:  # noqa: ANN401
         """Check for orphaned records in the database.
         
         Args:
@@ -251,7 +251,7 @@ class IndexStateValidator(EventHandler):
         except Exception as e:
             logger.warning(f"Could not check for orphaned records: {e}")
     
-    def _check_vss_extension_status(self, conn: Any, operation_id: str) -> None:
+    def _check_vss_extension_status(self, conn: Any, operation_id: str) -> None:  # noqa: ANN401
         """Check VSS extension status.
         
         Args:

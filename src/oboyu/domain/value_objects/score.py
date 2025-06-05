@@ -44,7 +44,9 @@ class Score:
         return self.value >= threshold
     
     def __float__(self) -> float:
+        """Return float representation of the score."""
         return self.value
     
     def __str__(self) -> str:
+        """Return string representation of the score."""
         return f"{self.value:.3f}"

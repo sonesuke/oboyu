@@ -9,7 +9,7 @@ from oboyu.config.schema import CircuitBreakerConfigSchema
 
 def create_circuit_breaker_config(
     config_schema: CircuitBreakerConfigSchema | None = None,
-    **overrides: Any,
+    **overrides: Any,  # noqa: ANN401
 ) -> CircuitBreakerConfig:
     """Create a CircuitBreakerConfig from schema.
     

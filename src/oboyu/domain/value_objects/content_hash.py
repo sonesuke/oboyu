@@ -33,4 +33,5 @@ class ContentHash:
         return self.value == expected_hash
     
     def __str__(self) -> str:
+        """Return string representation of the content hash."""
         return self.value

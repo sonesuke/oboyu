@@ -83,7 +83,7 @@ class HealthCommand(CliCommand):
 
 
 @click.group()
-def health():
+def health() -> None:
     """Health monitoring and diagnostics commands."""
     pass
 

@@ -128,7 +128,7 @@ class CircuitBreaker(Generic[T]):
         self.metrics = CircuitBreakerMetrics()
         self._lock = threading.RLock()
 
-    def call(self, func: Callable[[], T], *args: Any, **kwargs: Any) -> T:
+    def call(self, func: Callable[[], T], *args: Any, **kwargs: Any) -> T:  # noqa: ANN401
         """Execute a function through the circuit breaker.
         
         Args:
@@ -425,7 +425,7 @@ def with_circuit_breaker(
     config: CircuitBreakerConfig | None = None,
     circuit_type: type[CircuitBreaker[T]] = HuggingFaceCircuitBreaker,
 ) -> Callable[[Callable[[], T]], Callable[[], T]]:
-    """Decorator to wrap a function with a circuit breaker.
+    """Wrap a function with a circuit breaker.
     
     Args:
         name: Name of the circuit breaker.
@@ -437,7 +437,7 @@ def with_circuit_breaker(
         
     """
     def decorator(func: Callable[[], T]) -> Callable[[], T]:
-        def wrapper(*args: Any, **kwargs: Any) -> T:
+        def wrapper(*args: Any, **kwargs: Any) -> T:  # noqa: ANN401
             registry = get_circuit_breaker_registry()
             circuit_breaker = registry.get_or_create(name, circuit_type, config)
             return circuit_breaker.call(func, *args, **kwargs)

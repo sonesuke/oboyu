@@ -23,7 +23,7 @@ T = TypeVar('T')
 class Container:
     """Simple dependency injection container."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize container."""
         self._services: Dict[Type, Any] = {}
         self._singletons: Dict[Type, Any] = {}
@@ -54,8 +54,8 @@ class Container:
         raise ValueError(f"Service {interface} not registered")
     
     def configure_default_services(self,
-                                 database_service,
-                                 embedding_service,
+                                 database_service: Any,  # noqa: ANN401
+                                 embedding_service: Any,  # noqa: ANN401
                                  filesystem_port: FilesystemPort,
                                  reranker_service: Optional[RerankerService] = None) -> None:
         """Configure default services for hexagonal architecture."""

@@ -11,6 +11,7 @@ from ...domain.value_objects.chunk_id import ChunkId
 from ...domain.value_objects.embedding_vector import EmbeddingVector
 from ...domain.value_objects.language_code import LanguageCode
 from ...domain.value_objects.score import Score
+from ...indexer.storage.database_service import DatabaseService
 from ...ports.repositories.search_repository import SearchRepository
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 class DuckDBSearchRepository(SearchRepository):
     """DuckDB implementation of search repository."""
     
-    def __init__(self, database_service):
+    def __init__(self, database_service: DatabaseService) -> None:
         """Initialize with existing database service."""
         self._db_service = database_service
     

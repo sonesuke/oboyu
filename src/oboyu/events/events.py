@@ -53,6 +53,7 @@ class IndexingStartedEvent(BaseIndexEvent):
     
     @property
     def event_type(self) -> str:
+        """Return the event type identifier."""
         return "indexing_started"
 
 
@@ -68,6 +69,7 @@ class IndexingCompletedEvent(BaseIndexEvent):
     
     @property
     def event_type(self) -> str:
+        """Return the event type identifier."""
         return "indexing_completed"
 
 
@@ -82,6 +84,7 @@ class IndexingFailedEvent(BaseIndexEvent):
     
     @property
     def event_type(self) -> str:
+        """Return the event type identifier."""
         return "indexing_failed"
 
 
@@ -98,6 +101,7 @@ class DocumentProcessedEvent(BaseIndexEvent):
     
     @property
     def event_type(self) -> str:
+        """Return the event type identifier."""
         return "document_processed"
 
 
@@ -110,6 +114,7 @@ class DatabaseClearedEvent(BaseIndexEvent):
     
     @property
     def event_type(self) -> str:
+        """Return the event type identifier."""
         return "database_cleared"
 
 
@@ -122,6 +127,7 @@ class DatabaseClearFailedEvent(BaseIndexEvent):
     
     @property
     def event_type(self) -> str:
+        """Return the event type identifier."""
         return "database_clear_failed"
 
 
@@ -136,6 +142,7 @@ class IndexCorruptionDetectedEvent(BaseIndexEvent):
     
     @property
     def event_type(self) -> str:
+        """Return the event type identifier."""
         return "index_corruption_detected"
 
 
@@ -152,6 +159,7 @@ class IndexHealthCheckEvent(BaseIndexEvent):
     
     @property
     def event_type(self) -> str:
+        """Return the event type identifier."""
         return "index_health_check"
 
 
@@ -167,6 +175,7 @@ class EmbeddingGeneratedEvent(BaseIndexEvent):
     
     @property
     def event_type(self) -> str:
+        """Return the event type identifier."""
         return "embedding_generated"
 
 
@@ -182,6 +191,7 @@ class BM25IndexUpdatedEvent(BaseIndexEvent):
     
     @property
     def event_type(self) -> str:
+        """Return the event type identifier."""
         return "bm25_index_updated"
 
 
@@ -197,6 +207,7 @@ class HNSWIndexCreatedEvent(BaseIndexEvent):
     
     @property
     def event_type(self) -> str:
+        """Return the event type identifier."""
         return "hnsw_index_created"
 
 
@@ -210,4 +221,5 @@ class DatabaseConnectionEvent(BaseIndexEvent):
     
     @property
     def event_type(self) -> str:
+        """Return the event type identifier."""
         return "database_connection"

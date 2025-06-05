@@ -169,7 +169,7 @@ def _safe_model_download_impl(
     backoff_factor: float = 2.0,
     cache_dir: Path | None = None,
 ) -> T:
-    """Internal implementation of safe model download without circuit breaker."""
+    """Implement safe model download without circuit breaker."""
     last_error: Exception | None = None
     delay = initial_delay
 

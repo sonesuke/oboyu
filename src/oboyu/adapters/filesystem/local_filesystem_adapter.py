@@ -5,6 +5,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
+from ...crawler.crawler import Crawler
+from ...crawler.services import LanguageDetector
 from ...domain.entities.document import Document
 from ...domain.value_objects.content_hash import ContentHash
 from ...domain.value_objects.language_code import LanguageCode
@@ -16,7 +18,7 @@ logger = logging.getLogger(__name__)
 class LocalFilesystemAdapter(FilesystemPort):
     """Local filesystem implementation of filesystem port."""
     
-    def __init__(self, crawler_service, language_detector):
+    def __init__(self, crawler_service: Crawler, language_detector: LanguageDetector) -> None:
         """Initialize with existing services."""
         self._crawler_service = crawler_service
         self._language_detector = language_detector
