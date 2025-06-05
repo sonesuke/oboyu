@@ -40,7 +40,9 @@ class HexagonalFacade:
                             exclude_patterns: Optional[List[str]] = None) -> None:
         """Index a directory."""
         await self.indexing_service.index_directory(
-            directory_path, include_patterns, exclude_patterns
+            directory_path,
+            include_patterns or [],
+            exclude_patterns or []
         )
     
     async def search(self, query_text: str, mode: str = "hybrid",

@@ -195,11 +195,12 @@ class EventDrivenDatabase:
     def store_embeddings(
         self,
         chunk_ids: List[str],
-        embeddings: NDArray[np.float32],
+        embeddings: List[NDArray[np.float32]],
+        model_name: str = "cl-nagoya/ruri-v3-30m",
         progress_callback: Optional[Callable[[str, int, int], None]] = None,
     ) -> None:
         """Store embeddings for chunks."""
-        return self.database_service.store_embeddings(chunk_ids, embeddings, progress_callback)
+        return self.database_service.store_embeddings(chunk_ids, embeddings, model_name, progress_callback)
     
     def store_file_metadata(
         self,

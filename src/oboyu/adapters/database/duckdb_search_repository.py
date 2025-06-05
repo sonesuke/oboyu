@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from typing import List, Optional
 
+from ...common.types.chunk import Chunk as CommonChunk
 from ...domain.entities.chunk import Chunk
 from ...domain.entities.query import Query
 from ...domain.entities.search_result import SearchResult
@@ -46,26 +47,24 @@ class DuckDBSearchRepository(SearchRepository):
     
     async def store_chunks(self, chunks: List[Chunk]) -> None:
         """Store multiple document chunks in the repository."""
-        chunk_data_list = []
+        common_chunks = []
         for chunk in chunks:
-            chunk_data = {
-                'id': str(chunk.id),
-                'path': str(chunk.document_path),
-                'title': chunk.title,
-                'content': chunk.content,
-                'chunk_index': chunk.chunk_index,
-                'language': chunk.language.value,
-                'created_at': chunk.created_at,
-                'modified_at': chunk.modified_at,
-                'metadata': chunk.metadata,
-                'start_char': chunk.start_char,
-                'end_char': chunk.end_char,
-                'prefix_content': chunk.prefix_content,
-                'prefix_type': chunk.prefix_type
-            }
-            chunk_data_list.append(chunk_data)
+            common_chunk = CommonChunk(
+                id=str(chunk.id),
+                path=chunk.document_path,
+                title=chunk.title,
+                content=chunk.content,
+                chunk_index=chunk.chunk_index,
+                language=chunk.language.value,
+                created_at=chunk.created_at,
+                modified_at=chunk.modified_at,
+                metadata=chunk.metadata,
+                prefix_content=chunk.prefix_content,
+                prefix_type=chunk.prefix_type
+            )
+            common_chunks.append(common_chunk)
         
-        await self._db_service.store_chunks(chunk_data_list)
+        self._db_service.store_chunks(common_chunks)
     
     async def store_embedding(self, chunk_id: ChunkId, embedding: EmbeddingVector) -> None:
         """Store an embedding vector for a chunk."""
@@ -79,23 +78,20 @@ class DuckDBSearchRepository(SearchRepository):
     
     async def store_embeddings(self, embeddings: List[tuple[ChunkId, EmbeddingVector]]) -> None:
         """Store multiple embedding vectors."""
-        embedding_data_list = []
+        chunk_ids = []
+        vectors = []
         for chunk_id, embedding in embeddings:
-            embedding_data = {
-                'chunk_id': str(chunk_id),
-                'vector': embedding.to_list(),
-                'dimensions': embedding.dimensions
-            }
-            embedding_data_list.append(embedding_data)
+            chunk_ids.append(str(chunk_id))
+            vectors.append(embedding.to_numpy())
         
-        await self._db_service.store_embeddings(embedding_data_list)
+        self._db_service.store_embeddings(chunk_ids, vectors)
     
     async def find_by_vector_similarity(self, query_vector: EmbeddingVector,
                                       top_k: int, threshold: float = 0.0) -> List[SearchResult]:
         """Find chunks by vector similarity."""
-        results = await self._db_service.vector_search(
-            query_vector=query_vector.to_list(),
-            top_k=top_k,
+        results = self._db_service.vector_search(
+            query_vector=query_vector.to_numpy(),
+            limit=top_k,
             threshold=threshold
         )
         
@@ -124,7 +120,7 @@ class DuckDBSearchRepository(SearchRepository):
     
     async def delete_chunks_by_document(self, document_path: str) -> None:
         """Delete all chunks for a specific document."""
-        await self._db_service.delete_chunks_by_path(document_path)
+        self._db_service.delete_chunks_by_path(Path(document_path))
     
     async def get_chunk_count(self) -> int:
         """Get total number of chunks in repository."""

@@ -372,7 +372,7 @@ class CircuitBreakerRegistry:
         with self._lock:
             if name not in self._circuit_breakers:
                 if circuit_type is HuggingFaceCircuitBreaker:
-                    self._circuit_breakers[name] = circuit_type(config)  # type: ignore[misc]
+                    self._circuit_breakers[name] = circuit_type(config)  # type: ignore[arg-type]
                 else:
                     self._circuit_breakers[name] = circuit_type(name, config or CircuitBreakerConfig())
             return self._circuit_breakers[name]  # type: ignore[return-value]

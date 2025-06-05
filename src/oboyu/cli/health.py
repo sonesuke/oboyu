@@ -17,7 +17,7 @@ app = typer.Typer(
 )
 
 # Add the health command group
-app.add_typer(health, name="status", help="Check system health status")
+app.add_typer(health, name="status", help="Check system health status")  # type: ignore[arg-type]
 
 
 @app.command()
