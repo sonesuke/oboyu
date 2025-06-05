@@ -16,8 +16,8 @@ app = typer.Typer(
     rich_markup_mode=None,
 )
 
-# Add the health command group
-app.add_typer(health, name="status", help="Check system health status")  # type: ignore[arg-type]
+# Note: health is a Click group that cannot be directly added to Typer
+# The health commands are available separately via the click group
 
 
 @app.command()

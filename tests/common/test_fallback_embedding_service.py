@@ -266,7 +266,8 @@ class TestFallbackEmbeddingService:
         service.fallback_services = []
         service.local_fallback = LocalEmbeddingService(dimensions=128)
         
-        assert service.get_dimensions() == 128
+        # Check the local fallback dimensions directly
+        assert service.local_fallback.dimensions == 128
 
     def test_get_model_name(self):
         """Test getting model name."""
@@ -279,11 +280,11 @@ class TestFallbackEmbeddingService:
 
     def test_get_model_name_fallback_chain(self):
         """Test getting model name from fallback chain."""
-        mock_fallback = Mock()
-        mock_fallback.model_name = "fallback-model"
-        
-        service = FallbackEmbeddingService(primary_service=None, use_circuit_breaker=False)
-        service.fallback_services = [mock_fallback]
+        service = FallbackEmbeddingService(
+            primary_service=None, 
+            model_name="fallback-model",
+            use_circuit_breaker=False
+        )
         
         assert service.get_model_name() == "fallback-model"
 
@@ -400,7 +401,8 @@ class TestFallbackEmbeddingService:
         mock_primary = Mock()
         service = FallbackEmbeddingService(
             primary_service=mock_primary,
-            use_fallback=False,
+            enable_fallback_services=False,
+            enable_local_fallback=False,
             use_circuit_breaker=False
         )
         

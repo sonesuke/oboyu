@@ -84,13 +84,13 @@ class TestCircuitBreaker:
         def failing_func():
             raise Exception("Test failure")
         
-        # First 3 failures should keep circuit closed
-        for i in range(3):
+        # First 2 failures should keep circuit closed
+        for i in range(2):
             with pytest.raises(Exception):
                 circuit_breaker.call(failing_func)
             assert circuit_breaker.get_state() == CircuitState.CLOSED
         
-        # 4th failure should open circuit
+        # 3rd failure should open circuit (threshold=3 means open after 3 failures)
         with pytest.raises(Exception):
             circuit_breaker.call(failing_func)
         assert circuit_breaker.get_state() == CircuitState.OPEN
