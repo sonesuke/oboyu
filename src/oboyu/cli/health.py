@@ -8,8 +8,6 @@ from typing import Optional
 import typer
 from typing_extensions import Annotated
 
-from oboyu.cli.commands.health import health
-
 app = typer.Typer(
     help="Health monitoring and diagnostics",
     pretty_exceptions_enable=False,

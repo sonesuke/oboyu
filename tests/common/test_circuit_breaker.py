@@ -103,8 +103,8 @@ class TestCircuitBreaker:
         def failing_func():
             raise Exception("Test failure")
         
-        # Trigger failures to open circuit
-        for _ in range(3):
+        # Trigger failures to open circuit (threshold=2 means circuit opens after 2 failures)
+        for _ in range(2):
             with pytest.raises(Exception):
                 circuit_breaker.call(failing_func)
         
@@ -115,6 +115,7 @@ class TestCircuitBreaker:
             circuit_breaker.call(lambda: "should not execute")
         
         assert "Circuit breaker 'test' is open" in str(exc_info.value)
+        # After circuit opens, the rejected count should be 1
         assert circuit_breaker.get_metrics().rejected_requests == 1
 
     def test_circuit_transitions_to_half_open(self):
