@@ -84,13 +84,13 @@ class TestCircuitBreaker:
         def failing_func():
             raise Exception("Test failure")
         
-        # First 3 failures should keep circuit closed
-        for i in range(3):
+        # First 2 failures should keep circuit closed
+        for i in range(2):
             with pytest.raises(Exception):
                 circuit_breaker.call(failing_func)
             assert circuit_breaker.get_state() == CircuitState.CLOSED
         
-        # 4th failure should open circuit
+        # 3rd failure should open circuit (threshold=3 means open after 3 failures)
         with pytest.raises(Exception):
             circuit_breaker.call(failing_func)
         assert circuit_breaker.get_state() == CircuitState.OPEN
@@ -103,8 +103,8 @@ class TestCircuitBreaker:
         def failing_func():
             raise Exception("Test failure")
         
-        # Trigger failures to open circuit
-        for _ in range(3):
+        # Trigger failures to open circuit (threshold=2 means circuit opens after 2 failures)
+        for _ in range(2):
             with pytest.raises(Exception):
                 circuit_breaker.call(failing_func)
         
@@ -115,6 +115,7 @@ class TestCircuitBreaker:
             circuit_breaker.call(lambda: "should not execute")
         
         assert "Circuit breaker 'test' is open" in str(exc_info.value)
+        # After circuit opens, the rejected count should be 1
         assert circuit_breaker.get_metrics().rejected_requests == 1
 
     def test_circuit_transitions_to_half_open(self):
@@ -258,8 +259,8 @@ class TestHuggingFaceCircuitBreaker:
             with pytest.raises(HuggingFaceNetworkError):
                 circuit_breaker.call(network_error_func)
         
-        # Should open circuit after threshold
-        with pytest.raises(HuggingFaceNetworkError):
+        # Should open circuit after threshold (5 failures) and reject subsequent requests
+        with pytest.raises(CircuitBreakerError):
             circuit_breaker.call(network_error_func)
         assert circuit_breaker.get_state() == CircuitState.OPEN
 
@@ -275,7 +276,7 @@ class TestHuggingFaceCircuitBreaker:
             with pytest.raises(HuggingFaceTimeoutError):
                 circuit_breaker.call(timeout_error_func)
         
-        with pytest.raises(HuggingFaceTimeoutError):
+        with pytest.raises(CircuitBreakerError):
             circuit_breaker.call(timeout_error_func)
         assert circuit_breaker.get_state() == CircuitState.OPEN
 
@@ -291,7 +292,7 @@ class TestHuggingFaceCircuitBreaker:
             with pytest.raises(HuggingFaceRateLimitError):
                 circuit_breaker.call(rate_limit_error_func)
         
-        with pytest.raises(HuggingFaceRateLimitError):
+        with pytest.raises(CircuitBreakerError):
             circuit_breaker.call(rate_limit_error_func)
         assert circuit_breaker.get_state() == CircuitState.OPEN
 

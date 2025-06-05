@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class HexagonalFacade:
     """Facade providing backward-compatible interface using hexagonal architecture."""
     
-    def __init__(self, container: Container):
+    def __init__(self, container: Container) -> None:
         """Initialize with dependency injection container."""
         self._container = container
     
@@ -40,7 +40,9 @@ class HexagonalFacade:
                             exclude_patterns: Optional[List[str]] = None) -> None:
         """Index a directory."""
         await self.indexing_service.index_directory(
-            directory_path, include_patterns, exclude_patterns
+            directory_path,
+            include_patterns or [],
+            exclude_patterns or []
         )
     
     async def search(self, query_text: str, mode: str = "hybrid",
@@ -67,7 +69,7 @@ class HexagonalFacade:
         result = await self.search_service.get_chunk_by_id(chunk_id)
         return self._convert_result_to_dict(result) if result else None
     
-    def _convert_result_to_dict(self, result) -> Dict[str, Any]:
+    def _convert_result_to_dict(self, result: Any) -> Dict[str, Any]:  # noqa: ANN401
         """Convert domain search result to dictionary."""
         return {
             "chunk_id": str(result.chunk_id),

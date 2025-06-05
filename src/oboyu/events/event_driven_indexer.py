@@ -262,7 +262,7 @@ class EventDrivenIndexer:
         """Context manager entry."""
         return self
     
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:  # noqa: ANN401
         """Context manager exit."""
         self.close()
     
@@ -273,26 +273,26 @@ class EventDrivenIndexer:
     
     # Expose underlying services for backward compatibility
     @property
-    def database_service(self) -> Any:
+    def database_service(self) -> Any:  # noqa: ANN401
         """Access to underlying database service."""
         return self.indexer.database_service
     
     @property
-    def embedding_service(self) -> Any:
+    def embedding_service(self) -> Any:  # noqa: ANN401
         """Access to underlying embedding service."""
         return self.indexer.embedding_service
     
     @property
-    def document_processor(self) -> Any:
+    def document_processor(self) -> Any:  # noqa: ANN401
         """Access to underlying document processor."""
         return self.indexer.document_processor
     
     @property
-    def bm25_indexer(self) -> Any:
+    def bm25_indexer(self) -> Any:  # noqa: ANN401
         """Access to underlying BM25 indexer."""
         return self.indexer.bm25_indexer
     
     @property
-    def tokenizer_service(self) -> Any:
+    def tokenizer_service(self) -> Any:  # noqa: ANN401
         """Access to underlying tokenizer service."""
         return self.indexer.tokenizer_service

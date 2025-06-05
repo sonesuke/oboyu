@@ -6,7 +6,7 @@ import logging
 import socket
 import time
 from collections.abc import Callable
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import httpx
 from huggingface_hub import HfApi
@@ -141,7 +141,7 @@ def safe_model_download(
         )
         
         registry = get_circuit_breaker_registry()
-        circuit_breaker = registry.get_or_create(f"huggingface_download_{model_id}")
+        circuit_breaker: Any = registry.get_or_create(f"huggingface_download_{model_id}")
         
         try:
             return circuit_breaker.call(
@@ -169,7 +169,7 @@ def _safe_model_download_impl(
     backoff_factor: float = 2.0,
     cache_dir: Path | None = None,
 ) -> T:
-    """Internal implementation of safe model download without circuit breaker."""
+    """Implement safe model download without circuit breaker."""
     last_error: Exception | None = None
     delay = initial_delay
 
@@ -441,7 +441,7 @@ def with_huggingface_circuit_breaker(
         )
         
         registry = get_circuit_breaker_registry()
-        circuit_breaker = registry.get_or_create(f"huggingface_{operation_name}")
+        circuit_breaker: Any = registry.get_or_create(f"huggingface_{operation_name}")
         
         try:
             return circuit_breaker.call(func)

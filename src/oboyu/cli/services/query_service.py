@@ -105,8 +105,6 @@ class QueryService:
                 results = retriever.hybrid_search(
                     query,
                     top_k=query_config.get("top_k", 10),
-                    vector_weight=query_config.get("vector_weight", 0.7),
-                    bm25_weight=query_config.get("bm25_weight", 0.3),
                 )
             
             # Apply reranking if enabled

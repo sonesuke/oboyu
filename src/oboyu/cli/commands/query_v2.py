@@ -56,7 +56,7 @@ class QueryCommandV2:
         resolver = ConfigurationResolver()
         
         # Load configuration from file
-        config_dict = self.config_manager.get_config_dict()
+        config_dict = self.config_manager.load_config()
         if config_dict:
             resolver.load_from_dict(config_dict, ConfigSource.FILE)
         
@@ -184,7 +184,7 @@ class QueryCommandV2:
         resolver = ConfigurationResolver()
         
         # Load configuration from file
-        config_dict = self.config_manager.get_config_dict()
+        config_dict = self.config_manager.load_config()
         if config_dict:
             resolver.load_from_dict(config_dict, ConfigSource.FILE)
         

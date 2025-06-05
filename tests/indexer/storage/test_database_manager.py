@@ -66,6 +66,24 @@ def test_initialize_success(mock_connect, database_manager):
     mock_conn = MagicMock()
     mock_connect.return_value = mock_conn
     
+    # Mock execute method to return appropriate results for different queries
+    def mock_execute_side_effect(sql_command):
+        if "duckdb_extensions()" in sql_command:
+            # VSS extension check - return successful result
+            mock_result = MagicMock()
+            mock_result.fetchall.return_value = [("vss", True)]
+            return mock_result
+        elif "information_schema.tables" in sql_command:
+            # Schema validation - return table exists
+            mock_result = MagicMock()
+            mock_result.fetchone.return_value = [1]
+            return mock_result
+        else:
+            # For other commands, return a basic mock
+            return MagicMock()
+    
+    mock_conn.execute.side_effect = mock_execute_side_effect
+    
     # Mock managers
     with patch("oboyu.indexer.storage.database_manager.MigrationManager") as mock_migration:
         with patch("oboyu.indexer.storage.database_manager.IndexManager") as mock_index:
@@ -79,8 +97,9 @@ def test_initialize_success(mock_connect, database_manager):
     mock_conn.execute.assert_any_call("SET threads=4")
     mock_conn.execute.assert_any_call("SET hnsw_enable_experimental_persistence=true")
     
-    # Verify VSS extension setup - the new logic first checks if VSS is loaded
-    mock_conn.execute.assert_any_call("SELECT array_to_vector([1.0, 2.0, 3.0])")
+    # Verify VSS extension setup - the new logic installs and loads VSS
+    mock_conn.execute.assert_any_call("INSTALL vss")
+    mock_conn.execute.assert_any_call("LOAD vss")
     
     # Verify managers were initialized
     mock_migration.assert_called_once()

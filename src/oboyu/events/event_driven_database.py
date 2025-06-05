@@ -195,11 +195,12 @@ class EventDrivenDatabase:
     def store_embeddings(
         self,
         chunk_ids: List[str],
-        embeddings: NDArray[np.float32],
+        embeddings: List[NDArray[np.float32]],
+        model_name: str = "cl-nagoya/ruri-v3-30m",
         progress_callback: Optional[Callable[[str, int, int], None]] = None,
     ) -> None:
         """Store embeddings for chunks."""
-        return self.database_service.store_embeddings(chunk_ids, embeddings, progress_callback)
+        return self.database_service.store_embeddings(chunk_ids, embeddings, model_name, progress_callback)
     
     def store_file_metadata(
         self,
@@ -244,35 +245,35 @@ class EventDrivenDatabase:
     
     # Expose underlying properties for backward compatibility
     @property
-    def conn(self) -> Any:
+    def conn(self) -> Any:  # noqa: ANN401
         """Get database connection."""
         return self.database_service.conn
     
     @property
-    def index_manager(self) -> Any:
+    def index_manager(self) -> Any:  # noqa: ANN401
         """Get index manager."""
         return self.database_service.index_manager
     
     @property
-    def chunk_repository(self) -> Any:
+    def chunk_repository(self) -> Any:  # noqa: ANN401
         """Get chunk repository."""
         return self.database_service.chunk_repository
     
     @property
-    def embedding_repository(self) -> Any:
+    def embedding_repository(self) -> Any:  # noqa: ANN401
         """Get embedding repository."""
         return self.database_service.embedding_repository
     
     @property
-    def statistics_repository(self) -> Any:
+    def statistics_repository(self) -> Any:  # noqa: ANN401
         """Get statistics repository."""
         return self.database_service.statistics_repository
     
     @property
-    def search_service(self) -> Any:
+    def search_service(self) -> Any:  # noqa: ANN401
         """Get search service."""
         return self.database_service.search_service
     
-    def transaction(self) -> Any:
+    def transaction(self) -> Any:  # noqa: ANN401
         """Get transaction context manager."""
         return self.database_service.transaction()

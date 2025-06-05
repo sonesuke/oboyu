@@ -8,16 +8,14 @@ from typing import Optional
 import typer
 from typing_extensions import Annotated
 
-from oboyu.cli.commands.health import health
-
 app = typer.Typer(
     help="Health monitoring and diagnostics",
     pretty_exceptions_enable=False,
     rich_markup_mode=None,
 )
 
-# Add the health command group
-app.add_typer(health, name="status", help="Check system health status")
+# Note: health is a Click group that cannot be directly added to Typer
+# The health commands are available separately via the click group
 
 
 @app.command()

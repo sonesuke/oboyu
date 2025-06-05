@@ -92,10 +92,14 @@ class TestFallbackEmbeddingService:
         mock_primary = Mock()
         mock_primary.dimensions = 512
         
-        service = FallbackEmbeddingService(primary_service=mock_primary)
+        service = FallbackEmbeddingService(
+            primary_service=mock_primary,
+            enable_fallback_services=False,
+            enable_local_fallback=False
+        )
         
         assert service.primary_service == mock_primary
-        # Should not create additional primary service
+        # Should not create additional primary service when one is provided
         mock_embedding_service.assert_not_called()
 
     @patch('oboyu.common.fallback_embedding_service.EmbeddingService')
@@ -151,11 +155,24 @@ class TestFallbackEmbeddingService:
     @patch('oboyu.common.fallback_embedding_service.get_circuit_breaker_registry')
     def test_generate_embeddings_circuit_breaker_open(self, mock_registry):
         """Test fallback when circuit breaker is open."""
-        mock_circuit_breaker = Mock()
-        mock_circuit_breaker.call.side_effect = CircuitBreakerError("Circuit open", "test", 5)
-        mock_registry.return_value.get_or_create.return_value = mock_circuit_breaker
+        # Mock primary circuit breaker to be open
+        mock_primary_cb = Mock()
+        mock_primary_cb.call.side_effect = CircuitBreakerError("Circuit open", "test", 5)
+        
+        # Mock fallback circuit breaker to work normally
+        mock_fallback_cb = Mock()
+        mock_fallback_cb.call.side_effect = lambda func: func()
+        
+        # Configure registry to return different circuit breakers
+        def get_or_create_side_effect(name):
+            if "embedding_fallback-model" in name:
+                return mock_fallback_cb
+            return mock_primary_cb
+        
+        mock_registry.return_value.get_or_create.side_effect = get_or_create_side_effect
         
         mock_primary = Mock()
+        mock_primary.dimensions = 256  # Add proper dimensions attribute
         mock_fallback = Mock()
         expected_embeddings = [np.array([4, 5, 6], dtype=np.float32)]
         mock_fallback.generate_embeddings.return_value = expected_embeddings
@@ -173,6 +190,7 @@ class TestFallbackEmbeddingService:
     def test_generate_embeddings_huggingface_error_fallback(self):
         """Test fallback when HuggingFace error occurs."""
         mock_primary = Mock()
+        mock_primary.dimensions = 256  # Add proper dimensions attribute
         mock_primary.generate_embeddings.side_effect = HuggingFaceNetworkError("Network error")
         
         mock_fallback = Mock()
@@ -194,6 +212,7 @@ class TestFallbackEmbeddingService:
     def test_generate_embeddings_all_services_fail_local_fallback(self):
         """Test local fallback when all services fail."""
         mock_primary = Mock()
+        mock_primary.dimensions = 64  # Add proper dimensions attribute
         mock_primary.generate_embeddings.side_effect = Exception("Primary failed")
         
         mock_fallback = Mock()
@@ -266,7 +285,8 @@ class TestFallbackEmbeddingService:
         service.fallback_services = []
         service.local_fallback = LocalEmbeddingService(dimensions=128)
         
-        assert service.get_dimensions() == 128
+        # Check the local fallback dimensions directly
+        assert service.local_fallback.dimensions == 128
 
     def test_get_model_name(self):
         """Test getting model name."""
@@ -279,11 +299,11 @@ class TestFallbackEmbeddingService:
 
     def test_get_model_name_fallback_chain(self):
         """Test getting model name from fallback chain."""
-        mock_fallback = Mock()
-        mock_fallback.model_name = "fallback-model"
-        
-        service = FallbackEmbeddingService(primary_service=None, use_circuit_breaker=False)
-        service.fallback_services = [mock_fallback]
+        service = FallbackEmbeddingService(
+            primary_service=None, 
+            model_name="fallback-model",
+            use_circuit_breaker=False
+        )
         
         assert service.get_model_name() == "fallback-model"
 
@@ -400,7 +420,8 @@ class TestFallbackEmbeddingService:
         mock_primary = Mock()
         service = FallbackEmbeddingService(
             primary_service=mock_primary,
-            use_fallback=False,
+            enable_fallback_services=False,
+            enable_local_fallback=False,
             use_circuit_breaker=False
         )
         

@@ -33,7 +33,7 @@ class ConfigurationPort(ABC):
         pass
     
     @abstractmethod
-    def get_value(self, key: str, default: Any = None) -> Any:
+    def get_value(self, key: str, default: Any = None) -> Any:  # noqa: ANN401
         """Get a specific configuration value."""
         pass
     

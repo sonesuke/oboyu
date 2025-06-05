@@ -1,10 +1,11 @@
 """HuggingFace implementation of embedding service with circuit breaker support."""
 
 import logging
-from typing import Any, List
+from typing import Any, List, Optional
 
 from ...common.fallback_embedding_service import FallbackEmbeddingService
 from ...domain.value_objects.embedding_vector import EmbeddingVector
+from ...indexer.services.embedding import EmbeddingService as IndexerEmbeddingService
 from ...ports.services.embedding_service import EmbeddingService
 
 logger = logging.getLogger(__name__)
@@ -15,12 +16,12 @@ class HuggingFaceEmbeddingService(EmbeddingService):
     
     def __init__(
         self,
-        embedding_service=None,
+        embedding_service: Optional[IndexerEmbeddingService] = None,
         model_name: str = "cl-nagoya/ruri-v3-30m",
         use_circuit_breaker: bool = True,
         use_fallback: bool = True,
-        **kwargs: Any,
-    ):
+        **kwargs: Any,  # noqa: ANN401
+    ) -> None:
         """Initialize with embedding service and circuit breaker support.
         
         Args:

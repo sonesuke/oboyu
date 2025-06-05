@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class DocumentProcessor:
     """Pure domain service for document processing logic."""
     
-    def __init__(self, chunk_size: int = 500, chunk_overlap: int = 50):
+    def __init__(self, chunk_size: int = 500, chunk_overlap: int = 50) -> None:
         """Initialize with chunking parameters."""
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap

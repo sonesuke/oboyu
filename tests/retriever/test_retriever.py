@@ -306,8 +306,6 @@ class TestRetrieverHybridSearch:
         retriever.search_orchestrator.hybrid_search.assert_called_once_with(
             query="test query",
             limit=5,
-            vector_weight=0.7,
-            bm25_weight=0.3,
             language_filter=None,
         )
     
@@ -316,22 +314,21 @@ class TestRetrieverHybridSearch:
         retriever: Retriever, 
         sample_search_results: list[SearchResult]
     ) -> None:
-        """Test hybrid search with custom weights."""
+        """Test hybrid search with custom weights (weights are now ignored)."""
         retriever.search_orchestrator.hybrid_search.return_value = sample_search_results
         
         results = retriever.hybrid_search(
             "test query", 
-            vector_weight=0.6, 
+            vector_weight=0.6,  # These parameters are accepted but ignored
             bm25_weight=0.4,
             language_filter="en"
         )
         
         assert len(results) == 2
+        # Weights are no longer passed to search orchestrator
         retriever.search_orchestrator.hybrid_search.assert_called_once_with(
             query="test query",
             limit=10,
-            vector_weight=0.6,
-            bm25_weight=0.4,
             language_filter="en",
         )
 

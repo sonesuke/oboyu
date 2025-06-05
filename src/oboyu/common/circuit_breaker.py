@@ -128,7 +128,7 @@ class CircuitBreaker(Generic[T]):
         self.metrics = CircuitBreakerMetrics()
         self._lock = threading.RLock()
 
-    def call(self, func: Callable[[], T], *args: Any, **kwargs: Any) -> T:
+    def call(self, func: Callable[[], T], *args: Any, **kwargs: Any) -> T:  # noqa: ANN401
         """Execute a function through the circuit breaker.
         
         Args:
@@ -275,6 +275,8 @@ class CircuitBreaker(Generic[T]):
         """Manually force circuit breaker to open state."""
         with self._lock:
             old_state = self.state
+            # Set failure time to ensure circuit stays open for recovery timeout
+            self.last_failure_time = datetime.now()
             self._transition_to_open()
             logger.warning(f"Circuit breaker '{self.name}' manually forced open from {old_state.value}")
 
@@ -372,7 +374,7 @@ class CircuitBreakerRegistry:
         with self._lock:
             if name not in self._circuit_breakers:
                 if circuit_type is HuggingFaceCircuitBreaker:
-                    self._circuit_breakers[name] = circuit_type(config)  # type: ignore[misc]
+                    self._circuit_breakers[name] = circuit_type(config)  # type: ignore[arg-type]
                 else:
                     self._circuit_breakers[name] = circuit_type(name, config or CircuitBreakerConfig())
             return self._circuit_breakers[name]  # type: ignore[return-value]
@@ -425,7 +427,7 @@ def with_circuit_breaker(
     config: CircuitBreakerConfig | None = None,
     circuit_type: type[CircuitBreaker[T]] = HuggingFaceCircuitBreaker,
 ) -> Callable[[Callable[[], T]], Callable[[], T]]:
-    """Decorator to wrap a function with a circuit breaker.
+    """Wrap a function with a circuit breaker.
     
     Args:
         name: Name of the circuit breaker.
@@ -437,7 +439,7 @@ def with_circuit_breaker(
         
     """
     def decorator(func: Callable[[], T]) -> Callable[[], T]:
-        def wrapper(*args: Any, **kwargs: Any) -> T:
+        def wrapper(*args: Any, **kwargs: Any) -> T:  # noqa: ANN401
             registry = get_circuit_breaker_registry()
             circuit_breaker = registry.get_or_create(name, circuit_type, config)
             return circuit_breaker.call(func, *args, **kwargs)

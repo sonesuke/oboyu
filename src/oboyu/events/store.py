@@ -179,7 +179,7 @@ class EventStore:
             params.append(event_type)
         
         query += " ORDER BY timestamp DESC LIMIT ?"
-        params.append(limit)
+        params.append(str(limit))
         
         try:
             with sqlite3.connect(self.db_path) as conn:

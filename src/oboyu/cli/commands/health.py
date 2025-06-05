@@ -7,7 +7,6 @@ from typing import Any, Dict, Optional
 
 import click
 
-from oboyu.cli.base import CliCommand
 from oboyu.cli.services.command_services import CommandServices
 from oboyu.events import IndexEventBus
 from oboyu.events.handlers import IndexMetricsCollector
@@ -15,12 +14,12 @@ from oboyu.events.store import EventStore
 from oboyu.monitoring.health import IndexHealthMonitor
 
 
-class HealthCommand(CliCommand):
+class HealthCommand:
     """Health monitoring command implementation."""
     
     def __init__(self, services: CommandServices) -> None:
         """Initialize health command with services."""
-        super().__init__(services)
+        self.services = services
         self.event_bus = IndexEventBus()
         self.health_monitor = IndexHealthMonitor()
         self.metrics_collector = IndexMetricsCollector()
@@ -83,7 +82,7 @@ class HealthCommand(CliCommand):
 
 
 @click.group()
-def health():
+def health() -> None:
     """Health monitoring and diagnostics commands."""
     pass
 

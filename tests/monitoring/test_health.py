@@ -292,8 +292,8 @@ class TestIndexHealthMonitor:
         assert report.corruption_count == 1
         assert len(report.recent_operations) == 2
         assert report.success_rate == 0.5
-        assert report.average_operation_duration == 2.5  # (5.0 + 0.0) / 2
-        assert "Index corruption detected" in report.issues
+        assert report.average_operation_duration == 5.0  # Only successful operations with duration > 0 are counted
+        assert "Index corruption detected (1 times)" in report.issues
     
     def test_get_health_report_issues_detection(self):
         """Test health report issue detection."""

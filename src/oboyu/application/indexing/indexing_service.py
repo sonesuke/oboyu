@@ -22,7 +22,7 @@ class IndexingService:
         embedding_service: EmbeddingService,
         filesystem_port: FilesystemPort,
         document_processor: DocumentProcessor
-    ):
+    ) -> None:
         """Initialize with dependencies injected."""
         self._search_repository = search_repository
         self._embedding_service = embedding_service

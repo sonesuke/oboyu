@@ -23,7 +23,7 @@ class SearchService:
         embedding_service: EmbeddingService,
         search_engine: SearchEngine,
         reranker_service: Optional[RerankerService] = None
-    ):
+    ) -> None:
         """Initialize with dependencies injected."""
         self._search_repository = search_repository
         self._embedding_service = embedding_service

@@ -1,7 +1,7 @@
 """Factory for creating circuit breaker configurations from schema."""
 
 from datetime import timedelta
-from typing import Any
+from typing import Any, cast
 
 from oboyu.common.circuit_breaker import CircuitBreakerConfig
 from oboyu.config.schema import CircuitBreakerConfigSchema
@@ -9,7 +9,7 @@ from oboyu.config.schema import CircuitBreakerConfigSchema
 
 def create_circuit_breaker_config(
     config_schema: CircuitBreakerConfigSchema | None = None,
-    **overrides: Any,
+    **overrides: Any,  # noqa: ANN401
 ) -> CircuitBreakerConfig:
     """Create a CircuitBreakerConfig from schema.
     
@@ -39,11 +39,11 @@ def create_circuit_breaker_config(
             config_kwargs[key] = value
     
     return CircuitBreakerConfig(
-        failure_threshold=config_kwargs["failure_threshold"],
-        recovery_timeout=config_kwargs["recovery_timeout"],
-        success_threshold=config_kwargs["success_threshold"],
-        request_timeout=config_kwargs["request_timeout"],
-        enabled=config_kwargs["enabled"],
+        failure_threshold=cast(int, config_kwargs["failure_threshold"]),
+        recovery_timeout=timedelta(seconds=cast(float, config_kwargs["recovery_timeout"])),
+        success_threshold=cast(int, config_kwargs["success_threshold"]),
+        request_timeout=cast(float, config_kwargs["request_timeout"]),
+        enabled=cast(bool, config_kwargs["enabled"]),
     )
 
 

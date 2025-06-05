@@ -158,8 +158,6 @@ class Retriever:
         return self.search_orchestrator.hybrid_search(
             query=query,
             limit=top_k,
-            vector_weight=vector_weight,
-            bm25_weight=bm25_weight,
             language_filter=language_filter,
         )
 
