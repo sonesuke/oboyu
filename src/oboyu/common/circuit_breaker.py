@@ -275,6 +275,8 @@ class CircuitBreaker(Generic[T]):
         """Manually force circuit breaker to open state."""
         with self._lock:
             old_state = self.state
+            # Set failure time to ensure circuit stays open for recovery timeout
+            self.last_failure_time = datetime.now()
             self._transition_to_open()
             logger.warning(f"Circuit breaker '{self.name}' manually forced open from {old_state.value}")
 

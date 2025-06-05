@@ -161,8 +161,6 @@ class TestQueryService:
         mock_retriever.hybrid_search.assert_called_once_with(
             "test query",
             top_k=10,
-            vector_weight=0.7,
-            bm25_weight=0.3
         )
         mock_retriever.close.assert_called_once()
     

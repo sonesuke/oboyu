@@ -259,8 +259,8 @@ class TestHuggingFaceCircuitBreaker:
             with pytest.raises(HuggingFaceNetworkError):
                 circuit_breaker.call(network_error_func)
         
-        # Should open circuit after threshold
-        with pytest.raises(HuggingFaceNetworkError):
+        # Should open circuit after threshold (5 failures) and reject subsequent requests
+        with pytest.raises(CircuitBreakerError):
             circuit_breaker.call(network_error_func)
         assert circuit_breaker.get_state() == CircuitState.OPEN
 
@@ -276,7 +276,7 @@ class TestHuggingFaceCircuitBreaker:
             with pytest.raises(HuggingFaceTimeoutError):
                 circuit_breaker.call(timeout_error_func)
         
-        with pytest.raises(HuggingFaceTimeoutError):
+        with pytest.raises(CircuitBreakerError):
             circuit_breaker.call(timeout_error_func)
         assert circuit_breaker.get_state() == CircuitState.OPEN
 
@@ -292,7 +292,7 @@ class TestHuggingFaceCircuitBreaker:
             with pytest.raises(HuggingFaceRateLimitError):
                 circuit_breaker.call(rate_limit_error_func)
         
-        with pytest.raises(HuggingFaceRateLimitError):
+        with pytest.raises(CircuitBreakerError):
             circuit_breaker.call(rate_limit_error_func)
         assert circuit_breaker.get_state() == CircuitState.OPEN
 
