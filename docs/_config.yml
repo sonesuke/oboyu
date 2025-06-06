@@ -1,0 +1,46 @@
+title: Oboyu Documentation
+description: Japanese-enhanced semantic search system for your local documents
+baseurl: "/oboyu"
+url: "https://sonesuke.github.io"
+
+# Theme configuration
+theme: minima
+markdown: kramdown
+highlighter: rouge
+
+# Plugins
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+# Navigation
+header_pages:
+  - quickstart.md
+  - cli.md
+  - configuration.md
+  - architecture.md
+  - troubleshooting.md
+
+# SEO and metadata
+author: sonesuke
+github_username: sonesuke
+repository: sonesuke/oboyu
+
+# Exclude files from processing
+exclude:
+  - assets/demo.tape
+  - README.md
+  - CONTRIBUTING.md
+  - LICENSE.md
+
+# Markdown processing
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    css_class: 'highlight'
+    block:
+      line_numbers: false
+
+# Analytics (optional - can be added later)
+# google_analytics: UA-XXXXXXXXX-X
