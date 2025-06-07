@@ -1,7 +1,7 @@
 # Oboyu (覚ゆ)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.13%2B-blue)](https://www.python.org/downloads/)
 [![PyPI Version](https://img.shields.io/pypi/v/oboyu.svg)](https://pypi.org/project/oboyu/)
 
 > Lightning-fast semantic search for your local documents with best-in-class Japanese support.
@@ -47,10 +47,10 @@ That's it! See our [Quick Start Guide](https://sonesuke.github.io/oboyu/quicksta
 - **Interactive Mode**: Real-time search with command history and auto-suggestions
 
 ### 📚 Document Support
-- **Text File Support**: Plain text, Markdown, code files, and other text-based formats with automatic encoding detection
+- **Text File Support**: Plain text (.txt), Markdown (.md), HTML (.html), and source code files (.py, .java, etc.) with automatic encoding detection
 - **Incremental Indexing**: Only process new or changed files for lightning-fast updates
 - **Smart Chunking**: Intelligent document splitting for optimal search results
-- **Automatic Encoding**: Handles various text encodings seamlessly
+- **Automatic Encoding**: Handles various text encodings seamlessly (UTF-8, Shift-JIS, EUC-JP, and more)
 
 ### 🇯🇵 Japanese Language Excellence
 - **Native Support**: Purpose-built for Japanese text processing
@@ -85,7 +85,7 @@ pip install -e .
 
 ### System Requirements
 
-- **Python**: 3.10 or higher
+- **Python**: 3.13 or higher
 - **OS**: macOS, Linux (Windows via WSL)
 - **Memory**: 2GB RAM minimum
 - **Storage**: 1GB for models and index
@@ -156,9 +156,9 @@ See our [MCP Integration Guide](docs/mcp_server.md) for detailed setup instructi
 ## Common Use Cases
 
 ### 📚 Academic Research
-Index and search through research papers, notes, and references:
+Index and search through research notes and references:
 ```bash
-oboyu index ~/research --include "*.pdf,*.md,*.txt"
+oboyu index ~/research --include "*.md,*.txt"
 oboyu query "transformer architecture improvements"
 ```
 
@@ -201,10 +201,10 @@ Oboyu includes comprehensive E2E display testing using Claude Code SDK:
 
 ```bash
 # Run all E2E display tests
-python tests/e2e/run_display_tests.py
+python e2e/run_tests.py
 
 # Run specific test category
-python tests/e2e/run_display_tests.py --test search
+python e2e/run_tests.py --test search
 ```
 
 See our [E2E Display Testing Guide](docs/e2e_display_testing.md) for details.

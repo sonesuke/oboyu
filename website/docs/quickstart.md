@@ -46,7 +46,7 @@ This downloads:
 
 ### Step 1: Index Your Documents
 
-Index a directory of documents (supports .txt, .md, and other text-based formats):
+Index a directory of documents (supports text-based formats: .txt, .md, .html, .py, .java, and other plain text files):
 
 ```bash
 oboyu index /path/to/your/documents
