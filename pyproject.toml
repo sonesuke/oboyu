@@ -66,6 +66,7 @@ sources = ["src"]
 
 [tool.hatch.version]
 source = "vcs"
+raw-options = { local_scheme = "no-local-version", fallback_version = "0.1.0" }
 
 # Remove [tool.uv.sources] as it's causing conflicts
 # The package should be installed in editable mode via uv sync or uv pip install -e .
