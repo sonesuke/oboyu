@@ -127,20 +127,13 @@ chmod -R u+r /path/to/documents
    oboyu index /docs/part2 --incremental
    ```
 
-### Issue: PDF files not being indexed
+### Issue: PDF or other binary files not being indexed
 
-**Solution**: Install PDF processing dependencies
-```bash
-# Install poppler-utils for PDF support
-# macOS
-brew install poppler
+**Important**: Oboyu currently only supports text-based files. PDF, Word documents, and other binary formats are not supported and will not be indexed properly. They will be processed as raw text, which may result in garbled content.
 
-# Ubuntu/Debian
-sudo apt-get install poppler-utils
+**Supported formats**: Plain text (.txt), Markdown (.md), code files (.py, .js, etc.), and other text-based formats.
 
-# Fedora
-sudo dnf install poppler-utils
-```
+**Workaround**: Convert PDFs to text files using external tools before indexing.
 
 ## Search Issues
 
