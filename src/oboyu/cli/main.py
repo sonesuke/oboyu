@@ -20,6 +20,7 @@ from oboyu import __version__
 from oboyu.cli.common_options import ConfigOption, DatabasePathOption, VerboseOption
 from oboyu.cli.health import app as health_app
 from oboyu.cli.index import app as index_app
+from oboyu.cli.manage import app as manage_app
 from oboyu.cli.mcp import app as mcp_app
 from oboyu.cli.query import app as query_app
 from oboyu.common.config import ConfigManager
@@ -43,6 +44,7 @@ console = Console()
 # Add subcommands
 app.add_typer(index_app, name="index", help="Index documents for search")
 app.add_typer(query_app, name="query", help="Search indexed documents")
+app.add_typer(manage_app, name="manage", help="Manage the index database")
 app.add_typer(health_app, name="health", help="Health monitoring and diagnostics")
 app.add_typer(mcp_app, name="mcp", help="Run an MCP server for AI assistant integration")
 

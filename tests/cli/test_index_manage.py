@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 from typer.testing import CliRunner
 
-from oboyu.cli.index import manage_app
+from oboyu.cli.manage import app as manage_app
 from oboyu.common.config import ConfigManager
 
 runner = CliRunner()
