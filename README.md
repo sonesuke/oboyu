@@ -36,7 +36,7 @@ oboyu index ~/Documents
 oboyu query --interactive
 ```
 
-That's it! See our [Quick Start Guide](https://sonesuke.github.io/oboyu/quickstart) for more examples.
+That's it! See our [Documentation](https://sonesuke.github.io/oboyu/) for complete guides and examples.
 
 ## Key Features
 
@@ -132,26 +132,32 @@ oboyu mcp
 # Or configure in Claude Desktop's settings
 ```
 
-See our [MCP Integration Guide](docs/mcp_server.md) for detailed setup instructions.
+See our [MCP Integration Guide](https://sonesuke.github.io/oboyu/integration/mcp-integration) for detailed setup instructions.
 
 ## Documentation
 
 ### 🚀 Getting Started
-- [**Quick Start Guide**](docs/quickstart.md) - Get up and running in 5 minutes
-- [**Troubleshooting**](docs/troubleshooting.md) - Solutions to common issues
-- [**CLI Reference**](docs/cli.md) - Complete command-line interface documentation
+- [**Installation**](https://sonesuke.github.io/oboyu/getting-started/installation) - Install and verify setup
+- [**Your First Index**](https://sonesuke.github.io/oboyu/getting-started/first-index) - Create your first searchable index
+- [**Your First Search**](https://sonesuke.github.io/oboyu/getting-started/first-search) - Learn to search effectively
 
-### 📖 User Guides
-- [**Configuration**](docs/configuration.md) - Customize Oboyu for your needs
-- [**Japanese Support**](docs/japanese.md) - Working with Japanese documents
-- [**MCP Integration**](docs/mcp_server.md) - Setup for AI assistants
-- [**Reranker Guide**](docs/reranker.md) - Improve search accuracy
+### 💼 Real-world Usage
+- [**Daily Workflows**](https://sonesuke.github.io/oboyu/usage-examples/basic-workflow) - Essential daily patterns
+- [**Technical Documentation**](https://sonesuke.github.io/oboyu/real-world-scenarios/technical-docs) - Code and API docs
+- [**Meeting Notes**](https://sonesuke.github.io/oboyu/real-world-scenarios/meeting-notes) - Track decisions and actions
+- [**Research Papers**](https://sonesuke.github.io/oboyu/real-world-scenarios/research-papers) - Academic content search
 
-### 🔧 Technical Documentation
-- [**Architecture**](docs/architecture.md) - System design and components
-- [**Query Engine**](docs/query_engine.md) - How search works
-- [**Indexer**](docs/indexer.md) - Document processing details
-- [**Crawler**](docs/crawler.md) - File discovery system
+### ⚙️ Configuration & Optimization
+- [**Configuration Guide**](https://sonesuke.github.io/oboyu/configuration-optimization/configuration) - Customize for your needs
+- [**Performance Tuning**](https://sonesuke.github.io/oboyu/configuration-optimization/performance-tuning) - Optimize speed and quality
+- [**Japanese Support**](https://sonesuke.github.io/oboyu/reference-troubleshooting/japanese-support) - Japanese language features
+
+### 🔗 Integration & Reference
+- [**Claude MCP Integration**](https://sonesuke.github.io/oboyu/integration/mcp-integration) - AI-powered search
+- [**CLI Reference**](https://sonesuke.github.io/oboyu/reference-troubleshooting/cli-reference) - All commands and options
+- [**Troubleshooting**](https://sonesuke.github.io/oboyu/reference-troubleshooting/troubleshooting) - Solutions to common issues
+
+**[📖 View Full Documentation →](https://sonesuke.github.io/oboyu/)**
 
 ## Common Use Cases
 
@@ -207,7 +213,7 @@ python e2e/run_tests.py
 python e2e/run_tests.py --test search
 ```
 
-See our [E2E Display Testing Guide](docs/e2e_display_testing.md) for details.
+See our [Full Documentation](https://sonesuke.github.io/oboyu/) for more details.
 
 ## Contributing
 
@@ -224,7 +230,7 @@ uv run pytest -m "not slow"
 ## Support
 
 - 📋 [GitHub Issues](https://github.com/sonesuke/oboyu/issues) - Report bugs or request features
-- 📖 [Documentation](docs/) - Comprehensive guides and references
+- 📖 [Documentation](https://sonesuke.github.io/oboyu/) - Comprehensive guides and references
 - 💬 [Discussions](https://github.com/sonesuke/oboyu/discussions) - Ask questions and share ideas
 
 ## License
