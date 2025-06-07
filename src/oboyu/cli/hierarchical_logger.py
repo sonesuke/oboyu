@@ -224,8 +224,47 @@ class HierarchicalLogger:
         color = "green" if operation.status == OperationStatus.COMPLETE else "yellow" if operation.status == OperationStatus.ACTIVE else "red"
         line.append(f"{indicator} ", style=color)
 
+        # Format path display for scanning operations
+        description = operation.description
+        path_line = None
+        
+        if "Scanning directory" in description:
+            # Extract the path from the description
+            prefix = "Scanning directory "
+            if description.startswith(prefix):
+                path = description[len(prefix):].rstrip(".")
+                
+                # Import path formatting utility
+                from oboyu.cli.utils.text import format_path_for_display
+                
+                # Calculate available width (account for prefix, indicators, and margins)
+                base_width = len(prefix) + 4  # indicator + spaces
+                if is_child:
+                    base_width += 4  # child indentation
+                if operation.indent_level > 0:
+                    base_width += operation.indent_level * 2  # extra indentation
+                
+                # Try to get console width, fallback to 80
+                try:
+                    console_width = self.console.size.width
+                except (AttributeError, OSError):
+                    console_width = 80
+                
+                available_width = max(40, console_width - base_width - 10)  # 10 for safety margin
+                
+                # Format the path
+                formatted_path = format_path_for_display(path, max_width=available_width)
+                
+                # If path is still very long, use two-line format
+                if len(formatted_path) > available_width * 0.8:
+                    description = prefix.rstrip()
+                    path_line = Text()
+                    path_line.append("    " + formatted_path, style="dim")
+                else:
+                    description = prefix + formatted_path
+
         # Add description
-        line.append(operation.description)
+        line.append(description)
 
         # Add duration for completed operations
         if operation.status == OperationStatus.COMPLETE and operation.duration:
@@ -236,6 +275,15 @@ class HierarchicalLogger:
             line.append(" (ctrl+r to expand)", style="dim italic")
 
         lines.append(line)
+        
+        # Add path line if using two-line format
+        if path_line:
+            if is_child:
+                indented_path_line = Text("  ⎿ ")
+                indented_path_line.append(path_line)
+                lines.append(indented_path_line)
+            else:
+                lines.append(path_line)
 
         # Render children with proper indentation
         for child in operation.children:
