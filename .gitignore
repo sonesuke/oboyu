@@ -28,6 +28,9 @@ test_docs/
 test_docs_old/
 !test_docs_old/.gitkeep
 
+# E2E display test reports
+e2e_display_report.md
+
 # Test data directories
 test_medium/
 test_small/
@@ -37,3 +40,5 @@ website/build/
 website/.docusaurus/
 website/.cache-loader/
 website/node_modules/
+
+e2e_display_report.md

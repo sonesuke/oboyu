@@ -183,6 +183,32 @@ oboyu index ~/Documents/bilingual
 oboyu query "プロジェクト管理 best practices"
 ```
 
+## Testing
+
+### Unit and Integration Tests
+
+```bash
+# Run fast tests (recommended for development)
+uv run pytest -m "not slow"
+
+# Run all tests with coverage
+uv run pytest --cov=src
+```
+
+### E2E Display Testing
+
+Oboyu includes comprehensive E2E display testing using Claude Code SDK:
+
+```bash
+# Run all E2E display tests
+python tests/e2e/run_display_tests.py
+
+# Run specific test category
+python tests/e2e/run_display_tests.py --test search
+```
+
+See our [E2E Display Testing Guide](docs/e2e_display_testing.md) for details.
+
 ## Contributing
 
 We welcome contributions! See our [Contributing Guidelines](CONTRIBUTING.md) for details.
