@@ -36,7 +36,7 @@ oboyu index ~/Documents
 oboyu query --interactive
 ```
 
-That's it! See our [Quick Start Guide](docs/quickstart.md) for more examples.
+That's it! See our [Quick Start Guide](https://sonesuke.github.io/oboyu/quickstart) for more examples.
 
 ## Key Features
 
