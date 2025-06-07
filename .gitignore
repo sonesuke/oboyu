@@ -31,3 +31,9 @@ test_docs_old/
 # Test data directories
 test_medium/
 test_small/
+
+# Docusaurus
+website/build/
+website/.docusaurus/
+website/.cache-loader/
+website/node_modules/

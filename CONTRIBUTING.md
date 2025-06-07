@@ -318,6 +318,46 @@ This fix adds additional heuristics for encoding detection.
 - Use **clear and concise** language
 - Include **Japanese examples** where relevant
 
+### Documentation Site
+
+The documentation site is built with [Docusaurus](https://docusaurus.io/) and hosted on GitHub Pages.
+
+#### Local Development
+
+```bash
+# Navigate to website directory
+cd website
+
+# Install dependencies
+npm install
+
+# Start development server
+npm start
+
+# Build for production
+npm run build
+
+# Test production build locally
+npm run serve
+```
+
+#### Adding Documentation
+
+1. Add new markdown files to `website/docs/`
+2. Update `website/sidebars.ts` to include new pages
+3. Follow the existing frontmatter format:
+   ```markdown
+   ---
+   id: page-id
+   title: Page Title
+   sidebar_position: 10
+   ---
+   ```
+
+#### Deployment
+
+Documentation is automatically deployed when changes are pushed to the `main` branch via GitHub Actions.
+
 ## Code Analysis
 
 ### Using Repomix
