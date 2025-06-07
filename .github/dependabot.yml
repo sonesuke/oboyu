@@ -1,0 +1,62 @@
+# Dependabot configuration for automated dependency management
+# This file configures GitHub Dependabot to automatically create pull requests
+# for dependency updates in the oboyu project.
+
+version: 2
+updates:
+  # Configuration for Python dependencies (pip)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    # Limit the number of open pull requests
+    open-pull-requests-limit: 5
+    # Assign reviewer
+    reviewers:
+      - "sonesuke"
+    # Group related dependencies to reduce PR noise
+    groups:
+      # Development dependencies group
+      dev-dependencies:
+        patterns:
+          - "pytest*"
+          - "mypy"
+          - "pre-commit"
+          - "ruff"
+          - "pylint"
+          - "hatch-vcs"
+          - "psutil"
+          - "datasets"
+          - "scipy"
+          - "scikit-learn"
+          - "pandas"
+          - "pexpect"
+      # Machine Learning dependencies group
+      ml-dependencies:
+        patterns:
+          - "torch*"
+          - "transformers"
+          - "sentence-transformers"
+          - "onnx*"
+          - "optimum"
+          - "numpy"
+          - "protobuf"
+          - "sentencepiece"
+      # CLI and UI dependencies group
+      cli-dependencies:
+        patterns:
+          - "typer"
+          - "rich"
+          - "prompt-toolkit"
+          - "pyyaml"
+    # Labels to apply to PRs
+    labels:
+      - "dependencies"
+      - "automated"
+    # Commit message configuration
+    commit-message:
+      prefix: "chore"
+      include: "scope"
