@@ -10,12 +10,16 @@ import typer
 from typing_extensions import Annotated
 
 from oboyu.cli.base import BaseCommand
+from oboyu.cli.common_options import ConfigOption
 from oboyu.cli.services.indexing_service import IndexingService
 
 app = typer.Typer(
     help="Manage the index database",
     pretty_exceptions_enable=False,
     rich_markup_mode=None,
+    context_settings={
+        "allow_interspersed_args": True,
+    },
 )
 
 DirectoryOption = Annotated[
@@ -33,6 +37,7 @@ DirectoryOption = Annotated[
 @app.command(name="clear")
 def clear(
     ctx: typer.Context,
+    config: ConfigOption = None,
     db_path: Optional[Path] = None,
     force: bool = False,
 ) -> None:
@@ -74,6 +79,7 @@ def clear(
 def status(
     ctx: typer.Context,
     directories: DirectoryOption,
+    config: ConfigOption = None,
     db_path: Optional[Path] = None,
     detailed: Annotated[
         bool,
@@ -138,6 +144,7 @@ def status(
 def diff(
     ctx: typer.Context,
     directories: DirectoryOption,
+    config: ConfigOption = None,
     db_path: Optional[Path] = None,
     change_detection: Annotated[
         Optional[str],
