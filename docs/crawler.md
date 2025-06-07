@@ -43,9 +43,11 @@ def discover_documents(
 The content extraction subsystem handles:
 
 - File format detection based on extension and content analysis
-- Format-specific content extraction for various file types
+- Text file content extraction (currently supports only text-based formats)
 - Text normalization for consistent processing
 - Language detection with emphasis on Japanese identification
+
+**Note**: Oboyu currently supports only text-based file formats. Binary formats like PDF, Word documents, or Excel files are not supported.
 
 ```python
 def extract_content(

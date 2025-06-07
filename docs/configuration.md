@@ -36,12 +36,14 @@ indexer:
 
 # Essential crawler settings
 crawler:
-  include_patterns:                     # File types to index
-    - "*.txt"
-    - "*.md" 
-    - "*.py"
-    - "*.rst"
-    # - "*.ipynb"                 # Note: Jupyter notebooks are treated as plain text only
+  include_patterns:                     # File types to index (text-based only)
+    - "*.txt"                          # Plain text files
+    - "*.md"                           # Markdown documents
+    - "*.py"                           # Python source code
+    - "*.rst"                          # reStructuredText
+    - "*.java"                         # Java source code
+    - "*.html"                         # HTML files
+    # Note: Binary formats like PDF, Word docs, Excel files are NOT supported
   exclude_patterns:                     # Directories/files to skip
     - "*/node_modules/*"
     - "*/.git/*" 
