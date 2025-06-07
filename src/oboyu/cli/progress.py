@@ -142,6 +142,10 @@ class ProgressPipeline:
 
         # Auto-complete when reaching total
         if stage.total and current >= stage.total:
+            # Ensure final progress message shows 100% before completion
+            if stage.operation_id:
+                final_message = self._format_progress_message(stage)
+                self.logger.update_operation(stage.operation_id, final_message)
             self.complete_stage(stage_name)
 
     def complete_stage(self, name: str) -> None:

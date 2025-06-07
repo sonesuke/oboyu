@@ -117,6 +117,27 @@ class TestProgressPipeline:
         
         mock_logger.complete_operation.assert_called_once_with("op_id_123")
 
+    def test_completion_shows_100_percent(self, pipeline, mock_logger):
+        """Test that completion always shows 100% progress before marking complete."""
+        pipeline.add_stage("test_stage", "Test Stage", total=100)
+        mock_logger.start_operation.return_value = "op_id_123"
+        
+        # Update to total should show final progress message with 100%
+        pipeline.update("test_stage", 100, 100)
+        
+        # Should have called update_operation twice:
+        # 1. When auto-starting the stage 
+        # 2. Final progress message with 100% before completion
+        assert mock_logger.update_operation.call_count == 2
+        
+        # Check the final call shows 100%
+        final_call_args = mock_logger.update_operation.call_args_list[-1]
+        final_message = final_call_args[0][1]  # Second argument is the message
+        assert "100%" in final_message
+        
+        # Should then mark as complete
+        mock_logger.complete_operation.assert_called_once_with("op_id_123")
+
 
 class TestIndexerProgressAdapter:
     """Test IndexerProgressAdapter class."""
