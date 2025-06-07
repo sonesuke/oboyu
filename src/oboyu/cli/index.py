@@ -10,6 +10,7 @@ import typer
 from typing_extensions import Annotated
 
 from oboyu.cli.base import BaseCommand
+from oboyu.cli.common_options import ConfigOption
 from oboyu.cli.index_config import create_crawler_config
 from oboyu.cli.services.indexing_service import IndexingService
 
@@ -17,6 +18,9 @@ app = typer.Typer(
     help="Index documents for search",
     pretty_exceptions_enable=False,
     rich_markup_mode=None,
+    context_settings={
+        "allow_interspersed_args": True,
+    },
 )
 
 DirectoryOption = Annotated[
@@ -46,6 +50,7 @@ EncodingDetectionOption = Annotated[
 def index(
     ctx: typer.Context,
     directories: DirectoryOption,
+    config: ConfigOption = None,
     recursive: Optional[bool] = True,
     include_patterns: Optional[List[str]] = None,
     exclude_patterns: Optional[List[str]] = None,
