@@ -3,6 +3,7 @@
 This module provides the command-line interface for querying indexed documents.
 """
 
+import json
 import logging
 import os
 from pathlib import Path
@@ -139,42 +140,87 @@ def _display_results(
 ) -> None:
     """Display search results."""
     if not results:
-        console.print("❌ No results found.")
+        if format == "json":
+            # Output empty JSON structure for no results
+            json_output = {
+                "results": [],
+                "count": 0,
+                "search_type": f"{mode}{' with reranker' if reranker_used else ''}",
+                "duration": elapsed_time
+            }
+            print(json.dumps(json_output, indent=2, ensure_ascii=False))
+        else:
+            console.print("❌ No results found.")
         return
 
-    # Header with reranker indication
-    reranker_suffix = " with reranker" if reranker_used else ""
-    console.print(
-        f"\n🎯 Found [bold green]{len(results)}[/bold green] results "
-        f"([dim]{mode} search{reranker_suffix}, {elapsed_time:.3f}s[/dim])\n"
-    )
+    if format == "json":
+        # Convert results to JSON format
+        json_results = []
+        for result in results:
+            # Create snippet (first 200 chars)
+            content = result.content[:200].replace('\n', ' ').strip()
+            if len(result.content) > 200:
+                content += "..."
+            
+            json_result = {
+                "score": result.score,
+                "file_path": str(result.path),
+                "title": result.title or "",
+                "snippet": content,
+                "language": getattr(result, 'language', 'en')  # Default to 'en' if not available
+            }
+            
+            # Add chunk index if explain mode is enabled
+            if explain:
+                json_result["chunk_index"] = result.chunk_index
+                
+            json_results.append(json_result)
+        
+        # Create final JSON output structure
+        json_output = {
+            "results": json_results,
+            "count": len(results),
+            "search_type": f"{mode}{' with reranker' if reranker_used else ''}",
+            "duration": elapsed_time
+        }
+        
+        # Output JSON using print to avoid Rich formatting
+        print(json.dumps(json_output, indent=2, ensure_ascii=False))
+    else:
+        # Original text format
+        # Header with reranker indication
+        reranker_suffix = " with reranker" if reranker_used else ""
+        console.print(
+            f"\n🎯 Found [bold green]{len(results)}[/bold green] results "
+            f"([dim]{mode} search{reranker_suffix}, {elapsed_time:.3f}s[/dim])\n"
+        )
 
-    # Display results
-    for i, result in enumerate(results, 1):
-        # Score color coding
-        score = result.score
-        if score >= 0.8:
-            score_color = "bright_green"
-        elif score >= 0.6:
-            score_color = "green"
-        elif score >= 0.4:
-            score_color = "yellow"
-        else:
-            score_color = "red"
+        # Display results
+        for i, result in enumerate(results, 1):
+            # Score color coding
+            score = result.score
+            if score >= 0.8:
+                score_color = "bright_green"
+            elif score >= 0.6:
+                score_color = "green"
+            elif score >= 0.4:
+                score_color = "yellow"
+            else:
+                score_color = "red"
 
-        # Display result
-        console.print(f"[bold blue]{i:2d}.[/bold blue] [{score_color}]{score:.3f}[/{score_color}] [dim]{result.path}[/dim]")
+            # Display result
+            console.print(f"[bold blue]{i:2d}.[/bold blue] [{score_color}]{score:.3f}[/{score_color}] [dim]{result.path}[/dim]")
 
-        if result.title:
-            console.print(f"    [bold]{result.title}[/bold]")
+            if result.title:
+                console.print(f"    [bold]{result.title}[/bold]")
 
-        # Content preview
-        content = result.content[:200].replace('\n', ' ').strip()
-        if len(result.content) > 200:
-            content += "..."
-        console.print(f"    {content}")
+            # Content preview
+            content = result.content[:200].replace('\n', ' ').strip()
+            if len(result.content) > 200:
+                content += "..."
+            console.print(f"    {content}")
 
-        if explain:
-            console.print(f"    [dim]Chunk index: {result.chunk_index}[/dim]")
+            if explain:
+                console.print(f"    [dim]Chunk index: {result.chunk_index}[/dim]")
 
-        console.print()  # Empty line between results
+            console.print()  # Empty line between results
