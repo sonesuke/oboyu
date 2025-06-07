@@ -41,7 +41,7 @@ crawler:
     - "*.md" 
     - "*.py"
     - "*.rst"
-    - "*.ipynb"
+    # - "*.ipynb"                 # Note: Jupyter notebooks are treated as plain text only
   exclude_patterns:                     # Directories/files to skip
     - "*/node_modules/*"
     - "*/.git/*" 
@@ -199,12 +199,12 @@ indexer:
 
 crawler:
   include_patterns:
-    - "*.pdf"                   # Research papers
-    - "*.tex"                   # LaTeX documents
+    # - "*.pdf"                   # Not supported - requires proper extraction
+    - "*.tex"                   # LaTeX documents (as text)
     - "*.bib"                   # Bibliography files
     - "*.md"                    # Notes and documentation
     - "*.txt"                   # Plain text documents
-    - "*.docx"                  # Word documents
+    # - "*.docx"                  # Not supported - requires proper extraction
   exclude_patterns:
     - "*/backup/*"
     - "*/drafts/*"
@@ -233,7 +233,7 @@ crawler:
     - "*.adoc"                  # AsciiDoc
     - "README*"                 # All README files
     - "CHANGELOG*"              # Changelog files
-    - "*.ipynb"                 # Jupyter notebooks
+    # - "*.ipynb"                 # Note: Jupyter notebooks are treated as plain text only
     - "docs/**/*"               # Documentation folders
     - "*.html"                  # Generated docs
   exclude_patterns:
@@ -264,9 +264,9 @@ crawler:
   include_patterns:
     - "*.txt"
     - "*.md"
-    - "*.pdf"
-    - "*.docx"
-    - "*.odt"
+    # - "*.pdf"                   # Not supported - requires proper extraction
+    # - "*.docx"                  # Not supported - requires proper extraction
+    # - "*.odt"                   # Not supported - requires proper extraction
     - "*.rtf"
   exclude_patterns:
     - "*/temp/*"
@@ -292,7 +292,7 @@ crawler:
   include_patterns:
     - "*.txt"
     - "*.md"
-    - "*.pdf"
+    # - "*.pdf"                   # Not supported - requires proper extraction
     - "*.html"
     - "*.xml"
     - "*.json"
@@ -349,7 +349,7 @@ crawler:
     - "*.pyi"                   # Type stub files
     - "*.md"                    # Documentation
     - "*.rst"                   # reStructuredText docs
-    - "*.ipynb"                 # Jupyter notebooks
+    # - "*.ipynb"                 # Note: Jupyter notebooks are treated as plain text only
     - "requirements*.txt"       # Dependencies
     - "pyproject.toml"          # Project config
     - "setup.py"                # Setup files
@@ -387,8 +387,8 @@ crawler:
   include_patterns:
     - "*.md"                    # Markdown notes
     - "*.txt"                   # Text files
-    - "*.pdf"                   # PDF documents
-    - "*.docx"                  # Word documents
+    # - "*.pdf"                   # Not supported - requires proper extraction
+    # - "*.docx"                  # Not supported - requires proper extraction
     - "*.org"                   # Org-mode files
     - "*.rtf"                   # Rich text
     - "notes/**/*"              # Notes directory
@@ -417,8 +417,8 @@ indexer:
 
 crawler:
   include_patterns:
-    - "*.pdf"                   # Legal PDFs
-    - "*.docx"                  # Contracts
+    # - "*.pdf"                   # Not supported - requires proper extraction
+    # - "*.docx"                  # Not supported - requires proper extraction
     - "*.txt"                   # Plain text
     - "contracts/**/*"          # Contracts folder
     - "cases/**/*"              # Case files

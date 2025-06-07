@@ -47,7 +47,7 @@ That's it! See our [Quick Start Guide](https://sonesuke.github.io/oboyu/quicksta
 - **Interactive Mode**: Real-time search with command history and auto-suggestions
 
 ### 📚 Document Support
-- **Wide Format Support**: Plain text, Markdown, code files, PDFs, Jupyter notebooks, and more
+- **Text File Support**: Plain text, Markdown, code files, and other text-based formats with automatic encoding detection
 - **Incremental Indexing**: Only process new or changed files for lightning-fast updates
 - **Smart Chunking**: Intelligent document splitting for optimal search results
 - **Automatic Encoding**: Handles various text encodings seamlessly

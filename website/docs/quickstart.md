@@ -1,9 +1,3 @@
----
-id: quickstart
-title: Quick Start Guide
-sidebar_position: 10
----
-
 # Quick Start Guide
 
 Welcome to Oboyu! This guide will help you get up and running with semantic document search in under 5 minutes.
@@ -52,7 +46,7 @@ This downloads:
 
 ### Step 1: Index Your Documents
 
-Index a directory of documents (supports .txt, .md, .pdf, and many more formats):
+Index a directory of documents (supports .txt, .md, and other text-based formats):
 
 ```bash
 oboyu index /path/to/your/documents
@@ -104,10 +98,10 @@ oboyu index ~/projects/myapp/docs
 oboyu query "authentication flow"
 ```
 
-### 2. Research Papers and Notes
+### 2. Research Notes and Documentation
 ```bash
-# Index research papers
-oboyu index ~/research/papers --include "*.pdf"
+# Index research notes
+oboyu index ~/research/notes --include "*.md"
 
 # Find related concepts
 oboyu query "machine learning optimization techniques"
