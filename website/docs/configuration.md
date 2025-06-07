@@ -696,7 +696,7 @@ OBOYU_LOG_LEVEL=DEBUG oboyu index /path
 ### Getting Help
 
 If configuration issues persist:
-1. Check the [FAQ](faq.md)
+1. Check the [troubleshooting guide](troubleshooting.md)
 2. Review [examples](#configuration-examples) above
 3. Run diagnostic: `oboyu diagnose`
 4. File an issue with config and error output
