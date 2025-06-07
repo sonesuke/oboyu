@@ -39,7 +39,7 @@ The E2E display testing framework covers:
 Run all E2E display tests:
 
 ```bash
-python tests/e2e/run_display_tests.py
+uv run python e2e/run_tests.py
 ```
 
 ### Running Specific Tests
@@ -48,10 +48,10 @@ You can run individual test categories:
 
 ```bash
 # Run only basic CLI display tests
-python tests/e2e/run_display_tests.py --test basic
+uv run python e2e/run_tests.py --test basic
 
 # Run only search result display tests
-python tests/e2e/run_display_tests.py --test search
+uv run python e2e/run_tests.py --test search
 
 # Available test options:
 # - basic: Basic CLI commands (help, version, health)
@@ -64,26 +64,18 @@ python tests/e2e/run_display_tests.py --test search
 
 ```bash
 # Use a custom oboyu command path
-python tests/e2e/run_display_tests.py --oboyu-path /path/to/oboyu
+uv run python e2e/run_tests.py --oboyu-path /path/to/oboyu
 
 # Save report to a different location
-python tests/e2e/run_display_tests.py --report my_report.md
+uv run python e2e/run_tests.py --report my_report.md
 
 # Keep test data after running (for debugging)
-python tests/e2e/run_display_tests.py --no-cleanup
+uv run python e2e/run_tests.py --no-cleanup
 ```
 
-## Using with Pytest
+## Test Implementation
 
-The E2E tests are also integrated with pytest:
-
-```bash
-# Run E2E display tests with pytest
-uv run pytest tests/e2e/claude_code_display_test.py -v
-
-# Run a specific test
-uv run pytest tests/e2e/claude_code_display_test.py::test_basic_cli_display -v
-```
+The E2E tests are implemented as standalone Python scripts in the `e2e/` directory. The main test runner is `run_tests.py` which uses the `OboyuE2EDisplayTester` class from `display_tester.py`.
 
 ## Test Structure
 
@@ -167,7 +159,7 @@ You can integrate E2E display testing into your CI/CD pipeline:
     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   run: |
     npm install -g @anthropic-ai/claude-code
-    python tests/e2e/run_display_tests.py --test basic
+    uv run python e2e/run_tests.py --test basic
 ```
 
 ## Cost Considerations
@@ -198,10 +190,10 @@ You can integrate E2E display testing into your CI/CD pipeline:
 
 For debugging, you can run the test module directly:
 
-```python
+```bash
 # Run with Python directly for debugging
-cd tests/e2e
-python claude_code_display_test.py
+cd e2e
+uv run python run_tests.py --test basic --no-cleanup
 ```
 
 ## Best Practices
