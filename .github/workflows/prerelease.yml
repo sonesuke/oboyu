@@ -1,0 +1,88 @@
+name: Publish Prerelease to PyPI
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+a[0-9]+'  # Alpha: v0.2.0a1
+      - 'v[0-9]+.[0-9]+.[0-9]+b[0-9]+'  # Beta: v0.2.0b1
+      - 'v[0-9]+.[0-9]+.[0-9]+rc[0-9]+' # Release Candidate: v0.2.0rc1
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.13"]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: uv sync --all-extras
+    
+    - name: Lint with ruff
+      run: uv run ruff check --fix
+    
+    - name: Type check with mypy
+      run: uv run mypy
+    
+    - name: Run tests
+      run: uv run pytest --cov=src
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+    
+    - name: Set up Python
+      run: uv python install 3.13
+    
+    - name: Install build dependencies
+      run: uv sync
+    
+    - name: Verify tag format
+      run: |
+        TAG_VERSION=${GITHUB_REF#refs/tags/v}
+        echo "Building version: $TAG_VERSION"
+    
+    - name: Build package
+      run: uv build
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: dist/
+
+  publish-prerelease:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi-prerelease
+      url: https://pypi.org/p/oboyu
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: dist/
+    
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
