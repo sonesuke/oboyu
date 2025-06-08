@@ -292,7 +292,7 @@ oboyu query --rrf-k 30 --limit 15 "database normalization rules"
 
 ### Search Mode Performance
 
-- **Vector search**: Fast for small-medium datasets (< 100K documents)
+- **Vector search**: Fast for small-medium datasets (&lt; 100K documents)
 - **BM25 search**: Scales well with large datasets, fast keyword lookups
 - **Hybrid search**: Slightly slower but provides best quality results
 

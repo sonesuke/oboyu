@@ -29,7 +29,10 @@
       "Bash(sed:*)",
       "Bash(git rebase:*)",
       "Bash(gtimeout:*)",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run:*)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }

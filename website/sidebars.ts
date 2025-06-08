@@ -23,36 +23,74 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Getting Started',
       items: [
-        'quickstart',
-        'cli',
-        'configuration',
+        'getting-started/installation',
+        'getting-started/first-index',
+        'getting-started/first-search',
       ],
     },
     {
       type: 'category',
-      label: 'Core Features',
+      label: 'Usage Examples',
       items: [
+        'usage-examples/basic-workflow',
+        'usage-examples/document-types',
+        'usage-examples/search-patterns',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Real-world Scenarios',
+      items: [
+        'real-world-scenarios/technical-docs',
+        'real-world-scenarios/meeting-notes',
+        'real-world-scenarios/research-papers',
+        'real-world-scenarios/personal-notes',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Configuration & Optimization',
+      items: [
+        'configuration-optimization/configuration',
+        'configuration-optimization/indexing-strategies',
+        'configuration-optimization/search-optimization',
+        'configuration-optimization/performance-tuning',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Integration',
+      items: [
+        'integration/mcp-integration',
+        'integration/cli-workflows',
+        'integration/automation',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Reference & Troubleshooting',
+      items: [
+        'reference-troubleshooting/troubleshooting',
+        'reference-troubleshooting/cli-reference',
+        'reference-troubleshooting/configuration-reference',
+        'reference-troubleshooting/japanese-support',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Legacy Documentation',
+      collapsed: true,
+      items: [
+        'quickstart',
+        'cli',
         'indexer',
         'query-engine',
         'crawler',
         'reranker',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Advanced Topics',
-      items: [
         'architecture',
         'japanese',
         'mcp-server',
         'immutable-configuration-migration',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Help & Support',
-      items: [
-        'troubleshooting',
       ],
     },
   ],
