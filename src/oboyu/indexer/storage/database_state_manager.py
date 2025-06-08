@@ -96,8 +96,22 @@ class DatabaseStateManager:
         """
         logger.debug(f"Creating validated connection to {self.db_path}")
         
-        # Create connection
-        conn = duckdb.connect(str(self.db_path))
+        # Create connection with corruption recovery
+        try:
+            conn = duckdb.connect(str(self.db_path))
+        except Exception as e:
+            if "not a valid DuckDB database file" in str(e):
+                logger.warning(f"Corrupted database file detected: {e}")
+                logger.info("Removing corrupted file and creating fresh database")
+                
+                # Remove corrupted file and create fresh database
+                if self.db_path.exists():
+                    self.db_path.unlink()
+                
+                conn = duckdb.connect(str(self.db_path))
+                logger.info("Created fresh database after corruption recovery")
+            else:
+                raise
         
         try:
             # Step 1: Configure database settings
