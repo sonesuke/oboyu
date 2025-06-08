@@ -14,10 +14,10 @@ Start your day by catching up on recent updates:
 
 ```bash
 # Find all documents modified yesterday
-oboyu query "status OR update OR report" --days 1
+oboyu query --query "status OR update OR report"
 
 # Check meeting notes from the past week
-oboyu query "meeting" --days 7 --file-type md
+oboyu query --query "meeting"
 ```
 
 ### Create a Morning Alias
@@ -26,7 +26,7 @@ Save time with a custom command:
 
 ```bash
 # Create the alias
-echo 'alias morning="oboyu query \"status OR update OR meeting\" --days 1"' >> ~/.bashrc
+echo 'alias morning="oboyu query --query \"status OR update OR meeting\""' >> ~/.bashrc
 
 # Use it daily
 morning
@@ -39,10 +39,10 @@ morning
 Before a follow-up meeting:
 ```bash
 # Find previous meeting notes
-oboyu query "team meeting with product" --days 30
+oboyu query --query "team meeting with product"
 
 # Find action items from last meeting
-oboyu query "action items TODO assigned" --mode semantic
+oboyu query --query "action items TODO assigned" --mode vector
 ```
 
 ### 2. Locating Project Documents
@@ -50,10 +50,10 @@ oboyu query "action items TODO assigned" --mode semantic
 When you need specific project files:
 ```bash
 # Find all documents for a project
-oboyu query "Project Alpha" --limit 20
+oboyu query --query "Project Alpha" --top-k 20
 
 # Find the latest version
-oboyu query "Project Alpha specification" --days 7
+oboyu query --query "Project Alpha specification"
 ```
 
 ### 3. Searching Email Exports
@@ -61,10 +61,10 @@ oboyu query "Project Alpha specification" --days 7
 If you export emails to text/markdown:
 ```bash
 # Find emails from specific sender
-oboyu query "from: john.doe@company.com"
+oboyu query --query "from: john.doe@company.com"
 
 # Find emails about specific topic
-oboyu query "contract renewal discussion" --file-type eml
+oboyu query --query "contract renewal discussion"
 ```
 
 ## Weekly Workflows
@@ -72,19 +72,19 @@ oboyu query "contract renewal discussion" --file-type eml
 ### Monday: Week Planning
 ```bash
 # Find last week's accomplishments
-oboyu query "completed OR done OR finished" --from last-monday --to last-friday
+oboyu query --query "completed OR done OR finished"
 
 # Find this week's priorities
-oboyu query "priority OR urgent OR deadline this week" --mode semantic
+oboyu query --query "priority OR urgent OR deadline this week" --mode vector
 ```
 
 ### Friday: Week Review
 ```bash
 # Generate week summary
-oboyu query "progress update status" --days 5 --export weekly-summary.txt
+oboyu query --query "progress update status"
 
 # Find unfinished tasks
-oboyu query "TODO OR pending OR in progress" --days 5
+oboyu query --query "TODO OR pending OR in progress"
 ```
 
 ## Document Organization Workflow
@@ -106,7 +106,7 @@ No need to reorganize! Just index and search:
 oboyu index ~/Documents --db-path ~/indexes/messy-docs.db
 
 # Find what you need instantly
-oboyu query "final project update" --db-path ~/indexes/messy-docs.db
+oboyu query --query "final project update" --db-path ~/indexes/messy-docs.db
 ```
 
 ## Quick Access Patterns
@@ -114,21 +114,21 @@ oboyu query "final project update" --db-path ~/indexes/messy-docs.db
 ### Recent Files Workflow
 ```bash
 # What did I work on yesterday?
-oboyu query "*" --days 1 --limit 10
+oboyu query --query "*" --top-k 10
 
 # Files modified this morning
-oboyu query "*" --hours 4
+oboyu query --query "*"
 ```
 
 ### Project Context Switching
 ```bash
 # Save common search patterns in shell aliases
-alias alpha-search="oboyu query --db-path ~/indexes/alpha-docs.db"
-alias beta-search="oboyu query --db-path ~/indexes/beta-docs.db"
+alias alpha-search="oboyu query --query --db-path ~/indexes/alpha-docs.db"
+alias beta-search="oboyu query --query --db-path ~/indexes/beta-docs.db"
 
 # Quick switch between projects
-oboyu query run alpha-docs  # When working on Alpha
-oboyu query run beta-docs   # When switching to Beta
+alpha-search "search term"  # When working on Alpha
+beta-search "search term"   # When switching to Beta
 ```
 
 ## Collaborative Workflows
@@ -136,19 +136,19 @@ oboyu query run beta-docs   # When switching to Beta
 ### Shared Document Search
 ```bash
 # Find documents mentioning team members
-oboyu query "reviewed by Sarah" OR "assigned to Sarah"
+oboyu query --query "reviewed by Sarah OR assigned to Sarah"
 
 # Find collaborative documents
-oboyu query "shared OR collaborative OR team" --file-type gdoc
+oboyu query --query "shared OR collaborative OR team"
 ```
 
 ### Meeting Preparation
 ```bash
 # Before a meeting, find all related documents
-oboyu query "Q4 planning" --export meeting-prep.txt
+oboyu query --query "Q4 planning"
 
 # Find previous decisions
-oboyu query "decided OR agreed OR approved" --mode semantic
+oboyu query --query "decided OR agreed OR approved" --mode vector
 ```
 
 ## Time-Saving Shortcuts
@@ -156,18 +156,18 @@ oboyu query "decided OR agreed OR approved" --mode semantic
 ### 1. Quick Search Alias
 ```bash
 # Add to your shell configuration
-alias q="oboyu query"
+alias q="oboyu query --query"
 
 # Usage
 q "budget report"
-q "meeting notes" --days 7
+q "meeting notes"
 ```
 
 ### 2. Project-Specific Commands
 ```bash
 # Create project shortcuts
-alias work="oboyu query --db-path ~/indexes/work.db"
-alias personal="oboyu query --db-path ~/indexes/personal.db"
+alias work="oboyu query --query --db-path ~/indexes/work.db"
+alias personal="oboyu query --query --db-path ~/indexes/personal.db"
 
 # Usage
 work "performance review"
@@ -178,11 +178,11 @@ personal "tax documents"
 ```bash
 # Add to .bashrc/.zshrc
 today() {
-    oboyu query "$1" --days 1
+    oboyu query --query "$1"
 }
 
 thisweek() {
-    oboyu query "$1" --days 7
+    oboyu query --query "$1"
 }
 
 # Usage
@@ -195,22 +195,22 @@ thisweek "reports"
 ### Open in Editor
 ```bash
 # Search and edit
-oboyu query "config file" --open-with "code"
+oboyu query --query "config file"
 
 # Search and view
-oboyu query "report" --open-with "less"
+oboyu query --query "report"
 ```
 
 ### Pipeline with Other Commands
 ```bash
 # Find and count
-oboyu query "error log" --format paths | wc -l
+oboyu query --query "error log" | wc -l
 
 # Find and grep
-oboyu query "configuration" --format paths | xargs grep "database"
+oboyu query --query "configuration" | xargs grep "database"
 
 # Find and backup
-oboyu query "important" --days 30 --format paths | xargs cp -t ~/backup/
+oboyu query --query "important" | xargs cp -t ~/backup/
 ```
 
 ## Mobile and Remote Workflows
@@ -218,10 +218,10 @@ oboyu query "important" --days 30 --format paths | xargs cp -t ~/backup/
 ### SSH Workflow
 ```bash
 # Search remote documents via SSH
-ssh server "oboyu query 'project status'"
+ssh server "oboyu query --query 'project status'"
 
 # Sync search results
-oboyu query "reports" --export - | ssh server "cat > results.txt"
+oboyu query --query "reports" | ssh server "cat > results.txt"
 ```
 
 ### Cloud Storage Integration
@@ -231,8 +231,8 @@ oboyu index ~/Dropbox/Documents --db-path ~/indexes/dropbox.db
 oboyu index ~/Google\ Drive/Work --db-path ~/indexes/gdrive.db
 
 # Search individual databases
-oboyu query "presentation" --db-path ~/indexes/dropbox.db
-oboyu query "presentation" --db-path ~/indexes/gdrive.db
+oboyu query --query "presentation" --db-path ~/indexes/dropbox.db
+oboyu query --query "presentation" --db-path ~/indexes/gdrive.db
 ```
 
 ## Productivity Tips
@@ -254,10 +254,10 @@ oboyu index ~/Documents --watch
 ### 3. Search History Analysis
 ```bash
 # See what you search for most
-oboyu query history --stats
+oboyu query --query "*" # (Note: history functionality not available)
 
 # Optimize common searches
-oboyu query history --frequent | head -5
+# (Note: history functionality not available)
 ```
 
 ## Emergency Workflows
@@ -265,29 +265,29 @@ oboyu query history --frequent | head -5
 ### Can't Find a Document
 ```bash
 # Broad semantic search
-oboyu query "document about [topic]" --mode semantic --limit 50
+oboyu query --query "document about [topic]" --mode vector --top-k 50
 
 # Search by content in PDF-like files (text content only)
-oboyu query "partial" | grep -i "pdf"
+oboyu query --query "partial" | grep -i "pdf"
 
 # Search by date range when you last remember seeing it
-oboyu query "*" --from 2024-01-01 --to 2024-01-15
+oboyu query --query "*"
 ```
 
 ### Recovering Lost Work
 ```bash
 # Find most recently modified files
-oboyu query "*" --days 1 --sort modified --limit 20
+oboyu query --query "*" --top-k 20
 
 # Find documents with specific content
-oboyu query "exact phrase from document" --mode exact
+oboyu query --query "exact phrase from document"
 ```
 
 ## Daily Checklist
 
 A productive day with Oboyu:
 
-- [ ] Morning: Check updates with `oboyu query "update" --days 1`
+- [ ] Morning: Check updates with `oboyu query --query "update"`
 - [ ] Before meetings: Find relevant docs with project search
 - [ ] During work: Use quick searches for instant access
 - [ ] End of day: Update index with `oboyu index --update`

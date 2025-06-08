@@ -70,7 +70,7 @@ oboyu index ~/Documents/work-docs --db-path ~/my-indexes/work.db
 
 Later, search using this specific database:
 ```bash
-oboyu query "meeting notes" --db-path ~/my-indexes/work.db
+oboyu query --query "meeting notes" --db-path ~/my-indexes/work.db
 ```
 
 ### Index Specific File Types
@@ -104,7 +104,7 @@ This tells you:
 
 You can now search your documents:
 ```bash
-oboyu query "your search terms"
+oboyu query --query "your search terms"
 ```
 
 ## Best Practices for Indexing
@@ -146,10 +146,10 @@ Check the status of what would be indexed:
 
 ```bash
 # Check what files would be processed
-oboyu manage status ~/Documents
+oboyu manage status
 
 # Check differences (what would be updated)
-oboyu manage diff ~/Documents
+oboyu manage diff
 ```
 
 The index database is stored at `~/.oboyu/oboyu.db` by default, or at the path specified with `--db-path`.

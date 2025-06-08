@@ -22,13 +22,15 @@ Maximize the relevance and quality of your search results with these optimizatio
 
 ```bash
 # Test search quality
-oboyu query test --queries sample-queries.txt
+# (Note: test functionality not available in current implementation)
+oboyu query --query "test queries"
 
 # Analyze search patterns
-oboyu query analyze --days 30
+# (Note: analyze functionality not available in current implementation)
 
 # Get relevance feedback
-oboyu query "search term" --feedback
+# (Note: feedback functionality not available in current implementation)
+oboyu query --query "search term"
 ```
 
 ## Optimizing Search Modes
@@ -39,13 +41,14 @@ Best for exact matches and technical terms:
 
 ```bash
 # Precise technical searches
-oboyu query "ERROR_CODE_404" --mode bm25
+oboyu query --query "ERROR_CODE_404" --mode bm25
 
 # Case-sensitive search
-oboyu query "className" --mode bm25 --case-sensitive
+# (Note: case-sensitive option not available in current implementation)
+oboyu query --query "className" --mode bm25
 
 # Exact phrase matching
-oboyu query '"exact error message"' --mode bm25
+oboyu query --query '"exact error message"' --mode bm25
 ```
 
 **Optimization Tips:**
@@ -59,13 +62,13 @@ Best for conceptual and natural language queries:
 
 ```bash
 # Conceptual queries
-oboyu query "documents about improving team productivity" --mode vector
+oboyu query --query "documents about improving team productivity" --mode vector
 
 # Question-based search
-oboyu query "how to configure database connections?" --mode vector
+oboyu query --query "how to configure database connections?" --mode vector
 
 # Finding similar content
-oboyu query "similar to our onboarding guide" --mode vector
+oboyu query --query "similar to our onboarding guide" --mode vector
 ```
 
 **Optimization Tips:**
@@ -79,13 +82,11 @@ Best balance of precision and recall:
 
 ```bash
 # Default for most searches
-oboyu query "python async programming" --mode hybrid
+oboyu query --query "python async programming" --mode hybrid
 
 # Adjust weights for your needs
-oboyu query "bug fix authentication" \
-  --mode hybrid \
-  --keyword-weight 0.3 \
-  --vector-weight 0.7
+# (Note: weight adjustment not available in current implementation)
+oboyu query --query "bug fix authentication" --mode hybrid
 ```
 
 **Optimization Tips:**
@@ -101,13 +102,15 @@ Improve recall by expanding queries:
 
 ```bash
 # Manual expansion
-oboyu query "auth OR authentication OR login"
+oboyu query --query "auth OR authentication OR login"
 
 # Synonym expansion
-oboyu query "bug error issue problem" --expand-synonyms
+# (Note: expand-synonyms option not available in current implementation)
+oboyu query --query "bug error issue problem"
 
 # Stem expansion
-oboyu query "configure" --expand-stems  # Also finds: configuring, configuration
+# (Note: expand-stems option not available in current implementation)
+oboyu query --query "configure"  # Also finds: configuring, configuration
 ```
 
 ### Query Refinement
@@ -116,13 +119,15 @@ Improve precision by refining queries:
 
 ```bash
 # Add context
-oboyu query "index" --context "database performance"
+# (Note: context option not available in current implementation)
+oboyu query --query "index database performance"
 
 # Exclude noise
-oboyu query "python -snake -animal"
+oboyu query --query "python -snake -animal"
 
 # Specify domain
-oboyu query "transformer" --domain "machine learning"
+# (Note: domain option not available in current implementation)
+oboyu query --query "transformer machine learning"
 ```
 
 ### Query Templates
@@ -131,14 +136,12 @@ Create reusable query patterns:
 
 ```bash
 # Save query template
-oboyu query save \
-  "error {{CODE}} in {{FILE}}" \
-  --db-path ~/indexes/error-search.db
+# (Note: save/template functionality not available in current implementation)
+# Use individual queries instead
 
 # Use template
-oboyu query template error-search \
-  --CODE "500" \
-  --FILE "api.py"
+# (Note: template functionality not available in current implementation)
+oboyu query --query "error 500 in api.py"
 ```
 
 ## Relevance Tuning
@@ -148,24 +151,27 @@ oboyu query template error-search \
 #### Field Boosting
 ```bash
 # Boost title matches
-oboyu query "configuration" --boost "title:2.0"
+# (Note: boost functionality not available in current implementation)
+oboyu query --query "configuration"
 
 # Boost recent documents
-oboyu query "release notes" --boost "date:1.5"
+# (Note: boost functionality not available in current implementation)
+oboyu query --query "release notes"
 
 # Multiple boosts
-oboyu query "api documentation" \
-  --boost "title:2.0" \
-  --boost "path:**/api/**:1.5"
+# (Note: boost functionality not available in current implementation)
+oboyu query --query "api documentation"
 ```
 
 #### Term Boosting
 ```bash
 # Boost important terms
-oboyu query "python^2.0 tutorial"
+# (Note: term boosting not available in current implementation)
+oboyu query --query "python tutorial"
 
 # Negative boosting
-oboyu query "java -deprecated^0.5"
+# (Note: negative boosting not available in current implementation)
+oboyu query --query "java -deprecated"
 ```
 
 ### Reranking Configuration
@@ -180,10 +186,8 @@ query:
 
 ```bash
 # Query with custom reranking
-oboyu query "machine learning" \
-  --rerank \
-  --rerank-top-k 100 \
-  --rerank-threshold 0.7
+# (Note: custom reranking options not available in current implementation)
+oboyu query --query "machine learning"
 ```
 
 ## Filter Optimization
@@ -192,34 +196,36 @@ oboyu query "machine learning" \
 
 ```bash
 # Filter by file type
-oboyu query "configuration" --file-type md,yaml
+# (Note: file-type filtering not available in current implementation)
+oboyu query --query "configuration"
 
 # Filter by date
-oboyu query "meeting notes" \
-  --from "2024-01-01" \
-  --to "2024-01-31"
+# (Note: date filtering not available in current implementation)
+oboyu query --query "meeting notes"
 
 # Filter by path
-oboyu query "readme" --path "**/docs/**"
+# (Note: path filtering not available in current implementation)
+oboyu query --query "readme"
 
 # Combine filters
-oboyu query "api" \
-  --file-type md \
-  --path "**/api/**" \
-  --days 30
+# (Note: filtering options not available in current implementation)
+oboyu query --query "api"
 ```
 
 ### Content Filters
 
 ```bash
 # Filter by language
-oboyu query "エラー" --language ja
+# (Note: language filtering not available in current implementation)
+oboyu query --query "エラー"
 
 # Filter by length
-oboyu query "summary" --min-words 100 --max-words 500
+# (Note: word count filtering not available in current implementation)
+oboyu query --query "summary"
 
 # Filter by metadata
-oboyu query "report" --has-metadata "author"
+# (Note: metadata filtering not available in current implementation)
+oboyu query --query "report"
 ```
 
 ## Search Result Quality
@@ -228,30 +234,35 @@ oboyu query "report" --has-metadata "author"
 
 ```bash
 # Sort by relevance (default)
-oboyu query "python tutorial" --sort relevance
+oboyu query --query "python tutorial"
 
 # Sort by date
-oboyu query "changelog" --sort date-desc
+# (Note: sorting options not available in current implementation)
+oboyu query --query "changelog"
 
 # Sort by path
-oboyu query "readme" --sort path
+# (Note: sorting options not available in current implementation)
+oboyu query --query "readme"
 
 # Custom scoring
-oboyu query "important" \
-  --score-function "0.7*relevance + 0.3*recency"
+# (Note: custom scoring not available in current implementation)
+oboyu query --query "important"
 ```
 
 ### Result Grouping
 
 ```bash
 # Group by directory
-oboyu query "test" --group-by directory
+# (Note: grouping options not available in current implementation)
+oboyu query --query "test"
 
 # Group by file type
-oboyu query "documentation" --group-by extension
+# (Note: grouping options not available in current implementation)
+oboyu query --query "documentation"
 
 # Group by date
-oboyu query "meeting" --group-by date
+# (Note: grouping options not available in current implementation)
+oboyu query --query "meeting"
 ```
 
 ## Advanced Optimization
@@ -260,7 +271,8 @@ oboyu query "meeting" --group-by date
 
 ```bash
 # Analyze query performance
-oboyu query "search term" --analyze
+# (Note: analyze option not available in current implementation)
+oboyu query --query "search term"
 
 # Output:
 # Query Analysis:
@@ -275,27 +287,29 @@ oboyu query "search term" --analyze
 
 ```bash
 # Test different strategies
-oboyu query ab-test "search term" \
-  --strategies "bm25,vector,hybrid" \
-  --metrics "precision,recall"
+# (Note: ab-test functionality not available in current implementation)
+oboyu query --query "search term" --mode bm25
+oboyu query --query "search term" --mode vector
+oboyu query --query "search term" --mode hybrid
 
 # Compare reranker impact
-oboyu query compare "complex query" \
-  --with-reranker \
-  --without-reranker
+# (Note: compare functionality not available in current implementation)
+oboyu query --query "complex query"
 ```
 
 ### Search Personalization
 
 ```bash
 # Learn from feedback
-oboyu query "python async" --learn
+# (Note: learning functionality not available in current implementation)
+oboyu query --query "python async"
 
 # Use learned preferences
-oboyu query "programming tutorial" --personalized
+# (Note: personalization not available in current implementation)
+oboyu query --query "programming tutorial"
 
 # Reset learning
-oboyu query reset-personalization
+# (Note: personalization reset not available in current implementation)
 ```
 
 ## Domain-Specific Optimization
@@ -313,13 +327,16 @@ query:
 
 ```bash
 # Search for function definitions
-oboyu query "def process_data" --code-search
+# (Note: code-search option not available in current implementation)
+oboyu query --query "def process_data"
 
 # Find implementations
-oboyu query "implements UserInterface" --code-search
+# (Note: code-search option not available in current implementation)
+oboyu query --query "implements UserInterface"
 
 # Search by signature
-oboyu query "function(string, number): boolean" --signature-search
+# (Note: signature-search option not available in current implementation)
+oboyu query --query "function(string, number): boolean"
 ```
 
 ### Documentation Search
@@ -335,10 +352,12 @@ query:
 
 ```bash
 # Find API documentation
-oboyu query "REST endpoint" --doc-search
+# (Note: doc-search option not available in current implementation)
+oboyu query --query "REST endpoint"
 
 # Search in specific sections
-oboyu query "installation" --section "getting-started"
+# (Note: section option not available in current implementation)
+oboyu query --query "installation getting-started"
 ```
 
 ### Academic Search
@@ -354,10 +373,12 @@ query:
 
 ```bash
 # Search with citations
-oboyu query "neural networks" --include-citations
+# (Note: include-citations option not available in current implementation)
+oboyu query --query "neural networks"
 
 # Find by methodology
-oboyu query "quantitative analysis" --section "methodology"
+# (Note: section option not available in current implementation)
+oboyu query --query "quantitative analysis methodology"
 ```
 
 ## Performance vs Quality Trade-offs
@@ -406,17 +427,22 @@ oboyu index analyze --db-path ~/indexes/personal.db
 
 2. **Test Query Parsing**
 ```bash
-oboyu query "your search" --explain
+# (Note: explain option not available in current implementation)
+oboyu query --query "your search"
 ```
 
 3. **Compare Search Modes**
 ```bash
-oboyu query "problematic search" --compare-modes
+# (Note: compare-modes option not available in current implementation)
+oboyu query --query "problematic search" --mode bm25
+oboyu query --query "problematic search" --mode vector
+oboyu query --query "problematic search" --mode hybrid
 ```
 
 4. **Analyze Result Distribution**
 ```bash
-oboyu query "search term" --show-distribution
+# (Note: show-distribution option not available in current implementation)
+oboyu query --query "search term"
 ```
 
 ### Common Issues and Fixes

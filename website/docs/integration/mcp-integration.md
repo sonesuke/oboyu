@@ -19,27 +19,31 @@ The Model Context Protocol (MCP) enables AI assistants like Claude to interact w
 
 ## Quick Start
 
-### 1. Install Oboyu with MCP Support
+### 1. Install and Index Documents
 
 ```bash
-# Install Oboyu
+# Install Oboyu (follow installation guide)
 pip install oboyu
 
-# Verify MCP support
-oboyu mcp --version
+# Create an index of your documents
+oboyu index ~/Documents
 ```
 
 ### 2. Configure Claude Desktop
 
 Add Oboyu to your Claude Desktop configuration:
 
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+**Linux**: `~/.config/claude/claude_desktop_config.json`
+
 ```json
 {
-  "mcp-servers": {
+  "mcpServers": {
     "oboyu": {
       "command": "oboyu",
-      "args": ["mcp", "serve", "--index", "~/.oboyu/index.db"],
-      "description": "Search local documents"
+      "args": ["mcp"],
+      "description": "Search local documents with Oboyu"
     }
   }
 }
@@ -47,113 +51,96 @@ Add Oboyu to your Claude Desktop configuration:
 
 ### 3. Start Using
 
-In Claude Desktop, you can now:
+In Claude Desktop, you can now ask:
 ```
 Search my documents for information about project deadlines
 ```
 
 Claude will use Oboyu to search your indexed documents and provide relevant information.
 
-## Detailed Setup
+## MCP Server Configuration
 
-### Creating an Index for MCP
-
-```bash
-# Index your documents
-oboyu index ~/Documents --db-path ~/indexes/main.db
-
-# Optimize for MCP usage
-oboyu index ~/Documents \
-  --chunk-size 1024 \
-  --use-reranker \
-  --db-path ~/indexes/mcp-index.db
-```
-
-### MCP Server Configuration
-
-```yaml
-# ~/.config/oboyu/mcp-config.yaml
-mcp:
-  index_path: "~/.oboyu/mcp-index.db"
-  max_results: 10
-  snippet_length: 200
-  enable_highlighting: true
-  
-  # Security settings
-  allowed_paths:
-    - "~/Documents"
-    - "~/Notes"
-  
-  # Performance settings
-  cache_queries: true
-  timeout: 30
-```
-
-### Starting MCP Server
+### Basic Server Options
 
 ```bash
-# Start with default settings
-oboyu mcp serve
+# Start MCP server with default database
+oboyu mcp
 
-# Start with custom config
-oboyu mcp serve --config ~/.config/oboyu/mcp-config.yaml
+# Use specific database
+oboyu mcp --db-path ~/indexes/work.db
 
-# Start with specific index
-oboyu mcp serve --db-path ~/indexes/.db~/research/index.db
+# Enable debug mode
+oboyu mcp --debug --verbose
 
-# Debug mode
-oboyu mcp serve --debug
+# Use HTTP transport (for web integrations)
+oboyu mcp --transport streamable-http --port 8080
 ```
 
-## Claude Desktop Configuration
+### Available MCP Options
+
+| Option | Description | Default | Example |
+|--------|-------------|---------|---------|
+| `--db-path PATH` | Database file path | Default location | `--db-path ~/indexes/work.db` |
+| `--verbose / --no-verbose` | Verbose logging | `--no-verbose` | `--verbose` |
+| `--debug / --no-debug` | Debug mode | `--no-debug` | `--debug` |
+| `--transport TEXT` | Transport mechanism | `stdio` | `--transport streamable-http` |
+| `--port INTEGER` | Port (for HTTP transports) | None | `--port 8080` |
+
+### Transport Options
+
+| Transport | Description | Use Case |
+|-----------|-------------|----------|
+| `stdio` | Standard input/output | Claude Desktop integration |
+| `streamable-http` | HTTP with streaming | Web-based integrations |
+| `sse` | Server-sent events | Real-time web apps |
+
+## Claude Desktop Configuration Examples
 
 ### Basic Configuration
 
-Edit Claude Desktop settings:
-
-**macOS**: `~/Library/Application Support/Claude/config.json`
-**Windows**: `%APPDATA%\Claude\config.json`
-**Linux**: `~/.config/claude/config.json`
-
 ```json
 {
-  "mcp-servers": {
+  "mcpServers": {
     "oboyu": {
       "command": "oboyu",
-      "args": ["mcp", "serve"],
-      "description": "Search local documents",
-      "env": {
-        "OBOYU_INDEX_PATH": "/path/to/index.db"
-      }
+      "args": ["mcp"],
+      "description": "Search local documents"
     }
   }
 }
 ```
 
-### Advanced Configuration
+### Multiple Document Collections
 
 ```json
 {
-  "mcp-servers": {
+  "mcpServers": {
     "oboyu-personal": {
       "command": "oboyu",
-      "args": [
-        "mcp", 
-        "serve",
-        "--index", "~/.oboyu/personal.db",
-        "--max-results", "20"
-      ],
+      "args": ["mcp", "--db-path", "~/indexes/personal.db"],
       "description": "Personal notes and documents"
     },
     "oboyu-work": {
       "command": "oboyu",
-      "args": [
-        "mcp",
-        "serve", 
-        "--index", "~/.oboyu/work.db",
-        "--filter", "path:~/work/**"
-      ],
+      "args": ["mcp", "--db-path", "~/indexes/work.db"],
       "description": "Work documents"
+    }
+  }
+}
+```
+
+### With Environment Variables
+
+```json
+{
+  "mcpServers": {
+    "oboyu": {
+      "command": "oboyu",
+      "args": ["mcp"],
+      "description": "Search local documents",
+      "env": {
+        "OBOYU_DB_PATH": "~/indexes/main.db"
+      }
     }
   }
 }
@@ -165,25 +152,16 @@ Edit Claude Desktop settings:
 
 In Claude Desktop:
 ```
-Find all documents about machine learning from the past month
+Find all documents about machine learning
 ```
 
-Oboyu MCP will:
-1. Search for "machine learning"
-2. Filter by date (past month)
-3. Return relevant documents
-4. Claude provides summary
+Oboyu MCP will search your indexed documents and return relevant results.
 
 ### Code Documentation Search
 
 ```
-Show me the API documentation for the authentication module
+Show me documentation about authentication in my codebase
 ```
-
-Oboyu searches for:
-- Files containing "API" and "authentication"
-- Documentation files (*.md, *.rst)
-- Returns code examples and descriptions
 
 ### Research Assistant
 
@@ -191,189 +169,46 @@ Oboyu searches for:
 What do my notes say about quantum computing applications?
 ```
 
-Oboyu:
-- Searches notes for "quantum computing"
-- Focuses on application mentions
-- Returns relevant passages
-- Claude synthesizes information
+### Project Management
 
-## MCP Features
-
-### Search Capabilities
-
-```python
-# MCP exposes these search methods
-tools = [
-    {
-        "name": "search",
-        "description": "Search documents",
-        "parameters": {
-            "query": "search terms",
-            "mode": "hybrid|vector|bm25",
-            "limit": 10,
-            "filters": {
-                "file_type": ["md", "txt"],
-                "date_range": "7d"
-            }
-        }
-    },
-    {
-        "name": "get_document",
-        "description": "Retrieve full document",
-        "parameters": {
-            "path": "/path/to/file"
-        }
-    }
-]
 ```
-
-### Context Window Management
-
-```yaml
-# Configure context limits
-mcp:
-  max_context_length: 8000  # tokens
-  truncation_strategy: "middle"  # start|middle|end
-  prioritize_relevance: true
-```
-
-### Security Features
-
-```yaml
-mcp:
-  # Path restrictions
-  allowed_paths:
-    - "~/Documents"
-    - "~/Notes"
-  denied_paths:
-    - "~/Private"
-    - "*.key"
-    - "*.secret"
-  
-  # Content filtering
-  filter_sensitive: true
-  redact_patterns:
-    - "ssn:\s*\d{3}-\d{2}-\d{4}"
-    - "api[_-]?key:\s*\w+"
-```
-
-## Advanced Integration
-
-### Custom MCP Handlers
-
-```python
-# Create custom MCP tool
-from oboyu.mcp import MCPTool
-
-class CustomSearchTool(MCPTool):
-    def execute(self, query, **kwargs):
-        # Custom search logic
-        results = self.search_with_context(query)
-        return self.format_for_claude(results)
-
-# Register with Oboyu
-oboyu mcp register-tool CustomSearchTool
-```
-
-### Workflow Integration
-
-```bash
-# Pre-process documents for MCP
-oboyu mcp prepare ~/Documents \
-  --extract-summaries \
-  --generate-metadata
-
-# Create specialized indices
-oboyu mcp create-index \
-  --type "technical-docs" \
-  --optimize-for "question-answering"
-```
-
-### Multi-Index Support
-
-```json
-{
-  "mcp-servers": {
-    "oboyu-multi": {
-      "command": "oboyu",
-      "args": [
-        "mcp",
-        "serve",
-        "--indices", 
-        "personal:~/.oboyu/personal.db",
-        "work:~/.oboyu/work.db",
-        "research:~/.oboyu/research.db"
-      ]
-    }
-  }
-}
+Find all meeting notes from last month about the new project
 ```
 
 ## Best Practices
 
 ### Index Organization
 
-1. **Separate Indices by Purpose**
+Create separate indices for different purposes:
+
 ```bash
 # Personal knowledge base
-oboyu index ~/Personal --db-path ~/indexes/personal-mcp.db
+oboyu index ~/Personal --db-path ~/indexes/personal.db
 
-# Work documents
-oboyu index ~/Work --db-path ~/indexes/work-mcp.db
+# Work documents  
+oboyu index ~/Work --db-path ~/indexes/work.db
 
 # Research papers
-oboyu index ~/Research --db-path ~/indexes/research-mcp.db
+oboyu index ~/Research --db-path ~/indexes/research.db
 ```
 
-2. **Optimize for Q&A**
+### Regular Updates
+
+Keep your index current:
+
 ```bash
-oboyu index ~/Documents \
-  --chunk-size 512 \
-  --overlap 128 \
-  --extract-qa-pairs
+# Update your index regularly
+oboyu index ~/Documents
+
+# Check what would be updated
+oboyu manage diff
 ```
 
-### Performance Optimization
+### Optimize for Search Quality
 
-```yaml
-mcp:
-  # Cache configuration
-  cache:
-    enabled: true
-    size: 1000
-    ttl: 3600
-  
-  # Preload common queries
-  preload_queries:
-    - "meeting notes"
-    - "project status"
-    - "documentation"
-  
-  # Background indexing
-  auto_update: true
-  update_interval: 3600
-```
-
-### Security Best Practices
-
-1. **Limit Access**
-```yaml
-mcp:
-  allowed_paths:
-    - "~/Documents/Shared"
-  denied_patterns:
-    - "*.password"
-    - "*.key"
-    - "**/private/**"
-```
-
-2. **Audit Logging**
 ```bash
-# Enable MCP audit log
-oboyu mcp serve --audit-log ~/.oboyu/mcp-audit.log
-
-# Review access
-oboyu mcp audit-report --days 7
+# Index with optimized settings
+oboyu index ~/Documents --chunk-size 1024 --chunk-overlap 256
 ```
 
 ## Troubleshooting
@@ -381,127 +216,119 @@ oboyu mcp audit-report --days 7
 ### Connection Issues
 
 ```bash
-# Test MCP server
-oboyu mcp test
+# Test MCP server manually
+oboyu mcp --debug --verbose
 
-# Check server status
-oboyu mcp status
+# Check if Oboyu is properly installed
+oboyu version
 
-# Debug mode
-oboyu mcp serve --debug --verbose
-```
-
-### Performance Issues
-
-```bash
-# Optimize index for MCP
-oboyu mcp optimize --db-path ~/indexes/personal.db
-
-# Monitor performance
-oboyu mcp monitor --metrics
-
-# Adjust settings
-oboyu mcp config set max_results 5
-oboyu mcp config set timeout 60
+# Verify your index exists
+oboyu manage status
 ```
 
 ### Common Problems
 
 **"No results found"**
-- Check index is up-to-date
-- Verify paths are allowed
+- Check that documents are indexed: `oboyu manage status`
+- Verify the database path is correct
 - Try broader search terms
 
-**"Timeout errors"**
-- Reduce max_results
-- Optimize index
-- Increase timeout setting
+**"MCP server not starting"**
+- Check Claude Desktop configuration syntax
+- Verify Oboyu installation: `oboyu --help`
+- Check file permissions for database path
 
-**"Permission denied"**
-- Check allowed_paths configuration
-- Verify file permissions
-- Review security settings
+**"Slow responses"**
+- Update your index: `oboyu index ~/Documents`
+- Use more specific search queries
+- Consider smaller index sizes
 
-## MCP Command Reference
+### Debug Mode
+
+Enable debug mode for troubleshooting:
+
+```json
+{
+  "mcpServers": {
+    "oboyu": {
+      "command": "oboyu", 
+      "args": ["mcp", "--debug", "--verbose"],
+      "description": "Search local documents (debug mode)"
+    }
+  }
+}
+```
+
+## Advanced Usage
+
+### HTTP Transport for Web Integration
 
 ```bash
-# Server management
-oboyu mcp serve           # Start MCP server
-oboyu mcp stop           # Stop MCP server
-oboyu mcp restart        # Restart server
-oboyu mcp status         # Check server status
-
-# Configuration
-oboyu mcp config show    # Show configuration
-oboyu mcp config set     # Set config value
-oboyu mcp config reset   # Reset to defaults
-
-# Testing
-oboyu mcp test           # Test connection
-oboyu mcp query-test     # Test search functionality
-oboyu mcp benchmark      # Performance test
-
-# Maintenance
-oboyu mcp optimize       # Optimize for MCP usage
-oboyu mcp clean-cache    # Clear query cache
-oboyu mcp update-index   # Update search index
+# Start HTTP MCP server
+oboyu mcp --transport streamable-http --port 8080
 ```
 
-## Integration Examples
-
-### Personal Assistant
+Configure for web applications:
 ```json
 {
-  "mcp-servers": {
-    "personal-assistant": {
+  "mcpServers": {
+    "oboyu-web": {
       "command": "oboyu",
-      "args": ["mcp", "serve", "--profile", "assistant"],
-      "env": {
-        "OBOYU_ASSISTANT_MODE": "true"
-      }
+      "args": ["mcp", "--transport", "streamable-http", "--port", "8080"],
+      "description": "Web-accessible document search"
     }
   }
 }
 ```
 
-### Research Helper
+### Multiple Database Support
+
+You can run multiple MCP servers for different document collections:
+
 ```json
 {
-  "mcp-servers": {
-    "research-helper": {
+  "mcpServers": {
+    "oboyu-docs": {
       "command": "oboyu",
-      "args": [
-        "mcp", 
-        "serve",
-        "--index", "~/.oboyu/papers.db",
-        "--enable-citations",
-        "--extract-methodology"
-      ]
+      "args": ["mcp", "--db-path", "~/indexes/docs.db"],
+      "description": "Documentation search"
+    },
+    "oboyu-notes": {
+      "command": "oboyu", 
+      "args": ["mcp", "--db-path", "~/indexes/notes.db"],
+      "description": "Personal notes search"
+    },
+    "oboyu-code": {
+      "command": "oboyu",
+      "args": ["mcp", "--db-path", "~/indexes/code.db"], 
+      "description": "Code and technical docs"
     }
   }
 }
 ```
 
-### Code Documentation
-```json
-{
-  "mcp-servers": {
-    "code-docs": {
-      "command": "oboyu",
-      "args": [
-        "mcp",
-        "serve", 
-        "--index", "~/.oboyu/code.db",
-        "--language-aware",
-        "--include-symbols"
-      ]
-    }
-  }
-}
-```
+## Security Considerations
+
+### File Access
+
+Oboyu MCP server only accesses:
+- The configured database file
+- Documents already indexed in that database
+
+The server cannot:
+- Access files outside the indexed collection
+- Modify or delete files
+- Execute commands on your system
+
+### Network Access
+
+When using HTTP transport:
+- Server runs only on localhost by default
+- No automatic internet access
+- Consider firewall rules for production use
 
 ## Next Steps
 
-- Set up [CLI Workflows](cli-workflows.md) for index management
-- Configure [Automation](automation.md) for automatic updates
+- Learn about [CLI Workflows](cli-workflows.md) for managing multiple indices
 - Explore [Search Patterns](../usage-examples/search-patterns.md) for better queries
+- Configure [Automation](automation.md) for keeping indices updated

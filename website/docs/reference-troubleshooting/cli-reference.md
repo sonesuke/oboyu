@@ -18,144 +18,85 @@ oboyu [GLOBAL_OPTIONS] COMMAND [COMMAND_OPTIONS] [ARGUMENTS]
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--config PATH` | Specify config file | `--config ~/.oboyu/work.yaml` |
-| `--log-level LEVEL` | Set logging level | `--log-level DEBUG` |
-| `--output FORMAT` | Output format | `--output json` |
-| `--quiet` | Suppress output | `--quiet` |
-| `--verbose` | Verbose output | `--verbose` |
+| `--config FILE` | Specify config file | `--config ~/.oboyu/work.yaml` |
+| `--db-path PATH` | Path to database file | `--db-path ~/indexes/personal.db` |
+| `--verbose` | Enable verbose output | `--verbose` |
 | `--help` | Show help | `--help` |
-| `--version` | Show version | `--version` |
 
-### Output Formats
+## Commands Overview
 
-- `text` (default): Human-readable text
-- `json`: JSON format
-- `yaml`: YAML format  
-- `csv`: Comma-separated values
-- `table`: Formatted table
+Available commands:
+
+- `oboyu index` - Index documents for search
+- `oboyu query` - Search indexed documents  
+- `oboyu manage` - Manage the index database
+- `oboyu health` - Health monitoring and diagnostics
+- `oboyu mcp` - Run MCP server for AI assistant integration
+- `oboyu clear` - Clear all data from the index database
+- `oboyu version` - Display version information
 
 ## Index Commands
 
 ### `oboyu index`
 
-Create and manage document indices.
+Index documents for search.
 
 #### Basic Usage
 ```bash
-oboyu index PATH [OPTIONS]
-oboyu index SUBCOMMAND [OPTIONS]
+oboyu index DIRECTORIES... [OPTIONS]
 ```
 
-#### Index Creation
+#### Examples
 ```bash
 # Index a directory
 oboyu index ~/Documents
 
-# Index multiple paths
+# Index multiple directories
 oboyu index ~/docs ~/notes ~/projects
 
-# Index with custom name
+# Index with custom database path
 oboyu index ~/work --db-path ~/indexes/work-docs.db
 
-# Index specific file types
-oboyu index ~/code --include "*.py" --include "*.md"
+# Index with file patterns
+oboyu index ~/code --include-patterns "*.py" --include-patterns "*.md"
 
 # Index with exclusions
-oboyu index ~/all --exclude "*.tmp" --exclude "*/cache/*"
+oboyu index ~/all --exclude-patterns "*.tmp" --exclude-patterns "*/cache/*"
+
+# Force reindexing
+oboyu index ~/docs --force
+
+# Quiet progress output
+oboyu index ~/docs --quiet-progress
 ```
 
-#### Options for Index Creation
+#### Options
 
 | Option | Description | Default | Example |
 |--------|-------------|---------|---------|
-| `--db-path ~/indexes/NAME.db` | Index name | `default` | `--db-path ~/indexes/personal.db` |
-| `--include PATTERN` | Include file pattern | `*` | `--include "*.md"` |
-| `--exclude PATTERN` | Exclude file pattern | None | `--exclude "*.tmp"` |
-| `--chunk-size SIZE` | Chunk size in tokens | `1024` | `--chunk-size 512` |
-| `--overlap SIZE` | Chunk overlap | `256` | `--overlap 128` |
-| `--force` | Force reindex | False | `--force` |
-| `--update` | Update existing index | False | `--update` |
-| `--threads N` | Number of threads | Auto | `--threads 4` |
+| `--config FILE` | Configuration file path | None | `--config ~/.oboyu/config.yaml` |
+| `--recursive / --no-recursive` | Recursive directory traversal | `--recursive` | `--no-recursive` |
+| `--include-patterns TEXT` | Include file patterns | None | `--include-patterns "*.md"` |
+| `--exclude-patterns TEXT` | Exclude file patterns | None | `--exclude-patterns "*.tmp"` |
+| `--max-depth INTEGER` | Maximum directory depth | None | `--max-depth 3` |
+| `--force / --no-force` | Force reindexing | `--no-force` | `--force` |
+| `--encoding-detection / --no-encoding-detection` | Auto-detect file encoding | `--encoding-detection` | `--no-encoding-detection` |
+| `--chunk-size INTEGER` | Chunk size in tokens | Default from config | `--chunk-size 512` |
+| `--chunk-overlap INTEGER` | Chunk overlap size | Default from config | `--chunk-overlap 128` |
+| `--embedding-model TEXT` | Embedding model to use | Default from config | `--embedding-model cl-nagoya/ruri-v3-30m` |
+| `--db-path PATH` | Database file path | Default location | `--db-path ~/indexes/personal.db` |
+| `--change-detection TEXT` | Change detection strategy | `smart` | `--change-detection hash` |
+| `--cleanup-deleted / --no-cleanup-deleted` | Remove deleted files from index | Default from config | `--cleanup-deleted` |
+| `--verify-integrity` | Verify file integrity using hashes | False | `--verify-integrity` |
+| `--quiet-progress` | Minimal progress output | False | `--quiet-progress` |
 
-#### Index Management Subcommands
+#### Change Detection Strategies
 
-##### `oboyu index list`
-List all indices:
-```bash
-# List all indices
-oboyu index list
-
-# List with details
-oboyu index list --detailed
-
-# List specific format
-oboyu index list --format json
-```
-
-##### `oboyu index info`
-Show index information:
-```bash
-# Info about specific index
-oboyu index info --db-path ~/indexes/personal.db
-
-# Detailed information
-oboyu index info --db-path ~/indexes/personal.db --detailed
-
-# Show configuration
-oboyu index info --db-path ~/indexes/personal.db --show-config
-```
-
-##### `oboyu index update`
-Update existing indices:
-```bash
-# Update specific index
-oboyu index update --db-path ~/indexes/personal.db
-
-# Update all indices
-oboyu index update --all
-
-# Update with time filter
-oboyu index update --db-path ~/indexes/personal.db --modified-after "1 week ago"
-```
-
-##### `oboyu index delete`
-Delete indices:
-```bash
-# Delete specific index
-oboyu index delete --db-path ~/indexes/old-index.db
-
-# Delete with confirmation
-oboyu index delete --db-path ~/indexes/old-index.db --force
-
-# Delete all indices
-oboyu index delete --all --force
-```
-
-##### `oboyu index optimize`
-Optimize index performance:
-```bash
-# Optimize specific index
-oboyu index optimize --db-path ~/indexes/personal.db
-
-# Optimize all indices
-oboyu index optimize --all
-
-# Optimize with vacuum
-oboyu index optimize --db-path ~/indexes/personal.db --vacuum
-```
-
-##### `oboyu index verify`
-Verify index integrity:
-```bash
-# Verify specific index
-oboyu index verify --db-path ~/indexes/personal.db
-
-# Verify and repair
-oboyu index verify --db-path ~/indexes/personal.db --repair
-
-# Verify all indices
-oboyu index verify --all
-```
+| Strategy | Description | Performance | Accuracy |
+|----------|-------------|-------------|----------|
+| `timestamp` | Use file modification time | Fast | Good |
+| `hash` | Use content hash | Slower | Excellent |
+| `smart` | Hybrid approach | Balanced | Very Good |
 
 ## Query Commands
 
@@ -165,300 +106,204 @@ Search through indexed documents.
 
 #### Basic Usage
 ```bash
-oboyu query "search terms" [OPTIONS]
+oboyu query [OPTIONS]
 ```
 
-#### Search Examples
+#### Examples
 ```bash
-# Basic search
-oboyu query "machine learning"
+# Basic search (will prompt for query)
+oboyu query --query "machine learning"
 
-# Search specific index
-oboyu query "python tutorial" --db-path ~/indexes/programming.db
+# Search with specific mode
+oboyu query --query "python tutorial" --mode vector
 
-# Search with filters
-oboyu query "meeting" --file-type md --days 7
+# Search specific database
+oboyu query --query "meeting notes" --db-path ~/indexes/work.db
 
 # Different search modes
-oboyu query "semantic search" --mode vector
-oboyu query "exact phrase" --mode bm25
-oboyu query "hybrid search" --mode hybrid
+oboyu query --query "semantic search" --mode vector
+oboyu query --query "exact phrase" --mode bm25
+oboyu query --query "hybrid search" --mode hybrid
+
+# Interactive mode
+oboyu query --interactive
+
+# JSON output
+oboyu query --query "test" --format json
+
+# More results
+oboyu query --query "test" --top-k 20
+
+# With reranking
+oboyu query --query "test" --rerank
+
+# Show explanations
+oboyu query --query "test" --explain
 ```
 
-#### Query Options
+#### Options
 
 | Option | Description | Default | Example |
 |--------|-------------|---------|---------|
-| `--mode MODE` | Search mode | `hybrid` | `--mode vector` |
-| `--db-path ~/indexes/NAME.db` | Target index | `default` | `--db-path ~/indexes/work.db` |
-| `--limit N` | Max results | `10` | `--limit 20` |
-| `--file-type EXT` | Filter by file type | None | `--file-type md,txt` |
-| `--days N` | Filter by days | None | `--days 30` |
-| `--from DATE` | Start date filter | None | `--from 2024-01-01` |
-| `--to DATE` | End date filter | None | `--to 2024-12-31` |
-| `--path PATTERN` | Path filter | None | `--path "**/docs/**"` |
-| `--language LANG` | Language filter | None | `--language ja` |
-| `--sort FIELD` | Sort results | `relevance` | `--sort date` |
+| `--query TEXT` | Search query text | None (prompts if missing) | `--query "machine learning"` |
+| `--mode TEXT` | Search mode | `hybrid` | `--mode vector` |
+| `--top-k INTEGER` | Maximum number of results | Default from config | `--top-k 20` |
+| `--explain / --no-explain` | Show match explanations | `--no-explain` | `--explain` |
+| `--format TEXT` | Output format | `text` | `--format json` |
+| `--rrf-k INTEGER` | RRF parameter for hybrid search | Default from config | `--rrf-k 10` |
+| `--db-path PATH` | Database file path | Default location | `--db-path ~/indexes/work.db` |
+| `--rerank / --no-rerank` | Enable result reranking | Default from config | `--rerank` |
+| `--interactive / --no-interactive` | Interactive search mode | `--no-interactive` | `--interactive` |
 
 #### Search Modes
 
 | Mode | Description | Best For |
 |------|-------------|----------|
-| `bm25` | Keyword search | Exact terms, technical content |
-| `vector` | Semantic search | Concepts, natural language |
-| `hybrid` | Combined approach | General use, best quality |
+| `bm25` | Keyword-based search | Exact terms, technical content |
+| `vector` | Semantic vector search | Concepts, natural language |
+| `hybrid` | Combined BM25 + vector | General use, best quality |
 
-#### Output Options
+#### Output Formats
 
-| Option | Description | Example |
-|--------|-------------|---------|
-| `--format FORMAT` | Output format | `--format json` |
-| `--show-scores` | Show relevance scores | `--show-scores` |
-| `--show-paths` | Show file paths only | `--show-paths` |
-| `--context N` | Context characters | `--context 500` |
-| `--no-highlight` | Disable highlighting | `--no-highlight` |
+| Format | Description | Use Case |
+|--------|-------------|----------|
+| `text` | Human-readable text | Interactive use |
+| `json` | JSON format | Scripting, automation |
 
-#### Interactive Mode
+## Management Commands
+
+### `oboyu manage`
+
+Manage the index database.
+
+#### Subcommands
+
+##### `oboyu manage clear`
+Clear all data from the index database:
 ```bash
-# Start interactive session
-oboyu query --interactive
+# Clear default database
+oboyu manage clear
 
-# Interactive with specific index
-oboyu query --interactive --db-path ~/indexes/work.db
+# Clear specific database
+oboyu manage clear --db-path ~/indexes/old.db
 ```
 
-#### Query History
+##### `oboyu manage status`
+Show indexing status for directories:
 ```bash
-# Show query history
-oboyu query history
+# Show status for default database
+oboyu manage status
 
-# History for specific period
-oboyu query history --days 7
-
-# History statistics
-oboyu query history --stats
+# Show status for specific database
+oboyu manage status --db-path ~/indexes/work.db
 ```
 
-## Configuration Commands
-
-### `oboyu config`
-
-Manage Oboyu configuration.
-
-#### Basic Usage
+##### `oboyu manage diff`
+Show what would be updated if indexing were run:
 ```bash
-oboyu config SUBCOMMAND [OPTIONS]
+# Show diff for default database
+oboyu manage diff
+
+# Show diff for specific database
+oboyu manage diff --db-path ~/indexes/work.db
 ```
 
-#### Configuration Subcommands
+## Health Commands
 
-##### `oboyu config show`
-Display configuration:
+### `oboyu health`
+
+Health monitoring and diagnostics.
+
+#### Subcommands
+
+##### `oboyu health check`
+Quick health check of the system:
 ```bash
-# Show all configuration
-oboyu config show
-
-# Show specific section
-oboyu config show indexer
-
-# Show with sources
-oboyu config show --sources
-
-# Show effective config
-oboyu config show --effective
+oboyu health check
 ```
 
-##### `oboyu config set`
-Set configuration values:
+##### `oboyu health events`
+Show recent events for debugging:
 ```bash
-# Set simple value
-oboyu config set indexer.chunk_size 2048
-
-# Set list value
-oboyu config set crawler.include_patterns "*.md,*.txt"
-
-# Set boolean value
-oboyu config set indexer.use_reranker true
+oboyu health events
 ```
 
-##### `oboyu config get`
-Get configuration values:
+##### `oboyu health timeline`
+Show timeline of events for a specific operation:
 ```bash
-# Get specific value
-oboyu config get indexer.chunk_size
-
-# Get section
-oboyu config get indexer
-
-# Get with type info
-oboyu config get indexer.chunk_size --type
+oboyu health timeline
 ```
 
-##### `oboyu config unset`
-Remove configuration values:
+##### `oboyu health operations`
+Show recent operations for debugging:
 ```bash
-# Unset specific value
-oboyu config unset indexer.chunk_overlap
-
-# Unset section
-oboyu config unset crawler.exclude_patterns
-```
-
-##### `oboyu config reset`
-Reset configuration:
-```bash
-# Reset all to defaults
-oboyu config reset
-
-# Reset specific section
-oboyu config reset indexer
-
-# Reset with confirmation
-oboyu config reset --force
-```
-
-##### `oboyu config validate`
-Validate configuration:
-```bash
-# Validate current config
-oboyu config validate
-
-# Validate specific file
-oboyu config validate ~/.oboyu/config.yaml
-
-# Validate and show errors
-oboyu config validate --verbose
-```
-
-##### `oboyu config init`
-Initialize configuration:
-```bash
-# Create default config
-oboyu config init
-
-# Create with template
-oboyu config init --template research
-
-# Create in specific location
-oboyu config init --path ~/.oboyu/custom.yaml
+oboyu health operations
 ```
 
 ## MCP Commands
 
 ### `oboyu mcp`
 
-Model Context Protocol server for Claude integration.
+Run an MCP (Model Context Protocol) server for AI assistant integration.
 
 #### Basic Usage
 ```bash
-oboyu mcp SUBCOMMAND [OPTIONS]
+oboyu mcp [OPTIONS]
 ```
 
-#### MCP Subcommands
-
-##### `oboyu mcp serve`
-Start MCP server:
+#### Examples
 ```bash
-# Basic server
-oboyu mcp serve
+# Basic MCP server with stdio transport
+oboyu mcp
 
-# Server with specific index
-oboyu mcp serve --db-path ~/indexes/.db~/.oboyu/personal.db
+# MCP server with specific database
+oboyu mcp --db-path ~/indexes/work.db
 
-# Server with configuration
-oboyu mcp serve --config ~/.oboyu/mcp.yaml
+# MCP server with HTTP transport
+oboyu mcp --transport streamable-http --port 8080
 
 # Debug mode
-oboyu mcp serve --debug
+oboyu mcp --debug --verbose
 ```
 
-**MCP Serve Options:**
+#### Options
 
-| Option | Description | Example |
-|--------|-------------|---------|
-| `--db-path ~/indexes/PATH.db` | Index file path | `--db-path ~/indexes/.db~/.oboyu/main.db` |
-| `--config PATH` | MCP config file | `--config mcp.yaml` |
-| `--max-results N` | Max search results | `--max-results 20` |
-| `--timeout N` | Request timeout | `--timeout 30` |
-| `--debug` | Debug logging | `--debug` |
+| Option | Description | Default | Example |
+|--------|-------------|---------|---------|
+| `--db-path PATH` | Database file path | Default location | `--db-path ~/indexes/work.db` |
+| `--verbose / --no-verbose` | Verbose logging | `--no-verbose` | `--verbose` |
+| `--debug / --no-debug` | Debug mode | `--no-debug` | `--debug` |
+| `--transport TEXT` | Transport mechanism | `stdio` | `--transport streamable-http` |
+| `--port INTEGER` | Port number (for HTTP transports) | None | `--port 8080` |
 
-##### `oboyu mcp test`
-Test MCP functionality:
-```bash
-# Test basic functionality
-oboyu mcp test
+#### Transport Options
 
-# Test with specific query
-oboyu mcp test --query "test search"
-
-# Test connection
-oboyu mcp test --connection-only
-```
-
-##### `oboyu mcp status`
-Check MCP server status:
-```bash
-# Check if server is running
-oboyu mcp status
-
-# Detailed status
-oboyu mcp status --detailed
-```
+| Transport | Description | Use Case |
+|-----------|-------------|----------|
+| `stdio` | Standard input/output | Claude Desktop integration |
+| `streamable-http` | HTTP with streaming | Web-based integrations |
+| `sse` | Server-sent events | Real-time web apps |
 
 ## Utility Commands
 
-### `oboyu models`
+### `oboyu clear`
 
-Manage embedding models.
+Clear all data from the index database while preserving structure.
 
 ```bash
-# List available models
-oboyu models list
+# Clear default database
+oboyu clear
 
-# Download specific model
-oboyu models download cl-nagoya/ruri-v3-30m
-
-# Show model info
-oboyu models info cl-nagoya/ruri-v3-30m
-
-# Clear model cache
-oboyu models clear-cache
+# Clear specific database
+oboyu clear --db-path ~/indexes/old.db
 ```
 
-### `oboyu diagnose`
+### `oboyu version`
 
-System diagnostics and health checks.
-
-```bash
-# Basic diagnostics
-oboyu diagnose
-
-# Detailed system info
-oboyu diagnose --detailed
-
-# Check specific component
-oboyu diagnose --component indexer
-
-# Export diagnostics
-oboyu diagnose --export diagnostics.json
-```
-
-### `oboyu benchmark`
-
-Performance benchmarking.
+Display version information.
 
 ```bash
-# Basic benchmark
-oboyu benchmark
-
-# Benchmark specific index
-oboyu benchmark --db-path ~/indexes/personal.db
-
-# Benchmark search performance
-oboyu benchmark --search-only
-
-# Benchmark indexing
-oboyu benchmark --index-only
+oboyu version
 ```
 
 ## Environment Variables
@@ -467,22 +312,7 @@ Oboyu respects these environment variables:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `OBOYU_CONFIG_PATH` | Config file path | `/path/to/config.yaml` |
-| `OBOYU_LOG_LEVEL` | Logging level | `DEBUG` |
-| `OBOYU_CACHE_DIR` | Cache directory | `~/.cache/oboyu` |
-| `OBOYU_MEMORY_LIMIT` | Memory limit | `4GB` |
-| `OBOYU_THREADS` | Thread count | `8` |
-
-### Configuration via Environment
-
-All config options can be set via environment variables:
-
-```bash
-# Pattern: OBOYU_<SECTION>_<OPTION>
-export OBOYU_INDEXER_CHUNK_SIZE=2048
-export OBOYU_QUERY_DEFAULT_MODE=hybrid
-export OBOYU_CRAWLER_INCLUDE_PATTERNS="*.md,*.txt"
-```
+| `OBOYU_DB_PATH` | Default database path | `~/indexes/default.db` |
 
 ## Exit Codes
 
@@ -493,9 +323,6 @@ Oboyu uses standard exit codes:
 | `0` | Success |
 | `1` | General error |
 | `2` | Invalid arguments |
-| `3` | File not found |
-| `4` | Permission denied |
-| `5` | Configuration error |
 
 ## Examples by Use Case
 
@@ -503,69 +330,54 @@ Oboyu uses standard exit codes:
 ```bash
 # Setup
 oboyu index ~/Notes --db-path ~/indexes/personal.db --chunk-size 1536
-oboyu config set indexer.use_reranker true
 
 # Daily usage
-oboyu query "project ideas" --db-path ~/indexes/personal.db
-oboyu query "meeting with john" --days 30
+oboyu query --query "project ideas" --db-path ~/indexes/personal.db
+oboyu query --interactive --db-path ~/indexes/personal.db
 ```
 
 ### Software Development
 ```bash
 # Setup
-oboyu index ~/code --include "*.py" --include "*.md" --db-path ~/indexes/code.db
-oboyu index ~/docs --db-path ~/indexes/documentation.db
+oboyu index ~/code --include-patterns "*.py" --include-patterns "*.md" --db-path ~/indexes/code.db
 
 # Usage
-oboyu query "authentication implementation" --db-path ~/indexes/code.db
-oboyu query "API documentation" --db-path ~/indexes/documentation.db --mode hybrid
+oboyu query --query "authentication implementation" --db-path ~/indexes/code.db --mode hybrid
+oboyu query --query "API documentation" --db-path ~/indexes/code.db --rerank
 ```
 
 ### Research Papers
 ```bash
 # Setup
-oboyu index ~/papers --include "*.pdf" --db-path ~/indexes/papers.db --chunk-size 2048
-oboyu config set indexer.chunk_overlap 512
+oboyu index ~/papers --include-patterns "*.pdf" --db-path ~/indexes/papers.db --chunk-size 2048
 
 # Usage
-oboyu query "machine learning optimization" --db-path ~/indexes/papers.db --mode vector
-oboyu query "methodology section" --db-path ~/indexes/papers.db --context 1000
-```
-
-### Team Documentation
-```bash
-# Setup with filters
-oboyu index ~/team-docs \
-  --include "*.md" \
-  --exclude "*/archive/*" \
-  --db-path ~/indexes/team.db
-
-# Scheduled updates
-oboyu index update --db-path ~/indexes/team.db --modified-after "1 day ago"
+oboyu query --query "machine learning optimization" --db-path ~/indexes/papers.db --mode vector
+oboyu query --interactive --db-path ~/indexes/papers.db
 ```
 
 ## Tips and Best Practices
 
 ### Command Aliases
 ```bash
-# Add to ~/.bashrc
-alias oq='oboyu query'
+# Add to ~/.bashrc or ~/.zshrc
+alias oq='oboyu query --interactive'
 alias oi='oboyu index'
-alias oc='oboyu config'
+alias om='oboyu manage'
 ```
 
 ### Scripting with Oboyu
 ```bash
 # Check exit codes
-if oboyu query "test" --quiet; then
+if oboyu query --query "test" > /dev/null 2>&1; then
     echo "Found results"
 fi
 
 # Parse JSON output
-oboyu query "search" --format json | jq '.[] | .path'
+oboyu query --query "search" --format json | jq '.[].document.path'
 
-# Use in pipelines
-oboyu query "TODO" --show-paths | xargs grep -l "urgent"
+# Automated indexing
+oboyu index ~/docs --force --quiet-progress
 ```
 
 ## Getting Help
@@ -577,12 +389,7 @@ oboyu --help
 # Command-specific help
 oboyu index --help
 oboyu query --help
-
-# Subcommand help
-oboyu config set --help
-oboyu mcp serve --help
-
-# Show examples
-oboyu query --examples
-oboyu index --examples
+oboyu manage --help
+oboyu health --help
+oboyu mcp --help
 ```

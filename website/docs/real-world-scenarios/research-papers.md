@@ -31,25 +31,25 @@ oboyu index ~/Research/Notes --db-path ~/indexes/research-notes.db --update
 #### Finding Relevant Papers
 ```bash
 # Search by topic
-oboyu query "machine learning optimization" --db-path ~/indexes/research.db
+oboyu query --query "machine learning optimization" --db-path ~/indexes/research.db
 
 # Find recent papers
-oboyu query "neural networks 2023 2024" --mode hybrid
+oboyu query --query "neural networks 2023 2024" --mode hybrid
 
 # Search by methodology
-oboyu query "methodology quantitative analysis" --mode semantic
+oboyu query --query "methodology quantitative analysis" --mode vector
 ```
 
 #### Citation Management
 ```bash
 # Find papers by author
-oboyu query "author: Smith et al" --file-type pdf
+oboyu query --query "author: Smith et al"
 
 # Find papers citing specific work
-oboyu query "Smith2023 cited reference" --mode semantic
+oboyu query --query "Smith2023 cited reference" --mode vector
 
 # Find papers with specific citations
-oboyu query "\(Smith, 2023\)|\[Smith2023\]" --regex
+oboyu query --query "\(Smith, 2023\)|\[Smith2023\]"
 ```
 
 ## Scenario: Research Group Leader
@@ -59,25 +59,25 @@ Coordinating multiple research projects, tracking student progress, and managing
 ### Project Management
 ```bash
 # Find papers by project
-oboyu query "Project-ID: ML-OPT-2024" --db-path ~/indexes/research.db
+oboyu query --query "Project-ID: ML-OPT-2024" --db-path ~/indexes/research.db
 
 # Track student contributions
-oboyu query "author: PhD-Student-Name" --file-type pdf,tex
+oboyu query --query "author: PhD-Student-Name"
 
 # Find collaborative papers
-oboyu query "author: University-A University-B" --mode semantic
+oboyu query --query "author: University-A University-B" --mode vector
 ```
 
 ### Grant Writing Support
 ```bash
 # Find impact statements
-oboyu query "impact significance contribution" --mode semantic
+oboyu query --query "impact significance contribution" --mode vector
 
 # Gather preliminary results
-oboyu query "preliminary results findings" --file-type pdf
+oboyu query --query "preliminary results findings"
 
 # Find methodology descriptions
-oboyu query "methodology approach technique" --db-path ~/indexes/research.db
+oboyu query --query "methodology approach technique" --db-path ~/indexes/research.db
 ```
 
 ## Scenario: Academic Librarian
@@ -87,25 +87,27 @@ Helping researchers find relevant papers and managing institutional repository.
 ### Advanced Search Assistance
 ```bash
 # Multi-field search
-oboyu query "title: machine learning AND author: Chen AND year: 2023"
+oboyu query --query "title: machine learning AND author: Chen AND year: 2023"
 
 # Subject area search
-oboyu query "subject: computer science AI" --mode semantic
+oboyu query --query "subject: computer science AI" --mode vector
 
 # Abstract search
-oboyu query "abstract: novel approach deep learning" --mode semantic
+oboyu query --query "abstract: novel approach deep learning" --mode vector
 ```
 
 ### Repository Management
 ```bash
 # Find papers missing metadata
-oboyu query "*.pdf" --not "author: title:" --regex
+oboyu query --query "*.pdf" --not "author: title:"
 
 # Find duplicate papers
-oboyu query --duplicates --db-path ~/indexes/research.db
+# (Note: duplicates detection not available in current implementation)
+oboyu query --query "*" --db-path ~/indexes/research.db
 
 # Find papers needing OCR
-oboyu query "*.pdf" --min-words 100 --file-type pdf
+# (Note: min-words filter not available in current implementation)
+oboyu query --query "*.pdf"
 ```
 
 ## Advanced Academic Search Patterns
@@ -113,28 +115,28 @@ oboyu query "*.pdf" --min-words 100 --file-type pdf
 ### Finding Specific Sections
 ```bash
 # Find introductions
-oboyu query "1. Introduction|1 Introduction" --file-type pdf
+oboyu query --query "1. Introduction|1 Introduction"
 
 # Find methodologies
-oboyu query "Methodology|Methods|Experimental Setup" --mode semantic
+oboyu query --query "Methodology|Methods|Experimental Setup" --mode vector
 
 # Find results sections
-oboyu query "Results|Findings|Experimental Results" 
+oboyu query --query "Results|Findings|Experimental Results" 
 
 # Find conclusions
-oboyu query "Conclusion|Summary|Future Work" --mode semantic
+oboyu query --query "Conclusion|Summary|Future Work" --mode vector
 ```
 
 ### Statistical Analysis
 ```bash
 # Find papers with specific statistics
-oboyu query "p &lt; 0.05|significant at" --regex
+oboyu query --query "p < 0.05|significant at"
 
 # Find sample sizes
-oboyu query "n = \d+|sample size|participants" --regex
+oboyu query --query "n = \d+|sample size|participants"
 
 # Find effect sizes
-oboyu query "effect size|Cohen's d|eta squared" 
+oboyu query --query "effect size|Cohen's d|eta squared" 
 ```
 
 ## Real-World Example: Systematic Literature Review
@@ -143,25 +145,25 @@ Conducting a systematic review on "AI in Healthcare":
 
 ```bash
 # 1. Initial broad search
-oboyu query "artificial intelligence healthcare medical" --db-path ~/indexes/research.db --export initial-search.txt
+oboyu query --query "artificial intelligence healthcare medical" --db-path ~/indexes/research.db
 
 # 2. Refine by methodology
-oboyu query "AI healthcare clinical trial" --mode semantic
+oboyu query --query "AI healthcare clinical trial" --mode vector
 
 # 3. Find review papers
-oboyu query "systematic review AI healthcare" --mode hybrid
+oboyu query --query "systematic review AI healthcare" --mode hybrid
 
 # 4. Search by specific applications
-oboyu query "diagnosis prediction treatment AI" --file-type pdf
+oboyu query --query "diagnosis prediction treatment AI"
 
 # 5. Find datasets used
-oboyu query "dataset: medical imaging ECG" --mode semantic
+oboyu query --query "dataset: medical imaging ECG" --mode vector
 
 # 6. Extract evaluation metrics
-oboyu query "accuracy precision recall F1 AUC" --context 200
+oboyu query --query "accuracy precision recall F1 AUC"
 
 # 7. Create bibliography
-oboyu query "references bibliography" --path "**/*healthcare*.pdf" --export bibliography.txt
+oboyu query --query "references bibliography"
 ```
 
 ## Research Paper Patterns
@@ -169,25 +171,25 @@ oboyu query "references bibliography" --path "**/*healthcare*.pdf" --export bibl
 ### Conference vs Journal
 ```bash
 # Find conference papers
-oboyu query "conference proceedings ICML NeurIPS CVPR" 
+oboyu query --query "conference proceedings ICML NeurIPS CVPR" 
 
 # Find journal articles  
-oboyu query "journal IEEE ACM Nature Science" 
+oboyu query --query "journal IEEE ACM Nature Science" 
 
 # Find preprints
-oboyu query "arXiv bioRxiv preprint" --mode semantic
+oboyu query --query "arXiv bioRxiv preprint" --mode vector
 ```
 
 ### Research Trends
 ```bash
 # Track emerging topics
-oboyu query "novel approach new method" --days 365 --mode semantic
+oboyu query --query "novel approach new method" --mode vector
 
 # Find research gaps
-oboyu query "future work limitation gap" --mode semantic
+oboyu query --query "future work limitation gap" --mode vector
 
 # Identify hot topics
-oboyu query "state-of-the-art SOTA benchmark" --days 180
+oboyu query --query "state-of-the-art SOTA benchmark"
 ```
 
 ## Citation Network Analysis
@@ -195,25 +197,28 @@ oboyu query "state-of-the-art SOTA benchmark" --days 180
 ### Building Citation Maps
 ```bash
 # Find most cited papers
-oboyu query --citation-count --sort citations --limit 20
+# (Note: citation analysis not available in current implementation)
+oboyu query --query "transformer attention BERT" --mode vector --top-k 20
 
 # Find citation clusters
-oboyu query "transformer attention BERT" --mode semantic --related
+oboyu query --query "transformer attention BERT" --mode vector
 
 # Track citation evolution
-oboyu query "cited by subsequent work" --timeline
+# (Note: timeline analysis not available in current implementation)
+oboyu query --query "cited by subsequent work"
 ```
 
 ### Author Collaboration
 ```bash
 # Find frequent collaborators
-oboyu query "author:" --stats collaborations
+# (Note: collaboration statistics not available in current implementation)
+oboyu query --query "author:"
 
 # Find international collaborations
-oboyu query "University Country-A Country-B" --mode semantic
+oboyu query --query "University Country-A Country-B" --mode vector
 
 # Find interdisciplinary work
-oboyu query "computer science biology interdisciplinary" --mode semantic
+oboyu query --query "computer science biology interdisciplinary" --mode vector
 ```
 
 ## Japanese Academic Search
@@ -222,16 +227,16 @@ For Japanese research papers:
 
 ```bash
 # Search Japanese papers
-oboyu query "機械学習 深層学習" --db-path ~/indexes/research.db
+oboyu query --query "機械学習 深層学習" --db-path ~/indexes/research.db
 
 # Find papers with English abstracts
-oboyu query "Abstract 概要" --file-type pdf
+oboyu query --query "Abstract 概要"
 
 # Mixed language papers
-oboyu query "深層学習 deep learning" --mode hybrid
+oboyu query --query "深層学習 deep learning" --mode hybrid
 
 # Japanese author names
-oboyu query "著者: 山田 田中" --db-path ~/indexes/research.db
+oboyu query --query "著者: 山田 田中" --db-path ~/indexes/research.db
 ```
 
 ## Research Note Organization
@@ -259,13 +264,15 @@ date: 2024-01-15
 ### Literature Database
 ```bash
 # Create paper database
-oboyu index ~/Research/Papers --extract-metadata --db-path ~/indexes/paper-db.db
+# (Note: extract-metadata option not available in current implementation)
+oboyu index ~/Research/Papers --db-path ~/indexes/paper-db.db
 
 # Search by metadata
-oboyu query "year: 2023 AND venue: ICML" --db-path ~/indexes/paper-db.db
+oboyu query --query "year: 2023 AND venue: ICML" --db-path ~/indexes/paper-db.db
 
 # Export for reference manager
-oboyu query "*" --db-path ~/indexes/paper-db.db --format bibtex --export references.bib
+# (Note: bibtex export not available in current implementation)
+oboyu query --query "*" --db-path ~/indexes/paper-db.db
 ```
 
 ## Integration with Research Tools
@@ -273,25 +280,28 @@ oboyu query "*" --db-path ~/indexes/paper-db.db --format bibtex --export referen
 ### LaTeX Integration
 ```bash
 # Find citations in LaTeX
-oboyu query "\\cite{" --file-type tex
+oboyu query --query "\\cite{"
 
 # Find undefined references
-oboyu query "undefined reference" --file-type log
+oboyu query --query "undefined reference"
 
 # Find figure references
-oboyu query "\\ref{fig:" --file-type tex
+oboyu query --query "\\ref{fig:"
 ```
 
 ### Reference Management
 ```bash
 # Export to BibTeX
-oboyu query "machine learning" --format bibtex
+# (Note: bibtex export not available in current implementation)
+oboyu query --query "machine learning"
 
 # Find missing citations
-oboyu query "\\cite{.*}" --not-in references.bib
+# (Note: not-in filter not available in current implementation)
+oboyu query --query "\\cite{.*}"
 
 # Update citation keys
-oboyu query "author: Smith year: 2023" --update-key Smith2023
+# (Note: update-key functionality not available in current implementation)
+oboyu query --query "author: Smith year: 2023"
 ```
 
 ## Research Productivity Tips
@@ -299,25 +309,27 @@ oboyu query "author: Smith year: 2023" --update-key Smith2023
 ### Daily Research Routine
 ```bash
 # Morning: Check new papers
-oboyu query "*" --days 1 --db-path ~/indexes/research.db
+oboyu query --query "*" --db-path ~/indexes/research.db
 
 # Focus session: Related work
-oboyu query "related to current-paper.pdf" --mode semantic
+# (Note: related-to functionality not available in current implementation)
+oboyu query --query "related work" --mode vector
 
 # Evening: Update notes
-oboyu query "TODO: read" --db-path ~/indexes/research-notes.db
+oboyu query --query "TODO: read" --db-path ~/indexes/research-notes.db
 ```
 
 ### Paper Reading Workflow
 ```bash
 # First pass: Abstract and conclusion
-oboyu query "abstract:|conclusion:" --file paper.pdf
+# (Note: file-specific search not available in current implementation)
+oboyu query --query "abstract:|conclusion:"
 
 # Second pass: Figures and results  
-oboyu query "figure|table|results" --file paper.pdf
+oboyu query --query "figure|table|results"
 
 # Deep dive: Methodology
-oboyu query "method|algorithm|implementation" --file paper.pdf
+oboyu query --query "method|algorithm|implementation"
 ```
 
 ## Quality Control
@@ -325,13 +337,13 @@ oboyu query "method|algorithm|implementation" --file paper.pdf
 ### Finding High-Quality Papers
 ```bash
 # Well-cited papers
-oboyu query "cited by many highly cited" --mode semantic
+oboyu query --query "cited by many highly cited" --mode vector
 
 # Peer-reviewed only
-oboyu query "peer-reviewed journal conference" --not "preprint arxiv"
+oboyu query --query "peer-reviewed journal conference" --not "preprint arxiv"
 
 # Reproducible research
-oboyu query "code available github reproducible" --mode semantic
+oboyu query --query "code available github reproducible" --mode vector
 ```
 
 ## Next Steps

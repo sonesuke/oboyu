@@ -17,7 +17,7 @@ Oboyu works out of the box with sensible defaults:
 ```bash
 # Just works - no configuration needed
 oboyu index /path/to/documents
-oboyu query "your search"
+oboyu query --query "your search"
 ```
 
 ### Configuration File Locations
@@ -269,7 +269,7 @@ oboyu config save research ~/.config/oboyu/research.yaml
 
 # Use specific config
 oboyu index ~/Documents --config personal
-oboyu query "meeting notes" --config work
+oboyu query --query "meeting notes" --config work
 ```
 
 ### Performance Tuning

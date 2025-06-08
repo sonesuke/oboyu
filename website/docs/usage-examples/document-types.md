@@ -15,10 +15,10 @@ PDFs are common for reports, papers, and formal documents. Oboyu extracts and in
 ### Basic PDF Search
 ```bash
 # Search only in PDF files
-oboyu query "annual report" --file-type pdf
+oboyu query --query "annual report"
 
 # Find PDFs with specific content
-oboyu query "financial statement 2024" --file-type pdf --mode hybrid
+oboyu query --query "financial statement 2024" --mode hybrid
 ```
 
 ### Handling Scanned PDFs
@@ -28,19 +28,19 @@ For scanned documents with OCR text:
 oboyu index ~/Documents/scanned --ocr-enhance
 
 # Search with fuzzy matching for OCR errors
-oboyu query "bugdet reprot" --fuzzy --file-type pdf
+oboyu query --query "bugdet reprot"
 ```
 
 ### PDF-Specific Examples
 ```bash
 # Find research papers
-oboyu query "machine learning" --file-type pdf --db-path ~/indexes/research.db
+oboyu query --query "machine learning" --db-path ~/indexes/research.db
 
 # Find forms and applications
-oboyu query "application form" --file-type pdf
+oboyu query --query "application form"
 
 # Find presentations converted to PDF
-oboyu query "slide deck presentation" --file-type pdf
+oboyu query --query "slide deck presentation"
 ```
 
 ## Markdown Files
@@ -50,34 +50,34 @@ Markdown is perfect for notes, documentation, and technical writing.
 ### Basic Markdown Search
 ```bash
 # Search only markdown files
-oboyu query "TODO" --file-type md
+oboyu query --query "TODO"
 
 # Find markdown with specific headers
-oboyu query "## Installation" --file-type md
+oboyu query --query "## Installation"
 ```
 
 ### Markdown Structure Search
 ```bash
 # Find files with code blocks
-oboyu query "```python" --file-type md
+oboyu query --query "```python"
 
 # Find files with links
-oboyu query "[link](" --file-type md
+oboyu query --query "[link]("
 
 # Find files with images
-oboyu query "![image]" --file-type md
+oboyu query --query "![image]"
 ```
 
 ### Common Markdown Workflows
 ```bash
 # Find all README files
-oboyu query "*" --db-path ~/indexes/example.db
+oboyu query --query "*" --db-path ~/indexes/example.db
 
 # Find documentation files
-oboyu query "documentation" --file-type md --path "**/docs/**"
+oboyu query --query "documentation"
 
 # Find blog posts
-oboyu query "date:" --file-type md --path "**/posts/**"
+oboyu query --query "date:"
 ```
 
 ## Office Documents
@@ -85,37 +85,37 @@ oboyu query "date:" --file-type md --path "**/posts/**"
 ### Microsoft Word (.docx)
 ```bash
 # Search Word documents
-oboyu query "contract" --file-type docx
+oboyu query --query "contract"
 
 # Find templates
-oboyu query "template" --file-type docx,dotx
+oboyu query --query "template"
 
 # Find track changes comments
-oboyu query "comment:" --file-type docx --mode semantic
+oboyu query --query "comment:" --mode vector
 ```
 
 ### Excel Files (.xlsx)
 ```bash
 # Search spreadsheets
-oboyu query "budget" --file-type xlsx
+oboyu query --query "budget"
 
 # Find files with specific data
-oboyu query "Q4 revenue" --file-type xlsx,xls
+oboyu query --query "Q4 revenue"
 
 # Find formulas (if extracted)
-oboyu query "SUM(A1:" --file-type xlsx
+oboyu query --query "SUM(A1:"
 ```
 
 ### PowerPoint (.pptx)
 ```bash
 # Search presentations
-oboyu query "roadmap" --file-type pptx
+oboyu query --query "roadmap"
 
 # Find slide titles
-oboyu query "Agenda" --file-type pptx
+oboyu query --query "Agenda"
 
 # Find speaker notes
-oboyu query "note:" --file-type pptx --mode semantic
+oboyu query --query "note:" --mode vector
 ```
 
 ## Plain Text Files
@@ -125,25 +125,25 @@ Simple but powerful for logs, notes, and data files.
 ### Basic Text Search
 ```bash
 # Search text files
-oboyu query "error" --file-type txt
+oboyu query --query "error"
 
 # Search log files
-oboyu query "ERROR" --file-type log
+oboyu query --query "ERROR"
 
 # Search configuration files
-oboyu query "port" --file-type conf,cfg
+oboyu query --query "port"
 ```
 
 ### Structured Text Files
 ```bash
 # Search CSV files
-oboyu query "customer_id" --file-type csv
+oboyu query --query "customer_id"
 
 # Search JSON files
-oboyu query '"api_key"' --file-type json
+oboyu query --query '"api_key"'
 
 # Search XML files
-oboyu query "<configuration>" --file-type xml
+oboyu query --query "<configuration>"
 ```
 
 ## Code Files
@@ -153,25 +153,25 @@ Oboyu can search through source code effectively.
 ### Language-Specific Search
 ```bash
 # Python files
-oboyu query "def process_data" --file-type py
+oboyu query --query "def process_data"
 
 # JavaScript files
-oboyu query "async function" --file-type js,jsx
+oboyu query --query "async function"
 
 # Java files
-oboyu query "public class" --file-type java
+oboyu query --query "public class"
 ```
 
 ### Code Pattern Search
 ```bash
 # Find imports
-oboyu query "import pandas" --file-type py
+oboyu query --query "import pandas"
 
 # Find function definitions
-oboyu query "function.*export" --file-type js --regex
+oboyu query --query "function.*export"
 
 # Find TODO comments
-oboyu query "TODO:|FIXME:" --file-type py,js,java
+oboyu query --query "TODO:|FIXME:"
 ```
 
 ## Email Files
@@ -181,13 +181,13 @@ If you export emails to files:
 ### Email Search Patterns
 ```bash
 # Search email files
-oboyu query "meeting invitation" --file-type eml,msg
+oboyu query --query "meeting invitation"
 
 # Find emails from specific sender
-oboyu query "From: boss@company.com" --file-type eml
+oboyu query --query "From: boss@company.com"
 
 # Find emails with attachments
-oboyu query "attachment" --file-type eml --mode semantic
+oboyu query --query "attachment" --mode vector
 ```
 
 ## Web Documents
@@ -195,13 +195,13 @@ oboyu query "attachment" --file-type eml --mode semantic
 ### HTML Files
 ```bash
 # Search HTML content
-oboyu query "contact form" --file-type html
+oboyu query --query "contact form"
 
 # Find specific tags
-oboyu query "<form" --file-type html,htm
+oboyu query --query "<form"
 
 # Find meta descriptions
-oboyu query 'meta name="description"' --file-type html
+oboyu query --query 'meta name="description"'
 ```
 
 ## Mixed Format Workflows
@@ -210,20 +210,20 @@ oboyu query 'meta name="description"' --file-type html
 When projects have multiple file types:
 ```bash
 # Search across all documentation
-oboyu query "API endpoint" --file-type md,pdf,docx
+oboyu query --query "API endpoint"
 
 # Find all files about a feature
-oboyu query "user authentication" --mode semantic
+oboyu query --query "user authentication" --mode vector
 ```
 
 ### Research Collection
 For mixed academic materials:
 ```bash
 # Search papers and notes
-oboyu query "hypothesis testing" --file-type pdf,md,txt
+oboyu query --query "hypothesis testing"
 
 # Find citations
-oboyu query "et al. 2024" --file-type pdf,docx
+oboyu query --query "et al. 2024"
 ```
 
 ## Format-Specific Tips
@@ -234,7 +234,7 @@ oboyu query "et al. 2024" --file-type pdf,docx
 oboyu index ~/large-docs --chunk-size 1000
 
 # Search with context
-oboyu query "conclusion" --context 500 --file-type pdf
+oboyu query --query "conclusion"
 ```
 
 ### Compressed Archives
@@ -243,16 +243,16 @@ oboyu query "conclusion" --context 500 --file-type pdf
 oboyu index ~/Documents --extract-archives
 
 # Search within extracted content
-oboyu query "readme" --path "**/*.zip/**"
+oboyu query --query "readme"
 ```
 
 ### Binary Files with Metadata
 ```bash
 # Search image metadata
-oboyu query "Canon EOS" --file-type jpg,jpeg --metadata
+oboyu query --query "Canon EOS"
 
 # Search audio file tags
-oboyu query "Beatles" --file-type mp3,flac --metadata
+oboyu query --query "Beatles"
 ```
 
 ## Best Practices by Format
@@ -299,7 +299,7 @@ find . -name "*.doc" -exec pandoc {} -o {}.md \;
 ### Unsupported Format
 ```bash
 # Check if format is supported
-oboyu formats list
+# (Note: formats list command not available)
 
 # Use text extraction for unsupported formats
 textract unsupported.xyz > supported.txt
@@ -308,19 +308,19 @@ textract unsupported.xyz > supported.txt
 ### Corrupted Files
 ```bash
 # Skip corrupted files
-oboyu index ~/Documents --skip-errors
+oboyu index ~/Documents
 
 # Find problematic files
-oboyu index ~/Documents --verbose | grep "ERROR"
+oboyu index ~/Documents | grep "ERROR"
 ```
 
 ### Encoding Issues
 ```bash
 # Handle different encodings
-oboyu index ~/Documents --encoding auto
+oboyu index ~/Documents
 
 # Force specific encoding
-oboyu index ~/japanese-docs --encoding shift-jis
+# (Note: encoding options not available in current implementation)
 ```
 
 ## Next Steps
