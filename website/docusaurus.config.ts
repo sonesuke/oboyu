@@ -86,16 +86,16 @@ const config: Config = {
           title: 'Documentation',
           items: [
             {
-              label: 'Quickstart',
-              to: '/quickstart',
+              label: 'Getting Started',
+              to: '/getting-started/installation',
             },
             {
               label: 'CLI Reference',
-              to: '/cli',
+              to: '/reference-troubleshooting/cli-reference',
             },
             {
               label: 'Configuration',
-              to: '/configuration',
+              to: '/configuration-optimization/configuration',
             },
           ],
         },
