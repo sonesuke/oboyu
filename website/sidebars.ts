@@ -76,23 +76,6 @@ const sidebars: SidebarsConfig = {
         'reference-troubleshooting/japanese-support',
       ],
     },
-    {
-      type: 'category',
-      label: 'Legacy Documentation',
-      collapsed: true,
-      items: [
-        'quickstart',
-        'cli',
-        'indexer',
-        'query-engine',
-        'crawler',
-        'reranker',
-        'architecture',
-        'japanese',
-        'mcp-server',
-        'immutable-configuration-migration',
-      ],
-    },
   ],
 };
 
