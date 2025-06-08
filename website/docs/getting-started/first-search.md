@@ -46,76 +46,75 @@ Found 15 results in 0.23 seconds
 
 Oboyu offers three search modes to match your needs:
 
-### 1. Keyword Search (Default)
-Fast, traditional keyword matching:
-```bash
-oboyu query "budget report 2024"
-```
-
-### 2. Semantic Search
-Understands meaning and context:
-```bash
-oboyu query "documents about financial planning" --mode semantic
-```
-
-### 3. Hybrid Search
+### 1. Hybrid Search (Default)
 Combines keyword and semantic search for best results:
 ```bash
-oboyu query "quarterly revenue analysis" --mode hybrid
+oboyu query "quarterly revenue analysis"
+```
+
+### 2. Vector Search
+Understands meaning and context using semantic embeddings:
+```bash
+oboyu query "documents about financial planning" --mode vector
+```
+
+### 3. BM25 Search
+Fast, traditional keyword matching:
+```bash
+oboyu query "budget report 2024" --mode bm25
 ```
 
 ## Refining Your Search
 
 ### Limit Number of Results
 ```bash
-oboyu query "meeting notes" --limit 5
+oboyu query "meeting notes" --top-k 5
 ```
 
-### Search Specific Index
+### Enable Reranking
+Improve search quality with neural reranking:
 ```bash
-oboyu query "architecture design" --db-path ~/indexes/work.db
+oboyu query "architecture design" --rerank
 ```
 
-### Filter by File Type
+### Get Detailed Explanations
+See why documents matched your query:
 ```bash
-oboyu query "configuration" --file-type yaml
+oboyu query "configuration" --explain
 ```
 
-### Filter by Date
+### Output as JSON
+Get structured results for automation:
 ```bash
-# Documents modified in last 7 days
-oboyu query "status update" --days 7
-
-# Documents from specific date range
-oboyu query "project plan" --from 2024-01-01 --to 2024-01-31
+oboyu query "status update" --format json
 ```
 
 ## Search Examples by Use Case
 
 ### Finding Meeting Notes
 ```bash
-# Recent meeting about specific topic
-oboyu query "budget discussion" --days 30 --file-type md
+# Meeting about specific topic
+oboyu query "budget discussion"
 
-# All meetings with specific person
-oboyu query "meeting with Sarah" --mode semantic
+# All meetings with specific person using semantic search
+oboyu query "meeting with Sarah" --mode vector
 ```
 
 ### Searching Technical Documentation
 ```bash
 # Find API documentation
-oboyu query "REST API authentication" --db-path ~/indexes/dev-docs.db
+oboyu query "REST API authentication"
 
-# Find configuration examples
-oboyu query "database connection config" --file-type yaml
+# Find configuration examples with reranking
+oboyu query "database connection config" --rerank
 ```
 
 ### Research and Academic Papers
 ```bash
-# Find papers on specific topic
-oboyu query "machine learning optimization" --db-path ~/indexes/research.db --file-type pdf
+# Find papers on specific topic with limited results
+oboyu query "machine learning optimization" --top-k 10
 
-# Find recent research
+# Find recent research using hybrid search
 oboyu query "neural networks 2024" --mode hybrid
 ```
 
@@ -154,47 +153,28 @@ oboyu query --interactive
 ```
 
 This opens a search session where you can:
-- Refine queries based on results
+- Execute multiple searches in sequence
 - Navigate through results easily
-- Open documents directly
-- Save search results
+- Refine queries based on results
 
 Example session:
 ```
 Oboyu Interactive Search
 Type 'help' for commands, 'quit' to exit
 
-> search: project roadmap
+> project roadmap
 Found 23 results
 
-> show 1
-[Displaying document content...]
+[Results displayed...]
 
-> refine: Q2 milestones
-Found 8 results (refined from previous search)
+> Q2 milestones
+Found 8 results
 
-> save results roadmap-search.txt
-Results saved to roadmap-search.txt
+[Results displayed...]
+
+> quit
 ```
 
-## Search Result Actions
-
-### Open Document
-Open a result directly:
-```bash
-oboyu query "design spec" --open 1
-```
-
-### Export Results
-Save search results:
-```bash
-oboyu query "quarterly reports" --export results.txt
-```
-
-### Copy File Path
-```bash
-oboyu query "config file" --copy-path 1
-```
 
 ## Japanese Language Search
 
@@ -207,8 +187,8 @@ oboyu query "会議議事録"
 # Mixed language search
 oboyu query "プロジェクト deadline"
 
-# Semantic search understands context
-oboyu query "来週の予定について" --mode semantic
+# Vector search understands context
+oboyu query "来週の予定について" --mode vector
 ```
 
 ## Search Performance Tips
@@ -217,16 +197,16 @@ oboyu query "来週の予定について" --mode semantic
 Instead of: `"document"`
 Try: `"Q4 financial report"`
 
-### 2. Leverage Semantic Search
+### 2. Leverage Vector Search
 For conceptual searches:
 ```bash
-oboyu query "documents explaining our pricing strategy" --mode semantic
+oboyu query "documents explaining our pricing strategy" --mode vector
 ```
 
-### 3. Combine Filters
-Narrow down results:
+### 3. Use Available Options
+Improve your search with available options:
 ```bash
-oboyu query "api documentation" --file-type md --days 90 --limit 10
+oboyu query "api documentation" --rerank --top-k 10
 ```
 
 ## Understanding Relevance Scores
@@ -237,26 +217,18 @@ Oboyu assigns relevance scores (0.0 to 1.0):
 - **0.50-0.69**: Fair match
 - **Below 0.50**: Weak match
 
-## Saving Frequent Searches
+## Advanced Options
 
-Create aliases for common searches:
-
+### Custom Database Path
+Search a specific database:
 ```bash
-# Save a search
-oboyu query save "weekly meeting notes" --db-path ~/indexes/meetings.db
-
-# Run saved search
-oboyu query run meetings
+oboyu query "documents" --db-path /path/to/custom.db
 ```
 
-## Search History
-
-View your search history:
+### Fine-tune Hybrid Search
+Adjust the RRF (Reciprocal Rank Fusion) parameter:
 ```bash
-oboyu query history
-
-# Re-run a previous search
-oboyu query history --run 3
+oboyu query "documents" --rrf-k 30
 ```
 
 ## Troubleshooting Search Issues
