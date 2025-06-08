@@ -113,14 +113,30 @@ class BenchmarkRunner:
                 db_path.unlink()
             
             # Initialize indexer with config
-            from oboyu.indexer.config import IndexerConfig
-            config_dict = {
-                "indexer": {
-                    **OBOYU_CONFIG["indexer"],
-                    "db_path": str(db_path)
-                }
+            from oboyu.indexer.config import IndexerConfig, ModelConfig, ProcessingConfig, SearchConfig
+            indexer_dict = {
+                **OBOYU_CONFIG["indexer"],
+                "db_path": str(db_path)
             }
-            indexer_config = IndexerConfig(config_dict=config_dict)
+            
+            model_config = ModelConfig(
+                embedding_model=indexer_dict.get("embedding_model", "cl-nagoya/ruri-v3-30m"),
+                batch_size=indexer_dict.get("batch_size", 8),
+            )
+            
+            processing_config = ProcessingConfig(
+                chunk_size=indexer_dict.get("chunk_size", 300),
+                chunk_overlap=indexer_dict.get("chunk_overlap", 75),
+                db_path=Path(indexer_dict["db_path"]),
+            )
+            
+            search_config = SearchConfig()
+            
+            indexer_config = IndexerConfig(
+                model=model_config,
+                processing=processing_config,
+                search=search_config,
+            )
             indexer = Indexer(config=indexer_config)
             
             # Index dataset

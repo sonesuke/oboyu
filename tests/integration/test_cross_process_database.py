@@ -413,7 +413,8 @@ class TestCrossProcessDatabase:
         # Step 1: Clear using CLI
         result = run_oboyu_command([
             "clear", 
-            "--db-path", str(temp_db_path)
+            "--db-path", str(temp_db_path),
+            "--force"
         ])
         assert result.returncode == 0
         
@@ -430,7 +431,7 @@ class TestCrossProcessDatabase:
         # Step 3: Query using CLI
         result = run_oboyu_command([
             "query",
-            "test content",
+            "--query", "test content",
             "--db-path", str(temp_db_path),
             "--top-k", "5"
         ])
@@ -465,7 +466,7 @@ class TestCrossProcessDatabase:
             indexer1.database_service.store_chunks(chunks)
             chunk_ids = [chunk.id for chunk in chunks]
             contents = [chunk.content for chunk in chunks]
-            embeddings = indexer1.embedding_service.create_embeddings(contents)
+            embeddings = indexer1.embedding_service.generate_embeddings(contents)
             indexer1.database_service.store_embeddings(chunk_ids, embeddings)
             indexer1.database_service.ensure_hnsw_index()
             
@@ -505,7 +506,7 @@ class TestCrossProcessDatabase:
             indexer2.database_service.store_chunks(more_chunks)
             chunk_ids = [chunk.id for chunk in more_chunks]
             contents = [chunk.content for chunk in more_chunks]
-            embeddings = indexer2.embedding_service.create_embeddings(contents)
+            embeddings = indexer2.embedding_service.generate_embeddings(contents)
             indexer2.database_service.store_embeddings(chunk_ids, embeddings)
             indexer2.database_service.ensure_hnsw_index()
             

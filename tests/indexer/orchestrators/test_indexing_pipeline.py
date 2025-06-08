@@ -34,18 +34,27 @@ def indexing_pipeline(mock_services: ServiceRegistry) -> IndexingPipeline:
 @pytest.fixture
 def sample_crawler_results() -> List[CrawlerResult]:
     """Create sample crawler results."""
+    # Create temporary test files
+    import tempfile
+    temp_dir = Path(tempfile.mkdtemp())
+    test_file1 = temp_dir / "test1.txt"
+    test_file2 = temp_dir / "test2.txt"
+    
+    test_file1.write_text("Test content 1")
+    test_file2.write_text("Test content 2")
+    
     return [
         CrawlerResult(
-            path=Path("test1.txt"),
-            content="Test content 1",
+            path=test_file1,
             title="Test Title 1",
+            content="Test content 1",
             language="en",
             metadata={},
         ),
         CrawlerResult(
-            path=Path("test2.txt"),
-            content="Test content 2",
+            path=test_file2,
             title="Test Title 2",
+            content="Test content 2",
             language="en",
             metadata={},
         ),

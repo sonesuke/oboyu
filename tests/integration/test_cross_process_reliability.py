@@ -29,15 +29,15 @@ def create_test_indexer_config(db_path: Path) -> IndexerConfig:
     """Create a minimal indexer configuration for testing."""
     return IndexerConfig(
         model=ModelConfig(
-            embedding_model="all-MiniLM-L6-v2",
+            embedding_model="cl-nagoya/ruri-v3-30m",
             batch_size=32
         ),
         processing=ProcessingConfig(
             chunk_size=500,
             chunk_overlap=50,
-            max_workers=2
-        ),
-        db_path=db_path
+            max_workers=2,
+            db_path=db_path
+        )
     )
 
 
@@ -68,7 +68,9 @@ def index_documents_in_process(db_path: str, test_dir: str) -> Dict[str, int]:
             content = test_file.read_text()
             crawler_results.append(CrawlerResult(
                 path=test_file,
+                title=f"Test Document - {test_file.name}",
                 content=content,
+                language="en",
                 metadata={}
             ))
         
@@ -144,8 +146,7 @@ def concurrent_database_access(db_path: str, operation: str, thread_id: int) -> 
     try:
         config = create_test_indexer_config(Path(db_path))
         database_service = DatabaseService(
-            db_path=db_path,
-            embedding_dimensions=256  # Default dimensions
+            db_path=db_path
         )
         database_service.initialize()
         

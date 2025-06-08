@@ -51,3 +51,30 @@ def isolate_config_for_tests(monkeypatch):
     with tempfile.TemporaryDirectory() as temp_dir:
         monkeypatch.setenv("XDG_CONFIG_HOME", temp_dir)
         yield
+
+
+@pytest.fixture(autouse=True)
+def reset_circuit_breakers():
+    """Reset all circuit breakers between tests to prevent state interference."""
+    def _reset_circuit_breakers():
+        """Helper function to reset circuit breakers."""
+        try:
+            from oboyu.common.circuit_breaker import get_circuit_breaker_registry
+            registry = get_circuit_breaker_registry()
+            # Reset all circuit breaker states first
+            registry.reset_all()
+            # Then clear the registry entirely to prevent name conflicts
+            # Use private attribute access to completely clear the registry
+            registry._circuit_breakers.clear()
+        except ImportError:
+            # Circuit breaker module not available in this test context
+            pass
+    
+    # Reset before test to ensure clean state
+    _reset_circuit_breakers()
+    
+    # This fixture runs automatically for every test
+    yield
+    
+    # Reset after test to ensure clean state for next test
+    _reset_circuit_breakers()
