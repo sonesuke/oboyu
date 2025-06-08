@@ -60,50 +60,36 @@ def test_database_manager_init_default_params():
         assert manager.enable_experimental_features is True
 
 
-@patch("duckdb.connect")
-def test_initialize_success(mock_connect, database_manager):
-    """Test successful database initialization."""
-    mock_conn = MagicMock()
-    mock_connect.return_value = mock_conn
-    
-    # Mock execute method to return appropriate results for different queries
-    def mock_execute_side_effect(sql_command):
-        if "duckdb_extensions()" in sql_command:
-            # VSS extension check - return successful result
-            mock_result = MagicMock()
-            mock_result.fetchall.return_value = [("vss", True)]
-            return mock_result
-        elif "information_schema.tables" in sql_command:
-            # Schema validation - return table exists
-            mock_result = MagicMock()
-            mock_result.fetchone.return_value = [1]
-            return mock_result
-        else:
-            # For other commands, return a basic mock
-            return MagicMock()
-    
-    mock_conn.execute.side_effect = mock_execute_side_effect
-    
-    # Mock managers
-    with patch("oboyu.indexer.storage.database_manager.MigrationManager") as mock_migration:
-        with patch("oboyu.indexer.storage.database_manager.IndexManager") as mock_index:
+@patch("oboyu.indexer.storage.database_manager.MigrationManager")
+@patch("oboyu.indexer.storage.database_manager.IndexManager")
+def test_initialize_success(mock_index, mock_migration):
+    """Test successful database initialization using state manager."""
+    with tempfile.NamedTemporaryFile(suffix=".db") as tmp:
+        # Create database manager
+        with patch("oboyu.indexer.storage.database_manager.DatabaseStateManager") as mock_state_manager:
+            mock_conn = MagicMock()
+            
+            # Mock state manager behavior
+            mock_state_instance = MagicMock()
+            mock_state_manager.return_value = mock_state_instance
+            mock_state_instance.ensure_initialized.return_value = mock_conn
+            
+            # Create database manager with mocked state manager
+            database_manager = DatabaseManager(db_path=tmp.name)
+            
+            # Initialize the database manager
             database_manager.initialize()
-    
-    assert database_manager._is_initialized is True
-    assert database_manager.conn is mock_conn
-    
-    # Verify configuration calls
-    mock_conn.execute.assert_any_call("SET memory_limit='2GB'")
-    mock_conn.execute.assert_any_call("SET threads=4")
-    mock_conn.execute.assert_any_call("SET hnsw_enable_experimental_persistence=true")
-    
-    # Verify VSS extension setup - the new logic installs and loads VSS
-    mock_conn.execute.assert_any_call("INSTALL vss")
-    mock_conn.execute.assert_any_call("LOAD vss")
-    
-    # Verify managers were initialized
-    mock_migration.assert_called_once()
-    mock_index.assert_called_once()
+            
+            # Verify initialization status
+            assert database_manager._is_initialized is True
+            assert database_manager.conn is mock_conn
+            
+            # Verify state manager was used for initialization
+            mock_state_instance.ensure_initialized.assert_called_once()
+            
+            # Verify managers were initialized with the connection
+            mock_migration.assert_called_once_with(mock_conn, database_manager.schema)
+            mock_index.assert_called_once_with(mock_conn, database_manager.schema)
 
 
 @patch("duckdb.connect")

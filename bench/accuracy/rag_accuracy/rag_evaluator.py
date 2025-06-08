@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from bench.logger import BenchmarkLogger
 from oboyu.indexer import LegacyIndexer as Indexer
-from oboyu.indexer.config import IndexerConfig
+from oboyu.indexer.config import IndexerConfig, ModelConfig, ProcessingConfig, SearchConfig
 from oboyu.indexer.storage.database_service import Database
 
 from .metrics_calculator import MetricsCalculator
@@ -166,14 +166,19 @@ class RAGEvaluator:
 
             # Index using Oboyu indexer
             # Create new indexer configuration with database path
-            indexer_config_dict = {
-                "indexer": {
-                    "db_path": self.config.db_path,
-                    "chunk_size": self.config.indexer_config.chunk_size,
-                    "chunk_overlap": self.config.indexer_config.chunk_overlap,
-                }
-            }
-            indexer_config = IndexerConfig(config_dict=indexer_config_dict)
+            model_config = ModelConfig()
+            processing_config = ProcessingConfig(
+                db_path=Path(self.config.db_path),
+                chunk_size=self.config.indexer_config.chunk_size,
+                chunk_overlap=self.config.indexer_config.chunk_overlap,
+            )
+            search_config = SearchConfig()
+            
+            indexer_config = IndexerConfig(
+                model=model_config,
+                processing=processing_config,
+                search=search_config,
+            )
             
             # Create indexer and index files
             indexer = Indexer(config=indexer_config)
@@ -278,14 +283,19 @@ class RAGEvaluator:
         query_start = time.time()
 
         # Execute query using Oboyu's indexer
-        indexer_config_dict = {
-            "indexer": {
-                "db_path": self.config.db_path,
-                "chunk_size": self.config.indexer_config.chunk_size,
-                "chunk_overlap": self.config.indexer_config.chunk_overlap,
-            }
-        }
-        indexer_config = IndexerConfig(config_dict=indexer_config_dict)
+        model_config = ModelConfig()
+        processing_config = ProcessingConfig(
+            db_path=Path(self.config.db_path),
+            chunk_size=self.config.indexer_config.chunk_size,
+            chunk_overlap=self.config.indexer_config.chunk_overlap,
+        )
+        search_config = SearchConfig()
+        
+        indexer_config = IndexerConfig(
+            model=model_config,
+            processing=processing_config,
+            search=search_config,
+        )
         
         indexer = Indexer(config=indexer_config)
         

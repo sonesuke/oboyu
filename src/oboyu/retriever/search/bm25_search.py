@@ -46,9 +46,11 @@ class BM25Search:
             search_results = []
             for result in raw_results:
                 try:
-                    # Parse metadata if it's a string
+                    # Parse metadata if it's a string, handle None case
                     metadata = result.get("metadata", {})
-                    if isinstance(metadata, str):
+                    if metadata is None:
+                        metadata = {}
+                    elif isinstance(metadata, str):
                         metadata = json.loads(metadata)
 
                     search_result = SearchResult(

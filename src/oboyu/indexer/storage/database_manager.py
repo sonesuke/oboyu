@@ -159,7 +159,7 @@ class DatabaseManager(DatabaseConnection):
             # Check if VSS extension is already loaded
             try:
                 # Try a simple VSS operation to check if it's loaded
-                self.conn.execute("SELECT array_to_vector([1.0, 2.0, 3.0])").fetchone()
+                self.conn.execute("SELECT [1.0, 2.0, 3.0]::FLOAT[3]").fetchone()
                 logger.debug("VSS extension already loaded")
             except Exception:
                 # VSS not loaded, need to install and load
@@ -258,7 +258,7 @@ class DatabaseManager(DatabaseConnection):
             # Check VSS extension
             try:
                 # Try to create a simple vector to test VSS functionality
-                self.conn.execute("SELECT array_to_vector([1.0, 2.0, 3.0])").fetchone()
+                self.conn.execute("SELECT [1.0, 2.0, 3.0]::FLOAT[3]").fetchone()
                 validation_results["stats"]["vss_loaded"] = True
             except Exception as e:
                 if "vss" in str(e).lower() or "vector" in str(e).lower():
