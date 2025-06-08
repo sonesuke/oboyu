@@ -10,7 +10,7 @@ This guide will help you install Oboyu on your system. Oboyu is a command-line t
 
 ## Prerequisites
 
-- Python 3.9 or higher
+- Python 3.13 or higher
 - pip (Python package manager)
 - Git (for development installation)
 
@@ -37,7 +37,8 @@ You should see the version number displayed.
 ### Minimum Requirements
 - **RAM**: 4GB (8GB recommended for larger document collections)
 - **Storage**: 500MB for Oboyu installation + space for your document index
-- **OS**: Windows 10+, macOS 10.15+, or Linux (Ubuntu 20.04+, CentOS 8+)
+- **OS**: macOS 10.15+ or Linux (Ubuntu 20.04+, CentOS 8+)
+  - **Note**: Windows is not currently supported
 
 ### Recommended Specifications
 - **RAM**: 8GB or more
@@ -80,28 +81,21 @@ Oboyu stores its configuration and indices in your home directory:
 mkdir -p ~/.oboyu
 ```
 
-### 2. Download Language Models (Optional)
+### 2. Language Models
 
-For enhanced Japanese support, download the recommended models:
-
-```bash
-oboyu models download
-```
-
-This will download:
-- Japanese tokenizer models
+Oboyu includes built-in Japanese language support with pre-configured models:
+- Japanese tokenizer models (automatically loaded)
 - Semantic embedding models optimized for Japanese text
 
-### 3. Set Environment Variables (Optional)
+No additional model downloads are required.
 
-For better performance, you can set these environment variables:
+### 3. Environment Variables (Optional)
+
+Oboyu supports the following environment variable:
 
 ```bash
-# Increase thread pool for parallel processing
-export OBOYU_THREADS=4
-
-# Set default language
-export OBOYU_DEFAULT_LANG=ja
+# Set custom database path
+export OBOYU_DB_PATH=/path/to/your/database
 ```
 
 ## Troubleshooting Installation
@@ -109,7 +103,7 @@ export OBOYU_DEFAULT_LANG=ja
 ### Common Issues
 
 #### Python Version Error
-If you see "Python 3.9+ required":
+If you see "Python 3.13+ required":
 ```bash
 python --version  # Check your Python version
 # Consider using pyenv or conda to manage Python versions
@@ -122,9 +116,9 @@ pip install --user oboyu  # Install for current user only
 ```
 
 #### Missing Dependencies
-If certain features don't work:
+All required dependencies are included in the base installation. If you encounter issues:
 ```bash
-pip install oboyu[full]  # Install with all optional dependencies
+pip install --upgrade oboyu  # Update to latest version
 ```
 
 ### Platform-Specific Notes
@@ -134,8 +128,8 @@ pip install oboyu[full]  # Install with all optional dependencies
 - May need to install Xcode Command Line Tools: `xcode-select --install`
 
 #### Windows
-- Use PowerShell or Windows Terminal for best experience
-- Ensure Python is added to PATH during installation
+- **Windows is not currently supported**
+- Consider using WSL (Windows Subsystem for Linux) as an alternative
 
 #### Linux
 - May need to install python3-dev package: `sudo apt-get install python3-dev`
