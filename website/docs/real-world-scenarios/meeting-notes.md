@@ -30,25 +30,25 @@ oboyu index ~/Shared/team-meetings --db-path ~/indexes/meetings.db --update
 #### Finding Previous Meeting Notes
 ```bash
 # Last meeting with specific person/team
-oboyu query "meeting with Sarah marketing" --days 30
+oboyu query --query "meeting with Sarah marketing"
 
 # All meetings about a project
-oboyu query "Project Phoenix meeting" --db-path ~/indexes/meetings.db
+oboyu query --query "Project Phoenix meeting" --db-path ~/indexes/meetings.db
 
 # Meetings with specific agenda items
-oboyu query "agenda budget discussion" --mode semantic
+oboyu query --query "agenda budget discussion" --mode vector
 ```
 
 #### Gathering Context
 ```bash
 # Find action items from last meeting
-oboyu query "action: assigned: TODO:" --file-type md --days 7
+oboyu query --query "action: assigned: TODO:"
 
 # Check previous decisions
-oboyu query "decided: agreed: approved:" --mode semantic
+oboyu query --query "decided: agreed: approved:" --mode vector
 
 # Find related documents mentioned
-oboyu query "refer to document attachment" --mode semantic
+oboyu query --query "refer to document attachment" --mode vector
 ```
 
 ## Scenario: Project Manager's Workflow
@@ -58,25 +58,25 @@ Managing multiple projects with various stakeholders and tracking all commitment
 ### Daily Meeting Review
 ```bash
 # Morning review of yesterday's meetings
-oboyu query "meeting" --days 1 --format summary
+oboyu query --query "meeting"
 
 # Find all action items assigned to you
-oboyu query "@yourname action OR assigned" --days 7
+oboyu query --query "@yourname action OR assigned"
 
 # Check upcoming deliverables mentioned
-oboyu query "deadline due date deliverable" --days 7 --mode semantic
+oboyu query --query "deadline due date deliverable" --mode vector
 ```
 
 ### Weekly Status Compilation
 ```bash
 # Gather all project updates
-oboyu query "status update progress" --days 7 --file-type md
+oboyu query --query "status update progress"
 
 # Find blockers and issues
-oboyu query "blocker issue risk concern" --mode semantic --days 7
+oboyu query --query "blocker issue risk concern" --mode vector
 
 # Extract key decisions
-oboyu query "decision: decided: approved:" --days 7 --export weekly-decisions.txt
+oboyu query --query "decision: decided: approved:"
 ```
 
 ## Scenario: Executive Assistant
@@ -86,25 +86,25 @@ Managing executive's schedule and ensuring all meeting outcomes are tracked and 
 ### Meeting Follow-up Workflow
 ```bash
 # Find all meetings from today
-oboyu query "meeting" --days 0
+oboyu query --query "meeting"
 
 # Extract action items for follow-up
-oboyu query "follow up: next steps: action required:" --days 1
+oboyu query --query "follow up: next steps: action required:"
 
 # Find meetings requiring minutes
-oboyu query "meeting NOT minutes" --days 3 --mode semantic
+oboyu query --query "meeting NOT minutes" --mode vector
 ```
 
 ### Stakeholder Tracking
 ```bash
 # All meetings with specific client
-oboyu query "meeting Acme Corp" --db-path ~/indexes/meetings.db
+oboyu query --query "meeting Acme Corp" --db-path ~/indexes/meetings.db
 
 # Executive decisions tracker
-oboyu query "CEO decided approved" --mode semantic
+oboyu query --query "CEO decided approved" --mode vector
 
 # Board meeting preparation
-oboyu query "board meeting agenda item" --days 90
+oboyu query --query "board meeting agenda item"
 ```
 
 ## Advanced Meeting Search Patterns
@@ -112,28 +112,28 @@ oboyu query "board meeting agenda item" --days 90
 ### Action Item Management
 ```bash
 # Find open action items
-oboyu query "action: -completed -done" --regex
+oboyu query --query "action: -completed -done"
 
 # Action items by assignee
-oboyu query "@sarah TODO|action|assigned" 
+oboyu query --query "@sarah TODO|action|assigned" 
 
 # Overdue items
-oboyu query "due: &lt; 2024-01-15" --mode semantic
+oboyu query --query "due: < 2024-01-15" --mode vector
 
 # High priority actions
-oboyu query "high priority urgent action" --mode hybrid
+oboyu query --query "high priority urgent action" --mode hybrid
 ```
 
 ### Decision Tracking
 ```bash
 # Find all decisions made
-oboyu query "DECISION:|Decided:|Approved:" --file-type md
+oboyu query --query "DECISION:|Decided:|Approved:"
 
 # Decisions pending approval
-oboyu query "pending approval decision" --mode semantic
+oboyu query --query "pending approval decision" --mode vector
 
 # Strategic decisions
-oboyu query "strategic decision long-term" --mode semantic
+oboyu query --query "strategic decision long-term" --mode vector
 ```
 
 ## Real-World Example: Quarterly Business Review
@@ -142,22 +142,22 @@ Preparing for a QBR by gathering all relevant meeting information:
 
 ```bash
 # 1. Find all Q4 meetings
-oboyu query "meeting" --from 2023-10-01 --to 2023-12-31 --db-path ~/indexes/meetings.db
+oboyu query --query "meeting" --db-path ~/indexes/meetings.db
 
 # 2. Extract key metrics discussed
-oboyu query "revenue profit margin KPI" --from 2023-10-01 --mode semantic
+oboyu query --query "revenue profit margin KPI" --mode vector
 
 # 3. Find customer feedback
-oboyu query "customer feedback complaint satisfaction" --mode semantic
+oboyu query --query "customer feedback complaint satisfaction" --mode vector
 
 # 4. Gather product decisions
-oboyu query "product roadmap feature decision" --from 2023-10-01
+oboyu query --query "product roadmap feature decision"
 
 # 5. Compile action items
-oboyu query "action: assigned:" --from 2023-10-01 --export qbr-actions.txt
+oboyu query --query "action: assigned:"
 
 # 6. Find risks and mitigation
-oboyu query "risk mitigation concern issue" --mode semantic --export qbr-risks.txt
+oboyu query --query "risk mitigation concern issue" --mode vector
 ```
 
 ## Meeting Templates and Patterns
@@ -167,11 +167,11 @@ oboyu query "risk mitigation concern issue" --mode semantic --export qbr-risks.t
 # Daily stand-up search
 standup_search() {
     echo "=== Yesterday ==="
-    oboyu query "completed done finished" --days 1 --author $1
+    oboyu query --query "completed done finished"
     echo "=== Today ==="
-    oboyu query "working on today will" --days 0 --author $1
+    oboyu query --query "working on today will"
     echo "=== Blockers ==="
-    oboyu query "blocked waiting on dependency" --days 3 --author $1
+    oboyu query --query "blocked waiting on dependency"
 }
 
 # Usage
@@ -181,13 +181,13 @@ standup_search "john"
 ### One-on-One Meeting Tracking
 ```bash
 # Find all 1:1s with manager
-oboyu query "1:1 one-on-one Sarah" --db-path ~/indexes/meetings.db
+oboyu query --query "1:1 one-on-one Sarah" --db-path ~/indexes/meetings.db
 
 # Career development discussions
-oboyu query "career development growth goals" --mode semantic
+oboyu query --query "career development growth goals" --mode vector
 
 # Performance feedback
-oboyu query "feedback performance improvement" --mode semantic
+oboyu query --query "feedback performance improvement" --mode vector
 ```
 
 ## Meeting Analytics
@@ -195,25 +195,25 @@ oboyu query "feedback performance improvement" --mode semantic
 ### Meeting Efficiency Analysis
 ```bash
 # Find meetings without clear outcomes
-oboyu query "meeting" --not "action: decision: next steps:" 
+oboyu query --query "meeting" --not "action: decision: next steps:" 
 
 # Long meetings
-oboyu query "meeting duration: > 2 hours" --mode semantic
+oboyu query --query "meeting duration: > 2 hours" --mode vector
 
 # Recurring meeting effectiveness
-oboyu query "weekly meeting outcomes results" --mode semantic
+oboyu query --query "weekly meeting outcomes results" --mode vector
 ```
 
 ### Participation Tracking
 ```bash
 # Find who attended most meetings
-oboyu query "attendees: participants:" --format stats
+oboyu query --query "attendees: participants:"
 
 # Silent participants
-oboyu query "attendees:" --not "said: mentioned: proposed:"
+oboyu query --query "attendees:" --not "said: mentioned: proposed:"
 
 # Most active contributors
-oboyu query "proposed: suggested: recommended:" --format stats
+oboyu query --query "proposed: suggested: recommended:"
 ```
 
 ## Japanese Meeting Notes
@@ -222,16 +222,16 @@ For bilingual organizations:
 
 ```bash
 # Search Japanese meeting notes
-oboyu query "会議 議事録" --db-path ~/indexes/meetings.db
+oboyu query --query "会議 議事録" --db-path ~/indexes/meetings.db
 
 # Find action items in Japanese
-oboyu query "アクション 担当 期限" 
+oboyu query --query "アクション 担当 期限" 
 
 # Mixed language meetings
-oboyu query "meeting 会議 action アクション" --mode hybrid
+oboyu query --query "meeting 会議 action アクション" --mode hybrid
 
 # Japanese names and titles
-oboyu query "山田さん 部長" --db-path ~/indexes/meetings.db
+oboyu query --query "山田さん 部長" --db-path ~/indexes/meetings.db
 ```
 
 ## Meeting Note Organization Tips
@@ -274,13 +274,13 @@ prepare_meeting() {
     echo "Searching for: $meeting_topic"
     
     # Previous meetings
-    oboyu query "$meeting_topic meeting" --days 90
+    oboyu query --query "$meeting_topic meeting"
     
     # Related documents
-    oboyu query "$meeting_topic" --mode semantic --limit 10
+    oboyu query --query "$meeting_topic" --mode vector --top-k 10
     
     # Open items
-    oboyu query "$meeting_topic action: -done" 
+    oboyu query --query "$meeting_topic action: -done" 
 }
 
 # Add to calendar reminder

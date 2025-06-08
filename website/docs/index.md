@@ -19,7 +19,7 @@ Stop wasting time hunting through folders. Index once, search forever.
 oboyu index ~/Documents
 
 # Find what you need instantly  
-oboyu query "project deadline"
+oboyu query --query "project deadline"
 ```
 
 ### 🧠 **Smart Semantic Understanding**
@@ -27,9 +27,9 @@ Oboyu doesn't just match keywords—it understands meaning and context.
 
 ```bash
 # These all find relevant documents:
-oboyu query "budget planning"           # Finds "financial projections"
-oboyu query "team meeting notes"       # Finds "standup discussions"
-oboyu query "how to configure SSL"     # Finds setup tutorials
+oboyu query --query "budget planning"           # Finds "financial projections"
+oboyu query --query "team meeting notes"       # Finds "standup discussions"
+oboyu query --query "how to configure SSL"     # Finds setup tutorials
 ```
 
 ### 🇯🇵 **Excellent Japanese Support**
@@ -37,8 +37,8 @@ Native Japanese text processing with proper tokenization and semantic understand
 
 ```bash
 # Search Japanese content naturally
-oboyu query "機械学習の基礎"
-oboyu query "明日の会議について"
+oboyu query --query "機械学習の基礎"
+oboyu query --query "明日の会議について"
 ```
 
 ### 🤖 **Claude AI Integration**
@@ -96,7 +96,7 @@ oboyu index ~/Documents
 
 ### 3. Start Searching
 ```bash
-oboyu query "what you're looking for"
+oboyu query --query "what you're looking for"
 ```
 
 [**Full installation guide →**](getting-started/installation)
@@ -106,37 +106,37 @@ oboyu query "what you're looking for"
 ### Daily Knowledge Worker
 ```bash
 # Morning routine: catch up on recent updates
-oboyu query "status update OR meeting" --days 1
+oboyu query --query "status update OR meeting"
 
 # Find documents for upcoming meeting
-oboyu query "project alpha timeline"
+oboyu query --query "project alpha timeline"
 
 # Quick reference lookup
-oboyu query "API authentication examples"
+oboyu query --query "API authentication examples"
 ```
 
 ### Research Workflow
 ```bash
 # Find papers on specific methodology
-oboyu query "quantitative analysis methods" --mode semantic
+oboyu query --query "quantitative analysis methods" --mode vector
 
 # Locate previous research notes
-oboyu query "literature review notes" --days 30
+oboyu query --query "literature review notes"
 
 # Cross-reference findings
-oboyu query "similar to current-paper.pdf" --mode vector
+oboyu query --query "similar to current-paper.pdf" --mode vector
 ```
 
 ### Development Workflow
 ```bash
 # Find configuration examples
-oboyu query "nginx SSL configuration"
+oboyu query --query "nginx SSL configuration"
 
 # Search through documentation
-oboyu query "error handling best practices" --file-type md
+oboyu query --query "error handling best practices"
 
 # Locate troubleshooting guides
-oboyu query "deployment issues solutions"
+oboyu query --query "deployment issues solutions"
 ```
 
 [**Explore all workflows →**](usage-examples/basic-workflow)
@@ -151,13 +151,13 @@ oboyu query "deployment issues solutions"
 ### Smart Filtering
 ```bash
 # Filter by file type
-oboyu query "configuration" --file-type yaml,json
+oboyu query --query "configuration"
 
 # Filter by date
-oboyu query "meeting notes" --days 7
+oboyu query --query "meeting notes"
 
 # Filter by location
-oboyu query "API docs" --path "**/api/**"
+oboyu query --query "API docs"
 ```
 
 ### Performance Optimized
