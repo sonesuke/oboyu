@@ -277,29 +277,53 @@ class DatabaseService:
             with lock.acquire(timeout=30.0):
                 logger.info("Acquired lock for clear operation")
                 
-                # Clear all data from database within a transaction
-                with self.transaction():
-                    assert self.embedding_repository is not None
-                    assert self.chunk_repository is not None
+                # Clear all data from database
+                assert self.embedding_repository is not None
+                assert self.chunk_repository is not None
+                
+                conn = self.db_manager.get_connection()
+                
+                # First, drop the HNSW index if it exists
+                # This prevents issues with foreign key constraints and speeds up deletion
+                if self.index_manager and self.index_manager.hnsw_index_exists():
+                    logger.info("Dropping HNSW index before clearing data")
+                    self.index_manager.drop_hnsw_index()
+                
+                # Clear each table in separate transactions to avoid constraint issues
+                try:
+                    # Get list of tables to clear
+                    result = conn.execute("SHOW TABLES").fetchall()
+                    table_names = [row[0] for row in result if row[0] not in ['schema_version']]
                     
-                    conn = self.db_manager.get_connection()
+                    # Define deletion order to respect foreign key constraints
+                    deletion_order = ['embeddings', 'inverted_index', 'document_stats', 'chunks',
+                                    'vocabulary', 'collection_stats', 'file_metadata']
                     
-                    # First, drop the HNSW index if it exists
-                    # This prevents issues with foreign key constraints and speeds up deletion
-                    if self.index_manager and self.index_manager.hnsw_index_exists():
-                        logger.info("Dropping HNSW index before clearing data")
-                        self.index_manager.drop_hnsw_index()
+                    # Clear tables in order, using individual transactions
+                    for table_name in deletion_order:
+                        if table_name in table_names:
+                            try:
+                                with self.transaction():
+                                    conn.execute(f"DELETE FROM {table_name}")
+                                logger.debug(f"Cleared table {table_name}")
+                            except Exception as table_error:
+                                logger.warning(f"Failed to clear table {table_name}: {table_error}")
+                                # Continue with other tables
                     
-                    # Clear embeddings first (they reference chunks)
-                    self.embedding_repository.clear_all_embeddings()
-                    
-                    # Then clear chunks
-                    self.chunk_repository.clear_all_chunks()
-                    
-                    # Clear file metadata
-                    conn.execute("DELETE FROM file_metadata")
+                    # Clear any remaining tables not in our order
+                    for table_name in table_names:
+                        if table_name not in deletion_order:
+                            try:
+                                with self.transaction():
+                                    conn.execute(f"DELETE FROM {table_name}")
+                                logger.debug(f"Cleared remaining table {table_name}")
+                            except Exception as table_error:
+                                logger.warning(f"Failed to clear remaining table {table_name}: {table_error}")
                     
                     logger.info("Database cleared successfully")
+                except Exception as e:
+                    logger.error(f"Failed to clear database tables: {e}")
+                    raise
             
             # Reset database state manager after clearing to ensure fresh state
             # for subsequent operations and cross-process reliability

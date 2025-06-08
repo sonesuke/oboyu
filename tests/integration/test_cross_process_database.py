@@ -388,7 +388,7 @@ class TestCrossProcessDatabase:
             new_indexer.database_service.store_chunks(new_chunks)
             chunk_ids = [chunk.id for chunk in new_chunks]
             contents = [chunk.content for chunk in new_chunks]
-            embeddings = new_indexer.embedding_service.create_embeddings(contents)
+            embeddings = new_indexer.embedding_service.generate_embeddings(contents)
             new_indexer.database_service.store_embeddings(chunk_ids, embeddings)
             new_indexer.database_service.ensure_hnsw_index()
             
