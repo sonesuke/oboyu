@@ -31,25 +31,25 @@ This command will:
 
 ## Supported File Types
 
-Oboyu automatically recognizes and indexes these file types:
+Oboyu currently supports plain text files and automatically recognizes these file types:
 
 - **Text Documents**: `.txt`, `.md`, `.markdown`
-- **Office Documents**: `.docx`, `.pdf`
 - **Code Files**: `.py`, `.js`, `.java`, `.cpp`, etc.
 - **Web Documents**: `.html`, `.htm`
 - **Configuration**: `.json`, `.yaml`, `.xml`
 
+**Note**: Binary files like `.pdf` and `.docx` are not currently supported.
+
 ## Monitoring Progress
 
-During indexing, you'll see a progress display:
+During indexing, you'll see a progress display showing:
+- Directory scanning progress
+- Documents being processed
+- Final summary with total files and chunks indexed
 
-```
-Indexing documents...
-[████████████████████████████████████████] 100% | 156/156 files
-Processing: technical-report.pdf
-Time elapsed: 00:02:34
-Documents indexed: 156
-Total size: 45.2 MB
+To reduce screen output for large collections, use:
+```bash
+oboyu index ~/Documents --quiet-progress
 ```
 
 ## Basic Indexing Examples
@@ -60,53 +60,51 @@ Total size: 45.2 MB
 oboyu index ~/Documents/projects ~/Documents/notes ~/Documents/research
 ```
 
-### Index with a Custom Name
+### Index with a Custom Database Path
 
-Give your index a memorable name:
+Specify a custom database location:
 
 ```bash
-oboyu index ~/Documents/work-docs --name "work"
+oboyu index ~/Documents/work-docs --db-path ~/my-indexes/work.db
 ```
 
-Later, search this specific index:
+Later, search using this specific database:
 ```bash
-oboyu query "meeting notes" --index work
+oboyu query "meeting notes" --db-path ~/my-indexes/work.db
 ```
 
 ### Index Specific File Types
 
-Focus on particular file types:
+Focus on particular file types using include patterns:
 
 ```bash
-oboyu index ~/Documents --include "*.md" --include "*.txt"
+oboyu index ~/Documents --include-patterns "*.md" --include-patterns "*.txt"
 ```
 
 ### Exclude Directories
 
-Skip certain folders:
+Skip certain folders using exclude patterns:
 
 ```bash
-oboyu index ~/Documents --exclude "archive" --exclude "temp"
+oboyu index ~/Documents --exclude-patterns "*/archive/*" --exclude-patterns "*/temp/*"
 ```
 
 ## Understanding Index Output
 
-After indexing completes, you'll see a summary:
+After indexing completes, you'll see a summary like:
 
 ```
-Index created successfully!
+Indexed 156 files (234 chunks) in 45.2s
+```
 
-Summary:
-- Total documents: 234
-- Successfully indexed: 230
-- Skipped: 4 (unsupported format)
-- Index size: 128 MB
-- Processing time: 3m 45s
-
-Index location: ~/.oboyu/indices/default.db
+This tells you:
+- **Files**: Number of documents processed
+- **Chunks**: Number of text segments created for search
+- **Time**: Total processing time
 
 You can now search your documents:
-  oboyu query "your search terms"
+```bash
+oboyu query "your search terms"
 ```
 
 ## Best Practices for Indexing
@@ -128,51 +126,41 @@ Structure your files logically before indexing:
 └── research/
 ```
 
-### 3. Use Meaningful Index Names
-Create separate indices for different purposes:
+### 3. Use Separate Database Files
+Create separate indices for different purposes using custom database paths:
 ```bash
-oboyu index ~/work-docs --name work
-oboyu index ~/personal-notes --name personal
-oboyu index ~/research-papers --name research
+oboyu index ~/work-docs --db-path ~/indexes/work.db
+oboyu index ~/personal-notes --db-path ~/indexes/personal.db
+oboyu index ~/research-papers --db-path ~/indexes/research.db
 ```
 
 ### 4. Regular Updates
-Keep your index current by re-indexing periodically:
+Keep your index current by re-indexing periodically (Oboyu performs incremental updates by default):
 ```bash
-oboyu index ~/Documents --update
+oboyu index ~/Documents
 ```
 
 ## Checking Index Status
 
-View information about your indices:
+Check the status of what would be indexed:
 
 ```bash
-# List all indices
-oboyu index list
+# Check what files would be processed
+oboyu manage status ~/Documents
 
-# Show details about a specific index
-oboyu index info --name work
+# Check differences (what would be updated)
+oboyu manage diff ~/Documents
 ```
 
-Example output:
-```
-Index: work
-Created: 2024-01-15 10:30:00
-Last updated: 2024-01-20 14:22:00
-Documents: 1,234
-Total size: 256 MB
-Directories:
-  - /Users/you/work-docs
-  - /Users/you/shared/team-docs
-```
+The index database is stored at `~/.oboyu/oboyu.db` by default, or at the path specified with `--db-path`.
 
 ## Incremental Indexing
 
-Oboyu supports incremental updates to save time:
+Oboyu supports incremental updates to save time and performs them by default:
 
 ```bash
-# Only index new or modified files
-oboyu index ~/Documents --update
+# Incremental indexing (default behavior)
+oboyu index ~/Documents
 
 # Force full reindex
 oboyu index ~/Documents --force
@@ -184,45 +172,46 @@ For large collections (10,000+ files):
 
 ### 1. Index in Batches
 ```bash
-oboyu index ~/Documents/2023 --name docs-2023
-oboyu index ~/Documents/2024 --name docs-2024
+oboyu index ~/Documents/2023 --db-path ~/indexes/docs-2023.db
+oboyu index ~/Documents/2024 --db-path ~/indexes/docs-2024.db
 ```
 
-### 2. Use Background Indexing
+### 2. Adjust Chunk Settings for Performance
 ```bash
-oboyu index ~/large-collection --background
+# Adjust chunk size for better performance
+oboyu index ~/Documents --chunk-size 1024
+
+# Set chunk overlap for better search results
+oboyu index ~/Documents --chunk-overlap 100
 ```
 
-### 3. Adjust Performance Settings
+### 3. Use Minimal Progress Output
 ```bash
-# Use more threads for faster processing
-oboyu index ~/Documents --threads 8
-
-# Limit memory usage
-oboyu index ~/Documents --memory-limit 2GB
+# Reduce screen output for faster processing
+oboyu index ~/large-collection --quiet-progress
 ```
 
 ## Common Indexing Scenarios
 
-### Academic Papers
+### Text Documents and Notes
 ```bash
-oboyu index ~/Papers --include "*.pdf" --name research
+oboyu index ~/Papers --include-patterns "*.txt" --include-patterns "*.md" --db-path ~/indexes/research.db
 ```
 
 ### Software Documentation
 ```bash
-oboyu index ~/dev/docs --include "*.md" --include "*.rst" --name dev-docs
+oboyu index ~/dev/docs --include-patterns "*.md" --include-patterns "*.rst" --db-path ~/indexes/dev-docs.db
 ```
 
 ### Meeting Notes
 ```bash
-oboyu index ~/OneDrive/MeetingNotes --name meetings
+oboyu index ~/OneDrive/MeetingNotes --db-path ~/indexes/meetings.db
 ```
 
 ### Mixed Language Documents
 ```bash
 # Oboyu automatically detects Japanese content
-oboyu index ~/Documents/日本語資料 --name japanese-docs
+oboyu index ~/Documents/日本語資料 --db-path ~/indexes/japanese-docs.db
 ```
 
 ## Troubleshooting

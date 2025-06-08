@@ -258,7 +258,7 @@ oboyu query "kaigi OR 会議"
 oboyu query "error" --file-type log --days 1
 
 # Use specific index
-oboyu query "configuration" --index technical-docs
+oboyu query "configuration" --db-path ~/indexes/technical-docs.db
 
 # Combine filters
 oboyu query "critical" --file-type log --path "**/errors/**" --days 7

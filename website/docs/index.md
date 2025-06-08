@@ -91,7 +91,7 @@ pip install oboyu
 
 ### 2. Index Your Documents
 ```bash
-oboyu index ~/Documents --name personal
+oboyu index ~/Documents
 ```
 
 ### 3. Start Searching

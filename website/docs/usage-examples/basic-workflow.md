@@ -103,10 +103,10 @@ No need to reorganize! Just index and search:
 
 ```bash
 # Index messy folder
-oboyu index ~/Documents --name messy-docs
+oboyu index ~/Documents --db-path ~/indexes/messy-docs.db
 
 # Find what you need instantly
-oboyu query "final project update" --index messy-docs
+oboyu query "final project update" --db-path ~/indexes/messy-docs.db
 ```
 
 ## Quick Access Patterns
@@ -122,9 +122,9 @@ oboyu query "*" --hours 4
 
 ### Project Context Switching
 ```bash
-# Save project-specific searches
-oboyu query save "Project Alpha specs requirements" --name alpha-docs
-oboyu query save "Project Beta api documentation" --name beta-docs
+# Save common search patterns in shell aliases
+alias alpha-search="oboyu query --db-path ~/indexes/alpha-docs.db"
+alias beta-search="oboyu query --db-path ~/indexes/beta-docs.db"
 
 # Quick switch between projects
 oboyu query run alpha-docs  # When working on Alpha
@@ -166,8 +166,8 @@ q "meeting notes" --days 7
 ### 2. Project-Specific Commands
 ```bash
 # Create project shortcuts
-alias work="oboyu query --index work"
-alias personal="oboyu query --index personal"
+alias work="oboyu query --db-path ~/indexes/work.db"
+alias personal="oboyu query --db-path ~/indexes/personal.db"
 
 # Usage
 work "performance review"
@@ -227,11 +227,12 @@ oboyu query "reports" --export - | ssh server "cat > results.txt"
 ### Cloud Storage Integration
 ```bash
 # Index cloud-synced folders
-oboyu index ~/Dropbox/Documents --name dropbox
-oboyu index ~/Google\ Drive/Work --name gdrive
+oboyu index ~/Dropbox/Documents --db-path ~/indexes/dropbox.db
+oboyu index ~/Google\ Drive/Work --db-path ~/indexes/gdrive.db
 
-# Search across cloud storage
-oboyu query "presentation" --index dropbox,gdrive
+# Search individual databases
+oboyu query "presentation" --db-path ~/indexes/dropbox.db
+oboyu query "presentation" --db-path ~/indexes/gdrive.db
 ```
 
 ## Productivity Tips
@@ -266,8 +267,8 @@ oboyu query history --frequent | head -5
 # Broad semantic search
 oboyu query "document about [topic]" --mode semantic --limit 50
 
-# Search by partial filename
-oboyu query "*.pdf" --name-only | grep -i "partial"
+# Search by content in PDF-like files (text content only)
+oboyu query "partial" | grep -i "pdf"
 
 # Search by date range when you last remember seeing it
 oboyu query "*" --from 2024-01-01 --to 2024-01-15

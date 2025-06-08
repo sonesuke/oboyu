@@ -34,7 +34,7 @@ oboyu query "bugdet reprot" --fuzzy --file-type pdf
 ### PDF-Specific Examples
 ```bash
 # Find research papers
-oboyu query "machine learning" --file-type pdf --index research
+oboyu query "machine learning" --file-type pdf --db-path ~/indexes/research.db
 
 # Find forms and applications
 oboyu query "application form" --file-type pdf
@@ -71,7 +71,7 @@ oboyu query "![image]" --file-type md
 ### Common Markdown Workflows
 ```bash
 # Find all README files
-oboyu query "*" --name "README.md"
+oboyu query "*" --db-path ~/indexes/example.db
 
 # Find documentation files
 oboyu query "documentation" --file-type md --path "**/docs/**"

@@ -16,13 +16,13 @@ You attend multiple meetings daily and need to track decisions, action items, an
 
 ```bash
 # Index all meeting notes
-oboyu index ~/Documents/meetings --name meetings \
+oboyu index ~/Documents/meetings --db-path ~/indexes/meetings.db \
     --include "*.md" \
     --include "*.txt" \
     --include "*.docx"
 
 # Add shared meeting folders
-oboyu index ~/Shared/team-meetings --name meetings --update
+oboyu index ~/Shared/team-meetings --db-path ~/indexes/meetings.db --update
 ```
 
 ### Pre-Meeting Preparation
@@ -33,7 +33,7 @@ oboyu index ~/Shared/team-meetings --name meetings --update
 oboyu query "meeting with Sarah marketing" --days 30
 
 # All meetings about a project
-oboyu query "Project Phoenix meeting" --index meetings
+oboyu query "Project Phoenix meeting" --db-path ~/indexes/meetings.db
 
 # Meetings with specific agenda items
 oboyu query "agenda budget discussion" --mode semantic
@@ -98,7 +98,7 @@ oboyu query "meeting NOT minutes" --days 3 --mode semantic
 ### Stakeholder Tracking
 ```bash
 # All meetings with specific client
-oboyu query "meeting Acme Corp" --index meetings
+oboyu query "meeting Acme Corp" --db-path ~/indexes/meetings.db
 
 # Executive decisions tracker
 oboyu query "CEO decided approved" --mode semantic
@@ -142,7 +142,7 @@ Preparing for a QBR by gathering all relevant meeting information:
 
 ```bash
 # 1. Find all Q4 meetings
-oboyu query "meeting" --from 2023-10-01 --to 2023-12-31 --index meetings
+oboyu query "meeting" --from 2023-10-01 --to 2023-12-31 --db-path ~/indexes/meetings.db
 
 # 2. Extract key metrics discussed
 oboyu query "revenue profit margin KPI" --from 2023-10-01 --mode semantic
@@ -181,7 +181,7 @@ standup_search "john"
 ### One-on-One Meeting Tracking
 ```bash
 # Find all 1:1s with manager
-oboyu query "1:1 one-on-one Sarah" --index meetings
+oboyu query "1:1 one-on-one Sarah" --db-path ~/indexes/meetings.db
 
 # Career development discussions
 oboyu query "career development growth goals" --mode semantic
@@ -222,7 +222,7 @@ For bilingual organizations:
 
 ```bash
 # Search Japanese meeting notes
-oboyu query "会議 議事録" --index meetings
+oboyu query "会議 議事録" --db-path ~/indexes/meetings.db
 
 # Find action items in Japanese
 oboyu query "アクション 担当 期限" 
@@ -231,7 +231,7 @@ oboyu query "アクション 担当 期限"
 oboyu query "meeting 会議 action アクション" --mode hybrid
 
 # Japanese names and titles
-oboyu query "山田さん 部長" --index meetings
+oboyu query "山田さん 部長" --db-path ~/indexes/meetings.db
 ```
 
 ## Meeting Note Organization Tips

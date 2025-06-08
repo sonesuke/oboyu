@@ -451,7 +451,7 @@ search_japanese_docs() {
     # Hybrid search for best results
     oboyu query "$query" \
         --mode hybrid \
-        --index japanese-docs \
+        --db-path ~/indexes/japanese-docs.db \
         --limit 10 \
         --context 300
 }

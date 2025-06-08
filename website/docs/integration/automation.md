@@ -63,7 +63,7 @@ log "Starting scheduled index update"
 for index_name in $(oboyu index list --format names); do
     log "Updating index: $index_name"
     
-    if oboyu index update --name "$index_name" >> "$LOG_FILE" 2>&1; then
+    if oboyu index update --db-path ~/indexes/example.db >> "$LOG_FILE" 2>&1; then
         log "Successfully updated $index_name"
     else
         log "Failed to update $index_name"
@@ -153,11 +153,11 @@ while read path event file; do
     case $event in
         CREATE|MODIFY|MOVED_TO)
             log "Indexing new/modified file: $path$file"
-            oboyu index "$path$file" --name "$INDEX_NAME" --update
+            oboyu index "$path$file" --db-path ~/indexes/example.db --update
             ;;
         DELETE)
             log "Removing deleted file: $path$file"
-            oboyu index remove "$path$file" --name "$INDEX_NAME"
+            oboyu index remove "$path$file" --db-path ~/indexes/example.db
             ;;
     esac
 done
@@ -548,7 +548,7 @@ MIN_FREE_SPACE_GB=5
 # Check index age
 check_index_age() {
     local index_name="$1"
-    local last_update=$(oboyu index info --name "$index_name" --format json | \
+    local last_update=$(oboyu index info --db-path ~/indexes/example.db --format json | \
                        jq -r '.last_updated')
     local age_days=$(( ($(date +%s) - $(date -d "$last_update" +%s)) / 86400 ))
     
@@ -665,7 +665,7 @@ for index in $(oboyu index list --format names); do
     echo "Backing up index: $index"
     
     # Get index file path
-    index_path=$(oboyu index info --name "$index" --format json | \
+    index_path=$(oboyu index info --db-path ~/indexes/example.db --format json | \
                 jq -r '.path')
     
     # Incremental backup using rsync

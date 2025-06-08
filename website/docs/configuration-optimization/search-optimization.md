@@ -133,7 +133,7 @@ Create reusable query patterns:
 # Save query template
 oboyu query save \
   "error {{CODE}} in {{FILE}}" \
-  --name error-search
+  --db-path ~/indexes/error-search.db
 
 # Use template
 oboyu query template error-search \
@@ -401,7 +401,7 @@ query:
 
 1. **Check Index Quality**
 ```bash
-oboyu index analyze --name personal
+oboyu index analyze --db-path ~/indexes/personal.db
 ```
 
 2. **Test Query Parsing**

@@ -16,15 +16,15 @@ Managing personal notes, ideas, learning resources, and life documentation acros
 
 ```bash
 # Index all personal notes
-oboyu index ~/Notes --name personal \
+oboyu index ~/Notes --db-path ~/indexes/personal.db \
     --include "*.md" \
     --include "*.txt" \
     --include "*.org"
 
 # Add specific categories
-oboyu index ~/Notes/Journal --name journal --update
-oboyu index ~/Notes/Learning --name learning --update
-oboyu index ~/Notes/Ideas --name ideas --update
+oboyu index ~/Notes/Journal --db-path ~/indexes/journal.db --update
+oboyu index ~/Notes/Learning --db-path ~/indexes/learning.db --update
+oboyu index ~/Notes/Ideas --db-path ~/indexes/ideas.db --update
 ```
 
 ### Daily Note-Taking Workflow
@@ -32,10 +32,10 @@ oboyu index ~/Notes/Ideas --name ideas --update
 #### Morning Pages
 ```bash
 # Find today's journal entry
-oboyu query "date: $(date +%Y-%m-%d)" --index journal
+oboyu query "date: $(date +%Y-%m-%d)" --db-path ~/indexes/journal.db
 
 # Review yesterday's thoughts
-oboyu query "reflection thoughts" --days 1 --index journal
+oboyu query "reflection thoughts" --days 1 --db-path ~/indexes/journal.db
 
 # Find recurring themes
 oboyu query "grateful thankful appreciation" --days 30 --mode semantic
@@ -44,10 +44,10 @@ oboyu query "grateful thankful appreciation" --days 30 --mode semantic
 #### Idea Capture
 ```bash
 # Find related ideas
-oboyu query "app idea mobile" --index ideas --mode semantic
+oboyu query "app idea mobile" --db-path ~/indexes/ideas.db --mode semantic
 
 # Find unfinished ideas
-oboyu query "TODO elaborate expand on this" --index ideas
+oboyu query "TODO elaborate expand on this" --db-path ~/indexes/ideas.db
 
 # Connect ideas across time
 oboyu query "similar to [current idea]" --mode semantic --days 365
@@ -60,19 +60,19 @@ Organizing study notes, course materials, book summaries, and skill development 
 ### Learning Management
 ```bash
 # Find notes on specific topic
-oboyu query "python decorators" --index learning
+oboyu query "python decorators" --db-path ~/indexes/learning.db
 
 # Track learning progress
 oboyu query "learned: understood: mastered:" --days 30
 
 # Find practice exercises
-oboyu query "exercise: practice: try this:" --index learning
+oboyu query "exercise: practice: try this:" --db-path ~/indexes/learning.db
 ```
 
 ### Book Notes and Summaries
 ```bash
 # Find book summaries
-oboyu query "book: title: author:" --index personal
+oboyu query "book: title: author:" --db-path ~/indexes/personal.db
 
 # Search quotes and highlights
 oboyu query "quote: highlight: important:" --context 200
@@ -88,7 +88,7 @@ Tracking personal projects, goals, habits, and life administration.
 ### Goal Tracking
 ```bash
 # Find current goals
-oboyu query "goal: objective: target:" --index personal
+oboyu query "goal: objective: target:" --db-path ~/indexes/personal.db
 
 # Track progress
 oboyu query "progress: milestone: achieved:" --days 30
@@ -103,7 +103,7 @@ oboyu query "Q1 2024 goals" --mode semantic
 oboyu query "habit: tracker: streak:" --days 7
 
 # Analyze patterns
-oboyu query "missed skipped failed" --days 30 --index journal
+oboyu query "missed skipped failed" --days 30 --db-path ~/indexes/journal.db
 
 # Find motivation notes
 oboyu query "why important motivation" --mode semantic
@@ -117,7 +117,7 @@ oboyu query "why important motivation" --mode semantic
 oboyu query "remember when that time" --mode semantic
 
 # Search by people
-oboyu query "with Mom Dad family" --index journal
+oboyu query "with Mom Dad family" --db-path ~/indexes/journal.db
 
 # Find by location
 oboyu query "at Paris Tokyo vacation" --mode semantic
@@ -126,7 +126,7 @@ oboyu query "at Paris Tokyo vacation" --mode semantic
 ### Reflection and Insights
 ```bash
 # Find insights and learnings
-oboyu query "realized: learned: insight:" --index journal
+oboyu query "realized: learned: insight:" --db-path ~/indexes/journal.db
 
 # Track personal growth
 oboyu query "improved better than before" --mode semantic --days 365
@@ -150,16 +150,16 @@ oboyu query "accomplished achieved completed proud" --year 2023 --mode semantic
 oboyu query "learned lesson mistake growth" --year 2023 --mode semantic
 
 # 4. Find memorable moments
-oboyu query "memorable amazing wonderful special" --year 2023 --index journal
+oboyu query "memorable amazing wonderful special" --year 2023 --db-path ~/indexes/journal.db
 
 # 5. Track goal completion
 oboyu query "goal achieved completed ✓" --year 2023
 
 # 6. Identify themes
-oboyu query --word-frequency --year 2023 --index journal --top 20
+oboyu query --word-frequency --year 2023 --db-path ~/indexes/journal.db --top 20
 
 # 7. Export for review document
-oboyu query "2023" --index personal --export year-review-2023.txt
+oboyu query "2023" --db-path ~/indexes/personal.db --export year-review-2023.txt
 ```
 
 ## Personal Productivity Patterns
@@ -170,7 +170,7 @@ oboyu query "2023" --index personal --export year-review-2023.txt
 oboyu query "inbox: capture: process:" --status pending
 
 # Next actions
-oboyu query "@next @action context:" --index personal
+oboyu query "@next @action context:" --db-path ~/indexes/personal.db
 
 # Waiting for
 oboyu query "@waiting @blocked waiting for" 
@@ -182,13 +182,13 @@ oboyu query "added: modified:" --days 7 --export weekly-review.txt
 ### Zettelkasten Method
 ```bash
 # Find permanent notes
-oboyu query "id: [[" --index zettelkasten
+oboyu query "id: [[" --db-path ~/indexes/zettelkasten.db
 
 # Find connections
 oboyu query "[[.*]]" --regex --file current-note.md
 
 # Find orphan notes
-oboyu query "*" --no-links --index zettelkasten
+oboyu query "*" --no-links --db-path ~/indexes/zettelkasten.db
 ```
 
 ## Creative Writing and Ideas
@@ -196,7 +196,7 @@ oboyu query "*" --no-links --index zettelkasten
 ### Story and Content Ideas
 ```bash
 # Find story seeds
-oboyu query "what if imagine suppose" --index ideas
+oboyu query "what if imagine suppose" --db-path ~/indexes/ideas.db
 
 # Character development
 oboyu query "character: personality: trait:" --mode semantic
@@ -208,7 +208,7 @@ oboyu query "conflict twist revelation" --mode semantic
 ### Blog Post Management
 ```bash
 # Find draft posts
-oboyu query "draft: status: unpublished" --index blog
+oboyu query "draft: status: unpublished" --db-path ~/indexes/blog.db
 
 # Research for posts
 oboyu query "research: source: reference:" --related-to current-post.md
@@ -222,7 +222,7 @@ oboyu query "timeless evergreen always relevant" --mode semantic
 ### Contact and Relationship Notes
 ```bash
 # Find notes about people
-oboyu query "met talked with discussed" --index journal
+oboyu query "met talked with discussed" --db-path ~/indexes/journal.db
 
 # Birthday and important dates
 oboyu query "birthday anniversary important date" 
@@ -237,7 +237,7 @@ oboyu query "likes enjoys interested in gift idea" --mode semantic
 oboyu query "workout exercise gym" --days 30
 
 # Track symptoms or health notes
-oboyu query "feeling symptom doctor health" --index journal
+oboyu query "feeling symptom doctor health" --db-path ~/indexes/journal.db
 
 # Diet and nutrition
 oboyu query "ate meal calories nutrition" --days 7
@@ -249,13 +249,13 @@ For bilingual note-takers:
 
 ```bash
 # Japanese diary entries
-oboyu query "日記 今日" --index journal
+oboyu query "日記 今日" --db-path ~/indexes/journal.db
 
 # Mixed language notes
 oboyu query "meeting 会議 notes メモ" --mode hybrid
 
 # Study notes
-oboyu query "勉強 学習 覚える" --index learning
+oboyu query "勉強 学習 覚える" --db-path ~/indexes/learning.db
 
 # Personal reminders
 oboyu query "忘れない 重要 リマインダー"
@@ -321,7 +321,7 @@ morning_notes() {
 # Reflect on the day
 evening_review() {
     echo "=== Today's Entries ==="
-    oboyu query "*" --days 0 --index journal
+    oboyu query "*" --days 0 --db-path ~/indexes/journal.db
     
     echo "=== Gratitude ==="
     oboyu query "grateful thankful appreciate" --days 0
@@ -365,10 +365,10 @@ new_note "book" "atomic-habits"
 ### Note-Taking Analytics
 ```bash
 # Most active topics
-oboyu query "*" --index personal --word-frequency --top 20
+oboyu query "*" --db-path ~/indexes/personal.db --word-frequency --top 20
 
 # Note creation frequency
-oboyu query "*" --index personal --timeline --group-by day
+oboyu query "*" --db-path ~/indexes/personal.db --timeline --group-by day
 
 # Most connected notes
 oboyu query "[[*]]" --regex --stats links

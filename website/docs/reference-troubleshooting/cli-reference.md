@@ -55,7 +55,7 @@ oboyu index ~/Documents
 oboyu index ~/docs ~/notes ~/projects
 
 # Index with custom name
-oboyu index ~/work --name work-docs
+oboyu index ~/work --db-path ~/indexes/work-docs.db
 
 # Index specific file types
 oboyu index ~/code --include "*.py" --include "*.md"
@@ -68,7 +68,7 @@ oboyu index ~/all --exclude "*.tmp" --exclude "*/cache/*"
 
 | Option | Description | Default | Example |
 |--------|-------------|---------|---------|
-| `--name NAME` | Index name | `default` | `--name personal` |
+| `--db-path ~/indexes/NAME.db` | Index name | `default` | `--db-path ~/indexes/personal.db` |
 | `--include PATTERN` | Include file pattern | `*` | `--include "*.md"` |
 | `--exclude PATTERN` | Exclude file pattern | None | `--exclude "*.tmp"` |
 | `--chunk-size SIZE` | Chunk size in tokens | `1024` | `--chunk-size 512` |
@@ -96,36 +96,36 @@ oboyu index list --format json
 Show index information:
 ```bash
 # Info about specific index
-oboyu index info --name personal
+oboyu index info --db-path ~/indexes/personal.db
 
 # Detailed information
-oboyu index info --name personal --detailed
+oboyu index info --db-path ~/indexes/personal.db --detailed
 
 # Show configuration
-oboyu index info --name personal --show-config
+oboyu index info --db-path ~/indexes/personal.db --show-config
 ```
 
 ##### `oboyu index update`
 Update existing indices:
 ```bash
 # Update specific index
-oboyu index update --name personal
+oboyu index update --db-path ~/indexes/personal.db
 
 # Update all indices
 oboyu index update --all
 
 # Update with time filter
-oboyu index update --name personal --modified-after "1 week ago"
+oboyu index update --db-path ~/indexes/personal.db --modified-after "1 week ago"
 ```
 
 ##### `oboyu index delete`
 Delete indices:
 ```bash
 # Delete specific index
-oboyu index delete --name old-index
+oboyu index delete --db-path ~/indexes/old-index.db
 
 # Delete with confirmation
-oboyu index delete --name old-index --force
+oboyu index delete --db-path ~/indexes/old-index.db --force
 
 # Delete all indices
 oboyu index delete --all --force
@@ -135,23 +135,23 @@ oboyu index delete --all --force
 Optimize index performance:
 ```bash
 # Optimize specific index
-oboyu index optimize --name personal
+oboyu index optimize --db-path ~/indexes/personal.db
 
 # Optimize all indices
 oboyu index optimize --all
 
 # Optimize with vacuum
-oboyu index optimize --name personal --vacuum
+oboyu index optimize --db-path ~/indexes/personal.db --vacuum
 ```
 
 ##### `oboyu index verify`
 Verify index integrity:
 ```bash
 # Verify specific index
-oboyu index verify --name personal
+oboyu index verify --db-path ~/indexes/personal.db
 
 # Verify and repair
-oboyu index verify --name personal --repair
+oboyu index verify --db-path ~/indexes/personal.db --repair
 
 # Verify all indices
 oboyu index verify --all
@@ -174,7 +174,7 @@ oboyu query "search terms" [OPTIONS]
 oboyu query "machine learning"
 
 # Search specific index
-oboyu query "python tutorial" --index programming
+oboyu query "python tutorial" --db-path ~/indexes/programming.db
 
 # Search with filters
 oboyu query "meeting" --file-type md --days 7
@@ -190,7 +190,7 @@ oboyu query "hybrid search" --mode hybrid
 | Option | Description | Default | Example |
 |--------|-------------|---------|---------|
 | `--mode MODE` | Search mode | `hybrid` | `--mode vector` |
-| `--index NAME` | Target index | `default` | `--index work` |
+| `--db-path ~/indexes/NAME.db` | Target index | `default` | `--db-path ~/indexes/work.db` |
 | `--limit N` | Max results | `10` | `--limit 20` |
 | `--file-type EXT` | Filter by file type | None | `--file-type md,txt` |
 | `--days N` | Filter by days | None | `--days 30` |
@@ -224,7 +224,7 @@ oboyu query "hybrid search" --mode hybrid
 oboyu query --interactive
 
 # Interactive with specific index
-oboyu query --interactive --index work
+oboyu query --interactive --db-path ~/indexes/work.db
 ```
 
 #### Query History
@@ -363,7 +363,7 @@ Start MCP server:
 oboyu mcp serve
 
 # Server with specific index
-oboyu mcp serve --index ~/.oboyu/personal.db
+oboyu mcp serve --db-path ~/indexes/.db~/.oboyu/personal.db
 
 # Server with configuration
 oboyu mcp serve --config ~/.oboyu/mcp.yaml
@@ -376,7 +376,7 @@ oboyu mcp serve --debug
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--index PATH` | Index file path | `--index ~/.oboyu/main.db` |
+| `--db-path ~/indexes/PATH.db` | Index file path | `--db-path ~/indexes/.db~/.oboyu/main.db` |
 | `--config PATH` | MCP config file | `--config mcp.yaml` |
 | `--max-results N` | Max search results | `--max-results 20` |
 | `--timeout N` | Request timeout | `--timeout 30` |
@@ -452,7 +452,7 @@ Performance benchmarking.
 oboyu benchmark
 
 # Benchmark specific index
-oboyu benchmark --index personal
+oboyu benchmark --db-path ~/indexes/personal.db
 
 # Benchmark search performance
 oboyu benchmark --search-only
@@ -502,34 +502,34 @@ Oboyu uses standard exit codes:
 ### Personal Knowledge Base
 ```bash
 # Setup
-oboyu index ~/Notes --name personal --chunk-size 1536
+oboyu index ~/Notes --db-path ~/indexes/personal.db --chunk-size 1536
 oboyu config set indexer.use_reranker true
 
 # Daily usage
-oboyu query "project ideas" --index personal
+oboyu query "project ideas" --db-path ~/indexes/personal.db
 oboyu query "meeting with john" --days 30
 ```
 
 ### Software Development
 ```bash
 # Setup
-oboyu index ~/code --include "*.py" --include "*.md" --name code
-oboyu index ~/docs --name documentation
+oboyu index ~/code --include "*.py" --include "*.md" --db-path ~/indexes/code.db
+oboyu index ~/docs --db-path ~/indexes/documentation.db
 
 # Usage
-oboyu query "authentication implementation" --index code
-oboyu query "API documentation" --index documentation --mode hybrid
+oboyu query "authentication implementation" --db-path ~/indexes/code.db
+oboyu query "API documentation" --db-path ~/indexes/documentation.db --mode hybrid
 ```
 
 ### Research Papers
 ```bash
 # Setup
-oboyu index ~/papers --include "*.pdf" --name papers --chunk-size 2048
+oboyu index ~/papers --include "*.pdf" --db-path ~/indexes/papers.db --chunk-size 2048
 oboyu config set indexer.chunk_overlap 512
 
 # Usage
-oboyu query "machine learning optimization" --index papers --mode vector
-oboyu query "methodology section" --index papers --context 1000
+oboyu query "machine learning optimization" --db-path ~/indexes/papers.db --mode vector
+oboyu query "methodology section" --db-path ~/indexes/papers.db --context 1000
 ```
 
 ### Team Documentation
@@ -538,10 +538,10 @@ oboyu query "methodology section" --index papers --context 1000
 oboyu index ~/team-docs \
   --include "*.md" \
   --exclude "*/archive/*" \
-  --name team
+  --db-path ~/indexes/team.db
 
 # Scheduled updates
-oboyu index update --name team --modified-after "1 day ago"
+oboyu index update --db-path ~/indexes/team.db --modified-after "1 day ago"
 ```
 
 ## Tips and Best Practices
