@@ -60,13 +60,13 @@ Claude will use Oboyu to search your indexed documents and provide relevant info
 
 ```bash
 # Index your documents
-oboyu index ~/Documents --name main
+oboyu index ~/Documents --db-path ~/indexes/main.db
 
 # Optimize for MCP usage
 oboyu index ~/Documents \
   --chunk-size 1024 \
   --use-reranker \
-  --name mcp-index
+  --db-path ~/indexes/mcp-index.db
 ```
 
 ### MCP Server Configuration
@@ -99,7 +99,7 @@ oboyu mcp serve
 oboyu mcp serve --config ~/.config/oboyu/mcp-config.yaml
 
 # Start with specific index
-oboyu mcp serve --index ~/research/index.db
+oboyu mcp serve --db-path ~/indexes/.db~/research/index.db
 
 # Debug mode
 oboyu mcp serve --debug
@@ -316,13 +316,13 @@ oboyu mcp create-index \
 1. **Separate Indices by Purpose**
 ```bash
 # Personal knowledge base
-oboyu index ~/Personal --name personal-mcp
+oboyu index ~/Personal --db-path ~/indexes/personal-mcp.db
 
 # Work documents
-oboyu index ~/Work --name work-mcp
+oboyu index ~/Work --db-path ~/indexes/work-mcp.db
 
 # Research papers
-oboyu index ~/Research --name research-mcp
+oboyu index ~/Research --db-path ~/indexes/research-mcp.db
 ```
 
 2. **Optimize for Q&A**
@@ -395,7 +395,7 @@ oboyu mcp serve --debug --verbose
 
 ```bash
 # Optimize index for MCP
-oboyu mcp optimize --index personal
+oboyu mcp optimize --db-path ~/indexes/personal.db
 
 # Monitor performance
 oboyu mcp monitor --metrics

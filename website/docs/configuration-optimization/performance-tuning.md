@@ -14,7 +14,7 @@ Achieve blazing-fast search performance with these optimization techniques. Lear
 
 ```bash
 # Benchmark current performance
-oboyu benchmark --index personal
+oboyu benchmark --db-path ~/indexes/personal.db
 
 # Detailed performance metrics
 oboyu query "test search" --metrics
@@ -179,13 +179,13 @@ oboyu cache stats
 #### Index Optimization
 ```bash
 # Optimize vector index
-oboyu optimize vector --index personal
+oboyu optimize vector --db-path ~/indexes/personal.db
 
 # Optimize BM25 index
-oboyu optimize bm25 --index personal
+oboyu optimize bm25 --db-path ~/indexes/personal.db
 
 # Full optimization
-oboyu optimize all --index personal
+oboyu optimize all --db-path ~/indexes/personal.db
 ```
 
 ### Result Processing
@@ -216,8 +216,8 @@ oboyu query "search term" --format jsonl | \
 #### Sharding
 ```bash
 # Create shards by date
-oboyu index ~/Documents/2023 --name shard-2023
-oboyu index ~/Documents/2024 --name shard-2024
+oboyu index ~/Documents/2023 --db-path ~/indexes/shard-2023.db
+oboyu index ~/Documents/2024 --db-path ~/indexes/shard-2024.db
 
 # Query across shards
 oboyu query "search term" --shards shard-2023,shard-2024
@@ -321,7 +321,7 @@ oboyu profile io --trace
 oboyu query slowlog --threshold 100ms
 
 # Analyze index hotspots
-oboyu analyze hotspots --index personal
+oboyu analyze hotspots --db-path ~/indexes/personal.db
 
 # Resource usage report
 oboyu report resources --detailed
@@ -395,7 +395,7 @@ oboyu index ~/Documents --profile-memory
 oboyu index analyze --fragmentation
 
 # Rebuild if needed
-oboyu index rebuild --index personal
+oboyu index rebuild --db-path ~/indexes/personal.db
 
 # Optimize query patterns
 oboyu query optimize "slow query"

@@ -16,14 +16,14 @@ Managing hundreds of research papers across multiple topics, tracking citations,
 
 ```bash
 # Index research papers
-oboyu index ~/Research/Papers --name research \
+oboyu index ~/Research/Papers --db-path ~/indexes/research.db \
     --include "*.pdf" \
     --include "*.tex" \
     --include "*.bib"
 
 # Add thesis drafts and notes
-oboyu index ~/Research/Thesis --name thesis --update
-oboyu index ~/Research/Notes --name research-notes --update
+oboyu index ~/Research/Thesis --db-path ~/indexes/thesis.db --update
+oboyu index ~/Research/Notes --db-path ~/indexes/research-notes.db --update
 ```
 
 ### Literature Review Workflow
@@ -31,7 +31,7 @@ oboyu index ~/Research/Notes --name research-notes --update
 #### Finding Relevant Papers
 ```bash
 # Search by topic
-oboyu query "machine learning optimization" --index research
+oboyu query "machine learning optimization" --db-path ~/indexes/research.db
 
 # Find recent papers
 oboyu query "neural networks 2023 2024" --mode hybrid
@@ -59,7 +59,7 @@ Coordinating multiple research projects, tracking student progress, and managing
 ### Project Management
 ```bash
 # Find papers by project
-oboyu query "Project-ID: ML-OPT-2024" --index research
+oboyu query "Project-ID: ML-OPT-2024" --db-path ~/indexes/research.db
 
 # Track student contributions
 oboyu query "author: PhD-Student-Name" --file-type pdf,tex
@@ -77,7 +77,7 @@ oboyu query "impact significance contribution" --mode semantic
 oboyu query "preliminary results findings" --file-type pdf
 
 # Find methodology descriptions
-oboyu query "methodology approach technique" --index research
+oboyu query "methodology approach technique" --db-path ~/indexes/research.db
 ```
 
 ## Scenario: Academic Librarian
@@ -102,7 +102,7 @@ oboyu query "abstract: novel approach deep learning" --mode semantic
 oboyu query "*.pdf" --not "author: title:" --regex
 
 # Find duplicate papers
-oboyu query --duplicates --index research
+oboyu query --duplicates --db-path ~/indexes/research.db
 
 # Find papers needing OCR
 oboyu query "*.pdf" --min-words 100 --file-type pdf
@@ -143,7 +143,7 @@ Conducting a systematic review on "AI in Healthcare":
 
 ```bash
 # 1. Initial broad search
-oboyu query "artificial intelligence healthcare medical" --index research --export initial-search.txt
+oboyu query "artificial intelligence healthcare medical" --db-path ~/indexes/research.db --export initial-search.txt
 
 # 2. Refine by methodology
 oboyu query "AI healthcare clinical trial" --mode semantic
@@ -222,7 +222,7 @@ For Japanese research papers:
 
 ```bash
 # Search Japanese papers
-oboyu query "機械学習 深層学習" --index research
+oboyu query "機械学習 深層学習" --db-path ~/indexes/research.db
 
 # Find papers with English abstracts
 oboyu query "Abstract 概要" --file-type pdf
@@ -231,7 +231,7 @@ oboyu query "Abstract 概要" --file-type pdf
 oboyu query "深層学習 deep learning" --mode hybrid
 
 # Japanese author names
-oboyu query "著者: 山田 田中" --index research
+oboyu query "著者: 山田 田中" --db-path ~/indexes/research.db
 ```
 
 ## Research Note Organization
@@ -259,13 +259,13 @@ date: 2024-01-15
 ### Literature Database
 ```bash
 # Create paper database
-oboyu index ~/Research/Papers --extract-metadata --name paper-db
+oboyu index ~/Research/Papers --extract-metadata --db-path ~/indexes/paper-db.db
 
 # Search by metadata
-oboyu query "year: 2023 AND venue: ICML" --index paper-db
+oboyu query "year: 2023 AND venue: ICML" --db-path ~/indexes/paper-db.db
 
 # Export for reference manager
-oboyu query "*" --index paper-db --format bibtex --export references.bib
+oboyu query "*" --db-path ~/indexes/paper-db.db --format bibtex --export references.bib
 ```
 
 ## Integration with Research Tools
@@ -299,13 +299,13 @@ oboyu query "author: Smith year: 2023" --update-key Smith2023
 ### Daily Research Routine
 ```bash
 # Morning: Check new papers
-oboyu query "*" --days 1 --index research
+oboyu query "*" --days 1 --db-path ~/indexes/research.db
 
 # Focus session: Related work
 oboyu query "related to current-paper.pdf" --mode semantic
 
 # Evening: Update notes
-oboyu query "TODO: read" --index research-notes
+oboyu query "TODO: read" --db-path ~/indexes/research-notes.db
 ```
 
 ### Paper Reading Workflow

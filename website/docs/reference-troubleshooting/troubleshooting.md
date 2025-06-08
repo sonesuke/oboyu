@@ -86,10 +86,10 @@ pip install oboyu
 oboyu index status ~/Documents --verbose
 
 # List indexed files
-oboyu index list-files --name personal
+oboyu index list-files --db-path ~/indexes/personal.db
 
 # Check file patterns
-oboyu index info --name personal --show-patterns
+oboyu index info --db-path ~/indexes/personal.db --show-patterns
 ```
 
 **Common Causes & Solutions**:
@@ -162,7 +162,7 @@ cp ~/.oboyu/index.db ~/.oboyu/index.db.backup
 oboyu index ~/Documents --force --clean
 
 # Verify integrity
-oboyu index verify --name personal
+oboyu index verify --db-path ~/indexes/personal.db
 ```
 
 ## Search Issues
@@ -257,10 +257,10 @@ oboyu query "search term" --file-type md --days 30
 **Optimization**:
 ```bash
 # Optimize index
-oboyu index optimize --name personal
+oboyu index optimize --db-path ~/indexes/personal.db
 
 # Check index size
-oboyu index info --name personal
+oboyu index info --db-path ~/indexes/personal.db
 
 # Move to SSD storage
 mv ~/.oboyu/index.db /ssd/oboyu/
@@ -423,7 +423,7 @@ pkill -f oboyu
 rm -f ~/.oboyu/*.lock
 
 # Repair database
-oboyu index repair --name personal
+oboyu index repair --db-path ~/indexes/personal.db
 ```
 
 ### Database Corruption
@@ -433,13 +433,13 @@ oboyu index repair --name personal
 **Solutions**:
 ```bash
 # Check database integrity
-oboyu index verify --name personal
+oboyu index verify --db-path ~/indexes/personal.db
 
 # Attempt repair
-oboyu index repair --name personal --force
+oboyu index repair --db-path ~/indexes/personal.db --force
 
 # Last resort: rebuild
-oboyu index rebuild --name personal
+oboyu index rebuild --db-path ~/indexes/personal.db
 ```
 
 ## MCP Server Issues
@@ -475,7 +475,7 @@ oboyu mcp serve --timeout 60
 oboyu mcp serve --max-results 5
 
 # Optimize index
-oboyu index optimize --name personal
+oboyu index optimize --db-path ~/indexes/personal.db
 ```
 
 ## General Debugging
@@ -552,7 +552,7 @@ pip uninstall oboyu
 pip install oboyu
 
 # Restore from backup
-oboyu index restore ~/backup/oboyu-index.db --name personal
+oboyu index restore ~/backup/oboyu-index.db --db-path ~/indexes/personal.db
 ```
 
 Remember: Always backup important indices before making major changes!

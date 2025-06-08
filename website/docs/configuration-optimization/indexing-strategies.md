@@ -35,13 +35,13 @@ For personal notes or small projects:
 
 ```bash
 # Simple one-time index
-oboyu index ~/Documents --name personal
+oboyu index ~/Documents --db-path ~/indexes/personal.db
 
 # With custom settings
 oboyu index ~/Notes \
   --chunk-size 1536 \
   --overlap 384 \
-  --name notes
+  --db-path ~/indexes/notes.db
 ```
 
 **Best Practices:**
@@ -55,12 +55,12 @@ For team documentation or research:
 
 ```bash
 # Index by category
-oboyu index ~/docs/api --name api-docs
-oboyu index ~/docs/guides --name guides
-oboyu index ~/docs/reference --name reference
+oboyu index ~/docs/api --db-path ~/indexes/api-docs.db
+oboyu index ~/docs/guides --db-path ~/indexes/guides.db
+oboyu index ~/docs/reference --db-path ~/indexes/reference.db
 
 # Merge indices for unified search
-oboyu index merge api-docs guides reference --name all-docs
+oboyu index merge api-docs guides reference --db-path ~/indexes/all-docs.db
 ```
 
 **Best Practices:**
@@ -76,14 +76,14 @@ For enterprise repositories:
 # Batch indexing by directory
 for dir in ~/repository/*/; do
     oboyu index "$dir" \
-      --name "$(basename $dir)" \
+      --db-path ~/indexes/example.db \
       --chunk-size 512 \
       --overlap 128
 done
 
 # Parallel indexing
 find ~/docs -type d -maxdepth 1 | \
-  parallel -j 4 'oboyu index {} --name {/}'
+  parallel -j 4 'oboyu index {} --db-path ~/indexes/.db{/}'
 ```
 
 **Best Practices:**
@@ -135,7 +135,7 @@ oboyu index ~/Documents --update
 oboyu index ~/Documents --update --prune
 
 # Clean up orphaned entries
-oboyu index clean --name personal
+oboyu index clean --db-path ~/indexes/personal.db
 ```
 
 ## Optimizing Chunk Strategies
@@ -217,9 +217,9 @@ oboyu index ~/multilingual \
   --chunk-by-language
 
 # Separate indices by language
-oboyu index ~/docs/en --name docs-en
-oboyu index ~/docs/ja --name docs-ja
-oboyu index ~/docs/zh --name docs-zh
+oboyu index ~/docs/en --db-path ~/indexes/docs-en.db
+oboyu index ~/docs/ja --db-path ~/indexes/docs-ja.db
+oboyu index ~/docs/zh --db-path ~/indexes/docs-zh.db
 ```
 
 ## Performance Optimization
@@ -257,10 +257,10 @@ oboyu index ~/Documents \
   --db-path /ssd/oboyu/index.db
 
 # Compress index
-oboyu index optimize --name personal
+oboyu index optimize --db-path ~/indexes/personal.db
 
 # Check index size
-oboyu index info --name personal --detailed
+oboyu index info --db-path ~/indexes/personal.db --detailed
 ```
 
 ## Advanced Indexing Patterns
@@ -312,20 +312,20 @@ oboyu query "API" --filter "path:/docs/api/*"
 
 ```bash
 # Verify index integrity
-oboyu index verify --name personal
+oboyu index verify --db-path ~/indexes/personal.db
 
 # Check for issues
-oboyu index diagnose --name personal
+oboyu index diagnose --db-path ~/indexes/personal.db
 
 # Repair if needed
-oboyu index repair --name personal
+oboyu index repair --db-path ~/indexes/personal.db
 ```
 
 ### Content Quality
 
 ```bash
 # Find duplicate content
-oboyu index duplicates --name personal
+oboyu index duplicates --db-path ~/indexes/personal.db
 
 # Find empty or tiny files
 oboyu index ~/Documents \
@@ -333,7 +333,7 @@ oboyu index ~/Documents \
   --report-skipped
 
 # Analyze index quality
-oboyu index analyze --name personal
+oboyu index analyze --db-path ~/indexes/personal.db
 ```
 
 ## Indexing Workflows
@@ -348,20 +348,20 @@ oboyu index analyze --name personal
 oboyu index ./src \
   --include "*.py,*.js" \
   --exclude "*test*" \
-  --name code
+  --db-path ~/indexes/code.db
 
 # Index documentation  
 oboyu index ./docs \
   --include "*.md,*.rst" \
-  --name docs
+  --db-path ~/indexes/docs.db
 
 # Index comments from code
 oboyu index ./src \
   --extract-comments \
-  --name comments
+  --db-path ~/indexes/comments.db
 
 # Combine for unified search
-oboyu index merge code docs comments --name project
+oboyu index merge code docs comments --db-path ~/indexes/project.db
 ```
 
 ### Research Papers
@@ -373,18 +373,18 @@ oboyu index merge code docs comments --name project
 # Index by year
 for year in {2020..2024}; do
   oboyu index ~/papers/$year \
-    --name "papers-$year" \
+    --db-path ~/indexes/example.db \
     --chunk-size 2048 \
     --extract-metadata
 done
 
 # Create master index
-oboyu index merge papers-* --name all-papers
+oboyu index merge papers-* --db-path ~/indexes/all-papers.db
 
 # Extract citations
 oboyu index ~/papers \
   --extract-citations \
-  --name citations
+  --db-path ~/indexes/citations.db
 ```
 
 ## Monitoring and Maintenance
@@ -396,7 +396,7 @@ oboyu index ~/papers \
 oboyu index health --all
 
 # Monitor growth
-oboyu index stats --name personal --timeline
+oboyu index stats --db-path ~/indexes/personal.db --timeline
 
 # Set up alerts
 oboyu index monitor \

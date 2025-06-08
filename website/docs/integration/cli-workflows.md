@@ -16,7 +16,7 @@ Master Oboyu's command-line interface with these practical workflow examples. Le
 oboyu [command] [subcommand] [options] [arguments]
 
 # Examples:
-oboyu index ~/Documents --name personal
+oboyu index ~/Documents --db-path ~/indexes/personal.db
 oboyu query "search term" --limit 10
 oboyu config set query.top_k 20
 ```
@@ -237,7 +237,7 @@ daily_maintenance() {
     # Update indices
     for index in $(oboyu index list --format names); do
         log "Updating index: $index"
-        oboyu index update --name "$index" --quiet
+        oboyu index update --db-path ~/indexes/example.db --quiet
     done
     
     # Clean old entries
@@ -366,8 +366,8 @@ alias qmeeting='oboyu query "meeting" --days 7'
 alias qrecent='oboyu query "*" --days 1 --sort date'
 
 # Project-specific
-alias qwork='oboyu query --index work'
-alias qpersonal='oboyu query --index personal'
+alias qwork='oboyu query --db-path ~/indexes/work.db'
+alias qpersonal='oboyu query --db-path ~/indexes/personal.db'
 ```
 
 ### Zsh Functions
@@ -446,13 +446,13 @@ jobs:
       
       - name: Index documentation
         run: |
-          oboyu index ./docs --name docs
-          oboyu index ./*.md --name readme --update
+          oboyu index ./docs --db-path ~/indexes/docs.db
+          oboyu index ./*.md --db-path ~/indexes/readme.db --update
       
       - name: Test search
         run: |
-          oboyu query "installation" --index docs
-          oboyu query "contributing" --index readme
+          oboyu query "installation" --db-path ~/indexes/docs.db
+          oboyu query "contributing" --db-path ~/indexes/readme.db
       
       - name: Upload index
         uses: actions/upload-artifact@v3
@@ -534,7 +534,7 @@ search_index() {
     local index="$1"
     local query="$2"
     echo "[$index]"
-    oboyu query "$query" --index "$index" --limit 3
+    oboyu query "$query" --db-path ~/indexes/example.db --limit 3
 }
 
 export -f search_index

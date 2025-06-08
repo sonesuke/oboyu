@@ -16,7 +16,7 @@ Your team maintains multiple projects with extensive documentation spread across
 
 ```bash
 # Index all technical documentation
-oboyu index ~/dev/projects --name tech-docs \
+oboyu index ~/dev/projects --db-path ~/indexes/tech-docs.db \
     --include "*.md" \
     --include "*.rst" \
     --include "*.txt" \
@@ -24,7 +24,7 @@ oboyu index ~/dev/projects --name tech-docs \
     --include "**/README*"
 
 # Add API documentation
-oboyu index ~/dev/api-docs --name api-docs --update
+oboyu index ~/dev/api-docs --db-path ~/indexes/api-docs.db --update
 ```
 
 ### Daily Developer Workflows
@@ -32,7 +32,7 @@ oboyu index ~/dev/api-docs --name api-docs --update
 #### Finding API Endpoints
 ```bash
 # Search for specific endpoint
-oboyu query "POST /api/users" --index api-docs
+oboyu query "POST /api/users" --db-path ~/indexes/api-docs.db
 
 # Find all authentication endpoints
 oboyu query "endpoint auth OR authentication" --mode semantic
@@ -116,7 +116,7 @@ Maintaining documentation for an open source project with contributors worldwide
 ### Contributor Documentation
 ```bash
 # Find contribution guidelines
-oboyu query "contributing pull request" --name "CONTRIBUTING*"
+oboyu query "contributing pull request" --db-path ~/indexes/example.db
 
 # Search for setup instructions
 oboyu query "development setup environment" --mode semantic
@@ -227,9 +227,9 @@ oboyu query "review: consider alternative" --path "**/reviews/**"
 ### Onboarding New Developers
 ```bash
 # Create onboarding search set
-oboyu query save "getting started setup development" --name onboarding
-oboyu query save "architecture overview system design" --name architecture
-oboyu query save "coding standards best practices" --name standards
+oboyu query save "getting started setup development" --db-path ~/indexes/onboarding.db
+oboyu query save "architecture overview system design" --db-path ~/indexes/architecture.db
+oboyu query save "coding standards best practices" --db-path ~/indexes/standards.db
 
 # Run for new team members
 oboyu query run onboarding
@@ -242,7 +242,7 @@ oboyu query run standards
 ### IDE Integration
 ```bash
 # Search from terminal in IDE
-alias docsearch="oboyu query --index tech-docs"
+alias docsearch="oboyu query --db-path ~/indexes/tech-docs.db"
 
 # Quick API search
 docsearch "UserService.create"

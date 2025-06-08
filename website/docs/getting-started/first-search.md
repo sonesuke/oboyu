@@ -73,7 +73,7 @@ oboyu query "meeting notes" --limit 5
 
 ### Search Specific Index
 ```bash
-oboyu query "architecture design" --index work
+oboyu query "architecture design" --db-path ~/indexes/work.db
 ```
 
 ### Filter by File Type
@@ -104,7 +104,7 @@ oboyu query "meeting with Sarah" --mode semantic
 ### Searching Technical Documentation
 ```bash
 # Find API documentation
-oboyu query "REST API authentication" --index dev-docs
+oboyu query "REST API authentication" --db-path ~/indexes/dev-docs.db
 
 # Find configuration examples
 oboyu query "database connection config" --file-type yaml
@@ -113,7 +113,7 @@ oboyu query "database connection config" --file-type yaml
 ### Research and Academic Papers
 ```bash
 # Find papers on specific topic
-oboyu query "machine learning optimization" --index research --file-type pdf
+oboyu query "machine learning optimization" --db-path ~/indexes/research.db --file-type pdf
 
 # Find recent research
 oboyu query "neural networks 2024" --mode hybrid
@@ -243,7 +243,7 @@ Create aliases for common searches:
 
 ```bash
 # Save a search
-oboyu query save "weekly meeting notes" --name meetings
+oboyu query save "weekly meeting notes" --db-path ~/indexes/meetings.db
 
 # Run saved search
 oboyu query run meetings
