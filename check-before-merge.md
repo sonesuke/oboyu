@@ -12,9 +12,10 @@ This PR introduces comprehensive pip installation testing to ensure package reli
    - Tests: pip from source, wheel, UV installation, conflict detection
 
 2. **GitHub Actions Integration**
-   - Automated testing on PRs (lightweight: Ubuntu + Python 3.13)
-   - Full testing on main branch pushes and releases
-   - Integration with release workflows (blocks release if tests fail)
+   - Automated testing on main/develop branch pushes
+   - Full testing on releases (blocks release if tests fail)
+   - Daily scheduled runs for dependency monitoring
+   - Manual dispatch available
 
 3. **Installation Validation Suite**
    - pytest-based tests for installation validation

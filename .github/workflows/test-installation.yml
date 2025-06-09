@@ -3,8 +3,6 @@ name: Test Installation
 on:
   push:
     branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
   release:
     types: [ published, prereleased ]
   workflow_call:
@@ -142,7 +140,6 @@ jobs:
   test-docker-install:
     name: Test Docker installation
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     
     steps:
     - uses: actions/checkout@v4
@@ -198,7 +195,6 @@ jobs:
   test-pypi-upload:
     name: Test PyPI package upload (dry run)
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     
     steps:
     - uses: actions/checkout@v4

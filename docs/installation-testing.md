@@ -44,19 +44,16 @@ Automated testing on every push, pull request, and release.
 - `.github/workflows/test-installation.yml`
 
 #### Test Matrix:
-- **Pull Requests**: Ubuntu + Python 3.13 only (lightweight)
-- **Main Branch/Releases**: 
-  - **Operating Systems**: Ubuntu (macOS and Windows WSL support planned)
-  - **Python Versions**: 3.13 (with 3.11, 3.12 support planned)
-  - **Installation Methods**: source, wheel
-  - **Package Managers**: pip, UV
+- **Operating Systems**: Ubuntu (macOS and Windows WSL support planned)
+- **Python Versions**: 3.13 (with 3.11, 3.12 support planned)
+- **Installation Methods**: source, wheel
+- **Package Managers**: pip, UV
 
 #### Triggers:
 - Push to main/develop branches
-- Pull requests
 - **Release and prerelease workflows** (critical for deployment safety)
 - Manual dispatch
-- Daily scheduled runs
+- Daily scheduled runs (2 AM UTC)
 
 ### 3. Installation Validation Tests
 
@@ -80,12 +77,12 @@ pytest tests/test_installation_validation.py::TestInstallationValidation::test_p
 
 Before submitting a PR:
 
-1. **Run Docker tests** (if you have Docker):
+1. **Run Docker tests locally** (optional, if you have Docker):
    ```bash
    docker compose -f docker-compose.test.yml up test-pip-source
    ```
 
-2. **Check GitHub Actions** - The installation tests will run automatically on your PR
+2. **Installation tests run automatically** after merge to main/develop branches
 
 ### For Maintainers
 
