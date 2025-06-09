@@ -45,8 +45,12 @@ jobs:
     - name: Run tests
       run: uv run pytest --cov=src
 
+  # Run comprehensive installation tests before prerelease
+  installation-tests:
+    uses: ./.github/workflows/test-installation.yml
+    
   build:
-    needs: test
+    needs: [test, installation-tests]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4

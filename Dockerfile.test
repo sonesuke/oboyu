@@ -1,0 +1,193 @@
+# Multi-stage Dockerfile for testing oboyu installation in clean environments
+
+# Base stage with Python 3.13
+FROM python:3.13-slim as base
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    build-essential \
+    cmake \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for testing
+RUN useradd -m -s /bin/bash testuser
+WORKDIR /home/testuser
+
+# Stage 1: Test pip installation from source
+FROM base as test-pip-source
+
+# Copy the entire project
+COPY --chown=testuser:testuser . /home/testuser/oboyu/
+
+USER testuser
+
+# Create fresh virtual environment and test installation
+RUN python -m venv /home/testuser/venv-source && \
+    . /home/testuser/venv-source/bin/activate && \
+    pip install --upgrade pip && \
+    cd /home/testuser/oboyu && \
+    pip install . && \
+    # Test that the package can be imported
+    python -c "import oboyu; print('Source installation successful')" && \
+    # Test CLI availability
+    oboyu --help
+
+# Stage 2: Test pip installation from wheel
+FROM base as test-pip-wheel
+
+# Copy only the built wheel (will be created by build script)
+COPY --chown=testuser:testuser dist/*.whl /home/testuser/dist/
+
+USER testuser
+
+# Create fresh virtual environment and test wheel installation
+RUN python -m venv /home/testuser/venv-wheel && \
+    . /home/testuser/venv-wheel/bin/activate && \
+    pip install --upgrade pip && \
+    pip install /home/testuser/dist/*.whl && \
+    # Test that the package can be imported
+    python -c "import oboyu; print('Wheel installation successful')" && \
+    # Test CLI availability
+    oboyu --help
+
+# Stage 3: Test pip installation with UV
+FROM base as test-uv
+
+# Install UV
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
+
+# Copy the entire project
+COPY --chown=testuser:testuser . /home/testuser/oboyu/
+
+USER testuser
+ENV PATH="/home/testuser/.local/bin:$PATH"
+
+# Install UV for user
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Test UV installation
+RUN cd /home/testuser/oboyu && \
+    uv venv && \
+    . .venv/bin/activate && \
+    uv pip install . && \
+    # Test that the package can be imported
+    python -c "import oboyu; print('UV installation successful')" && \
+    # Test CLI availability
+    oboyu --help
+
+# Stage 4: Test installation with common conflicting packages
+FROM base as test-conflicts
+
+# Copy the entire project
+COPY --chown=testuser:testuser . /home/testuser/oboyu/
+
+USER testuser
+
+# Install common packages that might conflict
+RUN python -m venv /home/testuser/venv-conflicts && \
+    . /home/testuser/venv-conflicts/bin/activate && \
+    pip install --upgrade pip && \
+    # Install common packages first
+    pip install numpy pandas scikit-learn torch && \
+    # Then try to install oboyu
+    cd /home/testuser/oboyu && \
+    pip install . && \
+    # Test that the package can be imported
+    python -c "import oboyu; print('Installation with potential conflicts successful')" && \
+    # Test CLI availability
+    oboyu --help
+
+# Final stage: Run all tests
+FROM base as test-runner
+
+# Copy test results from all stages
+COPY --from=test-pip-source /home/testuser/venv-source /home/testuser/venv-source
+COPY --from=test-pip-wheel /home/testuser/venv-wheel /home/testuser/venv-wheel
+COPY --from=test-uv /home/testuser/.venv /home/testuser/.venv
+COPY --from=test-conflicts /home/testuser/venv-conflicts /home/testuser/venv-conflicts
+
+# Add test validation script
+COPY --chown=testuser:testuser <<'EOF' /home/testuser/validate_installations.py
+#!/usr/bin/env python3
+import subprocess
+import sys
+
+def test_installation(venv_path, name):
+    """Test that oboyu works in the given virtual environment."""
+    print(f"\n{'='*60}")
+    print(f"Testing {name} installation...")
+    print('='*60)
+    
+    activate_cmd = f". {venv_path}/bin/activate"
+    
+    # Test import
+    result = subprocess.run(
+        f"{activate_cmd} && python -c 'import oboyu; print(oboyu.__version__)'",
+        shell=True,
+        capture_output=True,
+        text=True
+    )
+    
+    if result.returncode != 0:
+        print(f"❌ {name}: Import failed!")
+        print(result.stderr)
+        return False
+    
+    print(f"✅ {name}: Import successful - Version: {result.stdout.strip()}")
+    
+    # Test CLI
+    result = subprocess.run(
+        f"{activate_cmd} && oboyu --help",
+        shell=True,
+        capture_output=True,
+        text=True
+    )
+    
+    if result.returncode != 0:
+        print(f"❌ {name}: CLI failed!")
+        print(result.stderr)
+        return False
+    
+    print(f"✅ {name}: CLI works!")
+    return True
+
+def main():
+    tests = [
+        ("/home/testuser/venv-source", "pip from source"),
+        ("/home/testuser/venv-wheel", "pip from wheel"),
+        ("/home/testuser/.venv", "UV installation"),
+        ("/home/testuser/venv-conflicts", "installation with conflicts"),
+    ]
+    
+    results = []
+    for venv_path, name in tests:
+        results.append(test_installation(venv_path, name))
+    
+    print(f"\n{'='*60}")
+    print("SUMMARY")
+    print('='*60)
+    
+    for (_, name), success in zip(tests, results):
+        status = "✅ PASSED" if success else "❌ FAILED"
+        print(f"{name}: {status}")
+    
+    if all(results):
+        print("\n🎉 All tests passed!")
+        return 0
+    else:
+        print("\n❌ Some tests failed!")
+        return 1
+
+if __name__ == "__main__":
+    sys.exit(main())
+EOF
+
+USER testuser
+RUN chmod +x /home/testuser/validate_installations.py
+
+# Default command runs the validation script
+CMD ["/home/testuser/validate_installations.py"]

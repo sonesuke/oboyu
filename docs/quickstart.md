@@ -12,9 +12,13 @@ Oboyu is a powerful local semantic search engine that lets you search through yo
 
 ## Prerequisites
 
-- Python 3.10 or higher
+- Python 3.11 or higher
+- pip (latest version recommended)
 - 2GB of free disk space (for models)
 - macOS or Linux (Windows support via WSL)
+- For building from source:
+  - C++ compiler (build-essential on Linux, Xcode on macOS)
+  - CMake (for sentencepiece)
 
 ## Installation
 
