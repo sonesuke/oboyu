@@ -32,7 +32,9 @@
       "Bash(git status:*)",
       "Bash(npm run lint)",
       "Bash(npm run:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh run view:*)"
     ],
     "deny": []
   }
