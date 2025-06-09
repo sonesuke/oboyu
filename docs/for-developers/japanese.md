@@ -439,7 +439,7 @@ oboyu index ./docs --debug
 
 ### Normalization Performance
 
-- **Fast processing**: <1ms per document
+- **Fast processing**: \<1ms per document
 - **In-memory operation**: No disk I/O required
 - **Single-pass**: Normalization done during initial processing
 

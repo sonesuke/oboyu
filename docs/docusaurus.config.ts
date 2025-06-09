@@ -41,11 +41,24 @@ const config: Config = {
       'classic',
       {
         docs: {
+          path: '.', // Current directory contains the docs
+          exclude: [
+            '**/node_modules/**',
+            '**/.*',
+            '**/*.{js,jsx,ts,tsx}',
+            '**/*.json',
+            '**/package*.json',
+            '**/tsconfig.json',
+            '**/docusaurus.config.ts',
+            '**/sidebars.ts',
+            '**/src/**',
+            '**/static/**',
+          ],
           sidebarPath: './sidebars.ts',
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/sonesuke/oboyu/tree/main/website/',
+            'https://github.com/sonesuke/oboyu/tree/main/docs/',
           routeBasePath: '/', // Serve docs at the site's root
         },
         blog: false, // Disable blog feature

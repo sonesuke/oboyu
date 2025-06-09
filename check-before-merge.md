@@ -48,7 +48,7 @@ This PR introduces comprehensive pip installation testing to ensure package reli
 - `docker-compose.test.yml` - Test orchestration
 - `tests/test_installation_validation.py` - Installation validation tests
 - `docs/installation-testing*.md` - Testing documentation
-- `README.md`, `docs/quickstart.md`, `website/docs/getting-started/installation.md` - Updated prerequisites
+- `README.md`, `docs/for-developers/quickstart.md`, `docs/getting-started/installation.md` - Updated prerequisites
 
 ### 🎯 **Benefits**
 
