@@ -37,47 +37,44 @@ jobs:
       run: |
         python -m venv test-env
         
-    - name: Activate environment
-      run: source test-env/bin/activate
-    
     - name: Upgrade pip
       run: |
-        python -m pip install --upgrade pip
-        pip --version
+        test-env/bin/python -m pip install --upgrade pip
+        test-env/bin/pip --version
     
     - name: Install from source
       if: matrix.install-method == 'source'
       run: |
-        pip install .
+        test-env/bin/pip install .
         
     - name: Install from wheel
       if: matrix.install-method == 'wheel'
       run: |
-        pip install build
-        python -m build --wheel
-        pip install dist/*.whl
+        test-env/bin/pip install build
+        test-env/bin/python -m build --wheel
+        test-env/bin/pip install dist/*.whl
         
     - name: Install editable
       if: matrix.install-method == 'editable'
       run: |
-        pip install -e .
+        test-env/bin/pip install -e .
     
     - name: Test import
       run: |
-        python -c "import oboyu; print(f'Successfully imported oboyu version: {oboyu.__version__}')"
+        test-env/bin/python -c "import oboyu; print(f'Successfully imported oboyu version: {oboyu.__version__}')"
     
     - name: Test CLI
       run: |
-        oboyu --help
-        oboyu --version
+        test-env/bin/oboyu --help
+        test-env/bin/oboyu health
     
     - name: List installed packages
       run: |
-        pip list
+        test-env/bin/pip list
         
     - name: Check for dependency conflicts
       run: |
-        pip check
+        test-env/bin/pip check
 
   test-uv-install:
     name: Test UV install on ${{ matrix.os }}
@@ -127,17 +124,16 @@ jobs:
         
         # Create fresh virtual environment
         python -m venv fresh-env
-        source fresh-env/bin/activate
         
         # Install only pip
-        python -m pip install --upgrade pip
+        fresh-env/bin/python -m pip install --upgrade pip
         
         # Install oboyu
-        pip install ./oboyu
+        fresh-env/bin/pip install ./oboyu
         
         # Test
-        python -c "import oboyu"
-        oboyu --help
+        fresh-env/bin/python -c "import oboyu"
+        fresh-env/bin/oboyu --help
         
         # Clean up
         cd -
@@ -177,27 +173,26 @@ jobs:
     - name: Install common packages that might conflict
       run: |
         python -m venv conflict-env
-        source conflict-env/bin/activate
-        pip install --upgrade pip
+        conflict-env/bin/pip install --upgrade pip
         
         # Install common ML/data packages
-        pip install numpy pandas scikit-learn
+        conflict-env/bin/pip install numpy pandas scikit-learn
         
         # Install common web/API packages  
-        pip install requests httpx fastapi
+        conflict-env/bin/pip install requests httpx fastapi
         
         # Install common CLI packages
-        pip install click rich typer
+        conflict-env/bin/pip install click rich typer
         
         # Now try to install oboyu
-        pip install .
+        conflict-env/bin/pip install .
         
         # Test functionality
-        python -c "import oboyu"
-        oboyu --help
+        conflict-env/bin/python -c "import oboyu"
+        conflict-env/bin/oboyu --help
         
         # Check for conflicts
-        pip check
+        conflict-env/bin/pip check
 
   test-pypi-upload:
     name: Test PyPI package upload (dry run)
@@ -232,7 +227,6 @@ jobs:
     - name: Test wheel installation
       run: |
         python -m venv test-wheel-env
-        source test-wheel-env/bin/activate
-        pip install dist/*.whl
-        python -c "import oboyu"
-        oboyu --help
+        test-wheel-env/bin/pip install dist/*.whl
+        test-wheel-env/bin/python -c "import oboyu"
+        test-wheel-env/bin/oboyu --help
