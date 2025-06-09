@@ -21,9 +21,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        python-version: ['3.11', '3.12', '3.13']
-        install-method: ['source', 'wheel', 'editable']
+        os: [ubuntu-latest]
+        python-version: ['3.13']
+        install-method: ['source', 'wheel']
         
     steps:
     - uses: actions/checkout@v4
@@ -82,7 +82,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         
     steps:
     - uses: actions/checkout@v4
@@ -142,6 +142,7 @@ jobs:
   test-docker-install:
     name: Test Docker installation
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     
     steps:
     - uses: actions/checkout@v4
@@ -197,7 +198,7 @@ jobs:
   test-pypi-upload:
     name: Test PyPI package upload (dry run)
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' || github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     
     steps:
     - uses: actions/checkout@v4

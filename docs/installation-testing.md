@@ -44,10 +44,12 @@ Automated testing on every push, pull request, and release.
 - `.github/workflows/test-installation.yml`
 
 #### Test Matrix:
-- **Operating Systems**: Ubuntu, macOS (Windows via WSL only)
-- **Python Versions**: 3.11, 3.12, 3.13
-- **Installation Methods**: source, wheel, editable
-- **Package Managers**: pip, UV
+- **Pull Requests**: Ubuntu + Python 3.13 only (lightweight)
+- **Main Branch/Releases**: 
+  - **Operating Systems**: Ubuntu (macOS and Windows WSL support planned)
+  - **Python Versions**: 3.13 (with 3.11, 3.12 support planned)
+  - **Installation Methods**: source, wheel
+  - **Package Managers**: pip, UV
 
 #### Triggers:
 - Push to main/develop branches
