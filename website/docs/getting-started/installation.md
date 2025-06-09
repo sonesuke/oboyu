@@ -10,9 +10,13 @@ This guide will help you install Oboyu on your system. Oboyu is a command-line t
 
 ## Prerequisites
 
-- Python 3.13 or higher
-- pip (Python package manager)
-- Git (for development installation)
+- Python 3.11 or higher (3.13 recommended)
+- pip (Python package manager, latest version recommended)
+- Operating System: Linux, macOS, or Windows with WSL
+- For building from source:
+  - C++ compiler (build-essential on Linux, Xcode on macOS)
+  - CMake (for building sentencepiece)
+  - Git (for development installation)
 
 ## Quick Install
 
@@ -37,8 +41,7 @@ You should see the version number displayed.
 ### Minimum Requirements
 - **RAM**: 4GB (8GB recommended for larger document collections)
 - **Storage**: 500MB for Oboyu installation + space for your document index
-- **OS**: macOS 10.15+ or Linux (Ubuntu 20.04+, CentOS 8+)
-  - **Note**: Windows is not currently supported
+- **OS**: macOS 10.15+, Linux (Ubuntu 20.04+, CentOS 8+), or Windows with WSL2
 
 ### Recommended Specifications
 - **RAM**: 8GB or more
@@ -103,7 +106,7 @@ export OBOYU_DB_PATH=/path/to/your/database
 ### Common Issues
 
 #### Python Version Error
-If you see "Python 3.13+ required":
+If you see "Python 3.11+ required":
 ```bash
 python --version  # Check your Python version
 # Consider using pyenv or conda to manage Python versions
@@ -121,15 +124,30 @@ All required dependencies are included in the base installation. If you encounte
 pip install --upgrade oboyu  # Update to latest version
 ```
 
+#### Build Errors (sentencepiece)
+If you see errors building sentencepiece:
+```bash
+# Linux
+sudo apt-get install build-essential cmake
+
+# macOS
+xcode-select --install
+brew install cmake
+
+# Then retry installation
+pip install oboyu
+```
+
 ### Platform-Specific Notes
 
 #### macOS
 - If using Homebrew Python, ensure it's in your PATH
 - May need to install Xcode Command Line Tools: `xcode-select --install`
 
-#### Windows
-- **Windows is not currently supported**
-- Consider using WSL (Windows Subsystem for Linux) as an alternative
+#### Windows (WSL2)
+- Install WSL2 following [Microsoft's guide](https://docs.microsoft.com/en-us/windows/wsl/install)
+- Use Ubuntu or another Linux distribution within WSL2
+- Follow the Linux installation instructions
 
 #### Linux
 - May need to install python3-dev package: `sudo apt-get install python3-dev`

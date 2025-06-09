@@ -23,6 +23,17 @@
 
 ## Quick Start
 
+### Prerequisites
+
+- Python 3.11 or higher
+- pip (latest version recommended)
+- Operating System: Linux, macOS, or Windows with WSL
+- For building from source:
+  - C++ compiler (build-essential on Linux, Xcode on macOS)
+  - CMake (for sentencepiece)
+
+### Installation
+
 Get up and running in under 5 minutes:
 
 ```bash
