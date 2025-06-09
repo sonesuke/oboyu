@@ -89,6 +89,12 @@ dev = [
     "pylint>=3.3.7",
 ]
 
+e2e-enhanced = [
+    "playwright>=1.40.0", # Browser automation for visual verification
+    "aiohttp>=3.9.0", # Async HTTP client for ttyd communication
+    "websockets>=12.0", # WebSocket client for real-time terminal communication
+]
+
 [tool.mypy]
 files = ["src"]
 strict = true

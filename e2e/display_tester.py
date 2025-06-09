@@ -54,7 +54,13 @@ class OboyuE2EDisplayTester:
             Tuple of (return_code, stdout, stderr)
 
         """
-        cmd = [self.oboyu_path]
+        # Handle complex commands (e.g., "python3 -m oboyu" or "uv run oboyu")
+        if " " in self.oboyu_path:
+            # Split complex command into parts
+            oboyu_parts = self.oboyu_path.split()
+            cmd = oboyu_parts
+        else:
+            cmd = [self.oboyu_path]
         
         # Always use test database to avoid contaminating user's database
         # (unless --db-path is already specified in command_args)
