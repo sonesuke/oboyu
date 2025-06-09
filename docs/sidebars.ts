@@ -76,6 +76,26 @@ const sidebars: SidebarsConfig = {
         'reference-troubleshooting/japanese-support',
       ],
     },
+    {
+      type: 'category',
+      label: 'For Developers',
+      items: [
+        'for-developers/quickstart',
+        'for-developers/architecture',
+        'for-developers/cli',
+        'for-developers/crawler',
+        'for-developers/indexer',
+        'for-developers/reranker',
+        'for-developers/japanese',
+        'for-developers/mcp_server',
+        'for-developers/e2e_display_testing',
+        'for-developers/installation-testing',
+        'for-developers/installation-testing-readme',
+        'for-developers/installation-troubleshooting',
+        'for-developers/immutable-configuration-migration',
+        'for-developers/release-process',
+      ],
+    },
   ],
 };
 

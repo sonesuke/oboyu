@@ -325,8 +325,8 @@ The documentation site is built with [Docusaurus](https://docusaurus.io/) and ho
 #### Local Development
 
 ```bash
-# Navigate to website directory
-cd website
+# Navigate to docs directory
+cd docs
 
 # Install dependencies
 npm install
@@ -343,8 +343,8 @@ npm run serve
 
 #### Adding Documentation
 
-1. Add new markdown files to `website/docs/`
-2. Update `website/sidebars.ts` to include new pages
+1. Add new markdown files to `docs/`
+2. Update `docs/sidebars.ts` to include new pages
 3. Follow the existing frontmatter format:
    ```markdown
    ---
