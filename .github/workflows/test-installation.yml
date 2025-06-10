@@ -53,6 +53,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Install Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+      
       - name: Build and test Docker environments
         run: |
           docker-compose -f docker-compose.test.yml build
