@@ -53,7 +53,26 @@ RUN python -m venv /home/testuser/venv-wheel && \
     # Test CLI availability
     oboyu --help
 
-# Stage 3: Test pip installation with UV
+# Stage 3: Test pip editable installation
+FROM base as test-pip-editable
+
+# Copy the entire project
+COPY --chown=testuser:testuser . /home/testuser/oboyu/
+
+USER testuser
+
+# Create fresh virtual environment and test editable installation
+RUN python -m venv /home/testuser/venv-editable && \
+    . /home/testuser/venv-editable/bin/activate && \
+    pip install --upgrade pip && \
+    cd /home/testuser/oboyu && \
+    pip install -e . && \
+    # Test that the package can be imported
+    python -c "import oboyu; print('Editable installation successful')" && \
+    # Test CLI availability
+    oboyu --help
+
+# Stage 4: Test pip installation with UV
 FROM base as test-uv
 
 # Install UV
@@ -79,7 +98,7 @@ RUN cd /home/testuser/oboyu && \
     # Test CLI availability
     oboyu --help
 
-# Stage 4: Test installation with common conflicting packages
+# Stage 5: Test installation with common conflicting packages
 FROM base as test-conflicts
 
 # Copy the entire project
@@ -107,84 +126,12 @@ FROM base as test-runner
 # Copy test results from all stages
 COPY --from=test-pip-source /home/testuser/venv-source /home/testuser/venv-source
 COPY --from=test-pip-wheel /home/testuser/venv-wheel /home/testuser/venv-wheel
+COPY --from=test-pip-editable /home/testuser/venv-editable /home/testuser/venv-editable
 COPY --from=test-uv /home/testuser/.venv /home/testuser/.venv
 COPY --from=test-conflicts /home/testuser/venv-conflicts /home/testuser/venv-conflicts
 
 # Add test validation script
-COPY --chown=testuser:testuser <<'EOF' /home/testuser/validate_installations.py
-#!/usr/bin/env python3
-import subprocess
-import sys
-
-def test_installation(venv_path, name):
-    """Test that oboyu works in the given virtual environment."""
-    print(f"\n{'='*60}")
-    print(f"Testing {name} installation...")
-    print('='*60)
-    
-    activate_cmd = f". {venv_path}/bin/activate"
-    
-    # Test import
-    result = subprocess.run(
-        f"{activate_cmd} && python -c 'import oboyu; print(oboyu.__version__)'",
-        shell=True,
-        capture_output=True,
-        text=True
-    )
-    
-    if result.returncode != 0:
-        print(f"❌ {name}: Import failed!")
-        print(result.stderr)
-        return False
-    
-    print(f"✅ {name}: Import successful - Version: {result.stdout.strip()}")
-    
-    # Test CLI
-    result = subprocess.run(
-        f"{activate_cmd} && oboyu --help",
-        shell=True,
-        capture_output=True,
-        text=True
-    )
-    
-    if result.returncode != 0:
-        print(f"❌ {name}: CLI failed!")
-        print(result.stderr)
-        return False
-    
-    print(f"✅ {name}: CLI works!")
-    return True
-
-def main():
-    tests = [
-        ("/home/testuser/venv-source", "pip from source"),
-        ("/home/testuser/venv-wheel", "pip from wheel"),
-        ("/home/testuser/.venv", "UV installation"),
-        ("/home/testuser/venv-conflicts", "installation with conflicts"),
-    ]
-    
-    results = []
-    for venv_path, name in tests:
-        results.append(test_installation(venv_path, name))
-    
-    print(f"\n{'='*60}")
-    print("SUMMARY")
-    print('='*60)
-    
-    for (_, name), success in zip(tests, results):
-        status = "✅ PASSED" if success else "❌ FAILED"
-        print(f"{name}: {status}")
-    
-    if all(results):
-        print("\n🎉 All tests passed!")
-        return 0
-    else:
-        print("\n❌ Some tests failed!")
-        return 1
-
-if __name__ == "__main__":
-    sys.exit(main())
-EOF
+COPY --chown=testuser:testuser validate_installations.py /home/testuser/validate_installations.py
 
 USER testuser
 RUN chmod +x /home/testuser/validate_installations.py

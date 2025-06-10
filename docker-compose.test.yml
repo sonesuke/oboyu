@@ -27,6 +27,19 @@ services:
     depends_on:
       - build-wheel
 
+  # Test pip editable installation
+  test-pip-editable:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+      target: test-pip-editable
+    image: oboyu-test:pip-editable
+    container_name: oboyu-test-pip-editable
+    volumes:
+      - ./test-results:/home/testuser/test-results
+    environment:
+      - TEST_NAME=pip-editable
+
   # Test UV installation
   test-uv:
     build:
@@ -81,6 +94,7 @@ services:
     depends_on:
       - test-pip-source
       - test-pip-wheel
+      - test-pip-editable
       - test-uv
       - test-conflicts
     command: |
