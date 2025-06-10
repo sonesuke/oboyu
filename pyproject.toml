@@ -87,6 +87,7 @@ dev = [
     "pandas>=2.2.3", # For data analysis and reporting
     "pexpect>=4.9.0", # For interactive CLI testing
     "pylint>=3.3.7",
+    "build>=1.2.2.post1",
 ]
 
 e2e-enhanced = [

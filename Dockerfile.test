@@ -53,7 +53,26 @@ RUN python -m venv /home/testuser/venv-wheel && \
     # Test CLI availability
     oboyu --help
 
-# Stage 3: Test pip installation with UV
+# Stage 3: Test pip editable installation
+FROM base as test-pip-editable
+
+# Copy the entire project
+COPY --chown=testuser:testuser . /home/testuser/oboyu/
+
+USER testuser
+
+# Create fresh virtual environment and test editable installation
+RUN python -m venv /home/testuser/venv-editable && \
+    . /home/testuser/venv-editable/bin/activate && \
+    pip install --upgrade pip && \
+    cd /home/testuser/oboyu && \
+    pip install -e . && \
+    # Test that the package can be imported
+    python -c "import oboyu; print('Editable installation successful')" && \
+    # Test CLI availability
+    oboyu --help
+
+# Stage 4: Test pip installation with UV
 FROM base as test-uv
 
 # Install UV
@@ -79,7 +98,7 @@ RUN cd /home/testuser/oboyu && \
     # Test CLI availability
     oboyu --help
 
-# Stage 4: Test installation with common conflicting packages
+# Stage 5: Test installation with common conflicting packages
 FROM base as test-conflicts
 
 # Copy the entire project
@@ -107,11 +126,12 @@ FROM base as test-runner
 # Copy test results from all stages
 COPY --from=test-pip-source /home/testuser/venv-source /home/testuser/venv-source
 COPY --from=test-pip-wheel /home/testuser/venv-wheel /home/testuser/venv-wheel
+COPY --from=test-pip-editable /home/testuser/venv-editable /home/testuser/venv-editable
 COPY --from=test-uv /home/testuser/.venv /home/testuser/.venv
 COPY --from=test-conflicts /home/testuser/venv-conflicts /home/testuser/venv-conflicts
 
 # Add test validation script
-COPY --chown=testuser:testuser <<'EOF' /home/testuser/validate_installations.py
+RUN cat > /home/testuser/validate_installations.py << 'EOF'
 #!/usr/bin/env python3
 import subprocess
 import sys
@@ -159,6 +179,7 @@ def main():
     tests = [
         ("/home/testuser/venv-source", "pip from source"),
         ("/home/testuser/venv-wheel", "pip from wheel"),
+        ("/home/testuser/venv-editable", "pip editable installation"),
         ("/home/testuser/.venv", "UV installation"),
         ("/home/testuser/venv-conflicts", "installation with conflicts"),
     ]

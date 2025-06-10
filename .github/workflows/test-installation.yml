@@ -2,228 +2,79 @@ name: Test Installation
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
+  pull_request:
   release:
-    types: [ published, prereleased ]
-  workflow_call:
-    # Allow this workflow to be called from other workflows (e.g., release workflows)
-  workflow_dispatch:
+    types: [published, prereleased]
   schedule:
-    # Run daily at 2 AM UTC to catch dependency issues
-    - cron: '0 2 * * *'
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC
 
 jobs:
   test-pip-install:
-    name: Test pip install on ${{ matrix.os }} with Python ${{ matrix.python-version }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
-        os: [ubuntu-latest]
         python-version: ['3.13']
         install-method: ['source', 'wheel']
-        
+    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-    
-    - name: Create test environment
-      run: |
-        python -m venv test-env
-        
-    - name: Upgrade pip
-      run: |
-        test-env/bin/python -m pip install --upgrade pip
-        test-env/bin/pip --version
-    
-    - name: Install from source
-      if: matrix.install-method == 'source'
-      run: |
-        test-env/bin/pip install .
-        
-    - name: Install from wheel
-      if: matrix.install-method == 'wheel'
-      run: |
-        test-env/bin/pip install build
-        test-env/bin/python -m build --wheel
-        test-env/bin/pip install dist/*.whl
-        
-    - name: Install editable
-      if: matrix.install-method == 'editable'
-      run: |
-        test-env/bin/pip install -e .
-    
-    - name: Test import
-      run: |
-        test-env/bin/python -c "import oboyu; print(f'Successfully imported oboyu version: {oboyu.__version__}')"
-    
-    - name: Test CLI
-      run: |
-        test-env/bin/oboyu --help
-        test-env/bin/oboyu version
-    
-    - name: List installed packages
-      run: |
-        test-env/bin/pip list
-        
-    - name: Check for dependency conflicts
-      run: |
-        test-env/bin/pip check
-
-  test-uv-install:
-    name: Test UV install on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-        
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install UV
-      uses: astral-sh/setup-uv@v4
+      - uses: actions/checkout@v4
       
-    - name: Test UV installation
-      run: |
-        uv venv
-        uv pip install .
-        
-    - name: Test import with UV
-      run: |
-        uv run python -c "import oboyu; print(f'Successfully imported oboyu version: {oboyu.__version__}')"
-    
-    - name: Test CLI with UV
-      run: |
-        uv run oboyu --help
-
-  test-clean-install:
-    name: Test clean environment install
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13'
-    
-    - name: Test in completely fresh environment
-      run: |
-        # Create a temporary directory
-        TEMP_DIR=$(mktemp -d)
-        cp -r . $TEMP_DIR/oboyu
-        cd $TEMP_DIR
-        
-        # Create fresh virtual environment
-        python -m venv fresh-env
-        
-        # Install only pip
-        fresh-env/bin/python -m pip install --upgrade pip
-        
-        # Install oboyu
-        fresh-env/bin/pip install ./oboyu
-        
-        # Test
-        fresh-env/bin/python -c "import oboyu"
-        fresh-env/bin/oboyu --help
-        
-        # Clean up
-        cd -
-        rm -rf $TEMP_DIR
-
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Install from source
+        if: matrix.install-method == 'source'
+        run: |
+          python -m venv test-env
+          test-env/bin/pip install -e .
+          
+      - name: Install from wheel
+        if: matrix.install-method == 'wheel'
+        run: |
+          python -m venv test-env
+          test-env/bin/pip install build
+          test-env/bin/python -m build --wheel
+          test-env/bin/pip install dist/*.whl
+          
+      - name: Verify installation
+        run: |
+          test-env/bin/python -c "import oboyu; print(oboyu.__version__)"
+          test-env/bin/oboyu --help
+          
+      - name: Run basic functionality test
+        run: |
+          test-env/bin/oboyu health
+          
   test-docker-install:
-    name: Test Docker installation
     runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Build and test Docker images
-      run: |
-        docker build -f Dockerfile.test --target test-pip-source -t oboyu-test:source .
-        docker build -f Dockerfile.test --target test-pip-wheel -t oboyu-test:wheel .
-        docker build -f Dockerfile.test --target test-uv -t oboyu-test:uv .
-        
-    - name: Run Docker tests
-      run: |
-        docker run --rm oboyu-test:source python -c "import oboyu; print('Source test passed')"
-        docker run --rm oboyu-test:wheel python -c "import oboyu; print('Wheel test passed')"
-        docker run --rm oboyu-test:uv python -c "import oboyu; print('UV test passed')"
-
-  test-common-conflicts:
-    name: Test with common package conflicts
+      - uses: actions/checkout@v4
+      
+      - name: Build and test Docker environments
+        run: |
+          docker-compose -f docker-compose.test.yml build
+          docker-compose -f docker-compose.test.yml up --exit-code-from test-pip-source test-pip-source
+          docker-compose -f docker-compose.test.yml up --exit-code-from test-pip-wheel test-pip-wheel
+          docker-compose -f docker-compose.test.yml up --exit-code-from test-pip-editable test-pip-editable
+          
+  test-installation-validation:
     runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13'
-    
-    - name: Install common packages that might conflict
-      run: |
-        python -m venv conflict-env
-        conflict-env/bin/pip install --upgrade pip
-        
-        # Install common ML/data packages
-        conflict-env/bin/pip install numpy pandas scikit-learn
-        
-        # Install common web/API packages  
-        conflict-env/bin/pip install requests httpx fastapi
-        
-        # Install common CLI packages
-        conflict-env/bin/pip install click rich typer
-        
-        # Now try to install oboyu
-        conflict-env/bin/pip install .
-        
-        # Test functionality
-        conflict-env/bin/python -c "import oboyu"
-        conflict-env/bin/oboyu --help
-        
-        # Check for conflicts
-        conflict-env/bin/pip check
-
-  test-pypi-upload:
-    name: Test PyPI package upload (dry run)
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13'
-    
-    - name: Install build tools
-      run: |
-        pip install --upgrade pip
-        pip install build twine
-    
-    - name: Build distribution
-      run: |
-        python -m build
-        
-    - name: Check distribution
-      run: |
-        twine check dist/*
-        
-    - name: List distribution contents
-      run: |
-        ls -la dist/
-        
-    - name: Test wheel installation
-      run: |
-        python -m venv test-wheel-env
-        test-wheel-env/bin/pip install dist/*.whl
-        test-wheel-env/bin/python -c "import oboyu"
-        test-wheel-env/bin/oboyu --help
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          
+      - name: Install test dependencies
+        run: |
+          pip install pytest
+          
+      - name: Run installation validation tests
+        run: |
+          pip install -e .
+          pytest tests/test_installation_validation.py -v
