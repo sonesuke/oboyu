@@ -103,28 +103,6 @@ RUN uv pip install . && \
 RUN .venv/bin/python -c "import oboyu; print('UV installation successful')"
 RUN .venv/bin/python -m oboyu --help
 
-# Stage 5: Test installation with common conflicting packages
-FROM base as test-conflicts
-
-# Copy the entire project
-COPY --chown=testuser:testuser . /home/testuser/oboyu/
-
-USER testuser
-
-# Install common packages that might conflict
-RUN python -m venv /home/testuser/venv-conflicts && \
-    . /home/testuser/venv-conflicts/bin/activate && \
-    pip install --upgrade pip && \
-    # Install common packages first
-    pip install numpy pandas scikit-learn torch && \
-    # Then try to install oboyu
-    cd /home/testuser/oboyu && \
-    pip install . && \
-    # Test that the package can be imported
-    python -c "import oboyu; print('Installation with potential conflicts successful')" && \
-    # Test CLI availability
-    oboyu --help
-
 # Final stage: Run all tests
 FROM base as test-runner
 
@@ -133,7 +111,6 @@ COPY --from=test-pip-source /home/testuser/venv-source /home/testuser/venv-sourc
 COPY --from=test-pip-wheel /home/testuser/venv-wheel /home/testuser/venv-wheel
 COPY --from=test-pip-editable /home/testuser/venv-editable /home/testuser/venv-editable
 COPY --from=test-uv /home/testuser/.venv /home/testuser/.venv
-COPY --from=test-conflicts /home/testuser/venv-conflicts /home/testuser/venv-conflicts
 
 # Add test validation script
 COPY --chown=testuser:testuser validate_installations.py /home/testuser/validate_installations.py

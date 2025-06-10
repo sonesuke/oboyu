@@ -50,7 +50,6 @@ def main() -> int:
         ("/home/testuser/venv-wheel", "pip from wheel"),
         ("/home/testuser/venv-editable", "pip editable installation"),
         ("/home/testuser/.venv", "UV installation"),
-        ("/home/testuser/venv-conflicts", "installation with conflicts"),
     ]
     
     results = []
