@@ -19,7 +19,7 @@ __pycache__/
 
 # Build artifacts
 build/
-dist/
+# dist/ is needed for test-pip-wheel Docker stage
 *.egg-info/
 .tox/
 
