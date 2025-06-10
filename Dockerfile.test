@@ -88,10 +88,16 @@ ENV PATH="/home/testuser/.local/bin:$PATH"
 # Install UV for user
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Test UV installation
+# Test UV installation with disk space optimization
 WORKDIR /home/testuser/oboyu
 RUN uv venv
-RUN uv pip install .
+
+# Install with optimizations to reduce disk usage
+# Use CPU-only PyTorch to reduce size and clear cache after each step
+RUN uv pip install --index-url https://download.pytorch.org/whl/cpu torch && \
+    rm -rf /home/testuser/.cache/uv
+RUN uv pip install . && \
+    rm -rf /home/testuser/.cache/uv
 
 # Test using virtual environment Python directly
 RUN .venv/bin/python -c "import oboyu; print('UV installation successful')"

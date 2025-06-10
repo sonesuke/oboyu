@@ -1,0 +1,75 @@
+# Docker ignore file to exclude unnecessary files from build context
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.tox/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Documentation build
+docs/_build/
+site/
+
+# Test and benchmark results
+.coverage
+htmlcov/
+.pytest_cache/
+test-results/
+bench/results/
+
+# Docker files (don't copy Docker files into Docker)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Git
+.git/
+.gitignore
+
+# CI/CD
+.github/
+
+# Logs
+*.log
+logs/
+
+# Large model files that should be downloaded at runtime
+*.bin
+*.onnx
+models/
+
+# UV cache
+.cache/
