@@ -46,7 +46,7 @@ jobs:
           
       - name: Run basic functionality test
         run: |
-          test-env/bin/oboyu health
+          test-env/bin/oboyu health check
           
   test-docker-install:
     runs-on: ubuntu-latest

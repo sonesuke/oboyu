@@ -131,22 +131,22 @@ COPY --from=test-uv /home/testuser/.venv /home/testuser/.venv
 COPY --from=test-conflicts /home/testuser/venv-conflicts /home/testuser/venv-conflicts
 
 # Add test validation script
-RUN cat > /home/testuser/validate_installations.py << 'EOF'
+RUN /bin/bash -c 'cat > /home/testuser/validate_installations.py << '"'"'EOF'"'"'
 #!/usr/bin/env python3
 import subprocess
 import sys
 
 def test_installation(venv_path, name):
     """Test that oboyu works in the given virtual environment."""
-    print(f"\n{'='*60}")
+    print(f"\n{"="*60}")
     print(f"Testing {name} installation...")
-    print('='*60)
+    print("="*60)
     
     activate_cmd = f". {venv_path}/bin/activate"
     
     # Test import
     result = subprocess.run(
-        f"{activate_cmd} && python -c 'import oboyu; print(oboyu.__version__)'",
+        f"{activate_cmd} && python -c \"import oboyu; print(oboyu.__version__)\"",
         shell=True,
         capture_output=True,
         text=True
@@ -188,9 +188,9 @@ def main():
     for venv_path, name in tests:
         results.append(test_installation(venv_path, name))
     
-    print(f"\n{'='*60}")
+    print(f"\n{"="*60}")
     print("SUMMARY")
-    print('='*60)
+    print("="*60)
     
     for (_, name), success in zip(tests, results):
         status = "✅ PASSED" if success else "❌ FAILED"
@@ -205,7 +205,7 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-EOF
+EOF'"'"
 
 USER testuser
 RUN chmod +x /home/testuser/validate_installations.py
