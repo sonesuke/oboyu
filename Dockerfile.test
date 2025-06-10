@@ -89,14 +89,13 @@ ENV PATH="/home/testuser/.local/bin:$PATH"
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Test UV installation
-RUN cd /home/testuser/oboyu && \
-    uv venv && \
-    . .venv/bin/activate && \
-    uv pip install . && \
-    # Test that the package can be imported
-    python -c "import oboyu; print('UV installation successful')" && \
-    # Test CLI availability
-    oboyu --help
+WORKDIR /home/testuser/oboyu
+RUN uv venv
+RUN uv pip install .
+
+# Test using virtual environment Python directly
+RUN .venv/bin/python -c "import oboyu; print('UV installation successful')"
+RUN .venv/bin/python -m oboyu --help
 
 # Stage 5: Test installation with common conflicting packages
 FROM base as test-conflicts
