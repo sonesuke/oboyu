@@ -726,6 +726,6 @@ if __name__ == "__main__":
 
 ## Next Steps
 
-- Review [Performance Tuning](../configuration-optimization/performance-tuning.md) for optimization
+- Review [Performance Tuning](../../system-administrators/reference/configuration.md) for optimization
 - Explore [CLI Workflows](cli-workflows.md) for manual automation
 - Set up [MCP Integration](mcp-integration.md) for AI-powered automation

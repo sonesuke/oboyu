@@ -53,7 +53,7 @@ Never lose track of decisions, action items, or project status again.
 - Track project deadlines across documents
 - Discover action items assigned to team members
 
-[**Learn more →**](real-world-scenarios/meeting-notes)
+[**Learn more →**](general-users/use-cases/meeting-notes)
 
 ### 💻 **Technical Documentation**
 Search through code documentation, API references, and technical guides.
@@ -62,7 +62,7 @@ Search through code documentation, API references, and technical guides.
 - Locate troubleshooting guides
 - Search across multiple project docs
 
-[**Learn more →**](real-world-scenarios/technical-docs)
+[**Learn more →**](general-users/use-cases/technical-docs)
 
 ### 📚 **Research & Academic Papers**
 Organize and search through research papers, notes, and academic content.
@@ -71,7 +71,7 @@ Organize and search through research papers, notes, and academic content.
 - Search through literature reviews
 - Discover related research quickly
 
-[**Learn more →**](real-world-scenarios/research-papers)
+[**Learn more →**](general-users/use-cases/research-papers)
 
 ### 📝 **Personal Knowledge Management**
 Transform your personal notes into a searchable knowledge base.
@@ -80,7 +80,7 @@ Transform your personal notes into a searchable knowledge base.
 - Search across journals and notes
 - Connect related concepts
 
-[**Learn more →**](real-world-scenarios/personal-notes)
+[**Learn more →**](general-users/use-cases/personal-notes)
 
 ## Get Started in 3 Minutes
 
@@ -99,7 +99,7 @@ oboyu index ~/Documents
 oboyu query --query "what you're looking for"
 ```
 
-[**Full installation guide →**](getting-started/installation)
+[**Full installation guide →**](general-users/getting-started/installation)
 
 ## Real User Workflows
 
@@ -139,7 +139,7 @@ oboyu query --query "error handling best practices"
 oboyu query --query "deployment issues solutions"
 ```
 
-[**Explore all workflows →**](usage-examples/basic-workflow)
+[**Explore all workflows →**](general-users/basic-usage/basic-workflow)
 
 ## Tool Features That Make the Difference
 
@@ -174,12 +174,12 @@ oboyu query --query "API docs"
 
 This documentation is organized around practical usage:
 
-- **[Getting Started](getting-started/installation)**: Install and run your first search
-- **[Usage Examples](usage-examples/basic-workflow)**: Learn essential daily workflows  
-- **[Real-world Scenarios](real-world-scenarios/technical-docs)**: Domain-specific examples
-- **[Configuration](configuration-optimization/configuration)**: Optimize for your needs
-- **[Integration](integration/mcp-integration)**: Connect with other tools
-- **[Reference](reference-troubleshooting/cli-reference)**: Complete command reference
+- **[Getting Started](general-users/getting-started/installation)**: Install and run your first search
+- **[Usage Examples](general-users/basic-usage/basic-workflow)**: Learn essential daily workflows  
+- **[Real-world Scenarios](general-users/use-cases/technical-docs)**: Domain-specific examples
+- **[Configuration](system-administrators/reference/configuration)**: Optimize for your needs
+- **[Integration](power-users/integration-automation/mcp-integration)**: Connect with other tools
+- **[Reference](for-developers/cli)**: Complete command reference
 
 ## Community & Support
 
@@ -189,7 +189,7 @@ This documentation is organized around practical usage:
 
 ## Ready to Transform Your Document Search?
 
-[**Install Oboyu →**](getting-started/installation) or [**Try the Quick Start →**](getting-started/first-index)
+[**Install Oboyu →**](general-users/getting-started/installation) or [**Try the Quick Start →**](general-users/getting-started/first-index)
 
 ---
 

@@ -151,4 +151,4 @@ The system is configured through a YAML file located at `~/.oboyu/config.yaml`, 
 For detailed information on each component, see:
 - [Crawler Architecture](crawler.md)
 - [Indexer Architecture](indexer.md)
-- [Query Engine Architecture](query_engine.md)
+- [Query Engine Architecture](architecture/query-engine.md)
