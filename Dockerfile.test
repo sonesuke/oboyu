@@ -125,7 +125,7 @@ FROM base as test-runner
 COPY --from=test-pip-source /home/testuser/venv-source /home/testuser/venv-source
 COPY --from=test-pip-wheel /home/testuser/venv-wheel /home/testuser/venv-wheel
 COPY --from=test-pip-editable /home/testuser/venv-editable /home/testuser/venv-editable
-COPY --from=test-uv /home/testuser/.venv /home/testuser/.venv
+COPY --from=test-uv /home/testuser/oboyu/.venv /home/testuser/.venv
 
 # Add test validation script
 COPY --chown=testuser:testuser validate_installations.py /home/testuser/validate_installations.py
