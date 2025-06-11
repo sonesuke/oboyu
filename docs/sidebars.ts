@@ -21,79 +21,120 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Getting Started',
+      label: '🎯 General Users',
+      collapsed: false,
       items: [
-        'getting-started/installation',
-        'getting-started/first-index',
-        'getting-started/first-search',
+        {
+          type: 'category',
+          label: 'Getting Started',
+          items: [
+            'general-users/getting-started/installation',
+            'general-users/getting-started/first-index',
+            'general-users/getting-started/first-search',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Basic Usage',
+          items: [
+            'general-users/basic-usage/basic-workflow',
+            'general-users/basic-usage/document-types',
+            'general-users/basic-usage/search-patterns',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Use Cases',
+          items: [
+            'general-users/use-cases/technical-docs',
+            'general-users/use-cases/meeting-notes',
+            'general-users/use-cases/research-papers',
+            'general-users/use-cases/personal-notes',
+          ],
+        },
       ],
     },
     {
       type: 'category',
-      label: 'Usage Examples',
+      label: '⚡ Power Users',
+      collapsed: false,
       items: [
-        'usage-examples/basic-workflow',
-        'usage-examples/document-types',
-        'usage-examples/search-patterns',
+        {
+          type: 'category',
+          label: 'Integration & Automation',
+          items: [
+            'power-users/integration-automation/mcp-integration',
+            'power-users/integration-automation/cli-workflows',
+            'power-users/integration-automation/automation',
+          ],
+        },
       ],
     },
     {
       type: 'category',
-      label: 'Real-world Scenarios',
+      label: '🔧 System Administrators',
+      collapsed: false,
       items: [
-        'real-world-scenarios/technical-docs',
-        'real-world-scenarios/meeting-notes',
-        'real-world-scenarios/research-papers',
-        'real-world-scenarios/personal-notes',
+        {
+          type: 'category',
+          label: 'Reference',
+          items: [
+            'system-administrators/reference/configuration',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Troubleshooting',
+          items: [
+            'system-administrators/troubleshooting/troubleshooting',
+          ],
+        },
       ],
     },
     {
       type: 'category',
-      label: 'Configuration & Optimization',
+      label: '💻 Developers/Contributors',
+      collapsed: true,
       items: [
-        'configuration-optimization/configuration',
-        'configuration-optimization/indexing-strategies',
-        'configuration-optimization/search-optimization',
-        'configuration-optimization/performance-tuning',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Integration',
-      items: [
-        'integration/mcp-integration',
-        'integration/cli-workflows',
-        'integration/automation',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Reference & Troubleshooting',
-      items: [
-        'reference-troubleshooting/troubleshooting',
-        'reference-troubleshooting/cli-reference',
-        'reference-troubleshooting/configuration-reference',
-        'reference-troubleshooting/japanese-support',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'For Developers',
-      items: [
-        'for-developers/quickstart',
-        'for-developers/architecture',
-        'for-developers/cli',
-        'for-developers/crawler',
-        'for-developers/indexer',
-        'for-developers/reranker',
-        'for-developers/japanese',
-        'for-developers/mcp_server',
-        'for-developers/e2e_display_testing',
-        'for-developers/installation-testing',
-        'for-developers/installation-testing-readme',
-        'for-developers/installation-troubleshooting',
-        'for-developers/immutable-configuration-migration',
-        'for-developers/release-process',
+        {
+          type: 'category',
+          label: 'Architecture',
+          items: [
+            'for-developers/architecture',
+            'for-developers/architecture/query-engine',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Core Components',
+          items: [
+            'for-developers/crawler',
+            'for-developers/indexer',
+            'for-developers/mcp_server',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Development',
+          items: [
+            'for-developers/quickstart',
+            'for-developers/cli',
+            'for-developers/reranker',
+            'for-developers/japanese',
+            'for-developers/e2e_display_testing',
+            'for-developers/release-process',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Testing & Installation',
+          items: [
+            'for-developers/installation-testing',
+            'for-developers/installation-testing-readme',
+            'for-developers/installation-troubleshooting',
+            'for-developers/immutable-configuration-migration',
+          ],
+        },
       ],
     },
   ],
