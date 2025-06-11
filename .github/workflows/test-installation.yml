@@ -83,9 +83,13 @@ jobs:
           
       - name: Install test dependencies
         run: |
-          pip install pytest
+          pip install pytest build
           
       - name: Run installation validation tests
         run: |
           pip install -e .
           pytest tests/test_installation_validation.py -v
+          
+      - name: Run wheel content validation tests
+        run: |
+          pytest tests/test_wheel_content_validation.py -v
