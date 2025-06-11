@@ -8,6 +8,7 @@ on:
     types: [published, prereleased]
   schedule:
     - cron: '0 2 * * *'  # Daily at 2 AM UTC
+  workflow_call:  # Allow this workflow to be called by other workflows
 
 jobs:
   test-pip-install:
