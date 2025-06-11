@@ -12,6 +12,13 @@ import sys
 class TestWheelContentValidation:
     """Test suite to validate wheel package contents."""
 
+    def test_build_package_available(self):
+        """Test that build package is available before running wheel tests."""
+        try:
+            import build  # noqa: F401
+        except ImportError:
+            pytest.fail("build package not available. Install with: pip install build")
+
     def test_wheel_contains_source_files(self, tmp_path):
         """Test that built wheel contains all necessary source files."""
         # Build wheel in temporary directory
@@ -26,7 +33,10 @@ class TestWheelContentValidation:
             cwd=Path(__file__).parent.parent  # Project root
         )
         
-        assert result.returncode == 0, f"Failed to build wheel: {result.stderr}"
+        if result.returncode != 0:
+            print(f"Build stdout: {result.stdout}")
+            print(f"Build stderr: {result.stderr}")
+            pytest.fail(f"Failed to build wheel: {result.stderr}")
         
         # Find the built wheel
         wheel_files = list(build_dir.glob("*.whl"))
@@ -81,7 +91,10 @@ class TestWheelContentValidation:
             cwd=Path(__file__).parent.parent
         )
         
-        assert result.returncode == 0, f"Failed to build wheel: {result.stderr}"
+        if result.returncode != 0:
+            print(f"Build stdout: {result.stdout}")
+            print(f"Build stderr: {result.stderr}")
+            pytest.fail(f"Failed to build wheel: {result.stderr}")
         
         wheel_file = list(build_dir.glob("*.whl"))[0]
         
@@ -153,11 +166,17 @@ print('All submodules imported successfully')
         build_dir = tmp_path / "build"
         build_dir.mkdir()
         
-        subprocess.run(
+        result = subprocess.run(
             [sys.executable, "-m", "build", "--wheel", "--outdir", str(build_dir)],
-            check=True,
+            capture_output=True,
+            text=True,
             cwd=Path(__file__).parent.parent
         )
+        
+        if result.returncode != 0:
+            print(f"Build stdout: {result.stdout}")
+            print(f"Build stderr: {result.stderr}")
+            pytest.fail(f"Failed to build wheel: {result.stderr}")
         
         wheel_file = list(build_dir.glob("*.whl"))[0]
         
@@ -180,10 +199,3 @@ print('All submodules imported successfully')
             assert "transformers" in metadata_content
 
 
-@pytest.fixture(autouse=True)
-def ensure_build_installed():
-    """Ensure build package is installed for tests."""
-    try:
-        import build  # noqa: F401
-    except ImportError:
-        subprocess.run([sys.executable, "-m", "pip", "install", "build"], check=True)
