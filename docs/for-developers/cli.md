@@ -35,7 +35,7 @@ oboyu query --interactive --rerank --mode hybrid
 
 The following options are available for all commands:
 
-- `--config`, `-c`: Path to configuration file (see [Configuration Guide](configuration.md))
+- `--config`, `-c`: Path to configuration file (see [Configuration Guide](../system-administrators/reference/configuration.md))
 - `--db-path`: Path to database file
 - `--verbose`, `-v`: Enable verbose output
 

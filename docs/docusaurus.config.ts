@@ -100,15 +100,15 @@ const config: Config = {
           items: [
             {
               label: 'Getting Started',
-              to: '/getting-started/installation',
+              to: '/general-users/getting-started/installation',
             },
             {
               label: 'CLI Reference',
-              to: '/reference-troubleshooting/cli-reference',
+              to: '/for-developers/cli',
             },
             {
               label: 'Configuration',
-              to: '/configuration-optimization/configuration',
+              to: '/system-administrators/reference/configuration',
             },
           ],
         },

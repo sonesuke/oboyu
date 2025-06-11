@@ -554,7 +554,7 @@ OBOYU_LOG_LEVEL=DEBUG oboyu index /path
 ### Getting Help
 
 If configuration issues persist:
-1. Check the [troubleshooting guide](troubleshooting.md)
+1. Check the [troubleshooting guide](../troubleshooting/troubleshooting.md)
 2. Review [examples](#configuration-examples) above
 3. Run diagnostic: `oboyu diagnose`
 4. File an issue with config and error output
@@ -620,4 +620,4 @@ Some advanced options are now hard-coded for stability:
 2. Symlinks are never followed (security best practice)
 3. RRF algorithm is always used (better than weighted combining)
 
-For any other issues, please check the [troubleshooting guide](troubleshooting.md) or file an issue.
+For any other issues, please check the [troubleshooting guide](../troubleshooting/troubleshooting.md) or file an issue.
