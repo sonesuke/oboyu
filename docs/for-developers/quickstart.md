@@ -182,14 +182,14 @@ oboyu index --clear
 Now that you're up and running:
 
 1. **Explore Interactive Mode**: Try `oboyu query -i` for the full experience
-2. **Read Configuration Guide**: Learn about [customization options](configuration.md)
+2. **Read Configuration Guide**: Learn about [customization options](../system-administrators/reference/configuration.md)
 3. **Check CLI Reference**: See all available [commands and options](cli.md)
 4. **Learn About Architecture**: Understand [how Oboyu works](architecture.md)
 
 ## Need Help?
 
 - Run `oboyu --help` for command help
-- Check [Troubleshooting Guide](troubleshooting.md) for common issues
+- Check [Troubleshooting Guide](../system-administrators/troubleshooting/troubleshooting.md) for common issues
 - Visit our [GitHub repository](https://github.com/sonesuke/oboyu) for support
 
 ## Quick Command Reference

@@ -349,5 +349,5 @@ oboyu query --query "code available github reproducible" --mode vector
 ## Next Steps
 
 - Explore [Personal Notes Search](personal-notes.md) for research note management
-- Learn about [Configuration Optimization](../configuration-optimization/configuration.md) for large paper collections
-- Set up [MCP Integration](../integration/mcp-integration.md) for AI-assisted research
+- Learn about [Configuration Optimization](../../system-administrators/reference/configuration.md) for large paper collections
+- Set up [MCP Integration](../../power-users/integration-automation/mcp-integration.md) for AI-assisted research

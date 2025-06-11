@@ -297,4 +297,4 @@ A productive day with Oboyu:
 
 - Learn [Document Type Handling](document-types.md) for specific file formats
 - Explore [Search Patterns](search-patterns.md) for advanced techniques
-- Set up [Automation](../integration/automation.md) for hands-free workflows
+- Set up [Automation](../../power-users/integration-automation/automation.md) for hands-free workflows

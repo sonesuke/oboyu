@@ -380,6 +380,6 @@ oboyu query --query "[[*]]"
 
 ## Next Steps
 
-- Set up [CLI Workflows](../integration/cli-workflows.md) for personal productivity
-- Configure [Search Optimization](../configuration-optimization/search-optimization.md) for your note structure
-- Explore [Automation](../integration/automation.md) for note management
+- Set up [CLI Workflows](../../power-users/integration-automation/cli-workflows.md) for personal productivity
+- Configure [Search Optimization](../../system-administrators/reference/configuration.md) for your note structure
+- Explore [Automation](../../power-users/integration-automation/automation.md) for note management

@@ -326,5 +326,5 @@ oboyu index ~/Documents
 ## Next Steps
 
 - Explore [Search Patterns](search-patterns.md) for format-specific search techniques
-- Learn about [Performance Tuning](../configuration-optimization/performance-tuning.md) for large collections
-- See [Real-world Scenarios](../real-world-scenarios/technical-docs.md) for practical examples
+- Learn about [Performance Tuning](../../system-administrators/reference/configuration.md) for large collections
+- See [Real-world Scenarios](../use-cases/technical-docs.md) for practical examples

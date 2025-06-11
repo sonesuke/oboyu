@@ -242,4 +242,4 @@ oboyu index ~/Documents --verbose
 
 Now that you've created your first index, you're ready to:
 - [Execute Your First Search](first-search.md) - Learn how to search your indexed documents
-- [Basic Workflows](../usage-examples/basic-workflow.md) - Discover daily usage patterns
+- [Basic Workflows](../basic-usage/basic-workflow.md) - Discover daily usage patterns

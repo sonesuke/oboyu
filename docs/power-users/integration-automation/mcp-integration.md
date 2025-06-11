@@ -330,5 +330,5 @@ When using HTTP transport:
 ## Next Steps
 
 - Learn about [CLI Workflows](cli-workflows.md) for managing multiple indices
-- Explore [Search Patterns](../usage-examples/search-patterns.md) for better queries
+- Explore [Search Patterns](../../general-users/basic-usage/search-patterns.md) for better queries
 - Configure [Automation](automation.md) for keeping indices updated
