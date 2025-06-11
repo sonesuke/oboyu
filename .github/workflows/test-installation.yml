@@ -58,12 +58,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y docker-compose
       
+      - name: Build wheel for Docker tests
+        run: |
+          pip install build
+          python -m build --wheel
+          
       - name: Build and test Docker environments
         run: |
           docker-compose -f docker-compose.test.yml build
           docker-compose -f docker-compose.test.yml up --exit-code-from test-pip-source test-pip-source
           docker-compose -f docker-compose.test.yml up --exit-code-from test-pip-wheel test-pip-wheel
           docker-compose -f docker-compose.test.yml up --exit-code-from test-pip-editable test-pip-editable
+          docker-compose -f docker-compose.test.yml up --exit-code-from test-uv test-uv
           
   test-installation-validation:
     runs-on: ubuntu-latest

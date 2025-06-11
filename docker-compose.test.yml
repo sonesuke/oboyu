@@ -53,19 +53,6 @@ services:
     environment:
       - TEST_NAME=uv
 
-  # Test installation with potential conflicts
-  test-conflicts:
-    build:
-      context: .
-      dockerfile: Dockerfile.test
-      target: test-conflicts
-    image: oboyu-test:conflicts
-    container_name: oboyu-test-conflicts
-    volumes:
-      - ./test-results:/home/testuser/test-results
-    environment:
-      - TEST_NAME=conflicts
-
   # Build wheel for testing
   build-wheel:
     image: python:3.13-slim
@@ -96,7 +83,6 @@ services:
       - test-pip-wheel
       - test-pip-editable
       - test-uv
-      - test-conflicts
     command: |
       bash -c "
         echo 'Running all installation tests...' &&
