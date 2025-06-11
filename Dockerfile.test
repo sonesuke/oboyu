@@ -24,15 +24,20 @@ COPY --chown=testuser:testuser . /home/testuser/oboyu/
 
 USER testuser
 
-# Create fresh virtual environment and test installation
-RUN python -m venv /home/testuser/venv-source && \
-    . /home/testuser/venv-source/bin/activate && \
-    pip install --upgrade pip && \
+# Create fresh virtual environment and test installation with disk space optimization
+RUN python -m venv /home/testuser/venv-source
+RUN . /home/testuser/venv-source/bin/activate && pip install --upgrade pip
+RUN . /home/testuser/venv-source/bin/activate && \
+    pip install --index-url https://download.pytorch.org/whl/cpu torch && \
+    pip cache purge
+RUN . /home/testuser/venv-source/bin/activate && \
     cd /home/testuser/oboyu && \
     pip install . && \
-    # Test that the package can be imported
+    pip cache purge
+
+# Test the installation
+RUN . /home/testuser/venv-source/bin/activate && \
     python -c "import oboyu; print('Source installation successful')" && \
-    # Test CLI availability
     oboyu --help
 
 # Stage 2: Test pip installation from wheel
@@ -43,14 +48,19 @@ COPY --chown=testuser:testuser dist/*.whl /home/testuser/dist/
 
 USER testuser
 
-# Create fresh virtual environment and test wheel installation
-RUN python -m venv /home/testuser/venv-wheel && \
-    . /home/testuser/venv-wheel/bin/activate && \
-    pip install --upgrade pip && \
+# Create fresh virtual environment and test wheel installation with disk space optimization
+RUN python -m venv /home/testuser/venv-wheel
+RUN . /home/testuser/venv-wheel/bin/activate && pip install --upgrade pip
+RUN . /home/testuser/venv-wheel/bin/activate && \
+    pip install --index-url https://download.pytorch.org/whl/cpu torch && \
+    pip cache purge
+RUN . /home/testuser/venv-wheel/bin/activate && \
     pip install /home/testuser/dist/*.whl && \
-    # Test that the package can be imported
+    pip cache purge
+
+# Test the installation
+RUN . /home/testuser/venv-wheel/bin/activate && \
     python -c "import oboyu; print('Wheel installation successful')" && \
-    # Test CLI availability
     oboyu --help
 
 # Stage 3: Test pip editable installation
@@ -61,15 +71,20 @@ COPY --chown=testuser:testuser . /home/testuser/oboyu/
 
 USER testuser
 
-# Create fresh virtual environment and test editable installation
-RUN python -m venv /home/testuser/venv-editable && \
-    . /home/testuser/venv-editable/bin/activate && \
-    pip install --upgrade pip && \
+# Create fresh virtual environment and test editable installation with disk space optimization
+RUN python -m venv /home/testuser/venv-editable
+RUN . /home/testuser/venv-editable/bin/activate && pip install --upgrade pip
+RUN . /home/testuser/venv-editable/bin/activate && \
+    pip install --index-url https://download.pytorch.org/whl/cpu torch && \
+    pip cache purge
+RUN . /home/testuser/venv-editable/bin/activate && \
     cd /home/testuser/oboyu && \
     pip install -e . && \
-    # Test that the package can be imported
+    pip cache purge
+
+# Test the installation
+RUN . /home/testuser/venv-editable/bin/activate && \
     python -c "import oboyu; print('Editable installation successful')" && \
-    # Test CLI availability
     oboyu --help
 
 # Stage 4: Test pip installation with UV
