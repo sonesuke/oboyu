@@ -196,3 +196,95 @@ Content after malformed front matter."""
         except Exception:
             # If it throws, that's also acceptable behavior
             pass
+
+    def test_extract_pdf_simple(self) -> None:
+        """Test PDF content extraction from simple PDF."""
+        # Get test PDF file
+        pdf_path = Path(__file__).parent.parent.parent / "fixtures" / "pdf" / "simple_text.pdf"
+        
+        if pdf_path.exists():
+            extractor = ContentExtractor()
+            content, metadata = extractor.extract_content(pdf_path)
+            
+            # Check content extraction
+            assert "Simple Test PDF" in content
+            assert "simple test PDF file" in content
+            assert "English text for testing purposes" in content
+            
+            # Check that content is text, not binary
+            assert isinstance(content, str)
+            assert len(content) > 0
+    
+    def test_extract_pdf_multipage(self) -> None:
+        """Test PDF content extraction from multi-page PDF."""
+        pdf_path = Path(__file__).parent.parent.parent / "fixtures" / "pdf" / "multipage_text.pdf"
+        
+        if pdf_path.exists():
+            extractor = ContentExtractor()
+            content, metadata = extractor.extract_content(pdf_path)
+            
+            # Check all pages are extracted
+            assert "Page 1: Introduction" in content
+            assert "Page 2: Content" in content
+            assert "Page 3: Conclusion" in content
+            assert "first page" in content
+            assert "second page" in content
+            assert "final page" in content
+    
+    def test_extract_pdf_metadata(self) -> None:
+        """Test PDF metadata extraction."""
+        pdf_path = Path(__file__).parent.parent.parent / "fixtures" / "pdf" / "metadata.pdf"
+        
+        if pdf_path.exists():
+            extractor = ContentExtractor()
+            content, metadata = extractor.extract_content(pdf_path)
+            
+            # Check metadata extraction
+            assert metadata.get("title") == "PDF with Metadata"
+            assert metadata.get("creator") == "Test Creator Application"
+            # Note: Some metadata fields might not be preserved in minimal PDFs
+    
+    def test_extract_pdf_empty(self) -> None:
+        """Test PDF extraction from empty PDF."""
+        pdf_path = Path(__file__).parent.parent.parent / "fixtures" / "pdf" / "empty.pdf"
+        
+        if pdf_path.exists():
+            extractor = ContentExtractor()
+            content, metadata = extractor.extract_content(pdf_path)
+            
+            # Empty PDF should return empty or minimal content
+            assert isinstance(content, str)
+            # Content might be empty or contain minimal whitespace
+    
+    def test_pdf_file_type_detection(self) -> None:
+        """Test PDF file type detection."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            test_dir = Path(temp_dir)
+            
+            # Create a file with PDF header
+            pdf_file = test_dir / "test.pdf"
+            pdf_file.write_bytes(b"%PDF-1.5\n%\xE2\xE3\xCF\xD3\n")
+            
+            extractor = ContentExtractor()
+            file_type = extractor._get_file_type(pdf_file)
+            assert file_type == "application/pdf"
+            
+            # Test with .pdf extension
+            empty_pdf = test_dir / "empty.pdf"
+            empty_pdf.write_text("Not really a PDF")
+            file_type = extractor._get_file_type(empty_pdf)
+            assert file_type == "application/pdf"  # Should detect by extension
+    
+    def test_extract_pdf_invalid(self) -> None:
+        """Test PDF extraction with invalid PDF file."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            test_dir = Path(temp_dir)
+            
+            # Create a fake PDF (text file with .pdf extension)
+            fake_pdf = test_dir / "fake.pdf"
+            fake_pdf.write_text("This is not a real PDF file")
+            
+            extractor = ContentExtractor()
+            # Should raise an error when trying to extract
+            with pytest.raises(RuntimeError, match="Failed to"):
+                extractor.extract_content(fake_pdf)

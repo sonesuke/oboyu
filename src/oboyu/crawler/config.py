@@ -16,6 +16,7 @@ DEFAULT_CONFIG = {
             "*.html",
             "*.py",
             "*.java",
+            "*.pdf",
         ],
         "exclude_patterns": [
             "*/node_modules/*",
@@ -28,7 +29,7 @@ DEFAULT_CONFIG = {
 
 # Default values for individual settings, used for validation
 DEFAULT_DEPTH = 10
-DEFAULT_INCLUDE_PATTERNS = ["*.txt", "*.md", "*.html", "*.py", "*.java"]
+DEFAULT_INCLUDE_PATTERNS = ["*.txt", "*.md", "*.html", "*.py", "*.java", "*.pdf"]
 DEFAULT_EXCLUDE_PATTERNS = ["*/node_modules/*", "*/venv/*"]
 DEFAULT_MAX_WORKERS = 4
 DEFAULT_RESPECT_GITIGNORE = True

@@ -187,3 +187,64 @@ This tests the orchestration of services.
             # Check that metadata includes both extracted and file metadata
             assert "file_size" in result.metadata  # From file metadata
             assert "title" in result.metadata     # From front matter
+
+    def test_crawler_pdf_integration(self) -> None:
+        """Test crawling with PDF files included."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            test_dir = Path(temp_dir)
+            
+            # Create mixed content
+            text_file = test_dir / "document.txt"
+            text_file.write_text("This is a regular text document.")
+            
+            # Copy test PDF to temp directory
+            pdf_source = Path(__file__).parent.parent / "fixtures" / "pdf" / "simple_text.pdf"
+            if pdf_source.exists():
+                pdf_dest = test_dir / "document.pdf"
+                pdf_dest.write_bytes(pdf_source.read_bytes())
+                
+                # Create crawler with PDF support
+                crawler = Crawler(
+                    include_patterns=["*.txt", "*.pdf"],
+                    exclude_patterns=[],
+                )
+                results = crawler.crawl(test_dir)
+                
+                # Should find both files
+                assert len(results) >= 2
+                
+                # Check PDF was processed
+                pdf_results = [r for r in results if str(r.path).endswith('.pdf')]
+                assert len(pdf_results) == 1
+                
+                pdf_result = pdf_results[0]
+                assert "Simple Test PDF" in pdf_result.content
+                assert pdf_result.language in ["en", "unknown"]  # Language detection may vary
+                assert pdf_result.title  # Should have a title
+    
+    def test_crawler_pdf_multipage(self) -> None:
+        """Test crawling multi-page PDF files."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            test_dir = Path(temp_dir)
+            
+            # Copy multipage test PDF
+            pdf_source = Path(__file__).parent.parent / "fixtures" / "pdf" / "multipage_text.pdf"
+            if pdf_source.exists():
+                pdf_dest = test_dir / "multipage.pdf"
+                pdf_dest.write_bytes(pdf_source.read_bytes())
+                
+                crawler = Crawler(include_patterns=["*.pdf"])
+                results = crawler.crawl(test_dir)
+                
+                assert len(results) == 1
+                result = results[0]
+                
+                # Check all pages are included
+                assert "Page 1: Introduction" in result.content
+                assert "Page 2: Content" in result.content  
+                assert "Page 3: Conclusion" in result.content
+                
+                # Content should be properly concatenated
+                assert "first page" in result.content
+                assert "second page" in result.content
+                assert "final page" in result.content
