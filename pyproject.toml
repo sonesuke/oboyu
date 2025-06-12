@@ -49,6 +49,7 @@ dependencies = [
     "numpy>=2.2.6", # For numerical computations (core functionality)
     "prompt-toolkit>=3.0.51",
     "pydantic>=2.11.5",
+    "pypdf>=5.6.0",
 ]
 
 [project.scripts]

@@ -58,7 +58,8 @@ That's it! See our [Documentation](https://sonesuke.github.io/oboyu/) for comple
 - **Interactive Mode**: Real-time search with command history and auto-suggestions
 
 ### 📚 Document Support
-- **Text File Support**: Plain text (.txt), Markdown (.md), HTML (.html), and source code files (.py, .java, etc.) with automatic encoding detection
+- **Rich Format Support**: PDF documents, plain text (.txt), Markdown (.md), HTML (.html), and source code files (.py, .java, etc.)
+- **PDF Processing**: Full text extraction with metadata preservation from PDF documents
 - **Incremental Indexing**: Only process new or changed files for lightning-fast updates
 - **Smart Chunking**: Intelligent document splitting for optimal search results
 - **Automatic Encoding**: Handles various text encodings seamlessly (UTF-8, Shift-JIS, EUC-JP, and more)

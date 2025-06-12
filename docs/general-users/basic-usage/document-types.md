@@ -10,38 +10,64 @@ Oboyu supports a wide range of document formats. This guide shows you how to eff
 
 ## PDF Documents
 
-PDFs are common for reports, papers, and formal documents. Oboyu extracts and indexes text content from PDFs automatically.
+Oboyu fully supports PDF document indexing and search. Text content is automatically extracted from PDF files, including multi-page documents, and metadata is preserved for enhanced search capabilities.
+
+### Supported PDF Features
+- **Text extraction**: Extracts plain text content from all pages
+- **Metadata extraction**: Preserves title, author, creation date, and modification date
+- **Multi-page support**: Handles documents with multiple pages seamlessly
+- **Japanese text support**: Full support for Japanese text in PDFs
 
 ### Basic PDF Search
 ```bash
-# Search only in PDF files
+# Search all indexed PDF files
 oboyu query --query "annual report"
 
 # Find PDFs with specific content
 oboyu query --query "financial statement 2024" --mode hybrid
+
+# Search for content across multiple pages
+oboyu query --query "conclusion recommendations"
 ```
 
-### Handling Scanned PDFs
-For scanned documents with OCR text:
+### PDF Indexing
 ```bash
-# Index with OCR enhancement (if available)
-oboyu index ~/Documents/scanned --ocr-enhance
+# Index a directory containing PDFs
+oboyu index ~/Documents/PDFs
 
-# Search with fuzzy matching for OCR errors
-oboyu query --query "bugdet reprot"
+# Index with mixed file types (PDFs included by default)
+oboyu index ~/Documents --include "*.pdf,*.txt,*.md"
 ```
 
 ### PDF-Specific Examples
 ```bash
 # Find research papers
-oboyu query --query "machine learning" --db-path ~/indexes/research.db
+oboyu query --query "machine learning neural networks"
 
 # Find forms and applications
 oboyu query --query "application form"
 
 # Find presentations converted to PDF
 oboyu query --query "slide deck presentation"
+
+# Search PDF metadata
+oboyu query --query "author:Smith" --mode vector
 ```
+
+### Japanese PDF Support
+```bash
+# Search Japanese PDFs
+oboyu query --query "機械学習"
+
+# Mixed language search
+oboyu query --query "machine learning 機械学習" --mode hybrid
+```
+
+### Performance Tips for PDFs
+- Large PDFs are processed efficiently with automatic text chunking
+- Metadata extraction is fast and preserves document properties
+- Text-based PDFs perform better than image-only PDFs
+- Consider using semantic search mode for concept-based queries
 
 ## Markdown Files
 
