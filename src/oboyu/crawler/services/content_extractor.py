@@ -2,11 +2,16 @@
 
 import mimetypes
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Tuple
+
+if TYPE_CHECKING:
+    pass
 
 import chardet
 import charset_normalizer
 import frontmatter
+
+from .optimized_pdf_processor import OptimizedPDFProcessor
 
 # Initialize mimetypes
 mimetypes.init()
@@ -15,14 +20,15 @@ mimetypes.init()
 class ContentExtractor:
     """Service responsible for extracting content from different file formats."""
 
-    def __init__(self, max_file_size: int = 10 * 1024 * 1024) -> None:
+    def __init__(self, max_file_size: int = 50 * 1024 * 1024) -> None:
         """Initialize the content extractor.
         
         Args:
-            max_file_size: Maximum file size in bytes to process (default: 10MB)
+            max_file_size: Maximum file size in bytes to process (default: 50MB)
 
         """
         self.max_file_size = max_file_size
+        self._pdf_processor = OptimizedPDFProcessor(max_file_size=max_file_size)
 
     def extract_content(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
         """Extract content from a file.
@@ -248,7 +254,7 @@ class ContentExtractor:
         return post.content, metadata
 
     def _extract_pdf_file(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
-        """Extract content and metadata from a PDF file.
+        """Extract content and metadata from a PDF file using optimized processor.
         
         Args:
             file_path: Path to the file
@@ -257,66 +263,5 @@ class ContentExtractor:
             Tuple of (content, metadata)
 
         """
-        try:
-            import pypdf
-        except ImportError:
-            raise RuntimeError("pypdf library is required for PDF processing. Install with: pip install pypdf")
-        
-        try:
-            with open(file_path, "rb") as file:
-                pdf_reader = pypdf.PdfReader(file)
-                
-                # Extract text from all pages
-                text_content = []
-                for page_num, page in enumerate(pdf_reader.pages):
-                    page_text = page.extract_text()
-                    if page_text:
-                        text_content.append(page_text)
-                
-                content = "\n".join(text_content)
-                
-                # Extract metadata
-                metadata: Dict[str, Any] = {}
-                if pdf_reader.metadata:
-                    # Extract title
-                    if pdf_reader.metadata.title:
-                        metadata["title"] = str(pdf_reader.metadata.title)
-                    
-                    # Extract creator
-                    if hasattr(pdf_reader.metadata, "creator") and pdf_reader.metadata.creator:
-                        metadata["creator"] = str(pdf_reader.metadata.creator)
-                    
-                    # Extract creation date
-                    if hasattr(pdf_reader.metadata, "creation_date") and pdf_reader.metadata.creation_date:
-                        from datetime import datetime
-                        creation_date = pdf_reader.metadata.creation_date
-                        if isinstance(creation_date, datetime):
-                            metadata["created_at"] = creation_date
-                        else:
-                            # Try to parse string date
-                            try:
-                                metadata["created_at"] = datetime.fromisoformat(str(creation_date).replace("Z", "+00:00"))
-                            except ValueError:
-                                # Store as string if parsing fails
-                                metadata["created_at"] = str(creation_date)
-                    
-                    # Extract modification date
-                    if hasattr(pdf_reader.metadata, "modification_date") and pdf_reader.metadata.modification_date:
-                        from datetime import datetime
-                        mod_date = pdf_reader.metadata.modification_date
-                        if isinstance(mod_date, datetime):
-                            metadata["updated_at"] = mod_date
-                        else:
-                            # Try to parse string date
-                            try:
-                                metadata["updated_at"] = datetime.fromisoformat(str(mod_date).replace("Z", "+00:00"))
-                            except ValueError:
-                                # Store as string if parsing fails
-                                metadata["updated_at"] = str(mod_date)
-                
-                return content, metadata
-                
-        except pypdf.errors.PdfReadError as e:
-            raise RuntimeError(f"Failed to read PDF file: {e}")
-        except Exception as e:
-            raise RuntimeError(f"Failed to extract PDF content: {e}")
+        return self._pdf_processor.extract_pdf(file_path)
+
