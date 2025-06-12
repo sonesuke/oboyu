@@ -18,7 +18,7 @@ from oboyu.indexer.config.search_config import SearchConfig
 
 class IndexerFactory:
     """Creates and configures indexer instances.
-    
+
     This service handles indexer creation with proper configuration
     and standardized loading messages.
     """
@@ -64,12 +64,8 @@ class IndexerFactory:
         indexer_config_dict.update(overrides)
 
         # Create modular config from dict with overrides
-        model_config = ModelConfig(
-            use_reranker=indexer_config_dict.get("use_reranker", False)
-        )
-        search_config = SearchConfig(
-            use_reranker=indexer_config_dict.get("use_reranker", False)
-        )
+        model_config = ModelConfig(use_reranker=indexer_config_dict.get("use_reranker", False))
+        search_config = SearchConfig(use_reranker=indexer_config_dict.get("use_reranker", False))
         processing_config = ProcessingConfig(db_path=Path(indexer_config_dict["db_path"]))
 
         return IndexerConfig(model=model_config, search=search_config, processing=processing_config)

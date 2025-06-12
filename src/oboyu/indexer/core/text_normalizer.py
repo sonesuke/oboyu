@@ -23,6 +23,5 @@ class TextNormalizer:
         """
         # Remove excessive whitespace while preserving structure
         normalized = re.sub(r"\s+", " ", text).strip()
-        
-        return normalized
 
+        return normalized

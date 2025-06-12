@@ -75,11 +75,11 @@ class TermFrequencyAnalyzer:
         """
         positions = []
         tokens = self.tokenizer.tokenize(content)
-        
+
         for i, token in enumerate(tokens):
             if token == term:
                 positions.append(i)
-        
+
         return positions
 
     def analyze_batch(self, contents: list[str]) -> Dict[int, Dict[str, int]]:
@@ -93,10 +93,10 @@ class TermFrequencyAnalyzer:
 
         """
         results = {}
-        
+
         for i, content in enumerate(contents):
             results[i] = self.analyze_document(content)
-        
+
         return results
 
     def get_vocabulary_from_documents(self, contents: list[str]) -> Set[str]:
@@ -110,10 +110,9 @@ class TermFrequencyAnalyzer:
 
         """
         vocabulary = set()
-        
+
         for content in contents:
             unique_terms = self.extract_unique_terms(content)
             vocabulary.update(unique_terms)
-        
-        return vocabulary
 
+        return vocabulary

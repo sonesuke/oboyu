@@ -15,7 +15,7 @@ class TestFileDiscoveryService:
         """Test service initialization with default and custom parameters."""
         # Test with default parameters
         service = FileDiscoveryService()
-        assert service.max_file_size == 10 * 1024 * 1024  # 10MB
+        assert service.max_file_size == 100 * 1024 * 1024  # 100MB
         assert service.follow_symlinks is False
 
         # Test with custom parameters

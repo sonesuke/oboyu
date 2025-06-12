@@ -106,22 +106,22 @@ def format_snippet(text: str, query: str, length: int = 160, highlight: bool = T
 
 def format_path_for_display(path: str, max_width: int = 60, preserve_components: int = 2) -> str:
     """Format a file path for display with intelligent truncation.
-    
+
     Args:
         path: File path to format
         max_width: Maximum width for the path display
         preserve_components: Number of final path components to always preserve
-        
+
     Returns:
         Formatted path string with intelligent truncation
-        
+
     """
     import os
     from pathlib import Path
-    
+
     # Normalize the path
     path_obj = Path(path).resolve()
-    
+
     # Convert to home directory format if applicable
     try:
         relative_to_home = path_obj.relative_to(Path.home())
@@ -129,35 +129,35 @@ def format_path_for_display(path: str, max_width: int = 60, preserve_components:
     except ValueError:
         # Path is not within home directory
         formatted_path = str(path_obj)
-    
+
     # If path is already short enough, return as-is
     if len(formatted_path) <= max_width:
         return formatted_path
-    
+
     # Split path into components
     parts = formatted_path.split(os.sep)
-    
+
     # Always preserve the final components (e.g., final directory and filename)
     preserved_parts = parts[-preserve_components:] if len(parts) >= preserve_components else parts
     preserved_length = len(os.sep.join(preserved_parts))
-    
+
     # Calculate available space for middle components
     prefix = parts[0] if parts[0] else os.sep  # Root or first component
     available_space = max_width - len(prefix) - preserved_length - len("/.../")
-    
+
     if available_space <= 0:
         # Not enough space, show minimal format: prefix/.../final_components
         if len(parts) > preserve_components + 1:
             return f"{prefix}/.../{''.join(preserved_parts)}"
         else:
             # Very short path, truncate in middle
-            return f"{formatted_path[:max_width//2]}...{formatted_path[-(max_width//2):]}"
-    
+            return f"{formatted_path[: max_width // 2]}...{formatted_path[-(max_width // 2) :]}"
+
     # Try to fit some middle components
     middle_parts = parts[1:-preserve_components] if len(parts) > preserve_components + 1 else []
     included_middle = []
     current_length = 0
-    
+
     # Add middle components while they fit
     for part in middle_parts:
         part_length = len(part) + 1  # +1 for separator
@@ -166,7 +166,7 @@ def format_path_for_display(path: str, max_width: int = 60, preserve_components:
             current_length += part_length
         else:
             break
-    
+
     # Construct the final path
     if included_middle:
         if len(included_middle) < len(middle_parts):
@@ -181,12 +181,12 @@ def format_path_for_display(path: str, max_width: int = 60, preserve_components:
             result_parts = [prefix, "..."] + preserved_parts
         else:
             result_parts = [prefix] + preserved_parts
-    
+
     # Join path components and clean up any double separators
     result = os.sep.join(filter(None, result_parts))
-    
+
     # Clean up multiple consecutive separators
     while os.sep + os.sep in result:
         result = result.replace(os.sep + os.sep, os.sep)
-    
+
     return result

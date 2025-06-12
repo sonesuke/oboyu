@@ -20,7 +20,7 @@ except ImportError:
 DocumentInfo = Tuple[Path, Dict[str, object]]
 
 # Hard-coded values (no longer configurable)
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB - increased to accommodate PDF files
 FOLLOW_SYMLINKS = False
 
 

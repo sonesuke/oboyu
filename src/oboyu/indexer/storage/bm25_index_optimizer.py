@@ -13,7 +13,7 @@ class BM25IndexOptimizer:
 
     def __init__(self, conn: DuckDBPyConnection) -> None:
         """Initialize BM25 index optimizer.
-        
+
         Args:
             conn: Database connection
 
@@ -54,7 +54,7 @@ class BM25IndexOptimizer:
         """
         stats = {}
         bm25_tables = ["vocabulary", "inverted_index", "document_stats", "collection_stats"]
-        
+
         for table in bm25_tables:
             try:
                 result = self.conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
@@ -62,7 +62,7 @@ class BM25IndexOptimizer:
             except Exception as e:
                 logger.warning(f"Failed to get stats for table {table}: {e}")
                 stats[f"{table}_count"] = 0
-                
+
         return stats
 
     def vacuum_bm25_tables(self) -> bool:
@@ -74,7 +74,7 @@ class BM25IndexOptimizer:
         """
         try:
             bm25_tables = ["vocabulary", "inverted_index", "document_stats", "collection_stats"]
-            
+
             for table in bm25_tables:
                 try:
                     # DuckDB uses VACUUM for table maintenance

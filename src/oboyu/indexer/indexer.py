@@ -24,13 +24,13 @@ class Indexer:
         """
         # Initialize configuration
         self.config = config or IndexerConfig()
-        
+
         # Initialize service registry with all dependencies
         self.services = ServiceRegistry(self.config)
-        
+
         # Initialize orchestrators
         self.indexing_pipeline = IndexingPipeline(self.services)
-        
+
         # Backward compatibility: expose services directly
         self.database_service = self.services.get_database_service()
         self.embedding_service = self.services.get_embedding_service()
@@ -84,26 +84,24 @@ class Indexer:
 
     def clear_index(self) -> None:
         """Clear all data from the index while preserving schema.
-        
+
         This method clears all chunks and embeddings from the database
         but keeps the database structure intact.
         """
-        if hasattr(self, 'database_service') and self.database_service:
+        if hasattr(self, "database_service") and self.database_service:
             self.database_service.clear_database()
-    
+
     def close(self) -> None:
         """Close all resources properly."""
         # Database service handles all connection closures
-        if hasattr(self, 'database_service') and self.database_service:
+        if hasattr(self, "database_service") and self.database_service:
             self.database_service.close()
 
     def __enter__(self) -> "Indexer":
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type: type[BaseException] | None,
-                 exc_val: BaseException | None,
-                 exc_tb: object) -> None:
+    def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: object) -> None:
         """Context manager exit."""
         self.close()
 
@@ -117,7 +115,7 @@ class Indexer:
         """
         # Ensure config is properly initialized
         assert self.config.model is not None, "ModelConfig should be initialized"
-        
+
         return {
             "total_chunks": self.database_service.get_chunk_count(),
             "indexed_paths": len(self.database_service.get_paths_with_chunks()),

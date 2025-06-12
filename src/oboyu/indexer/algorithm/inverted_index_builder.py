@@ -37,14 +37,14 @@ class InvertedIndexBuilder:
 
         """
         stats = {"chunks_indexed": 0, "terms_indexed": 0}
-        
+
         for chunk in chunks:
             chunk_term_freqs = term_frequencies.get(chunk.id, {})
             self.update_index(chunk.id, chunk_term_freqs)
-            
+
             stats["chunks_indexed"] += 1
             stats["terms_indexed"] += sum(chunk_term_freqs.values())
-        
+
         return stats
 
     def update_index(self, chunk_id: str, term_frequencies: Dict[str, int]) -> Set[str]:
@@ -59,12 +59,12 @@ class InvertedIndexBuilder:
 
         """
         unique_terms: Set[str] = set()
-        
+
         for term, freq in term_frequencies.items():
             positions: Optional[List[int]] = [] if self.store_positions else None
             self.inverted_index[term].append((chunk_id, freq, positions))
             unique_terms.add(term)
-        
+
         return unique_terms
 
     def remove_from_index(self, chunk_id: str) -> None:
@@ -76,18 +76,17 @@ class InvertedIndexBuilder:
         """
         # Find and remove all entries for this chunk
         terms_to_remove = []
-        
+
         for term, postings in self.inverted_index.items():
             # Filter out postings for the specified chunk
-            updated_postings = [(doc_id, freq, positions) for doc_id, freq, positions in postings
-                              if doc_id != chunk_id]
-            
+            updated_postings = [(doc_id, freq, positions) for doc_id, freq, positions in postings if doc_id != chunk_id]
+
             if updated_postings:
                 self.inverted_index[term] = updated_postings
             else:
                 # Mark term for removal if no documents remain
                 terms_to_remove.append(term)
-        
+
         # Remove terms that have no documents
         for term in terms_to_remove:
             del self.inverted_index[term]
@@ -134,4 +133,3 @@ class InvertedIndexBuilder:
 
         """
         return dict(self.inverted_index)
-

@@ -9,7 +9,7 @@ from oboyu.common.config import ConfigManager
 
 class ConfigurationService:
     """Handles configuration loading and management for CLI commands.
-    
+
     This service encapsulates all configuration-related functionality,
     providing a clean interface for accessing configuration data.
     """

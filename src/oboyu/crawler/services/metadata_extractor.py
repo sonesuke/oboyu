@@ -11,7 +11,7 @@ class MetadataExtractor:
 
     def __init__(self, follow_symlinks: bool = False) -> None:
         """Initialize the metadata extractor.
-        
+
         Args:
             follow_symlinks: Whether to follow symbolic links when extracting metadata
 
@@ -20,10 +20,10 @@ class MetadataExtractor:
 
     def extract_metadata(self, file_path: Path) -> Dict[str, Any]:
         """Extract file metadata (timestamps, size, etc.).
-        
+
         Args:
             file_path: Path to the file
-            
+
         Returns:
             Dictionary with file metadata
 
@@ -43,10 +43,10 @@ class MetadataExtractor:
 
     def extract_metadata_from_direntry(self, file_entry: os.DirEntry[str]) -> Dict[str, Any]:
         """Extract metadata from a directory entry.
-        
+
         Args:
             file_entry: Directory entry for the file
-            
+
         Returns:
             Dictionary with file metadata
 

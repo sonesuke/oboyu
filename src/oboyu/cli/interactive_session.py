@@ -200,7 +200,7 @@ class InteractiveQuerySession:
 
         try:
             rrf_k = int(cmd_parts[1])
-            
+
             if 1 <= rrf_k <= 1000:  # Reasonable range for RRF k parameter
                 self.config["rrf_k"] = rrf_k
                 self.console.print(f"[green]RRF parameter set to: k={rrf_k}[/green]")
@@ -237,12 +237,9 @@ class InteractiveQuerySession:
         self.console.print("\n[bold blue]Current Settings:[/bold blue]")
         for key, value in self.config.items():
             self.console.print(f"  [cyan]{key}[/cyan]: {value}")
-        
+
         # Show reranker availability
-        reranker_available = (
-            self.retriever.reranker_service and
-            self.retriever.reranker_service.is_available()
-        )
+        reranker_available = self.retriever.reranker_service and self.retriever.reranker_service.is_available()
         self.console.print(f"  [cyan]reranker_available[/cyan]: {reranker_available}")
         self.console.print()
 
@@ -250,40 +247,40 @@ class InteractiveQuerySession:
         """Clear the screen."""
         # Use ANSI escape codes for cross-platform screen clearing
         import os
-        
-        if os.name == 'nt':
+
+        if os.name == "nt":
             # Windows - use ANSI codes if supported, otherwise print newlines
-            print('\033[2J\033[H', end='')
+            print("\033[2J\033[H", end="")
         else:
             # Unix-like systems - use ANSI escape codes
-            print('\033[2J\033[H', end='')
+            print("\033[2J\033[H", end="")
 
     def _show_stats(self) -> None:
         """Show database statistics."""
         try:
             stats = self.retriever.get_database_stats()
             self.console.print("\n[bold blue]Database Statistics:[/bold blue]")
-            
+
             # Format basic stats
-            chunk_count = stats.get('chunk_count', 0)
-            embedding_count = stats.get('embedding_count', 0)
-            vocabulary_size = stats.get('vocabulary_size', 0)
-            
+            chunk_count = stats.get("chunk_count", 0)
+            embedding_count = stats.get("embedding_count", 0)
+            vocabulary_size = stats.get("vocabulary_size", 0)
+
             self.console.print(f"  [cyan]Chunks[/cyan]: {chunk_count:,}")
             self.console.print(f"  [cyan]Embeddings[/cyan]: {embedding_count:,}")
             self.console.print(f"  [cyan]Vocabulary[/cyan]: {vocabulary_size:,}")
-            
+
             # Show languages if available
-            if 'languages' in stats and stats['languages']:
-                languages = stats['languages'].split(',') if isinstance(stats['languages'], str) else stats['languages']
+            if "languages" in stats and stats["languages"]:
+                languages = stats["languages"].split(",") if isinstance(stats["languages"], str) else stats["languages"]
                 self.console.print(f"  [cyan]Languages[/cyan]: {', '.join(languages)}")
-            
+
             # Show model info
-            if 'embedding_model' in stats and stats['embedding_model']:
+            if "embedding_model" in stats and stats["embedding_model"]:
                 self.console.print(f"  [cyan]Model[/cyan]: {stats['embedding_model']}")
-            
+
             self.console.print()
-            
+
         except Exception as e:
             self.console.print(f"[red]Error getting stats: {e}[/red]")
 
@@ -291,16 +288,16 @@ class InteractiveQuerySession:
         """Execute a search query."""
         try:
             start_time = time.time()
-            
+
             # Create search parameters
             search_params = {
                 "top_k": self.config.get("top_k", 10),
             }
-            
+
             # Add mode-specific parameters
             mode = self.config.get("mode", "hybrid")
             # Note: RRF parameter is configured at the indexer level, not passed as search parameter
-            
+
             # Execute search based on mode
             if mode == "vector":
                 results = self.retriever.vector_search(query, **search_params)
@@ -308,40 +305,32 @@ class InteractiveQuerySession:
                 results = self.retriever.bm25_search(query, **search_params)
             else:  # hybrid
                 results = self.retriever.hybrid_search(query, **search_params)
-            
+
             # Apply reranking if enabled and available
             reranker_used = False
-            if (self.config.get("rerank", False) and results and
-                self.retriever.reranker_service and
-                self.retriever.reranker_service.is_available()):
+            if self.config.get("rerank", False) and results and self.retriever.reranker_service and self.retriever.reranker_service.is_available():
                 results = self.retriever.rerank_results(query, results)
                 reranker_used = True
-            
+
             elapsed_time = time.time() - start_time
-            
+
             # Display results
             self._display_results(results, elapsed_time, mode, reranker_used)
-            
+
         except Exception as e:
             self.console.print(f"[red]Search error: {e}[/red]")
             logging.error(f"Search error: {e}")
 
-    def _display_results(
-        self,
-        results: list[SearchResult],
-        elapsed_time: float,
-        mode: str,
-        reranker_used: bool = False
-    ) -> None:
+    def _display_results(self, results: list[SearchResult], elapsed_time: float, mode: str, reranker_used: bool = False) -> None:
         """Display search results."""
         if not results:
             self.console.print("[yellow]No results found.[/yellow]")
             return
-        
+
         # Header with reranker indication
         reranker_suffix = " with reranker" if reranker_used else ""
         self.console.print(f"\n[bold green]Found {len(results)} results[/bold green] ([dim]{mode} search{reranker_suffix}, {elapsed_time:.3f}s[/dim])\n")
-        
+
         # Results
         for i, result in enumerate(results, 1):
             # Score with color coding
@@ -354,25 +343,25 @@ class InteractiveQuerySession:
                 score_color = "yellow"
             else:
                 score_color = "red"
-            
+
             # File path (shortened)
             file_path = str(result.path)
             if len(file_path) > 60:
                 file_path = "..." + file_path[-57:]
-            
+
             # Header line
             self.console.print(f"[bold blue]{i:2d}.[/bold blue] [{score_color}]{score:.3f}[/{score_color}] [dim]{file_path}[/dim]")
-            
+
             # Title if available
             if result.title and result.title.strip():
                 title_text = Text(result.title.strip())
                 title_text.stylize("bold")
                 self.console.print(f"    {title_text}")
-            
+
             # Content preview
-            content_preview = result.content[:200].replace('\n', ' ').strip()
+            content_preview = result.content[:200].replace("\n", " ").strip()
             if len(result.content) > 200:
                 content_preview += "..."
-            
+
             self.console.print(f"    {content_preview}")
             self.console.print()  # Empty line between results

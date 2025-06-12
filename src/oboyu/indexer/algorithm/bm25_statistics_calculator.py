@@ -35,7 +35,7 @@ class BM25StatisticsCalculator:
 
         """
         idf_scores = {}
-        
+
         for term, df in term_doc_frequencies.items():
             if df > 0:
                 # IDF calculation: log((N - df + 0.5) / (df + 0.5))
@@ -43,7 +43,7 @@ class BM25StatisticsCalculator:
                 idf_scores[term] = idf
             else:
                 idf_scores[term] = 0.0
-        
+
         return idf_scores
 
     def calculate_average_document_length(self, document_lengths: List[int]) -> float:
@@ -58,7 +58,7 @@ class BM25StatisticsCalculator:
         """
         if not document_lengths:
             return 0.0
-        
+
         return sum(document_lengths) / len(document_lengths)
 
     def update_collection_statistics(self, chunk_id: str, term_frequencies: Dict[str, int], unique_terms: Set[str]) -> None:
@@ -183,7 +183,7 @@ class BM25StatisticsCalculator:
         # BM25 term score calculation
         numerator = term_frequency * (k1 + 1)
         denominator = term_frequency + k1 * (1 - b + b * (document_length / avg_doc_length))
-        
+
         return idf * (numerator / denominator)
 
     def remove_document_statistics(self, chunk_id: str, term_frequencies: Dict[str, int], unique_terms: Set[str]) -> None:
@@ -223,4 +223,3 @@ class BM25StatisticsCalculator:
         self.document_lengths.clear()
         self.document_count = 0
         self.total_document_length = 0
-

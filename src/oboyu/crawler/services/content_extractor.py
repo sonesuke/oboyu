@@ -22,7 +22,7 @@ class ContentExtractor:
 
     def __init__(self, max_file_size: int = 50 * 1024 * 1024) -> None:
         """Initialize the content extractor.
-        
+
         Args:
             max_file_size: Maximum file size in bytes to process (default: 50MB)
 
@@ -32,10 +32,10 @@ class ContentExtractor:
 
     def extract_content(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
         """Extract content from a file.
-        
+
         Args:
             file_path: Path to the file
-            
+
         Returns:
             Tuple of (content, metadata)
             Where metadata contains optional fields: title, created_at, updated_at, uri
@@ -55,10 +55,10 @@ class ContentExtractor:
 
     def _get_file_type(self, file_path: Path) -> str:
         """Determine the file type based on extension and content.
-        
+
         Args:
             file_path: Path to the file
-            
+
         Returns:
             File type string
 
@@ -96,11 +96,11 @@ class ContentExtractor:
 
     def _extract_by_type(self, file_path: Path, file_type: str) -> Tuple[str, Dict[str, Any]]:
         """Extract content based on file type.
-        
+
         Args:
             file_path: Path to the file
             file_type: File type string
-            
+
         Returns:
             Tuple of (content, metadata)
 
@@ -108,16 +108,16 @@ class ContentExtractor:
         # Check if it's a PDF file
         if file_type == "application/pdf" or file_type == "application" and file_path.suffix.lower() == ".pdf":
             return self._extract_pdf_file(file_path)
-        
+
         # Default to text file extraction
         return self._extract_text_file(file_path)
 
     def _extract_text_file(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
         """Extract content and metadata from a text file.
-        
+
         Args:
             file_path: Path to the file
-            
+
         Returns:
             Tuple of (content, metadata)
 
@@ -144,10 +144,10 @@ class ContentExtractor:
 
     def _decode_content(self, raw_data: bytes) -> str:
         """Decode raw bytes to string using various encoding detection methods.
-        
+
         Args:
             raw_data: Raw bytes to decode
-            
+
         Returns:
             Decoded string
 
@@ -205,13 +205,13 @@ class ContentExtractor:
 
     def _parse_front_matter(self, content: str) -> Tuple[str, Dict[str, Any]]:
         """Parse YAML front matter from content if present.
-        
+
         Extracts YAML front matter and returns the content without it,
         along with the parsed metadata.
-        
+
         Args:
             content: File content that may contain YAML front matter
-            
+
         Returns:
             Tuple of (content without front matter, metadata dict)
             Metadata may contain: title, created_at, updated_at, uri
@@ -255,13 +255,12 @@ class ContentExtractor:
 
     def _extract_pdf_file(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
         """Extract content and metadata from a PDF file using optimized processor.
-        
+
         Args:
             file_path: Path to the file
-            
+
         Returns:
             Tuple of (content, metadata)
 
         """
         return self._pdf_processor.extract_pdf(file_path)
-

@@ -15,13 +15,13 @@ from oboyu.indexer.storage.utils import DateTimeEncoder
 
 class DatabaseConnectionProtocol(Protocol):
     """Protocol defining the expected database connection interface."""
-    
+
     conn: Optional[DuckDBPyConnection]
-    
+
     def initialize(self) -> None:
         """Initialize the database connection."""
         ...
-    
+
     def transaction(self) -> ContextManager[DuckDBPyConnection]:
         """Create a database transaction context."""
         ...
@@ -90,7 +90,7 @@ class DatabaseOperations:
         chunk_ids: List[str],
         embeddings: List[NDArray[np.float32]],
         model_name: str = "cl-nagoya/ruri-v3-30m",
-        progress_callback: Optional[Callable[[str, int, int], None]] = None
+        progress_callback: Optional[Callable[[str, int, int], None]] = None,
     ) -> None:
         """Store embedding vectors in the database.
 
@@ -108,7 +108,7 @@ class DatabaseOperations:
             self.initialize()
 
         total_embeddings = len(chunk_ids)
-        
+
         with self.transaction() as conn:
             for i, (chunk_id, embedding) in enumerate(zip(chunk_ids, embeddings)):
                 # Generate embedding ID
@@ -123,7 +123,7 @@ class DatabaseOperations:
                 """,
                     [embedding_id, chunk_id, model_name, embedding.astype(np.float32).tolist(), datetime.now()],
                 )
-                
+
                 # Report progress
                 if progress_callback and (i % 100 == 0 or i == total_embeddings - 1):
                     progress_callback("storing_embeddings", i + 1, total_embeddings)

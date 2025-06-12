@@ -17,9 +17,9 @@ T = TypeVar("T")
 class CircuitState(Enum):
     """Circuit breaker states."""
 
-    CLOSED = "closed"        # Normal operation - requests are allowed
-    OPEN = "open"           # Failure state - requests are blocked
-    HALF_OPEN = "half_open" # Testing state - limited requests allowed
+    CLOSED = "closed"  # Normal operation - requests are allowed
+    OPEN = "open"  # Failure state - requests are blocked
+    HALF_OPEN = "half_open"  # Testing state - limited requests allowed
 
 
 class CircuitBreakerError(Exception):
@@ -27,12 +27,12 @@ class CircuitBreakerError(Exception):
 
     def __init__(self, message: str, circuit_name: str, failure_count: int) -> None:
         """Initialize circuit breaker error.
-        
+
         Args:
             message: Error message.
             circuit_name: Name of the circuit breaker.
             failure_count: Current failure count.
-            
+
         """
         super().__init__(message)
         self.circuit_name = circuit_name
@@ -51,14 +51,14 @@ class CircuitBreakerConfig:
         enabled: bool = True,
     ) -> None:
         """Initialize circuit breaker configuration.
-        
+
         Args:
             failure_threshold: Number of failures before opening circuit.
             recovery_timeout: Time to wait before trying half-open state.
             success_threshold: Consecutive successes needed to close circuit.
             request_timeout: Timeout for individual requests.
             enabled: Whether circuit breaker is enabled.
-            
+
         """
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
@@ -112,11 +112,11 @@ class CircuitBreaker(Generic[T]):
 
     def __init__(self, name: str, config: CircuitBreakerConfig) -> None:
         """Initialize circuit breaker.
-        
+
         Args:
             name: Name identifier for this circuit breaker.
             config: Configuration for circuit breaker behavior.
-            
+
         """
         self.name = name
         self.config = config
@@ -130,18 +130,18 @@ class CircuitBreaker(Generic[T]):
 
     def call(self, func: Callable[[], T], *args: Any, **kwargs: Any) -> T:  # noqa: ANN401
         """Execute a function through the circuit breaker.
-        
+
         Args:
             func: Function to execute.
             *args: Positional arguments for the function.
             **kwargs: Keyword arguments for the function.
-            
+
         Returns:
             Result of the function call.
-            
+
         Raises:
             CircuitBreakerError: If circuit is open and request is blocked.
-            
+
         """
         if not self.config.enabled:
             return func(*args, **kwargs)
@@ -150,9 +150,7 @@ class CircuitBreaker(Generic[T]):
             if self._should_reject_request():
                 self.metrics.record_rejection()
                 raise CircuitBreakerError(
-                    f"Circuit breaker '{self.name}' is open. "
-                    f"Failed {self.failure_count} times. "
-                    f"Will retry after {self.config.recovery_timeout}.",
+                    f"Circuit breaker '{self.name}' is open. Failed {self.failure_count} times. Will retry after {self.config.recovery_timeout}.",
                     self.name,
                     self.failure_count,
                 )
@@ -200,10 +198,7 @@ class CircuitBreaker(Generic[T]):
             if self.state == CircuitState.HALF_OPEN:
                 if self.success_count >= self.config.success_threshold:
                     self._transition_to_closed()
-                    logger.info(
-                        f"Circuit breaker '{self.name}' recovered after "
-                        f"{self.success_count} successful requests"
-                    )
+                    logger.info(f"Circuit breaker '{self.name}' recovered after {self.success_count} successful requests")
 
     def _on_failure(self, error: Exception) -> None:
         """Handle failed request."""
@@ -213,23 +208,16 @@ class CircuitBreaker(Generic[T]):
             self.last_failure_time = datetime.now()
             self.metrics.record_failure()
 
-            logger.warning(
-                f"Circuit breaker '{self.name}' recorded failure {self.failure_count}: {error}"
-            )
+            logger.warning(f"Circuit breaker '{self.name}' recorded failure {self.failure_count}: {error}")
 
             if self.state == CircuitState.CLOSED:
                 if self.failure_count >= self.config.failure_threshold:
                     self._transition_to_open()
-                    logger.error(
-                        f"Circuit breaker '{self.name}' opened after "
-                        f"{self.failure_count} failures"
-                    )
+                    logger.error(f"Circuit breaker '{self.name}' opened after {self.failure_count} failures")
             elif self.state == CircuitState.HALF_OPEN:
                 # Any failure in half-open state should open the circuit
                 self._transition_to_open()
-                logger.warning(
-                    f"Circuit breaker '{self.name}' reopened due to failure in half-open state"
-                )
+                logger.warning(f"Circuit breaker '{self.name}' reopened due to failure in half-open state")
 
     def _transition_to_closed(self) -> None:
         """Transition circuit to closed state."""
@@ -286,10 +274,10 @@ class HuggingFaceCircuitBreaker(CircuitBreaker[T]):
 
     def __init__(self, config: CircuitBreakerConfig | None = None) -> None:
         """Initialize HuggingFace circuit breaker.
-        
+
         Args:
             config: Configuration for circuit breaker. Uses defaults if None.
-            
+
         """
         if config is None:
             config = CircuitBreakerConfig(
@@ -303,16 +291,16 @@ class HuggingFaceCircuitBreaker(CircuitBreaker[T]):
 
     def _should_trip_on_error(self, error: Exception) -> bool:
         """Determine if an error should count towards circuit breaker failures.
-        
+
         Some errors (like authentication errors) shouldn't trip the circuit breaker
         as they indicate configuration issues, not service availability issues.
-        
+
         Args:
             error: The exception that occurred.
-            
+
         Returns:
             True if this error should count as a failure.
-            
+
         """
         from oboyu.common.huggingface_utils import (
             HuggingFaceAuthenticationError,
@@ -341,9 +329,7 @@ class HuggingFaceCircuitBreaker(CircuitBreaker[T]):
         else:
             # Still record the failure in metrics but don't count towards circuit state
             self.metrics.record_failure()
-            logger.debug(
-                f"Circuit breaker '{self.name}' ignoring error for circuit state: {error}"
-            )
+            logger.debug(f"Circuit breaker '{self.name}' ignoring error for circuit state: {error}")
 
 
 class CircuitBreakerRegistry:
@@ -361,15 +347,15 @@ class CircuitBreakerRegistry:
         config: CircuitBreakerConfig | None = None,
     ) -> CircuitBreaker[T]:
         """Get or create a circuit breaker.
-        
+
         Args:
             name: Name of the circuit breaker.
             circuit_type: Type of circuit breaker to create.
             config: Configuration for the circuit breaker.
-            
+
         Returns:
             The circuit breaker instance.
-            
+
         """
         with self._lock:
             if name not in self._circuit_breakers:
@@ -381,10 +367,10 @@ class CircuitBreakerRegistry:
 
     def get_all_metrics(self) -> dict[str, CircuitBreakerMetrics]:
         """Get metrics for all circuit breakers.
-        
+
         Returns:
             Dictionary mapping circuit breaker names to their metrics.
-            
+
         """
         with self._lock:
             return {name: cb.get_metrics() for name, cb in self._circuit_breakers.items()}
@@ -397,13 +383,13 @@ class CircuitBreakerRegistry:
 
     def get_circuit_breaker(self, name: str) -> CircuitBreaker[Any] | None:
         """Get a circuit breaker by name.
-        
+
         Args:
             name: Name of the circuit breaker.
-            
+
         Returns:
             The circuit breaker or None if not found.
-            
+
         """
         return self._circuit_breakers.get(name)
 
@@ -414,10 +400,10 @@ _global_registry = CircuitBreakerRegistry()
 
 def get_circuit_breaker_registry() -> CircuitBreakerRegistry:
     """Get the global circuit breaker registry.
-    
+
     Returns:
         The global circuit breaker registry.
-        
+
     """
     return _global_registry
 
@@ -428,20 +414,23 @@ def with_circuit_breaker(
     circuit_type: type[CircuitBreaker[T]] = HuggingFaceCircuitBreaker,
 ) -> Callable[[Callable[[], T]], Callable[[], T]]:
     """Wrap a function with a circuit breaker.
-    
+
     Args:
         name: Name of the circuit breaker.
         config: Configuration for the circuit breaker.
         circuit_type: Type of circuit breaker to use.
-        
+
     Returns:
         Decorator function.
-        
+
     """
+
     def decorator(func: Callable[[], T]) -> Callable[[], T]:
         def wrapper(*args: Any, **kwargs: Any) -> T:  # noqa: ANN401
             registry = get_circuit_breaker_registry()
             circuit_breaker = registry.get_or_create(name, circuit_type, config)
             return circuit_breaker.call(func, *args, **kwargs)
+
         return wrapper
+
     return decorator

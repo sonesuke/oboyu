@@ -35,7 +35,7 @@ DEFAULT_MAX_WORKERS = 4
 DEFAULT_RESPECT_GITIGNORE = True
 
 # Hard-coded values (no longer configurable)
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB - increased to accommodate PDF files
 FOLLOW_SYMLINKS = False
 
 
@@ -116,7 +116,6 @@ class CrawlerConfig:
         if not isinstance(exclude_patterns, list) or exclude_patterns is None:
             crawler_config["exclude_patterns"] = DEFAULT_EXCLUDE_PATTERNS[:]
 
-
         # Validate max_workers - must be a positive integer
         if not isinstance(crawler_config.get("max_workers"), int) or crawler_config.get("max_workers", 0) <= 0:
             crawler_config["max_workers"] = DEFAULT_MAX_WORKERS
@@ -139,7 +138,6 @@ class CrawlerConfig:
     def exclude_patterns(self) -> List[str]:
         """Patterns to exclude."""
         return list(self.config["crawler"]["exclude_patterns"])
-
 
     @property
     def max_workers(self) -> int:

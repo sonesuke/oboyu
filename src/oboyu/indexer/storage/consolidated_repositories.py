@@ -40,13 +40,16 @@ class ChunkRepository:
         chunks: List[Chunk],
         progress_callback: Optional[Callable[[str, int, int], None]] = None,
     ) -> None:
-        """Store document chunks in the database."""
+        """Store document chunks in the database using batch operations."""
         if not chunks:
             return
 
         total_chunks = len(chunks)
+        batch_size = 1000  # Process in batches of 1000
 
-        for i, chunk in enumerate(chunks):
+        # Prepare all chunk data
+        chunk_data_list = []
+        for chunk in chunks:
             chunk_data = ChunkData(
                 id=chunk.id,
                 path=str(chunk.path),
@@ -58,12 +61,26 @@ class ChunkRepository:
                 modified_at=chunk.modified_at or datetime.now(),
                 metadata=chunk.metadata or {},
             )
+            chunk_data_list.append(chunk_data)
 
-            sql, params = self.queries.upsert_chunk(chunk_data)
-            self.connection.execute(sql, params)
+        # Process in batches
+        for batch_start in range(0, len(chunk_data_list), batch_size):
+            batch_end = min(batch_start + batch_size, len(chunk_data_list))
+            batch = chunk_data_list[batch_start:batch_end]
 
-            if progress_callback and (i % 100 == 0 or i == total_chunks - 1):
-                progress_callback("storing", i + 1, total_chunks)
+            # Prepare batch SQL and parameters
+            batch_params = []
+            for chunk_data in batch:
+                _, params = self.queries.upsert_chunk(chunk_data)
+                batch_params.append(params)
+
+            # Execute batch insert using prepared statement
+            if batch_params:
+                sql, _ = self.queries.upsert_chunk(batch[0])  # Get SQL template
+                self.connection.executemany(sql, batch_params)
+
+            if progress_callback:
+                progress_callback("storing", batch_end, total_chunks)
 
     def get_chunk_by_id(self, chunk_id: str) -> Optional[Dict[str, Any]]:
         """Get chunk by ID."""
@@ -199,7 +216,7 @@ class ChunkRepository:
                 LEFT JOIN embeddings e ON c.id = e.chunk_id
                 WHERE e.id IS NULL
             """
-            
+
             if limit:
                 query += f" LIMIT {limit}"
 
@@ -226,13 +243,16 @@ class EmbeddingRepository:
         model_name: str = "cl-nagoya/ruri-v3-30m",
         progress_callback: Optional[Callable[[str, int, int], None]] = None,
     ) -> None:
-        """Store embedding vectors in the database."""
+        """Store embedding vectors in the database using batch operations."""
         if len(chunk_ids) != len(embeddings):
             raise ValueError("Number of chunk IDs must match number of embeddings")
 
         total_embeddings = len(chunk_ids)
+        batch_size = 1000  # Process in batches of 1000
 
-        for i, (chunk_id, embedding) in enumerate(zip(chunk_ids, embeddings)):
+        # Prepare all embedding data
+        embedding_data_list = []
+        for chunk_id, embedding in zip(chunk_ids, embeddings):
             embedding_data = EmbeddingData(
                 id=str(uuid.uuid4()),
                 chunk_id=chunk_id,
@@ -240,12 +260,26 @@ class EmbeddingRepository:
                 vector=embedding.astype(np.float32),
                 created_at=datetime.now(),
             )
+            embedding_data_list.append(embedding_data)
 
-            sql, params = self.queries.upsert_embedding(embedding_data)
-            self.connection.execute(sql, params)
+        # Process in batches
+        for batch_start in range(0, len(embedding_data_list), batch_size):
+            batch_end = min(batch_start + batch_size, len(embedding_data_list))
+            batch = embedding_data_list[batch_start:batch_end]
 
-            if progress_callback and (i % 100 == 0 or i == total_embeddings - 1):
-                progress_callback("storing_embeddings", i + 1, total_embeddings)
+            # Prepare batch SQL and parameters
+            batch_params = []
+            for embedding_data in batch:
+                _, params = self.queries.upsert_embedding(embedding_data)
+                batch_params.append(params)
+
+            # Execute batch insert using prepared statement
+            if batch_params:
+                sql, _ = self.queries.upsert_embedding(batch[0])  # Get SQL template
+                self.connection.executemany(sql, batch_params)
+
+            if progress_callback:
+                progress_callback("storing_embeddings", batch_end, total_embeddings)
 
     def get_embedding_by_chunk_id(self, chunk_id: str) -> Optional[Dict[str, Any]]:
         """Get embedding for a specific chunk."""
@@ -423,9 +457,7 @@ class StatisticsRepository:
             ).fetchall()
             stats["language_distribution"] = {lang: count for lang, count in language_results}
 
-            result = self.connection.execute(
-                "SELECT AVG(LENGTH(content)) as avg_size FROM chunks"
-            ).fetchone()
+            result = self.connection.execute("SELECT AVG(LENGTH(content)) as avg_size FROM chunks").fetchone()
             stats["avg_chunk_size"] = int(result[0]) if result and result[0] else 0
 
             model_results = self.connection.execute(
@@ -570,7 +602,7 @@ class StatisticsRepository:
                 JOIN embeddings e ON c.id = e.chunk_id
             """
             ).fetchone()
-            
+
             if result and result[0] is not None and result[1] is not None and result[1] > 0:
                 stats["coverage"] = {
                     "chunks_with_embeddings": result[0],

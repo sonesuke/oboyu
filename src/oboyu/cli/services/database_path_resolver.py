@@ -12,7 +12,7 @@ from oboyu.cli.services.configuration_service import ConfigurationService
 
 class DatabasePathResolver:
     """Resolves database paths with proper precedence.
-    
+
     This service handles database path resolution logic, ensuring
     consistent precedence across all CLI commands.
     """
@@ -43,11 +43,8 @@ class DatabasePathResolver:
         """
         config_manager = self.config_service.get_config_manager()
         indexer_config_dict = config_manager.get_section("indexer")
-        
+
         if config_overrides:
             indexer_config_dict.update(config_overrides)
 
-        return config_manager.resolve_db_path(
-            Path(db_path) if db_path else None,
-            indexer_config_dict
-        )
+        return config_manager.resolve_db_path(Path(db_path) if db_path else None, indexer_config_dict)

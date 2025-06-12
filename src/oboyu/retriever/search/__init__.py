@@ -28,19 +28,15 @@ __all__ = [
     "SearchMode",
     "SearchFilters",
     "SearchContext",
-    
     # Search implementations
     "VectorSearch",
     "BM25Search",
     "HybridSearch",
-    
     # Search support components
     "SearchModeRouter",
     "HybridSearchCombiner",
     "ResultMerger",
     "ScoreNormalizer",
-    
-    
     # Text processing components
     "SnippetExtractor",
     "TextHighlighter",

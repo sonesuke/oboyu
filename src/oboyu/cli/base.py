@@ -37,20 +37,20 @@ class BaseCommand:
     @property
     def console(self) -> Console:
         """Get the console instance for backward compatibility.
-        
+
         Returns:
             Rich console instance
-            
+
         """
         return self.services.console
 
     @property
     def logger(self) -> HierarchicalLogger:
         """Get the logger instance for backward compatibility.
-        
+
         Returns:
             Hierarchical logger instance
-            
+
         """
         return self.services.logger
 
@@ -106,12 +106,7 @@ class BaseCommand:
             Initialized Indexer instance
 
         """
-        return self.services.indexer_factory.create_indexer(
-            config,
-            self.services.console_manager,
-            show_progress,
-            show_model_loading
-        )
+        return self.services.indexer_factory.create_indexer(config, self.services.console_manager, show_progress, show_model_loading)
 
     def confirm_database_operation(
         self,

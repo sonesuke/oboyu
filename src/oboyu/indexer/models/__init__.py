@@ -11,6 +11,7 @@ from oboyu.indexer.models.search import (
 # Legacy imports for backward compatibility
 try:
     from oboyu.indexer.services.embedding import EmbeddingCache, EmbeddingService
+
     # Legacy aliases for tests
     EmbeddingGenerator = EmbeddingService
 except ImportError:

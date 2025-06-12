@@ -100,9 +100,9 @@ def create_simple_progress_callback() -> Callable[[int, int], None]:
 
     """
     display = SimpleProgressDisplay()
-    
+
     def callback(current: int, total: int) -> None:
         """Progress callback wrapper."""
         display.update("Progress", current, total)
-    
+
     return callback

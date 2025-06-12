@@ -259,10 +259,7 @@ class EmbeddingQueries:
 
     @staticmethod
     def search_by_vector(
-        query_vector: Union[List[float], NDArray[np.float32]],
-        limit: int = 10,
-        language: Optional[str] = None,
-        embedding_dimensions: int = 256
+        query_vector: Union[List[float], NDArray[np.float32]], limit: int = 10, language: Optional[str] = None, embedding_dimensions: int = 256
     ) -> Tuple[str, List[Any]]:
         """Build query for vector similarity search."""
         if isinstance(query_vector, np.ndarray):

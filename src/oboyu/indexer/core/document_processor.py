@@ -45,17 +45,12 @@ class DocumentProcessor:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.document_prefix = document_prefix
-        
+
         # Initialize processing components with defaults if not provided
         self.text_normalizer = text_normalizer or TextNormalizer()
-        self.document_chunker = document_chunker or DocumentChunker(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap
-        )
+        self.document_chunker = document_chunker or DocumentChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         self.language_processor = language_processor or LanguageProcessor()
-        self.prefix_handler = prefix_handler or EmbeddingPrefixHandler(
-            document_prefix=document_prefix
-        )
+        self.prefix_handler = prefix_handler or EmbeddingPrefixHandler(document_prefix=document_prefix)
 
     def process_document(
         self,
@@ -80,7 +75,7 @@ class DocumentProcessor:
         """
         # Apply language-specific processing
         processed_content = self.language_processor.prepare_text(content, language)
-        
+
         # Normalize the text
         normalized_content = self.text_normalizer.normalize(processed_content, language)
 
@@ -172,10 +167,7 @@ class DocumentProcessor:
             List of text ready for embedding
 
         """
-        return [
-            chunk.prefix_content or self.prefix_handler.add_document_prefix(chunk.content, "ruri")
-            for chunk in chunks
-        ]
+        return [chunk.prefix_content or self.prefix_handler.add_document_prefix(chunk.content, "ruri") for chunk in chunks]
 
     def prepare_for_bm25(self, chunks: List[Chunk]) -> List[str]:
         """Prepare chunks for BM25 indexing.
@@ -215,7 +207,7 @@ def chunk_documents(
     )
 
     all_chunks = []
-    
+
     for doc in documents:
         if isinstance(doc, dict):
             # Handle dictionary format
@@ -230,7 +222,7 @@ def chunk_documents(
         else:
             # Handle tuple format
             path, content, title, language, metadata = doc
-            
+
         chunks = processor.process_document(path, content, title, language, metadata)
         all_chunks.extend(chunks)
 

@@ -14,7 +14,7 @@ from oboyu.cli.hierarchical_logger import create_hierarchical_logger
 
 class ConsoleManager:
     """Manages console output and logging setup.
-    
+
     This service encapsulates all console and logging functionality,
     providing a clean interface for user interaction.
     """

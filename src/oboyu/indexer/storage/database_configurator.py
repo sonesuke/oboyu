@@ -14,7 +14,7 @@ class DatabaseConfigurator:
 
     def __init__(self, enable_experimental_features: bool = False) -> None:
         """Initialize the database configurator.
-        
+
         Args:
             enable_experimental_features: Whether to enable experimental features
 
@@ -28,7 +28,7 @@ class DatabaseConfigurator:
             conn.execute("SET memory_limit='2GB'")
             conn.execute("SET threads=4")
             conn.execute("SET enable_progress_bar=false")
-            
+
             # Enable experimental features if requested
             if self.enable_experimental_features:
                 try:
@@ -39,8 +39,8 @@ class DatabaseConfigurator:
                         conn.execute("SET enable_external_access=true")
                     except Exception as inner_e:
                         logger.debug(f"Failed to set enable_external_access: {inner_e}")
-            
+
             logger.debug("Database configuration applied successfully")
-            
+
         except Exception as e:
             logger.warning(f"Failed to configure database settings: {e}")

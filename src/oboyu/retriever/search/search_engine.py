@@ -37,7 +37,7 @@ class SearchEngine:
         self.vector_search = vector_search
         self.bm25_search = bm25_search
         self.rrf_k = rrf_k
-        
+
         # Initialize composed components
         self.router = SearchModeRouter(vector_search, bm25_search)
         self.merger = ResultMerger()
@@ -83,11 +83,11 @@ class SearchEngine:
                     language_filter=language_filter,
                     filters=filters,
                 )
-            
+
             elif mode == SearchMode.HYBRID:
                 # Execute both searches
                 initial_limit = limit * top_k_multiplier
-                
+
                 vector_results = self.router.route(
                     mode=SearchMode.VECTOR,
                     query_vector=query_vector,
@@ -95,7 +95,7 @@ class SearchEngine:
                     language_filter=language_filter,
                     filters=filters,
                 )
-                
+
                 bm25_results = self.router.route(
                     mode=SearchMode.BM25,
                     query_terms=query_terms,
@@ -103,17 +103,17 @@ class SearchEngine:
                     language_filter=language_filter,
                     filters=filters,
                 )
-                
+
                 # Combine results using RRF (Reciprocal Rank Fusion)
                 return self.combiner.combine(
                     vector_results=vector_results,
                     bm25_results=bm25_results,
                     limit=limit,
                 )
-            
+
             else:
                 raise ValueError(f"Unknown search mode: {mode}")
-        
+
         except Exception as e:
             logger.error(f"Search failed with mode {mode}: {e}")
             return []

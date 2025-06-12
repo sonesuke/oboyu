@@ -48,30 +48,22 @@ def clear(
     """
     base_command = BaseCommand(ctx)
     config_manager = base_command.get_config_manager()
-    indexing_service = IndexingService(
-        config_manager,
-        base_command.services.indexer_factory,
-        base_command.services.console_manager
-    )
-    
+    indexing_service = IndexingService(config_manager, base_command.services.indexer_factory, base_command.services.console_manager)
+
     # Get database path
     resolved_db_path = indexing_service.get_database_path(db_path)
     base_command.print_database_path(resolved_db_path)
-    
+
     # Confirm operation
-    if not base_command.confirm_database_operation(
-        "remove all indexed documents and search data from",
-        force,
-        resolved_db_path
-    ):
+    if not base_command.confirm_database_operation("remove all indexed documents and search data from", force, resolved_db_path):
         return
-    
+
     # Perform clear operation with progress tracking
     with base_command.logger.live_display():
         clear_op = base_command.logger.start_operation("Clearing index database...")
         indexing_service.clear_index(db_path)
         base_command.logger.complete_operation(clear_op)
-    
+
     base_command.console.print("\nIndex database cleared successfully!")
 
 
@@ -92,19 +84,15 @@ def status(
     """
     base_command = BaseCommand(ctx)
     config_manager = base_command.get_config_manager()
-    indexing_service = IndexingService(
-        config_manager,
-        base_command.services.indexer_factory,
-        base_command.services.console_manager
-    )
+    indexing_service = IndexingService(config_manager, base_command.services.indexer_factory, base_command.services.console_manager)
 
     # Get database path and display it
     resolved_db_path = indexing_service.get_database_path(db_path)
     base_command.print_database_path(resolved_db_path)
-    
+
     # Get status for all directories
     status_results = indexing_service.get_status(directories, db_path)
-    
+
     for status_result in status_results:
         base_command.console.print(f"\n[bold]Status for {status_result.directory}:[/bold]")
         base_command.console.print(f"  New files: {status_result.new_files}")
@@ -117,7 +105,7 @@ def status(
             diff_results = indexing_service.get_diff([status_result.directory], db_path)
             if diff_results:
                 diff_result = diff_results[0]
-                
+
                 if diff_result.new_files:
                     base_command.console.print("\n  [green]New files:[/green]")
                     for f in diff_result.new_files[:10]:  # Show first 10
@@ -161,19 +149,15 @@ def diff(
     """
     base_command = BaseCommand(ctx)
     config_manager = base_command.get_config_manager()
-    indexing_service = IndexingService(
-        config_manager,
-        base_command.services.indexer_factory,
-        base_command.services.console_manager
-    )
+    indexing_service = IndexingService(config_manager, base_command.services.indexer_factory, base_command.services.console_manager)
 
     # Get database path and display it
     resolved_db_path = indexing_service.get_database_path(db_path)
     base_command.print_database_path(resolved_db_path)
-    
+
     # Get diff results for all directories
     diff_results = indexing_service.get_diff(directories, db_path, change_detection)
-    
+
     total_new = 0
     total_modified = 0
     total_deleted = 0

@@ -37,7 +37,7 @@ class DocumentChunker:
         # Handle empty or whitespace-only text
         if not text or not text.strip():
             return [""]
-            
+
         # If text is shorter than chunk size, return it as a single chunk
         if len(text) <= self.chunk_size:
             return [text]
@@ -68,14 +68,12 @@ class DocumentChunker:
 
             # Safety check to prevent infinite loops
             if start <= old_start and iteration_count > 1:
-                logger.error(
-                    f"chunk_text: Potential infinite loop detected! start={start}, old_start={old_start}"
-                )
+                logger.error(f"chunk_text: Potential infinite loop detected! start={start}, old_start={old_start}")
                 start = old_start + max(1, self.chunk_size // 2)  # Force progress
 
         if iteration_count >= max_iterations:
             logger.error(f"chunk_text: Hit maximum iteration limit {max_iterations}")
-            
+
         return chunks
 
     def _find_best_break_point(self, text: str, start: int, end: int) -> int:
@@ -107,13 +105,9 @@ class DocumentChunker:
         ]
 
         # Find the latest valid break point
-        valid_breaks = [
-            b for b in sentence_breaks
-            if b != -1 and b > start + self.chunk_size // 2
-        ]
-        
+        valid_breaks = [b for b in sentence_breaks if b != -1 and b > start + self.chunk_size // 2]
+
         if valid_breaks:
             return max(valid_breaks) + 1  # Include the punctuation
 
         return end
-

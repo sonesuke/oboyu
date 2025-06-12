@@ -12,43 +12,37 @@ class CrawlerConfigSchema(BaseModel):
     max_workers: int = Field(default=4, ge=1, le=100, description="Maximum number of worker threads")
     timeout: int = Field(default=30, ge=1, le=300, description="Timeout in seconds for operations")
     max_depth: int = Field(default=3, ge=0, le=10, description="Maximum directory traversal depth")
-    exclude_dirs: List[str] = Field(
-        default_factory=lambda: ["__pycache__", ".git", "node_modules"],
-        description="Directories to exclude from crawling"
-    )
+    exclude_dirs: List[str] = Field(default_factory=lambda: ["__pycache__", ".git", "node_modules"], description="Directories to exclude from crawling")
     include_extensions: List[str] = Field(
         default_factory=lambda: [".py", ".md", ".txt", ".yaml", ".yml", ".json", ".toml", ".cfg", ".ini", ".rst", ".ipynb"],
-        description="File extensions to include in crawling"
+        description="File extensions to include in crawling",
     )
     min_doc_length: int = Field(default=50, ge=1, description="Minimum document length to process")
     chunk_size: int = Field(default=1000, ge=100, le=10000, description="Size of text chunks")
     chunk_overlap: int = Field(default=200, ge=0, description="Overlap between chunks")
-    encoding: Literal["utf-8", "shift-jis", "euc-jp", "iso-2022-jp"] = Field(
-        default="utf-8",
-        description="Text encoding to use"
-    )
+    encoding: Literal["utf-8", "shift-jis", "euc-jp", "iso-2022-jp"] = Field(default="utf-8", description="Text encoding to use")
     use_japanese_tokenizer: bool = Field(default=True, description="Use Japanese-specific tokenizer")
 
-    @field_validator('encoding')
+    @field_validator("encoding")
     @classmethod
     def validate_encoding(cls, v: str) -> str:
         """Validate that encoding is supported."""
         # pydantic Literal already handles validation, but we can add custom logic here
         return v.lower()
 
-    @field_validator('include_extensions')
+    @field_validator("include_extensions")
     @classmethod
     def validate_extensions(cls, v: List[str]) -> List[str]:
         """Validate file extensions format."""
         validated = []
         for ext in v:
-            if not ext.startswith('.'):
-                ext = '.' + ext
+            if not ext.startswith("."):
+                ext = "." + ext
             validated.append(ext.lower())
         return validated
 
-    @model_validator(mode='after')
-    def validate_chunk_config(self) -> 'CrawlerConfigSchema':
+    @model_validator(mode="after")
+    def validate_chunk_config(self) -> "CrawlerConfigSchema":
         """Validate chunk configuration relationships."""
         if self.chunk_overlap >= self.chunk_size:
             raise ValueError("chunk_overlap must be less than chunk_size")
@@ -66,14 +60,10 @@ class CrawlerConfigSchema(BaseModel):
 
 class IndexerConfigSchema(BaseModel):
     """Schema for indexer configuration."""
-    
+
     model_config = {"extra": "forbid"}
 
-    embedding_model: str = Field(
-        default="cl-nagoya/ruri-v3-30m",
-        description="Name or path of embedding model",
-        pattern=r'^[\w\-./]+[\w\-/]+$'
-    )
+    embedding_model: str = Field(default="cl-nagoya/ruri-v3-30m", description="Name or path of embedding model", pattern=r"^[\w\-./]+[\w\-/]+$")
     embedding_device: str = Field(default="cpu", description="Device for embedding model")
     use_onnx: bool = Field(default=True, description="Use ONNX format for models")
     batch_size: int = Field(default=128, ge=1, le=1024, description="Batch size for processing")
@@ -93,17 +83,16 @@ class IndexerConfigSchema(BaseModel):
     n_probe: int = Field(default=10, ge=1, le=100, description="Number of probes for vector search")
     db_path: Optional[Path] = Field(default=None, description="Database path")
 
-    @field_validator('embedding_model', 'reranker_model')
+    @field_validator("embedding_model", "reranker_model")
     @classmethod
     def validate_model_name(cls, v: str) -> str:
         """Validate embedding model name format."""
         if not v:
-            raise ValueError('Model name cannot be empty')
+            raise ValueError("Model name cannot be empty")
         # Be more lenient for testing - allow any non-empty string
         return v
 
-
-    @field_validator('db_path')
+    @field_validator("db_path")
     @classmethod
     def validate_db_path(cls, v: Optional[Path]) -> Optional[Path]:
         """Validate database path and ensure parent directory exists."""
@@ -138,11 +127,7 @@ class QueryConfigSchema(BaseModel):
 
     top_k: int = Field(default=10, ge=1, le=1000, description="Number of top results to return")
     rerank: bool = Field(default=True, description="Enable reranking of search results")
-    rerank_model: str = Field(
-        default="cl-nagoya/ruri-reranker-small",
-        description="Reranker model name",
-        pattern=r'^[\w\-./]+[\w\-/]+$'
-    )
+    rerank_model: str = Field(default="cl-nagoya/ruri-reranker-small", description="Reranker model name", pattern=r"^[\w\-./]+[\w\-/]+$")
     show_scores: bool = Field(default=False, description="Show relevance scores in output")
     interactive: bool = Field(default=False, description="Enable interactive mode")
 
@@ -169,7 +154,7 @@ class ConfigSchema(BaseModel):
         crawler_data = data.get("crawler", {}) if isinstance(data.get("crawler", {}), dict) else {}
         indexer_data = data.get("indexer", {}) if isinstance(data.get("indexer", {}), dict) else {}
         query_data = data.get("query", {}) if isinstance(data.get("query", {}), dict) else {}
-        
+
         return cls(
             crawler=CrawlerConfigSchema.from_dict(crawler_data),
             indexer=IndexerConfigSchema.from_dict(indexer_data),
