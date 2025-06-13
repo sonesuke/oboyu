@@ -57,6 +57,64 @@ def create_multipage_pdf():
     c.save()
     print(f"Created: {pdf_path}")
 
+def create_large_pdf(pdf_path, num_pages=100, content_per_page=500):
+    """Create a large PDF for performance testing."""
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
+    
+    c = canvas.Canvas(str(pdf_path), pagesize=letter)
+    
+    # Add metadata
+    c.setTitle(f"Large Test PDF ({num_pages} pages)")
+    c.setAuthor("Performance Test System")
+    
+    for page_num in range(1, num_pages + 1):
+        # Add content to each page
+        y_position = 750
+        
+        c.drawString(100, y_position, f"Page {page_num} of {num_pages}")
+        y_position -= 30
+        
+        # Add multiple lines of content per page
+        lines_per_page = content_per_page // 50  # Roughly 50 chars per line
+        for line_num in range(lines_per_page):
+            text = f"Line {line_num + 1}: This is sample content for performance testing. " * 3
+            text = text[:80]  # Limit line length
+            
+            if y_position < 100:  # Near bottom of page
+                break
+                
+            c.drawString(100, y_position, text)
+            y_position -= 20
+        
+        c.showPage()
+    
+    c.save()
+    print(f"Created large PDF: {pdf_path} ({num_pages} pages)")
+
+
+def create_multipage_pdf(pdf_path, num_pages=10):
+    """Create a multi-page PDF with specified number of pages."""
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
+    
+    c = canvas.Canvas(str(pdf_path), pagesize=letter)
+    
+    # Add metadata
+    c.setTitle(f"Multi-page Test PDF ({num_pages} pages)")
+    c.setAuthor("Test System")
+    
+    for page_num in range(1, num_pages + 1):
+        c.drawString(100, 750, f"Page {page_num}: Sample Content")
+        c.drawString(100, 730, f"This is page {page_num} of {num_pages} in the test document.")
+        c.drawString(100, 710, "This content should be extracted properly during indexing.")
+        c.drawString(100, 690, "Performance testing requires realistic content distribution.")
+        c.showPage()
+    
+    c.save()
+    print(f"Created multipage PDF: {pdf_path} ({num_pages} pages)")
+
+
 def create_japanese_pdf():
     """Create a PDF with Japanese text."""
     # For simplicity, we'll create a text-based PDF using pypdf
