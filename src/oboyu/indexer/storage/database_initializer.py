@@ -16,15 +16,9 @@ logger = logging.getLogger(__name__)
 class DatabaseInitializer:
     """Handles database initialization and configuration."""
 
-    def __init__(
-        self,
-        db_path: Path,
-        schema: DatabaseSchema,
-        auto_vacuum: bool = True,
-        enable_experimental_features: bool = True
-    ) -> None:
+    def __init__(self, db_path: Path, schema: DatabaseSchema, auto_vacuum: bool = True, enable_experimental_features: bool = True) -> None:
         """Initialize the database initializer.
-        
+
         Args:
             db_path: Path to the database file
             schema: Database schema instance
@@ -39,13 +33,13 @@ class DatabaseInitializer:
 
     def initialize(self, hnsw_params: HNSWIndexParams) -> DuckDBPyConnection:
         """Initialize the database schema and extensions.
-        
+
         Args:
             hnsw_params: HNSW index parameters
-            
+
         Returns:
             Database connection
-            
+
         Raises:
             Exception: If initialization fails
 
@@ -81,7 +75,7 @@ class DatabaseInitializer:
 
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
-            if 'conn' in locals():
+            if "conn" in locals():
                 conn.close()
             raise
 
@@ -91,7 +85,7 @@ class DatabaseInitializer:
             # Memory and performance settings
             conn.execute("SET memory_limit='2GB'")
             conn.execute("SET threads=4")
-            
+
             # Enable HNSW experimental persistence for file-based databases
             conn.execute("SET hnsw_enable_experimental_persistence=true")
 

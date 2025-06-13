@@ -43,9 +43,6 @@ EncodingDetectionOption = Annotated[
 ]
 
 
-
-
-
 @app.callback(invoke_without_command=True)
 def index(
     ctx: typer.Context,
@@ -109,28 +106,26 @@ def index(
     )
 
     config_manager = base_command.get_config_manager()
-    indexing_service = IndexingService(
-        config_manager,
-        base_command.services.indexer_factory,
-        base_command.services.console_manager
-    )
-    
+    indexing_service = IndexingService(config_manager, base_command.services.indexer_factory, base_command.services.console_manager)
+
     # Get database path and display it
     resolved_db_path = indexing_service.get_database_path(db_path)
     base_command.print_database_path(resolved_db_path)
-    
+
     # Create progress callback if not quiet
     progress_callback = None
     if not quiet_progress:
+
         def progress_callback_func(message: str) -> None:
             op_id = base_command.logger.start_operation(message, expandable=False)
             base_command.logger.complete_operation(op_id)
+
         progress_callback = progress_callback_func
-    
+
     # Execute indexing with progress tracking
     with base_command.logger.live_display():
         init_op = base_command.logger.start_operation("Initializing Oboyu indexer...")
-        
+
         result = indexing_service.execute_indexing(
             directories=directories,
             chunk_size=chunk_size,
@@ -146,7 +141,7 @@ def index(
             exclude_patterns=exclude_patterns,
             progress_callback=progress_callback,
         )
-        
+
         base_command.logger.complete_operation(init_op)
-    
+
     base_command.console.print(f"\nIndexed {result.total_files} files ({result.total_chunks} chunks) in {result.elapsed_time:.1f}s")

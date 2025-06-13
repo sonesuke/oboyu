@@ -86,7 +86,7 @@ class MigrationManager:
             if current_version is not None:
                 logger.debug(f"Schema version already set to: {current_version}")
                 return
-            
+
             version_data = self.schema.get_initial_schema_version_data()
 
             # Use INSERT OR IGNORE to handle concurrent access
@@ -106,7 +106,7 @@ class MigrationManager:
             if "duplicate" in error_str or "constraint violation" in error_str:
                 logger.debug("Initial version already set by another process")
                 return
-                
+
             logger.error(f"Failed to set initial schema version: {e}")
             raise MigrationError(f"Initial version setup failed: {e}") from e
 

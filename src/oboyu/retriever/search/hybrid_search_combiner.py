@@ -31,16 +31,14 @@ class HybridSearchCombiner:
         """
         if rrf_k <= 0:
             raise ValueError("rrf_k must be positive")
-        
+
         self.rrf_k = rrf_k
         self.score_normalizer = score_normalizer
-        
+
         # Issue deprecation warning for weight parameters
         if vector_weight is not None or bm25_weight is not None:
             logger.warning(
-                "vector_weight and bm25_weight parameters are deprecated. "
-                "RRF (Reciprocal Rank Fusion) does not use weights. "
-                "Use rrf_k parameter instead."
+                "vector_weight and bm25_weight parameters are deprecated. RRF (Reciprocal Rank Fusion) does not use weights. Use rrf_k parameter instead."
             )
 
     def combine(
@@ -63,12 +61,8 @@ class HybridSearchCombiner:
         try:
             # Optionally normalize scores before combining (preserving for compatibility)
             if self.score_normalizer:
-                vector_results = self.score_normalizer.normalize_scores(
-                    vector_results, "vector"
-                )
-                bm25_results = self.score_normalizer.normalize_scores(
-                    bm25_results, "bm25"
-                )
+                vector_results = self.score_normalizer.normalize_scores(vector_results, "vector")
+                bm25_results = self.score_normalizer.normalize_scores(bm25_results, "bm25")
 
             # Create rank maps for RRF calculation
             vector_ranks: Dict[str, int] = {}
@@ -90,23 +84,19 @@ class HybridSearchCombiner:
             # Calculate RRF scores: S_hybrid(d) = 1/(k + R_vector(d)) + 1/(k + R_fulltext(d))
             rrf_scores: Dict[str, float] = {}
             for chunk_id in results_map:
-                vector_rank = vector_ranks.get(chunk_id, float('inf'))
-                bm25_rank = bm25_ranks.get(chunk_id, float('inf'))
-                
+                vector_rank = vector_ranks.get(chunk_id, float("inf"))
+                bm25_rank = bm25_ranks.get(chunk_id, float("inf"))
+
                 rrf_score = 0.0
-                if vector_rank != float('inf'):
+                if vector_rank != float("inf"):
                     rrf_score += 1.0 / (self.rrf_k + vector_rank)
-                if bm25_rank != float('inf'):
+                if bm25_rank != float("inf"):
                     rrf_score += 1.0 / (self.rrf_k + bm25_rank)
-                
+
                 rrf_scores[chunk_id] = rrf_score
 
             # Sort by RRF score (higher is better)
-            sorted_chunk_ids = sorted(
-                rrf_scores.keys(),
-                key=lambda chunk_id: rrf_scores[chunk_id],
-                reverse=True
-            )
+            sorted_chunk_ids = sorted(rrf_scores.keys(), key=lambda chunk_id: rrf_scores[chunk_id], reverse=True)
 
             # Create final results with RRF scores
             final_results = []

@@ -41,9 +41,9 @@ def test_store_embeddings_single(embedding_repository, mock_connection):
     
     embedding_repository.store_embeddings(chunk_ids, embeddings)
     
-    # Verify execute was called
-    mock_connection.execute.assert_called()
-    call_args = mock_connection.execute.call_args
+    # Verify executemany was called (batch operations)
+    mock_connection.executemany.assert_called()
+    call_args = mock_connection.executemany.call_args
     sql = call_args[0][0]
     assert "INSERT" in sql
     assert "embeddings" in sql

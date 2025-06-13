@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class HNSWIndexParams:
     """Parameters for HNSW index configuration."""
-    
+
     ef_construction: int = 128
     ef_search: int = 64
     m: int = 16
@@ -37,7 +37,7 @@ class HNSWIndexManager:
 
     def __init__(self, conn: DuckDBPyConnection, schema: DatabaseSchema) -> None:
         """Initialize HNSW index manager.
-        
+
         Args:
             conn: Database connection
             schema: Database schema definition
@@ -59,10 +59,10 @@ class HNSWIndexManager:
 
         """
         import time
-        
+
         max_retries = 3
         retry_delay = 0.5  # 500ms initial delay
-        
+
         for attempt in range(max_retries):
             try:
                 # Check if index already exists
@@ -77,18 +77,13 @@ class HNSWIndexManager:
                 # Check if embeddings table has data
                 count_result = self.conn.execute("SELECT COUNT(*) FROM embeddings").fetchone()
                 count = count_result[0] if count_result else 0
-                
+
                 if count == 0:
                     logger.info("No embeddings found, skipping HNSW index creation")
                     return True
 
                 # Create the index
-                index_sql = self.schema.get_hnsw_index_sql(
-                    ef_construction=params.ef_construction,
-                    ef_search=params.ef_search,
-                    m=params.m,
-                    m0=params.m0
-                )
+                index_sql = self.schema.get_hnsw_index_sql(ef_construction=params.ef_construction, ef_search=params.ef_search, m=params.m, m0=params.m0)
 
                 logger.info(
                     f"Creating HNSW index with parameters: ef_construction={params.ef_construction}, "
@@ -103,31 +98,31 @@ class HNSWIndexManager:
 
             except Exception as e:
                 error_msg = str(e).lower()
-                
+
                 # Check if it's a concurrent access error
-                if ("lock" in error_msg or "concurrent" in error_msg or "already exists" in error_msg):
+                if "lock" in error_msg or "concurrent" in error_msg or "already exists" in error_msg:
                     if attempt < max_retries - 1:
                         logger.warning(f"HNSW index creation failed due to concurrent access, retrying in {retry_delay}s: {e}")
                         time.sleep(retry_delay)
                         retry_delay *= 2  # Exponential backoff
-                        
+
                         # Check again if index was created by another process
                         if self.hnsw_index_exists():
                             logger.info("HNSW index was created by another process")
                             return True
                         continue
-                    
+
                 logger.error(f"Failed to create HNSW index after {attempt + 1} attempts: {e}")
-                if 'index_sql' in locals():
+                if "index_sql" in locals():
                     logger.debug(f"Index SQL was: {index_sql}")
-                
+
                 return False
-                
+
         return False
 
     def drop_hnsw_index(self) -> bool:
         """Drop the HNSW vector index.
-        
+
         Returns:
             True if index was dropped successfully
 
@@ -142,15 +137,13 @@ class HNSWIndexManager:
 
     def hnsw_index_exists(self) -> bool:
         """Check if HNSW index exists.
-        
+
         Returns:
             True if HNSW index exists
 
         """
         try:
-            result = self.conn.execute(
-                "SELECT COUNT(*) FROM duckdb_indexes() WHERE index_name = 'vector_idx'"
-            ).fetchone()
+            result = self.conn.execute("SELECT COUNT(*) FROM duckdb_indexes() WHERE index_name = 'vector_idx'").fetchone()
             return bool(result and result[0] > 0)
         except Exception:
             return False
@@ -200,13 +193,13 @@ class HNSWIndexManager:
             return False
 
         current = self._hnsw_params
-        
+
         # Check parameter consistency
         params_match = (
-            current.ef_construction == expected_params.ef_construction and
-            current.ef_search == expected_params.ef_search and
-            current.m == expected_params.m and
-            current.m0 == expected_params.m0
+            current.ef_construction == expected_params.ef_construction
+            and current.ef_search == expected_params.ef_search
+            and current.m == expected_params.m
+            and current.m0 == expected_params.m0
         )
 
         if not params_match:
@@ -216,7 +209,7 @@ class HNSWIndexManager:
 
     def compact_hnsw_index(self) -> bool:
         """Compact the HNSW index to optimize storage and performance.
-        
+
         Returns:
             True if compaction was successful
 
@@ -236,7 +229,7 @@ class HNSWIndexManager:
 
     def get_hnsw_params(self) -> Optional[HNSWIndexParams]:
         """Get current HNSW index parameters.
-        
+
         Returns:
             Current HNSW parameters or None if not set
 

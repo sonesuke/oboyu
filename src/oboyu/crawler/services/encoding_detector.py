@@ -14,14 +14,14 @@ class EncodingDetector:
 
     def detect_encoding(self, content: str, preferred_encodings: Optional[List[str]] = None) -> str:
         """Detect the encoding of Japanese text.
-        
+
         Args:
             content: Text content
             preferred_encodings: List of preferred encodings to check (deprecated, kept for compatibility)
-            
+
         Returns:
             Detected encoding
-            
+
         Note:
             This is called after the text has already been decoded (in the extractor),
             so we're using heuristics to determine if we need to convert to another encoding.
@@ -30,7 +30,7 @@ class EncodingDetector:
         # Default encodings for Japanese text
         default_encodings = ["utf-8", "shift-jis", "euc-jp", "cp932", "iso-2022-jp"]
         preferred_encodings = preferred_encodings or default_encodings
-        
+
         # Check for Unicode replacement character, which indicates decoding issues
         has_replacement_char = "\ufffd" in content
 
@@ -77,11 +77,11 @@ class EncodingDetector:
 
     def process_japanese_text(self, content: str, encoding: str) -> str:
         """Process Japanese text using proven libraries.
-        
+
         Args:
             content: Text content
             encoding: Detected encoding
-            
+
         Returns:
             Normalized text
 
@@ -108,10 +108,10 @@ class EncodingDetector:
 
     def _needs_width_conversion(self, text: str) -> bool:
         """Check if text needs width conversion.
-        
+
         Args:
             text: Text to check
-            
+
         Returns:
             True if text contains full-width ASCII or numbers
 
@@ -128,10 +128,10 @@ class EncodingDetector:
 
     def _standardize_line_endings(self, text: str) -> str:
         """Standardize line endings to Unix style (LF).
-        
+
         Args:
             text: Text content
-            
+
         Returns:
             Text with standardized line endings
 

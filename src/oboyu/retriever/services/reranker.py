@@ -112,7 +112,7 @@ class CrossEncoderReranker(BaseReranker):
             # Truncate content to ensure it fits within max_length
             content = result.content
             if len(content) > self.max_length * 3:  # Rough character to token ratio
-                content = content[:self.max_length * 3]
+                content = content[: self.max_length * 3]
             pairs.append([query, content])
 
         # Score in batches
@@ -122,11 +122,11 @@ class CrossEncoderReranker(BaseReranker):
             # Suppress tokenizer warnings completely
             import logging as base_logging
             import warnings
-            
+
             # Save current levels
             transformers_logger = base_logging.getLogger("transformers.tokenization_utils_base")
             original_level = transformers_logger.level
-            
+
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")
                 transformers_logger.setLevel(base_logging.ERROR)

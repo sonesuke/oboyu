@@ -29,6 +29,7 @@ def check(
     """Quick health check of the system."""
     # This delegates to the health status command
     from oboyu.cli.commands.health import status
+
     ctx.invoke(status, output_format=format)
 
 
@@ -55,6 +56,7 @@ def events(
     """Show recent events for debugging."""
     # This delegates to the health events command
     from oboyu.cli.commands.health import events as events_cmd
+
     ctx.invoke(events_cmd, event_db=event_db, hours=hours, event_type=event_type, output_format=format)
 
 
@@ -77,6 +79,7 @@ def timeline(
     """Show timeline of events for a specific operation."""
     # This delegates to the health timeline command
     from oboyu.cli.commands.health import timeline as timeline_cmd
+
     ctx.invoke(timeline_cmd, operation_id=operation_id, event_db=event_db, output_format=format)
 
 
@@ -95,4 +98,5 @@ def operations(
     """Show recent operations for debugging."""
     # This delegates to the health operations command
     from oboyu.cli.commands.health import operations as operations_cmd
+
     ctx.invoke(operations_cmd, limit=limit, output_format=format)

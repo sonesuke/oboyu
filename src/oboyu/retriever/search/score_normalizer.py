@@ -67,11 +67,11 @@ class ScoreNormalizer:
         scores = [r.score for r in results]
         min_score = min(scores)
         max_score = max(scores)
-        
+
         # Avoid division by zero
         if max_score == min_score:
             return results
-        
+
         normalized_results = []
         for result in results:
             normalized_score = (result.score - min_score) / (max_score - min_score)
@@ -87,28 +87,28 @@ class ScoreNormalizer:
                     score=max(0.0, min(1.0, normalized_score)),  # Ensure in [0, 1]
                 )
             )
-        
+
         return normalized_results
 
     def _z_score_normalize(self, results: List[SearchResult]) -> List[SearchResult]:
         """Apply z-score normalization to scores."""
         import numpy as np
-        
+
         scores = np.array([r.score for r in results])
         mean_score = np.mean(scores)
         std_score = np.std(scores)
-        
+
         # Avoid division by zero
         if std_score == 0:
             return results
-        
+
         normalized_results = []
         for result in results:
             # Z-score normalization
             z_score = (result.score - mean_score) / std_score
             # Convert to 0-1 range using sigmoid function
             normalized_score = 1 / (1 + np.exp(-z_score))
-            
+
             normalized_results.append(
                 SearchResult(
                     chunk_id=result.chunk_id,
@@ -121,7 +121,7 @@ class ScoreNormalizer:
                     score=normalized_score,
                 )
             )
-        
+
         return normalized_results
 
     def _rank_based_normalize(self, results: List[SearchResult]) -> List[SearchResult]:
@@ -129,16 +129,16 @@ class ScoreNormalizer:
         n = len(results)
         if n == 0:
             return results
-        
+
         # Sort by score to get ranks
         sorted_results = sorted(results, key=lambda r: r.score, reverse=True)
-        
+
         # Create normalized results with rank-based scores
         normalized_results = []
         for i, result in enumerate(sorted_results):
             # Linear rank-based score: best result gets 1.0, worst gets 0.0
             normalized_score = (n - i) / n
-            
+
             normalized_results.append(
                 SearchResult(
                     chunk_id=result.chunk_id,
@@ -151,5 +151,5 @@ class ScoreNormalizer:
                     score=normalized_score,
                 )
             )
-        
+
         return normalized_results

@@ -1,4 +1,5 @@
 """Unified model management with lazy loading and caching."""
+
 import hashlib
 import logging
 from abc import ABC, abstractmethod
@@ -346,10 +347,7 @@ class EmbeddingModelManager(ModelManager):
         except HuggingFaceError as e:
             logger.error(f"Failed to load embedding model {self.model_name}: {e}")
             # Re-raise with context for higher-level error handling
-            raise RuntimeError(
-                f"Failed to load embedding model '{self.model_name}'. "
-                f"Error: {get_user_friendly_error_message(e)}"
-            ) from e
+            raise RuntimeError(f"Failed to load embedding model '{self.model_name}'. Error: {get_user_friendly_error_message(e)}") from e
         except Exception as e:
             logger.exception(f"Unexpected error loading embedding model {self.model_name}")
             raise RuntimeError(f"Failed to load embedding model '{self.model_name}': {e}") from e
@@ -450,13 +448,11 @@ class RerankerModelManager(ModelManager):
         except HuggingFaceError as e:
             logger.error(f"Failed to load reranker model {self.model_name}: {e}")
             # Re-raise with context for higher-level error handling
-            raise RuntimeError(
-                f"Failed to load reranker model '{self.model_name}'. "
-                f"Error: {get_user_friendly_error_message(e)}"
-            ) from e
+            raise RuntimeError(f"Failed to load reranker model '{self.model_name}'. Error: {get_user_friendly_error_message(e)}") from e
         except Exception as e:
             logger.exception(f"Unexpected error loading reranker model {self.model_name}")
             raise RuntimeError(f"Failed to load reranker model '{self.model_name}': {e}") from e
+
 
 def create_model_manager(
     model_type: str,

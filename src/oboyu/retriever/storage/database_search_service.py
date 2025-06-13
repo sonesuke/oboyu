@@ -17,7 +17,7 @@ class DatabaseSearchService:
 
     def __init__(self, conn: DuckDBPyConnection) -> None:
         """Initialize database search service.
-        
+
         Args:
             conn: Database connection
 
@@ -30,7 +30,7 @@ class DatabaseSearchService:
         limit: int = 10,
         language_filter: Optional[str] = None,
         similarity_threshold: float = 0.0,
-        filters: Optional[SearchFilters] = None
+        filters: Optional[SearchFilters] = None,
     ) -> List[Dict[str, Any]]:
         """Execute vector similarity search.
 
@@ -48,7 +48,7 @@ class DatabaseSearchService:
         try:
             # Ensure query_vector is float32
             query_vector_f32 = query_vector.astype(np.float32)
-            
+
             # Build query with optional filters
             where_conditions = ["1=1"]
             # Use regular Python floats but cast in SQL
@@ -61,17 +61,17 @@ class DatabaseSearchService:
             if similarity_threshold > 0:
                 where_conditions.append("array_cosine_similarity(e.vector, CAST(? AS FLOAT[256])) >= ?")
                 params.extend([query_vector_f32.tolist(), similarity_threshold])
-            
+
             # Add custom filters
             if filters and filters.has_filters():
                 filter_conditions, filter_params = filters.to_sql_conditions()
                 where_conditions.extend(filter_conditions)
                 params.extend(filter_params)
-            
+
             where_clause = " AND ".join(where_conditions[1:])  # Skip the "1=1"
             if where_clause:
                 where_clause = "AND " + where_clause
-            
+
             # Add limit parameter
             params.append(limit)
 
@@ -103,11 +103,7 @@ class DatabaseSearchService:
             return []
 
     def bm25_search(
-        self,
-        terms: List[str],
-        limit: int = 10,
-        language_filter: Optional[str] = None,
-        filters: Optional[SearchFilters] = None
+        self, terms: List[str], limit: int = 10, language_filter: Optional[str] = None, filters: Optional[SearchFilters] = None
     ) -> List[Dict[str, Any]]:
         """Execute BM25 text search.
 
@@ -124,7 +120,7 @@ class DatabaseSearchService:
         try:
             # Build search query
             search_text = " ".join(terms)
-            
+
             # Build WHERE conditions
             where_conditions = ["content LIKE ?"]
             params: List[Any] = [f"%{search_text}%"]
@@ -132,16 +128,16 @@ class DatabaseSearchService:
             if language_filter:
                 where_conditions.append("language = ?")
                 params.append(language_filter)
-            
+
             # Add custom filters
             if filters and filters.has_filters():
                 filter_conditions, filter_params = filters.to_sql_conditions()
                 where_conditions.extend(filter_conditions)
                 params.extend(filter_params)
-            
+
             # Add limit parameter
             params.append(limit)
-            
+
             where_clause = " AND ".join(where_conditions)
 
             query = f"""

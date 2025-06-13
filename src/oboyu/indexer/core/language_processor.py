@@ -29,7 +29,6 @@ class LanguageProcessor:
         if language == "ja":
             # Use the Japanese text processing from the crawler component
             return self.encoding_detector.process_japanese_text(text, "utf-8")
-            
+
         # For other languages, return as-is (can be extended in the future)
         return text
-

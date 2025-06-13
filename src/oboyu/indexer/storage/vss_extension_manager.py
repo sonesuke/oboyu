@@ -14,10 +14,10 @@ class VSSExtensionManager:
 
     def ensure_vss_extension(self, conn: "DuckDBPyConnection") -> None:
         """Ensure VSS extension is properly loaded.
-        
+
         Args:
             conn: Database connection
-            
+
         Raises:
             RuntimeError: If VSS extension cannot be loaded
 
@@ -55,7 +55,7 @@ class VSSExtensionManager:
                     logger.debug("VSS extension loaded successfully")
                 except Exception as load_error:
                     load_msg = str(load_error).lower()
-                    
+
                     # Handle specific concurrent loading errors
                     if "already exists" in load_msg and "hnsw" in load_msg:
                         # Another process already loaded the extension, verify it works
@@ -66,6 +66,7 @@ class VSSExtensionManager:
                             # Extension state is inconsistent, retry
                             if attempt < max_retries - 1:
                                 import time
+
                                 time.sleep(0.1 * (attempt + 1))
                                 logger.debug(f"VSS verification failed, retrying (attempt {attempt + 2}/{max_retries})")
                                 continue
@@ -75,19 +76,20 @@ class VSSExtensionManager:
                         # Other load error, retry if not final attempt
                         if attempt < max_retries - 1:
                             import time
+
                             time.sleep(0.1 * (attempt + 1))
                             logger.debug(f"VSS load failed, retrying (attempt {attempt + 2}/{max_retries}): {load_error}")
                             continue
                         else:
                             raise load_error
-                
+
                 # Enable HNSW persistence (best effort)
                 try:
                     conn.execute("SET hnsw_enable_experimental_persistence=true")
                     logger.debug("HNSW persistence enabled")
                 except Exception as e:
                     logger.debug(f"HNSW persistence setting skipped: {e}")
-                
+
                 # Final verification that VSS extension is working
                 try:
                     conn.execute("SELECT [1.0, 2.0, 3.0]::FLOAT[3]").fetchone()
@@ -99,10 +101,11 @@ class VSSExtensionManager:
                         continue
                     else:
                         raise RuntimeError(f"VSS extension verification failed: {verify_error}")
-                
+
             except Exception as e:
                 if attempt < max_retries - 1:
                     import time
+
                     time.sleep(0.1 * (attempt + 1))
                     logger.debug(f"VSS setup failed, retrying (attempt {attempt + 2}/{max_retries}): {e}")
                     continue

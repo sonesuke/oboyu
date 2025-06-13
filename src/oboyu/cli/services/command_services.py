@@ -16,7 +16,7 @@ from oboyu.cli.services.indexer_factory import IndexerFactory
 
 class CommandServices:
     """Container for all CLI command services.
-    
+
     This class implements the composition pattern by holding instances
     of all specialized service classes needed by CLI commands.
     """
@@ -29,7 +29,7 @@ class CommandServices:
 
         """
         self.ctx = ctx
-        
+
         # Initialize core services
         self.console_manager = ConsoleManager()
         self.config_service = ConfigurationService(ctx)
@@ -39,19 +39,19 @@ class CommandServices:
     @property
     def console(self) -> Console:
         """Get the console instance for backward compatibility.
-        
+
         Returns:
             Rich console instance
-            
+
         """
         return self.console_manager.console
 
     @property
     def logger(self) -> HierarchicalLogger:
         """Get the logger instance for backward compatibility.
-        
+
         Returns:
             Hierarchical logger instance
-            
+
         """
         return self.console_manager.logger

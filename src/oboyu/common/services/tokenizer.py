@@ -313,7 +313,7 @@ class TokenizerService:
         """Initialize tokenizer service."""
         self.language = language
         self.tokenizer_kwargs = tokenizer_kwargs or {}
-        
+
         # Type annotation for tokenizer field
         self.tokenizer: Optional[Union[JapaneseTokenizer, FallbackTokenizer]] = None
 

@@ -18,10 +18,7 @@ class ChunkRecord(BaseModel):
     language: str = Field(description="Language code (e.g., 'ja', 'en')")
     created_at: datetime = Field(description="Creation timestamp")
     modified_at: datetime = Field(description="Last modification timestamp")
-    metadata: Dict[str, Union[str, int, float, bool]] = Field(
-        default_factory=dict,
-        description="Additional metadata as dictionary"
-    )
+    metadata: Dict[str, Union[str, int, float, bool]] = Field(default_factory=dict, description="Additional metadata as dictionary")
 
 
 class EmbeddingRecord(BaseModel):
@@ -33,7 +30,7 @@ class EmbeddingRecord(BaseModel):
     vector: List[float] = Field(description="Embedding vector")
     created_at: datetime = Field(description="Embedding generation timestamp")
 
-    @field_validator('vector')
+    @field_validator("vector")
     @classmethod
     def validate_vector(cls, v: List[float]) -> List[float]:
         """Validate vector dimensions and values."""
@@ -94,7 +91,7 @@ class FileMetadataRecord(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now, description="Record creation timestamp")
     updated_at: datetime = Field(default_factory=datetime.now, description="Record update timestamp")
 
-    @field_validator('processing_status')
+    @field_validator("processing_status")
     @classmethod
     def validate_status(cls, v: str) -> str:
         """Validate processing status."""
@@ -123,7 +120,7 @@ class QueryParameters(BaseModel):
     rerank: bool = Field(default=True, description="Enable reranking")
     include_scores: bool = Field(default=False, description="Include similarity scores in results")
 
-    @field_validator('mode')
+    @field_validator("mode")
     @classmethod
     def validate_mode(cls, v: str) -> str:
         """Validate search mode."""
@@ -137,10 +134,7 @@ class IndexingRequest(BaseModel):
     """Model for indexing operation requests."""
 
     source_path: Path = Field(description="Path to index")
-    config_overrides: Dict[str, Union[str, int, float, bool]] = Field(
-        default_factory=dict,
-        description="Configuration overrides for this indexing operation"
-    )
+    config_overrides: Dict[str, Union[str, int, float, bool]] = Field(default_factory=dict, description="Configuration overrides for this indexing operation")
     force_reindex: bool = Field(default=False, description="Force reindexing of existing files")
     dry_run: bool = Field(default=False, description="Perform dry run without actual indexing")
 

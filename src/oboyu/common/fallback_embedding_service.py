@@ -27,23 +27,23 @@ class LocalEmbeddingService:
 
     def __init__(self, dimensions: int = 256) -> None:
         """Initialize local embedding service.
-        
+
         Args:
             dimensions: Dimension size for generated embeddings.
-            
+
         """
         self.dimensions = dimensions
         self._word_vectors: dict[str, NDArray[np.float32]] = {}
 
     def generate_embeddings(self, texts: list[str]) -> list[NDArray[np.float32]]:
         """Generate simple hash-based embeddings as fallback.
-        
+
         Args:
             texts: List of texts to generate embeddings for.
-            
+
         Returns:
             List of embedding arrays.
-            
+
         """
         embeddings = []
         for text in texts:
@@ -59,18 +59,18 @@ class LocalEmbeddingService:
                 embedding = embedding / np.linalg.norm(embedding)
                 self._word_vectors[text] = embedding
                 embeddings.append(embedding)
-        
+
         return embeddings
 
     def generate_query_embedding(self, query: str) -> NDArray[np.float32]:
         """Generate embedding for a search query.
-        
+
         Args:
             query: Search query text.
-            
+
         Returns:
             Query embedding array.
-            
+
         """
         return self.generate_embeddings([query])[0]
 
@@ -103,7 +103,7 @@ class FallbackEmbeddingService:
         onnx_optimization_level: str = "extended",
     ) -> None:
         """Initialize fallback embedding service.
-        
+
         Args:
             primary_service: Primary embedding service to use.
             model_name: Name of the primary embedding model.
@@ -118,7 +118,7 @@ class FallbackEmbeddingService:
             fallback_model_names: List of fallback model names to try.
             onnx_quantization_config: ONNX quantization configuration.
             onnx_optimization_level: ONNX optimization level.
-            
+
         """
         self.model_name = model_name
         self.batch_size = batch_size
@@ -150,13 +150,13 @@ class FallbackEmbeddingService:
         # Initialize fallback services
         self.fallback_services: list[EmbeddingService] = []
         self.local_fallback: LocalEmbeddingService | None = None
-        
+
         # Setup fallback model names
         if enable_fallback_services:
             if fallback_model_names is None:
                 fallback_models = get_fallback_models("embedding")
                 fallback_model_names = [model[0] for model in fallback_models[:3]]
-            
+
             # Initialize fallback services for each fallback model
             for fallback_model in fallback_model_names:
                 if fallback_model != model_name:  # Don't duplicate primary model
@@ -197,14 +197,14 @@ class FallbackEmbeddingService:
         progress_callback: Callable[[str, int, int], None] | None = None,
     ) -> list[NDArray[np.float32]]:
         """Generate embeddings with fallback support.
-        
+
         Args:
             texts: List of texts to generate embeddings for.
             progress_callback: Optional callback for progress updates.
-            
+
         Returns:
             List of embedding arrays.
-            
+
         """
         if not texts:
             return []
@@ -213,9 +213,7 @@ class FallbackEmbeddingService:
         if self.primary_service:
             try:
                 if self.use_circuit_breaker and self.circuit_breaker:
-                    return self.circuit_breaker.call(
-                        lambda: self.primary_service.generate_embeddings(texts, progress_callback)
-                    )
+                    return self.circuit_breaker.call(lambda: self.primary_service.generate_embeddings(texts, progress_callback))
                 else:
                     return self.primary_service.generate_embeddings(texts, progress_callback)
             except CircuitBreakerError as e:
@@ -232,13 +230,11 @@ class FallbackEmbeddingService:
         # Try fallback services
         for i, fallback_service in enumerate(self.fallback_services):
             try:
-                logger.info(f"Trying fallback embedding service {i+1}/{len(self.fallback_services)}: {fallback_service.model_name}")
+                logger.info(f"Trying fallback embedding service {i + 1}/{len(self.fallback_services)}: {fallback_service.model_name}")
                 if self.use_circuit_breaker:
                     registry = get_circuit_breaker_registry()
                     fallback_circuit_breaker: Any = registry.get_or_create(f"embedding_{fallback_service.model_name}")
-                    return fallback_circuit_breaker.call(
-                        lambda: fallback_service.generate_embeddings(texts, progress_callback)
-                    )
+                    return fallback_circuit_breaker.call(lambda: fallback_service.generate_embeddings(texts, progress_callback))
                 else:
                     return fallback_service.generate_embeddings(texts, progress_callback)
             except CircuitBreakerError as e:
@@ -266,29 +262,29 @@ class FallbackEmbeddingService:
 
     def generate_query_embedding(self, query: str) -> NDArray[np.float32]:
         """Generate embedding for a search query with fallback support.
-        
+
         Args:
             query: Search query text.
-            
+
         Returns:
             Query embedding array.
-            
+
         """
         embeddings = self.generate_embeddings([f"{self.query_prefix}{query}"])
         return embeddings[0] if embeddings else np.zeros(self._get_dimensions(), dtype=np.float32)
 
     def _get_dimensions(self) -> int:
         """Get embedding dimensions from available services."""
-        if self.primary_service and hasattr(self.primary_service, 'dimensions') and self.primary_service.dimensions:
+        if self.primary_service and hasattr(self.primary_service, "dimensions") and self.primary_service.dimensions:
             return self.primary_service.dimensions
-        
+
         for fallback_service in self.fallback_services:
-            if hasattr(fallback_service, 'dimensions') and fallback_service.dimensions:
+            if hasattr(fallback_service, "dimensions") and fallback_service.dimensions:
                 return fallback_service.dimensions
-        
+
         if self.local_fallback:
             return self.local_fallback.get_dimensions()
-        
+
         return 256  # Default fallback
 
     def _log_fallback_attempt(self, reason: str) -> None:
@@ -302,7 +298,7 @@ class FallbackEmbeddingService:
 
     def get_model_name(self) -> str:
         """Get the name of the current embedding model."""
-        if self.primary_service and hasattr(self.primary_service, 'model_name'):
+        if self.primary_service and hasattr(self.primary_service, "model_name"):
             return self.primary_service.model_name
         elif self.fallback_services:
             return self.fallback_services[0].model_name
@@ -321,6 +317,7 @@ class FallbackEmbeddingService:
         if self.primary_service:
             if self.circuit_breaker:
                 from oboyu.common.circuit_breaker import CircuitState
+
                 if self.circuit_breaker.get_state() == CircuitState.CLOSED:
                     return True
             else:
@@ -344,14 +341,14 @@ class FallbackEmbeddingService:
         """Clear embedding cache for all services."""
         if self.primary_service:
             self.primary_service.clear_cache()
-        
+
         for fallback_service in self.fallback_services:
             fallback_service.clear_cache()
 
     def get_circuit_breaker_status(self) -> dict[str, Any]:
         """Get circuit breaker status for monitoring."""
         status: dict[str, Any] = {}
-        
+
         if self.circuit_breaker:
             status["primary"] = {
                 "model": self.model_name,
@@ -362,7 +359,7 @@ class FallbackEmbeddingService:
                     "failed_requests": self.circuit_breaker.get_metrics().failed_requests,
                     "rejected_requests": self.circuit_breaker.get_metrics().rejected_requests,
                     "failure_rate": self.circuit_breaker.get_metrics().get_failure_rate(),
-                }
+                },
             }
 
         if self.use_circuit_breaker:
@@ -371,16 +368,18 @@ class FallbackEmbeddingService:
             for fallback_service in self.fallback_services:
                 circuit_breaker = registry.get_circuit_breaker(f"embedding_{fallback_service.model_name}")
                 if circuit_breaker:
-                    status["fallbacks"].append({
-                        "model": fallback_service.model_name,
-                        "state": circuit_breaker.get_state().value,
-                        "metrics": {
-                            "total_requests": circuit_breaker.get_metrics().total_requests,
-                            "successful_requests": circuit_breaker.get_metrics().successful_requests,
-                            "failed_requests": circuit_breaker.get_metrics().failed_requests,
-                            "rejected_requests": circuit_breaker.get_metrics().rejected_requests,
-                            "failure_rate": circuit_breaker.get_metrics().get_failure_rate(),
+                    status["fallbacks"].append(
+                        {
+                            "model": fallback_service.model_name,
+                            "state": circuit_breaker.get_state().value,
+                            "metrics": {
+                                "total_requests": circuit_breaker.get_metrics().total_requests,
+                                "successful_requests": circuit_breaker.get_metrics().successful_requests,
+                                "failed_requests": circuit_breaker.get_metrics().failed_requests,
+                                "rejected_requests": circuit_breaker.get_metrics().rejected_requests,
+                                "failure_rate": circuit_breaker.get_metrics().get_failure_rate(),
+                            },
                         }
-                    })
+                    )
 
         return status

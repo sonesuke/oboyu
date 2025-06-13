@@ -26,13 +26,13 @@ class Retriever:
         """
         # Initialize configuration
         self.config = config or IndexerConfig()
-        
+
         # Initialize service registry with all dependencies
         self.services = ServiceRegistry(self.config)
-        
+
         # Initialize orchestrators
         self.search_orchestrator = SearchOrchestrator(self.services)
-        
+
         # Expose services for backward compatibility
         self.database_service = self.services.get_database_service()
         self.embedding_service = self.services.get_embedding_service()
@@ -103,7 +103,7 @@ class Retriever:
         """
         # Handle legacy parameter name
         result_limit = top_k if limit is None else limit
-            
+
         return self.search_orchestrator.vector_search(
             query=query,
             limit=result_limit,
@@ -183,7 +183,7 @@ class Retriever:
         """
         # Ensure config is properly initialized
         assert self.config.model is not None, "ModelConfig should be initialized"
-        
+
         return {
             "total_chunks": self.database_service.get_chunk_count(),
             "indexed_paths": len(self.database_service.get_paths_with_chunks()),

@@ -64,13 +64,11 @@ UNIFIED_DEFAULTS = {
 __all__ = [
     # Configuration manager
     "ConfigManager",
-    
     # Configuration schemas
     "ConfigSchema",
     "CrawlerConfigSchema",
     "IndexerConfigSchema",
     "QueryConfigSchema",
-    
     # Immutable configuration system
     "ConfigurationBuilder",
     "ConfigurationResolver",
@@ -79,7 +77,6 @@ __all__ = [
     "ResolvedSearchConfig",
     "ResolvedIndexerConfig",
     "SearchContext",
-    
     # Simplified configuration system
     "SimplifiedConfig",
     "SimplifiedIndexerConfig",
@@ -87,7 +84,6 @@ __all__ = [
     "SimplifiedQueryConfig",
     "BackwardCompatibilityMapper",
     "AutoOptimizer",
-    
     # Component configurations
     "CrawlerConfig",
     "IndexerConfig",
@@ -95,13 +91,11 @@ __all__ = [
     "SearchConfig",
     "ProcessingConfig",
     "QueryConfig",
-    
     # Defaults
     "CRAWLER_DEFAULTS",
     "INDEXER_DEFAULTS",
     "QUERY_DEFAULTS",
     "UNIFIED_DEFAULTS",
-    
     # Legacy compatibility
     "LegacyConfigManager",
     "LegacyConfigSchema",

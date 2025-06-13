@@ -57,7 +57,7 @@ class ConfigManager:
         from oboyu.config.crawler import DEFAULT_CONFIG as CRAWLER_DEFAULTS
         from oboyu.config.indexer import DEFAULT_CONFIG as INDEXER_DEFAULTS
         from oboyu.config.query import DEFAULT_CONFIG as QUERY_DEFAULTS
-        
+
         return {
             "crawler": CRAWLER_DEFAULTS["crawler"].__dict__.copy(),
             "indexer": {
@@ -223,7 +223,7 @@ class ConfigManager:
         if self._use_simplified:
             # Load raw config data
             raw_config = self.load_config()
-            
+
             # Apply backward compatibility migration
             self._simplified_config = BackwardCompatibilityMapper.migrate_config(raw_config)
         else:
@@ -261,7 +261,7 @@ class ConfigManager:
                 "onnx_quantization": {"enabled": True, "method": "dynamic"},
             }
             base_config.update(auto_params)
-            
+
         elif section == "crawler":
             auto_params = {
                 "max_workers": AutoOptimizer.get_optimal_max_workers(),
@@ -273,7 +273,7 @@ class ConfigManager:
                 "encoding": "utf-8",  # Auto-detected at runtime
             }
             base_config.update(auto_params)
-            
+
         elif section == "query":
             auto_params = {
                 "rrf_k": 60,
@@ -294,10 +294,10 @@ class ConfigManager:
 
         """
         config_to_save = config or self.get_simplified_config()
-        
+
         # Ensure parent directory exists
         self._config_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Convert to dict and save
         config_dict = config_to_save.to_dict()
         with open(self._config_path, "w") as f:
@@ -305,7 +305,7 @@ class ConfigManager:
 
     def migrate_to_simplified(self) -> None:
         """Migrate current configuration to simplified format and save.
-        
+
         This will load the current config, migrate it to simplified format,
         and save the new version. Deprecated options will be removed.
         """
@@ -313,13 +313,13 @@ class ConfigManager:
             # Load current config
             with open(self._config_path) as f:
                 old_config = yaml.safe_load(f) or {}
-            
+
             # Migrate to simplified
             simplified = BackwardCompatibilityMapper.migrate_config(old_config)
-            
+
             # Save new simplified config
             self.save_simplified_config(simplified)
-            
+
             print(f"Configuration migrated to simplified format and saved to {self._config_path}")
         else:
             # Create new simplified config with defaults

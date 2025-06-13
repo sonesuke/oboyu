@@ -22,12 +22,7 @@ from oboyu.indexer.storage.schema import DatabaseSchema
 logger = logging.getLogger(__name__)
 
 # Export public API
-__all__ = [
-    "IndexManager",
-    "HNSWIndexParams",
-    "IndexHealth",
-    "IndexInfo"
-]
+__all__ = ["IndexManager", "HNSWIndexParams", "IndexHealth", "IndexInfo"]
 
 
 class IndexManager:
@@ -48,7 +43,7 @@ class IndexManager:
         self.conn = conn
         self.schema = schema
         self._hnsw_params: Optional[HNSWIndexParams] = None
-        
+
         # Initialize specialized components
         self.hnsw_manager = HNSWIndexManager(conn, schema)
         self.health_monitor = IndexHealthMonitor(conn)
@@ -148,7 +143,7 @@ class IndexManager:
         # Use existing parameters if not provided
         if params is None:
             params = self._hnsw_params or HNSWIndexParams()
-        
+
         success = self.hnsw_manager.recreate_hnsw_index(params)
         if success:
             self._hnsw_params = params
@@ -203,10 +198,7 @@ class IndexManager:
             Index health status and recommendations
 
         """
-        return self.health_monitor.check_index_health(
-            self.hnsw_index_exists,
-            self._should_create_hnsw_index
-        )
+        return self.health_monitor.check_index_health(self.hnsw_index_exists, self._should_create_hnsw_index)
 
     def rebuild_all_indexes(self) -> bool:
         """Rebuild all database indexes.
@@ -245,10 +237,7 @@ class IndexManager:
             Dictionary with index usage information
 
         """
-        return self.health_monitor.get_index_usage_stats(
-            self.hnsw_index_exists,
-            self._hnsw_params
-        )
+        return self.health_monitor.get_index_usage_stats(self.hnsw_index_exists, self._hnsw_params)
 
     def get_performance_recommendations(self) -> List[str]:
         """Get performance recommendations for index optimization.
@@ -257,7 +246,4 @@ class IndexManager:
             List of recommendation strings
 
         """
-        return self.health_monitor.get_performance_recommendations(
-            self.hnsw_index_exists,
-            self._should_create_hnsw_index
-        )
+        return self.health_monitor.get_performance_recommendations(self.hnsw_index_exists, self._should_create_hnsw_index)

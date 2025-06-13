@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class DatabaseManager(DatabaseConnection):
     """Manages database connection lifecycle, initialization, and configuration.
-    
+
     This class is responsible for:
     - Database connection management
     - Schema creation and migrations
@@ -47,7 +47,7 @@ class DatabaseManager(DatabaseConnection):
         """
         # Initialize parent for connection management
         super().__init__(db_path, enable_experimental_features)
-        
+
         self.embedding_dimensions = embedding_dimensions
         self.auto_vacuum = auto_vacuum
 
@@ -136,12 +136,12 @@ class DatabaseManager(DatabaseConnection):
 
         except Exception as e:
             logger.warning(f"Failed to configure database settings: {e}")
-    
+
     def _configure_vss_settings(self) -> None:
         """Configure VSS-specific settings after extension is loaded."""
         if not self.conn:
             return
-            
+
         try:
             # Enable HNSW experimental persistence for file-based databases
             # This must be done after VSS extension is loaded
@@ -164,7 +164,7 @@ class DatabaseManager(DatabaseConnection):
             except Exception:
                 # VSS not loaded, need to install and load
                 logger.debug("VSS extension not loaded, installing...")
-                
+
                 # Install VSS extension if not already installed
                 try:
                     self.conn.execute("INSTALL vss")
@@ -173,11 +173,11 @@ class DatabaseManager(DatabaseConnection):
                     # Installation might fail if already installed, which is fine
                     if "already installed" not in str(install_error).lower():
                         logger.warning(f"VSS installation warning: {install_error}")
-                
+
                 # Load VSS extension
                 self.conn.execute("LOAD vss")
                 logger.debug("VSS extension loaded")
-            
+
             # Configure VSS-specific settings
             self._configure_vss_settings()
 
@@ -212,11 +212,11 @@ class DatabaseManager(DatabaseConnection):
         """Ensure HNSW index exists if there are embeddings."""
         if not self.index_manager:
             return
-            
+
         # Check if index already exists
         if self.index_manager.hnsw_index_exists():
             return
-            
+
         # Create index if we have embeddings but no index
         if self.index_manager._should_create_hnsw_index():
             logger.info("Creating HNSW index after embeddings were added")
@@ -225,28 +225,23 @@ class DatabaseManager(DatabaseConnection):
                 logger.info("HNSW index created successfully")
             else:
                 logger.warning("HNSW index creation failed")
-    
+
     def validate_database_state(self) -> Dict[str, Any]:
         """Validate the current database state and check for inconsistencies.
-        
+
         Returns:
             Dictionary with validation results and any issues found
 
         """
-        validation_results: Dict[str, Any] = {
-            "is_valid": True,
-            "issues": [],
-            "warnings": [],
-            "stats": {}
-        }
-        
+        validation_results: Dict[str, Any] = {"is_valid": True, "issues": [], "warnings": [], "stats": {}}
+
         try:
             # Check if connection is valid
             if not self.conn:
                 validation_results["is_valid"] = False
                 validation_results["issues"].append("No database connection")
                 return validation_results
-            
+
             # Test the connection
             try:
                 self.conn.execute("SELECT 1").fetchone()
@@ -254,7 +249,7 @@ class DatabaseManager(DatabaseConnection):
                 validation_results["is_valid"] = False
                 validation_results["issues"].append(f"Database connection test failed: {e}")
                 return validation_results
-            
+
             # Check VSS extension
             try:
                 # Try to create a simple vector to test VSS functionality
@@ -267,7 +262,7 @@ class DatabaseManager(DatabaseConnection):
                 else:
                     # VSS is loaded but there might be another issue
                     validation_results["stats"]["vss_loaded"] = True
-            
+
             # Check table existence
             required_tables = ["chunks", "embeddings", "file_metadata"]
             for table in required_tables:
@@ -278,18 +273,18 @@ class DatabaseManager(DatabaseConnection):
                 except Exception as e:
                     validation_results["is_valid"] = False
                     validation_results["issues"].append(f"Table '{table}' missing or inaccessible: {e}")
-            
+
             # Check HNSW index status
             if self.index_manager:
                 has_index = self.index_manager.hnsw_index_exists()
                 should_have_index = self.index_manager._should_create_hnsw_index()
-                
+
                 validation_results["stats"]["hnsw_index_exists"] = has_index
                 validation_results["stats"]["hnsw_index_needed"] = should_have_index
-                
+
                 if should_have_index and not has_index:
                     validation_results["warnings"].append("HNSW index missing but embeddings exist")
-            
+
             # Check for orphaned embeddings
             try:
                 result = self.conn.execute("""
@@ -299,20 +294,20 @@ class DatabaseManager(DatabaseConnection):
                     WHERE c.id IS NULL
                 """).fetchone()
                 orphaned = result[0] if result else 0
-                
+
                 if orphaned > 0:
                     validation_results["warnings"].append(f"Found {orphaned} orphaned embeddings")
                     validation_results["stats"]["orphaned_embeddings"] = orphaned
             except Exception as e:
                 validation_results["warnings"].append(f"Could not check for orphaned embeddings: {e}")
-            
+
             logger.info(f"Database validation completed: {validation_results}")
-            
+
         except Exception as e:
             validation_results["is_valid"] = False
             validation_results["issues"].append(f"Validation failed: {e}")
             logger.error(f"Database validation failed: {e}")
-        
+
         return validation_results
 
     def backup_database(self, backup_path: Union[str, Path]) -> bool:
@@ -337,10 +332,10 @@ class DatabaseManager(DatabaseConnection):
 
     def get_connection(self) -> DuckDBPyConnection:
         """Get the active database connection.
-        
+
         Returns:
             Active database connection
-            
+
         Raises:
             RuntimeError: If database is not initialized
 

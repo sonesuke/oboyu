@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class IndexingResult:
     """Result of an indexing operation."""
-    
+
     total_files: int
     total_chunks: int
     elapsed_time: float
@@ -33,7 +33,7 @@ class IndexingResult:
 @dataclass
 class StatusResult:
     """Result of a status check operation."""
-    
+
     new_files: int
     modified_files: int
     deleted_files: int
@@ -44,7 +44,7 @@ class StatusResult:
 @dataclass
 class DiffResult:
     """Result of a diff operation."""
-    
+
     new_files: List[str]
     modified_files: List[str]
     deleted_files: List[str]
@@ -53,7 +53,7 @@ class DiffResult:
 
 class IndexCommand:
     """Consolidated indexing command service combining indexing functionality."""
-    
+
     def __init__(
         self,
         config_manager: ConfigManager,
@@ -61,7 +61,7 @@ class IndexCommand:
         console_manager: Optional[ConsoleManager] = None,
     ) -> None:
         """Initialize the indexing command service.
-        
+
         Args:
             config_manager: Configuration manager instance
             indexer_factory: Factory for creating indexer instances with progress
@@ -71,7 +71,7 @@ class IndexCommand:
         self.config_manager = config_manager
         self.indexer_factory = indexer_factory
         self.console_manager = console_manager
-    
+
     def create_indexer_config(
         self,
         chunk_size: Optional[int] = None,
@@ -88,7 +88,7 @@ class IndexCommand:
             db_path,
         )
         return build_indexer_config(indexer_config_dict)
-    
+
     def execute_indexing(
         self,
         directories: List[Path],
@@ -106,20 +106,18 @@ class IndexCommand:
         progress_callback: Optional[Callable[[str], None]] = None,
     ) -> IndexingResult:
         """Execute indexing operation."""
-        indexer_config = self.create_indexer_config(
-            chunk_size, chunk_overlap, embedding_model, db_path
-        )
-        
+        indexer_config = self.create_indexer_config(chunk_size, chunk_overlap, embedding_model, db_path)
+
         start_time = time.time()
         total_chunks = 0
         total_files = 0
-        
+
         # Create indexer with progress display if factory is available
         if self.indexer_factory and self.console_manager:
             indexer = self.indexer_factory.create_indexer(indexer_config, self.console_manager)
         else:
             indexer = Indexer(config=indexer_config)
-        
+
         try:
             for directory in directories:
                 # Start scan operation for progress tracking
@@ -128,37 +126,54 @@ class IndexCommand:
                     scan_op_id = self.console_manager.logger.start_operation(f"Scanning directory {directory}...")
                 elif progress_callback:
                     progress_callback(f"Scanning directory {directory}...")
-                
+
+                # Get crawler config from config manager
+                crawler_config_dict = self.config_manager.get_section("crawler")
+
+                # Debug: Log what patterns we're using
+                logger.debug(f"Crawler config from config_manager: {crawler_config_dict}")
+                logger.debug(f"Include patterns: {crawler_config_dict.get('include_patterns')}")
+                logger.debug(f"Exclude patterns: {crawler_config_dict.get('exclude_patterns')}")
+
+                # Use config from config_manager directly
+                # Get patterns with proper defaults from crawler config
+                default_include = ["*.txt", "*.md", "*.html", "*.py", "*.java", "*.pdf"]
+                default_exclude = ["*/node_modules/*", "*/venv/*"]
+
+                final_include_patterns = include_patterns if include_patterns else crawler_config_dict.get("include_patterns", default_include)
+                final_exclude_patterns = exclude_patterns if exclude_patterns else crawler_config_dict.get("exclude_patterns", default_exclude)
+
+                logger.info(f"Final include patterns: {final_include_patterns}")
+                logger.info(f"Final exclude patterns: {final_exclude_patterns}")
+
                 crawler = Crawler(
-                    depth=max_depth or 10,
-                    include_patterns=include_patterns or ["*.txt", "*.md", "*.html", "*.py", "*.java"],
-                    exclude_patterns=exclude_patterns or ["*/node_modules/*", "*/venv/*"],
-                    max_workers=4,
-                    respect_gitignore=True,
+                    depth=max_depth if max_depth else crawler_config_dict.get("depth", 10),
+                    include_patterns=final_include_patterns,
+                    exclude_patterns=final_exclude_patterns,
+                    max_workers=crawler_config_dict.get("max_workers", 4),
+                    respect_gitignore=crawler_config_dict.get("respect_gitignore", True),
                 )
-                
+
                 crawler_results = crawler.crawl(directory)
-                
+                logger.info(f"Crawler found {len(crawler_results)} files in {directory}")
+
                 # Create indexer progress callback if console manager is available
                 indexer_progress_callback = None
                 if self.console_manager and scan_op_id:
-                    indexer_progress_callback = create_indexer_progress_callback(
-                        self.console_manager.logger,
-                        scan_op_id
-                    )
-                
+                    indexer_progress_callback = create_indexer_progress_callback(self.console_manager.logger, scan_op_id)
+
                 try:
                     result = indexer.index_documents(crawler_results, indexer_progress_callback)
-                    
+
                     chunks_indexed = result.get("indexed_chunks", 0)
                     files_processed = result.get("total_documents", 0)
-                    
+
                     total_chunks += chunks_indexed
                     total_files += files_processed
-                    
+
                     if progress_callback:
                         progress_callback(f"Indexed {chunks_indexed} chunks from {files_processed} documents")
-                
+
                 except RuntimeError as e:
                     # Check if this is a model loading error from our services
                     if "Failed to load" in str(e) and "model" in str(e):
@@ -178,16 +193,16 @@ class IndexCommand:
             raise
         finally:
             indexer.close()
-        
+
         elapsed_time = time.time() - start_time
-        
+
         return IndexingResult(
             total_files=total_files,
             total_chunks=total_chunks,
             elapsed_time=elapsed_time,
             directories_processed=directories,
         )
-    
+
     def get_status(
         self,
         directories: List[Path],
@@ -201,16 +216,17 @@ class IndexCommand:
             None,  # embedding_model
             db_path,
         )
-        
+
         from oboyu.cli.index_config import build_status_indexer_config
+
         indexer_config = build_status_indexer_config(indexer_config_dict)
         indexer = Indexer(config=indexer_config)
-        
+
         results = []
-        
+
         try:
             crawler_config = load_default_config()
-            
+
             for directory in directories:
                 discovered_paths = discover_documents(
                     Path(directory),
@@ -218,23 +234,25 @@ class IndexCommand:
                     exclude_patterns=crawler_config.exclude_patterns,
                     max_depth=crawler_config.depth,
                 )
-                
+
                 paths_only = [path for path, metadata in discovered_paths]
                 changes = indexer.change_detector.detect_changes(paths_only, strategy="smart")
                 stats = indexer.change_detector.get_processing_stats()
-                
-                results.append(StatusResult(
-                    new_files=len(changes.new_files),
-                    modified_files=len(changes.modified_files),
-                    deleted_files=len(changes.deleted_files),
-                    total_indexed=stats.get('completed', 0),
-                    directory=directory,
-                ))
+
+                results.append(
+                    StatusResult(
+                        new_files=len(changes.new_files),
+                        modified_files=len(changes.modified_files),
+                        deleted_files=len(changes.deleted_files),
+                        total_indexed=stats.get("completed", 0),
+                        directory=directory,
+                    )
+                )
         finally:
             indexer.close()
-        
+
         return results
-    
+
     def get_diff(
         self,
         directories: List[Path],
@@ -249,17 +267,18 @@ class IndexCommand:
             None,  # embedding_model
             db_path,
         )
-        
+
         from oboyu.cli.index_config import build_status_indexer_config
+
         indexer_config = build_status_indexer_config(indexer_config_dict)
         indexer = Indexer(config=indexer_config)
-        
+
         results = []
-        
+
         try:
             crawler_config = load_default_config()
             detection_strategy = change_detection or "smart"
-            
+
             for directory in directories:
                 discovered_paths = discover_documents(
                     Path(directory),
@@ -267,31 +286,33 @@ class IndexCommand:
                     exclude_patterns=crawler_config.exclude_patterns,
                     max_depth=crawler_config.depth,
                 )
-                
+
                 paths_only = [path for path, metadata in discovered_paths]
                 changes = indexer.change_detector.detect_changes(paths_only, strategy=detection_strategy)
-                
-                results.append(DiffResult(
-                    new_files=[str(f) for f in sorted(changes.new_files)],
-                    modified_files=[str(f) for f in sorted(changes.modified_files)],
-                    deleted_files=[str(f) for f in sorted(changes.deleted_files)],
-                    directory=directory,
-                ))
+
+                results.append(
+                    DiffResult(
+                        new_files=[str(f) for f in sorted(changes.new_files)],
+                        modified_files=[str(f) for f in sorted(changes.modified_files)],
+                        deleted_files=[str(f) for f in sorted(changes.deleted_files)],
+                        directory=directory,
+                    )
+                )
         finally:
             indexer.close()
-        
+
         return results
-    
+
     def clear_index(self, db_path: Optional[Path] = None) -> None:
         """Clear the index database."""
         indexer_config = self.create_indexer_config(db_path=db_path)
         indexer = Indexer(config=indexer_config)
-        
+
         try:
             indexer.clear_index()
         finally:
             indexer.close()
-    
+
     def get_database_path(self, db_path: Optional[Path] = None) -> str:
         """Get the resolved database path."""
         indexer_config_dict = create_indexer_config(

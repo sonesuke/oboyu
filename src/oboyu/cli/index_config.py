@@ -18,17 +18,25 @@ def create_crawler_config(
     exclude_patterns: Optional[List[str]],
 ) -> dict[str, Any]:
     """Create crawler configuration from config data and command-line options."""
-    crawler_config_dict = config_manager.get_section("crawler")
+    # Create overrides dict with only non-None values
+    overrides: dict[str, Any] = {}
 
     if recursive is not None:
-        crawler_config_dict["depth"] = 0 if not recursive else (max_depth or 10)
+        overrides["depth"] = 0 if not recursive else (max_depth or 10)
     elif max_depth is not None:
-        crawler_config_dict["depth"] = max_depth
+        overrides["depth"] = max_depth
 
     if include_patterns:
-        crawler_config_dict["include_patterns"] = include_patterns
+        overrides["include_patterns"] = include_patterns
     if exclude_patterns:
-        crawler_config_dict["exclude_patterns"] = exclude_patterns
+        overrides["exclude_patterns"] = exclude_patterns
+
+    # Use merge_cli_overrides to properly update config
+    crawler_config_dict = config_manager.merge_cli_overrides("crawler", overrides)
+
+    # Update the internal config data so subsequent calls to get_section will have the updates
+    config_data = config_manager.load_config()
+    config_data["crawler"] = crawler_config_dict
 
     return dict(crawler_config_dict)
 
@@ -75,14 +83,14 @@ def create_indexer_config(
 def build_indexer_config(indexer_config_dict: dict[str, Any]) -> IndexerConfig:
     """Build complete IndexerConfig from configuration dictionary."""
     model_config = create_model_config(indexer_config_dict)
-    
+
     search_config = SearchConfig(
         bm25_k1=indexer_config_dict.get("bm25_k1", 1.2),
         bm25_b=indexer_config_dict.get("bm25_b", 0.75),
         use_reranker=indexer_config_dict.get("use_reranker", True),
         top_k_multiplier=indexer_config_dict.get("reranker_top_k_multiplier", 3),
     )
-    
+
     processing_config = ProcessingConfig(
         chunk_size=indexer_config_dict.get("chunk_size", 1024),
         chunk_overlap=indexer_config_dict.get("chunk_overlap", 256),
@@ -93,7 +101,7 @@ def build_indexer_config(indexer_config_dict: dict[str, Any]) -> IndexerConfig:
         m=indexer_config_dict.get("m", 16),
         m0=indexer_config_dict.get("m0"),
     )
-    
+
     return IndexerConfig(
         model=model_config,
         search=search_config,
@@ -104,19 +112,19 @@ def build_indexer_config(indexer_config_dict: dict[str, Any]) -> IndexerConfig:
 def build_status_indexer_config(indexer_config_dict: dict[str, Any]) -> IndexerConfig:
     """Build IndexerConfig for status operations (simplified)."""
     model_config = create_model_config(indexer_config_dict)
-    
+
     search_config = SearchConfig(
         bm25_k1=indexer_config_dict.get("bm25_k1", 1.2),
         bm25_b=indexer_config_dict.get("bm25_b", 0.75),
         use_reranker=indexer_config_dict.get("use_reranker", False),
     )
-    
+
     processing_config = ProcessingConfig(
         chunk_size=indexer_config_dict.get("chunk_size", 1024),
         chunk_overlap=indexer_config_dict.get("chunk_overlap", 256),
         db_path=Path(indexer_config_dict.get("db_path", "oboyu.db")),
     )
-    
+
     return IndexerConfig(
         model=model_config,
         search=search_config,

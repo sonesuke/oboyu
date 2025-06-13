@@ -39,7 +39,7 @@ class CrawlerResult:
 
 class Crawler:
     """Document crawler for discovering and extracting content from files.
-    
+
     Orchestrates specialized services to handle different aspects of document crawling:
     - FileDiscoveryService: Finds files that match criteria
     - ContentExtractor: Extracts content from different file formats
@@ -177,12 +177,7 @@ class Crawler:
                     current_time = time.time()
 
                     # Report more frequently: every completion or every 2 seconds
-                    should_report = (
-                        completed_docs == 1
-                        or current_time - last_progress_time >= 2.0
-                        or completed_docs % 10 == 0
-                        or completed_docs == total_docs
-                    )
+                    should_report = completed_docs == 1 or current_time - last_progress_time >= 2.0 or completed_docs % 10 == 0 or completed_docs == total_docs
                     if progress_callback and should_report:
                         progress_callback("crawling", completed_docs, total_docs)
                         last_progress_time = current_time
@@ -190,7 +185,7 @@ class Crawler:
             # Stop the periodic updater
             stop_periodic_updates.set()
             update_thread.join(timeout=1.0)
-            
+
             # Always send final progress update to ensure completion
             if progress_callback and completed_docs > 0:
                 progress_callback("crawling", completed_docs, total_docs)
@@ -211,7 +206,7 @@ class Crawler:
         try:
             # Extract content using the content extractor service
             content, extracted_metadata = self.content_extractor.extract_content(doc_path)
-            
+
             # Detect language using the language detector service
             language = self.language_detector.detect_language(content)
 

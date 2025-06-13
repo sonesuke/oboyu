@@ -38,7 +38,7 @@ class IndexHealthMonitor:
 
     def __init__(self, conn: DuckDBPyConnection) -> None:
         """Initialize index health monitor.
-        
+
         Args:
             conn: Database connection
 
@@ -181,15 +181,7 @@ class IndexHealthMonitor:
         try:
             indexes = self.get_index_info()
             stats["total_indexes"] = len(indexes)
-            stats["indexes"] = [
-                {
-                    "name": idx.name,
-                    "table": idx.table,
-                    "type": idx.index_type,
-                    "unique": idx.is_unique
-                }
-                for idx in indexes
-            ]
+            stats["indexes"] = [{"name": idx.name, "table": idx.table, "type": idx.index_type, "unique": idx.is_unique} for idx in indexes]
 
         except Exception as e:
             logger.error(f"Failed to get index usage stats: {e}")
@@ -230,5 +222,5 @@ class IndexHealthMonitor:
                 recommendations.append("Consider running VACUUM or ANALYZE for large tables")
         except Exception as e:
             logger.error(f"Failed to generate performance recommendations: {e}")
-        
+
         return recommendations

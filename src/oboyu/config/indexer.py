@@ -73,15 +73,15 @@ class ProcessingConfig:
 
     # Database settings
     db_path: Path = Path("oboyu_database.db")
-    
+
     # Chunking settings
     chunk_size: int = 1000
     chunk_overlap: int = 200
-    
+
     # Processing settings
     batch_size: int = 64
     show_progress: bool = True
-    
+
     # Validation settings
     min_doc_length: int = 50
 

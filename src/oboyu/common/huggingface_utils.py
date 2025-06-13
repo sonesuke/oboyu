@@ -32,16 +32,17 @@ except ImportError:
         """Fallback exception for entry not found errors."""
 
         pass
-    
+
     class LocalEntryNotFoundError(Exception):  # type: ignore[misc,no-redef]
         """Fallback exception for local entry not found errors."""
 
         pass
-    
+
     class OfflineModeIsEnabled(Exception):  # type: ignore[misc,no-redef]
         """Fallback exception for offline mode errors."""
 
         pass
+
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -139,16 +140,12 @@ def safe_model_download(
             CircuitBreakerError,
             get_circuit_breaker_registry,
         )
-        
+
         registry = get_circuit_breaker_registry()
         circuit_breaker: Any = registry.get_or_create(f"huggingface_download_{model_id}")
-        
+
         try:
-            return circuit_breaker.call(
-                lambda: _safe_model_download_impl(
-                    model_id, download_func, max_retries, initial_delay, backoff_factor, cache_dir
-                )
-            )
+            return circuit_breaker.call(lambda: _safe_model_download_impl(model_id, download_func, max_retries, initial_delay, backoff_factor, cache_dir))
         except CircuitBreakerError as e:
             # Convert circuit breaker error to appropriate HuggingFace error
             raise HuggingFaceNetworkError(
@@ -156,9 +153,7 @@ def safe_model_download(
                 technical_details=str(e),
             ) from e
     else:
-        return _safe_model_download_impl(
-            model_id, download_func, max_retries, initial_delay, backoff_factor, cache_dir
-        )
+        return _safe_model_download_impl(model_id, download_func, max_retries, initial_delay, backoff_factor, cache_dir)
 
 
 def _safe_model_download_impl(
@@ -244,7 +239,7 @@ def _safe_model_download_impl(
         except HuggingFaceError:
             # Re-raise Hugging Face errors directly (already properly typed)
             raise
-            
+
         except Exception as e:
             logger.exception(f"Unexpected error downloading model {model_id}")
             last_error = e
@@ -329,11 +324,7 @@ def get_user_friendly_error_message(error: HuggingFaceError) -> str:
         )
 
     else:
-        return (
-            "❌ Hugging Face Hub error\n\n"
-            f"Error: {error.message}\n\n"
-            "Please try again or check the logs for more details."
-        )
+        return f"❌ Hugging Face Hub error\n\nError: {error.message}\n\nPlease try again or check the logs for more details."
 
 
 def validate_model_exists(model_id: str) -> bool:
@@ -419,30 +410,31 @@ def with_huggingface_circuit_breaker(
     use_circuit_breaker: bool = True,
 ) -> Callable[[Callable[[], T]], T]:
     """Execute a function with HuggingFace circuit breaker protection.
-    
+
     Args:
         operation_name: Name of the operation for circuit breaker identification.
         use_circuit_breaker: Whether to use circuit breaker protection.
-        
+
     Returns:
         Function result or raises appropriate HuggingFace error.
-        
+
     Raises:
         HuggingFaceError: Various subclasses depending on the error type.
-        
+
     """
+
     def wrapper(func: Callable[[], T]) -> T:
         if not use_circuit_breaker:
             return func()
-            
+
         from oboyu.common.circuit_breaker import (
             CircuitBreakerError,
             get_circuit_breaker_registry,
         )
-        
+
         registry = get_circuit_breaker_registry()
         circuit_breaker: Any = registry.get_or_create(f"huggingface_{operation_name}")
-        
+
         try:
             return circuit_breaker.call(func)
         except CircuitBreakerError as e:
@@ -451,7 +443,7 @@ def with_huggingface_circuit_breaker(
                 message=f"Circuit breaker is open for '{operation_name}' due to repeated failures",
                 technical_details=str(e),
             ) from e
-    
+
     return wrapper
 
 
@@ -483,4 +475,3 @@ def get_fallback_models(model_type: str) -> list[tuple[str, str]]:
         ],
     }
     return fallbacks.get(model_type, [])
-

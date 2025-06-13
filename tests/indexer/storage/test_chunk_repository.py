@@ -48,9 +48,9 @@ def test_store_chunks_single_chunk(chunk_repository, mock_connection):
     
     chunk_repository.store_chunks([chunk])
     
-    # Verify execute was called with correct SQL
-    mock_connection.execute.assert_called()
-    call_args = mock_connection.execute.call_args
+    # Verify executemany was called with correct SQL (batch operations)
+    mock_connection.executemany.assert_called()
+    call_args = mock_connection.executemany.call_args
     sql = call_args[0][0]
     assert "INSERT" in sql
     assert "chunks" in sql

@@ -16,7 +16,7 @@ except ImportError:
 DocumentInfo = Tuple[Path, Dict[str, object]]
 
 # Hard-coded values for consistency and security
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB - increased to accommodate PDF files
 FOLLOW_SYMLINKS = False
 
 
@@ -29,7 +29,7 @@ class FileDiscoveryService:
         follow_symlinks: bool = FOLLOW_SYMLINKS,
     ) -> None:
         """Initialize the file discovery service.
-        
+
         Args:
             max_file_size: Maximum file size in bytes (default: 10MB)
             follow_symlinks: Whether to follow symbolic links (default: False)
@@ -47,24 +47,24 @@ class FileDiscoveryService:
         respect_gitignore: bool = True,
     ) -> List[DocumentInfo]:
         """Discover files matching the specified criteria.
-        
+
         Args:
             root_paths: List of root directories to search
             include_patterns: List of glob patterns to include (e.g., "*.txt")
             exclude_patterns: List of glob patterns to exclude (e.g., "*/node_modules/*")
             max_depth: Maximum directory traversal depth
             respect_gitignore: Whether to respect .gitignore files
-            
+
         Returns:
             List of tuples with document path and metadata
 
         """
         documents: List[DocumentInfo] = []
-        
+
         for directory in root_paths:
             if not directory.exists() or not directory.is_dir():
                 raise ValueError(f"Directory does not exist or is not a directory: {directory}")
-            
+
             # Get documents from this directory
             dir_documents = self._discover_in_directory(
                 directory=directory.absolute(),
@@ -74,7 +74,7 @@ class FileDiscoveryService:
                 respect_gitignore=respect_gitignore,
             )
             documents.extend(dir_documents)
-        
+
         return documents
 
     def _discover_in_directory(
@@ -86,14 +86,14 @@ class FileDiscoveryService:
         respect_gitignore: bool,
     ) -> List[DocumentInfo]:
         """Discover documents in a single directory.
-        
+
         Args:
             directory: Directory to search (must be absolute)
             include_patterns: List of glob patterns to include
             exclude_patterns: List of glob patterns to exclude
             max_depth: Maximum directory traversal depth
             respect_gitignore: Whether to respect .gitignore files
-            
+
         Returns:
             List of tuples with document path and metadata
 
@@ -135,7 +135,7 @@ class FileDiscoveryService:
         root_directory: Optional[Path] = None,
     ) -> Iterator[DocumentInfo]:
         """Recursively walk a directory to discover documents.
-        
+
         Args:
             directory: Current directory to walk
             patterns: List of glob patterns to include
@@ -145,7 +145,7 @@ class FileDiscoveryService:
             visited_dirs: Set of already visited directories
             gitignore_matcher: Optional function to match paths against gitignore rules
             root_directory: Root directory for relative path calculation for gitignore
-            
+
         Yields:
             Tuples with document path and metadata
 
@@ -217,11 +217,11 @@ class FileDiscoveryService:
 
     def _should_exclude(self, path: Path, exclude_patterns: List[str]) -> bool:
         """Check if a path should be excluded based on patterns.
-        
+
         Args:
             path: Path to check
             exclude_patterns: List of glob patterns to exclude
-            
+
         Returns:
             True if the path should be excluded, False otherwise
 
@@ -233,11 +233,11 @@ class FileDiscoveryService:
 
     def _matches_patterns(self, path: Path, patterns: List[str]) -> bool:
         """Check if a path matches any of the include patterns.
-        
+
         Args:
             path: Path to check
             patterns: List of glob patterns to include
-            
+
         Returns:
             True if the path matches any pattern, False otherwise
 
@@ -249,10 +249,10 @@ class FileDiscoveryService:
 
     def _get_file_metadata(self, file_entry: os.DirEntry[str]) -> Dict[str, object]:
         """Extract metadata from a file.
-        
+
         Args:
             file_entry: Directory entry for the file
-            
+
         Returns:
             Dictionary with file metadata
 

@@ -36,18 +36,14 @@ class ResultMerger:
             for results in result_lists:
                 for result in results:
                     chunk_id = result.chunk_id
-                    
+
                     # Keep the result with the highest score
                     if chunk_id not in best_results or result.score > best_results[chunk_id].score:
                         best_results[chunk_id] = result
 
             # Sort by score and return top results
-            sorted_results = sorted(
-                best_results.values(),
-                key=lambda r: r.score,
-                reverse=True
-            )
-            
+            sorted_results = sorted(best_results.values(), key=lambda r: r.score, reverse=True)
+
             return sorted_results[:limit]
 
         except Exception as e:

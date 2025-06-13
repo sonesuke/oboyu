@@ -77,26 +77,26 @@ def query(
             # Get query configuration for interactive session
             query_config = query_service.get_query_config(top_k, rrf_k, rerank)
             database_path = query_service.get_database_path(db_path)
-            
+
             # Get indexer configuration and create indexer with proper config for interactive session
             indexer_config = config_manager.get_section("indexer")
-            
+
             from oboyu.indexer.config.indexer_config import IndexerConfig
             from oboyu.retriever.retriever import Retriever
-            
+
             config = IndexerConfig()
             config.db_path = Path(database_path)
-            
+
             # Apply configuration from file
             if indexer_config.get("use_reranker", False):
                 assert config.search is not None, "SearchConfig should be initialized"
                 assert config.model is not None, "ModelConfig should be initialized"
                 config.search.use_reranker = True
                 config.model.use_reranker = True
-            
+
             # Initialize retriever with proper configuration
             retriever = Retriever(config)
-            
+
             # Start interactive session
             session_config = {
                 "mode": mode,
@@ -110,7 +110,7 @@ def query(
             # Execute single query using service
             # At this point, query is guaranteed to be non-None due to validation above
             assert query is not None, "Query should be validated as non-None by this point"
-            
+
             result = query_service.execute_query_with_context(
                 query=query,
                 mode=mode,
@@ -142,12 +142,7 @@ def _display_results(
     if not results:
         if format == "json":
             # Output empty JSON structure for no results
-            json_output = {
-                "results": [],
-                "count": 0,
-                "search_type": f"{mode}{' with reranker' if reranker_used else ''}",
-                "duration": elapsed_time
-            }
+            json_output = {"results": [], "count": 0, "search_type": f"{mode}{' with reranker' if reranker_used else ''}", "duration": elapsed_time}
             print(json.dumps(json_output, indent=2, ensure_ascii=False))
         else:
             console.print("❌ No results found.")
@@ -158,42 +153,39 @@ def _display_results(
         json_results = []
         for result in results:
             # Create snippet (first 200 chars)
-            content = result.content[:200].replace('\n', ' ').strip()
+            content = result.content[:200].replace("\n", " ").strip()
             if len(result.content) > 200:
                 content += "..."
-            
+
             json_result = {
                 "score": result.score,
                 "file_path": str(result.path),
                 "title": result.title or "",
                 "snippet": content,
-                "language": getattr(result, 'language', 'en')  # Default to 'en' if not available
+                "language": getattr(result, "language", "en"),  # Default to 'en' if not available
             }
-            
+
             # Add chunk index if explain mode is enabled
             if explain:
                 json_result["chunk_index"] = result.chunk_index
-                
+
             json_results.append(json_result)
-        
+
         # Create final JSON output structure
         json_output = {
             "results": json_results,
             "count": len(results),
             "search_type": f"{mode}{' with reranker' if reranker_used else ''}",
-            "duration": elapsed_time
+            "duration": elapsed_time,
         }
-        
+
         # Output JSON using print to avoid Rich formatting
         print(json.dumps(json_output, indent=2, ensure_ascii=False))
     else:
         # Original text format
         # Header with reranker indication
         reranker_suffix = " with reranker" if reranker_used else ""
-        console.print(
-            f"\n🎯 Found [bold green]{len(results)}[/bold green] results "
-            f"([dim]{mode} search{reranker_suffix}, {elapsed_time:.3f}s[/dim])\n"
-        )
+        console.print(f"\n🎯 Found [bold green]{len(results)}[/bold green] results ([dim]{mode} search{reranker_suffix}, {elapsed_time:.3f}s[/dim])\n")
 
         # Display results
         for i, result in enumerate(results, 1):
@@ -215,7 +207,7 @@ def _display_results(
                 console.print(f"    [bold]{result.title}[/bold]")
 
             # Content preview
-            content = result.content[:200].replace('\n', ' ').strip()
+            content = result.content[:200].replace("\n", " ").strip()
             if len(result.content) > 200:
                 content += "..."
             console.print(f"    {content}")

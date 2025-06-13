@@ -32,7 +32,6 @@ class EmbeddingPrefixHandler:
         # For Ruri v3 model and similar models, add the document prefix
         if model_type in ["ruri", "ruri-v3"]:
             return f"{self.document_prefix}{text}"
-            
+
         # For other models, return text as-is (can be extended in the future)
         return text
-
