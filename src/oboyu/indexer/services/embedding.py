@@ -208,7 +208,7 @@ class EmbeddingService:
         if progress_callback and len(texts_to_process) > self.batch_size * 2:
             return self._process_large_batch(texts_to_process, num_batches, progress_callback)
         else:
-            new_embeddings = self.model_manager.model.encode(texts_to_process, batch_size=self.batch_size, normalize_embeddings=True, show_progress_bar=False)
+            new_embeddings = self.model_manager.model.encode(texts_to_process, batch_size=self.batch_size, normalize_embeddings=True)
             if progress_callback:
                 progress_callback("embedding", num_batches, num_batches)
             return new_embeddings
@@ -220,7 +220,7 @@ class EmbeddingService:
 
         for batch_idx in range(0, len(texts_to_process), self.batch_size):
             batch_texts = texts_to_process[batch_idx : batch_idx + self.batch_size]
-            batch_embeddings = self.model_manager.model.encode(batch_texts, batch_size=self.batch_size, normalize_embeddings=True, show_progress_bar=False)
+            batch_embeddings = self.model_manager.model.encode(batch_texts, batch_size=self.batch_size, normalize_embeddings=True)
             all_embeddings.append(batch_embeddings)
 
             current_batch = (batch_idx // self.batch_size) + 1
