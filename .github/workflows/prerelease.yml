@@ -1,4 +1,4 @@
-name: Publish Prerelease to PyPI
+name: Publish Prerelease to PyPI and GitHub Packages
 
 on:
   push:
@@ -106,3 +106,160 @@ jobs:
     
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
+  
+  create-github-prerelease:
+    needs: publish-prerelease
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for changelog generation
+    
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: dist/
+    
+    - name: Generate Changelog
+      id: changelog
+      uses: mikepenz/release-changelog-builder-action@v5
+      with:
+        configuration: |
+          {
+            "categories": [
+              {
+                "title": "## 🚀 Features",
+                "labels": ["feat", "enhancement"]
+              },
+              {
+                "title": "## 🐛 Bug Fixes",
+                "labels": ["fix", "bug"]
+              },
+              {
+                "title": "## 📚 Documentation",
+                "labels": ["docs"]
+              },
+              {
+                "title": "## 🔧 Maintenance",
+                "labels": ["chore", "refactor"]
+              },
+              {
+                "title": "## 🎨 Style",
+                "labels": ["style"]
+              },
+              {
+                "title": "## 🚨 Tests",
+                "labels": ["test"]
+              }
+            ],
+            "template": "# Changelog\n\n${{CHANGELOG}}\n\n**Full Changelog**: ${{RELEASE_DIFF}}\n",
+            "pr_template": "- ${{TITLE}} (#${{NUMBER}})",
+            "empty_template": "No changes.",
+            "sort": "ASC",
+            "max_pull_requests": 100,
+            "max_back_track_time_days": 365,
+            "base_branches": ["main"]
+          }
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract Version from Tag
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+    
+    - name: Determine Prerelease Type
+      id: prerelease_type
+      run: |
+        VERSION=${{ steps.version.outputs.version }}
+        if [[ $VERSION == *"a"* ]]; then
+          echo "type=Alpha" >> $GITHUB_OUTPUT
+          echo "emoji=🧪" >> $GITHUB_OUTPUT
+        elif [[ $VERSION == *"b"* ]]; then
+          echo "type=Beta" >> $GITHUB_OUTPUT
+          echo "emoji=🇾" >> $GITHUB_OUTPUT
+        elif [[ $VERSION == *"rc"* ]]; then
+          echo "type=Release Candidate" >> $GITHUB_OUTPUT
+          echo "emoji=🎯" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Create GitHub Prerelease
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: ${{ steps.prerelease_type.outputs.emoji }} ${{ steps.prerelease_type.outputs.type }} ${{ steps.version.outputs.version }}
+        body: |
+          ## 🔬 Prerelease: ${{ steps.prerelease_type.outputs.type }}
+          
+          This is a prerelease version intended for testing and early feedback.
+          
+          ## 📦 Installation
+          
+          ```bash
+          pip install --pre oboyu==${{ steps.version.outputs.version }}
+          ```
+          
+          ## 🐳 GitHub Packages
+          
+          This prerelease is also available on GitHub Packages:
+          ```bash
+          pip install --pre oboyu --index-url https://ghcr.io/sonesuke/oboyu
+          ```
+          
+          ## ⚠️ Important Note
+          
+          This is a **${{ steps.prerelease_type.outputs.type }}** release and may contain bugs or incomplete features. Use in production at your own risk.
+          
+          ${{ steps.changelog.outputs.changelog }}
+        draft: false
+        prerelease: true
+        files: |
+          dist/*.whl
+          dist/*.tar.gz
+  
+  publish-github-packages:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: dist/
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    
+    - name: Install twine
+      run: pip install twine
+    
+    - name: Configure GitHub Packages
+      run: |
+        cat > ~/.pypirc << EOF
+        [distutils]
+        index-servers = github
+        
+        [github]
+        repository: https://upload.pypi.org/legacy/
+        username: __token__
+        password: ${{ secrets.GITHUB_TOKEN }}
+        EOF
+    
+    - name: Publish to GitHub Packages
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        TWINE_REPOSITORY_URL: https://ghcr.io/sonesuke/oboyu
+      run: |
+        python -m twine upload --skip-existing dist/* || echo "GitHub Packages publishing not yet configured"

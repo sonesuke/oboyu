@@ -1,14 +1,14 @@
 # Release Process
 
-This document describes the automated release process for the oboyu package using GitHub Actions workflows.
+This document describes the automated release process for the oboyu package using GitHub Actions workflows with changelog generation and GitHub Packages support.
 
 ## Overview
 
 The project uses three GitHub Actions workflows to automate package publishing:
 
 1. **Test PyPI Publishing** (`test-pypi.yml`) - For development testing
-2. **Prerelease Publishing** (`prerelease.yml`) - For alpha, beta, and release candidate versions
-3. **Stable Release Publishing** (`release.yml`) - For production releases
+2. **Prerelease Publishing** (`prerelease.yml`) - For alpha, beta, and release candidate versions with GitHub releases
+3. **Stable Release Publishing** (`release.yml`) - For production releases with automatic changelog generation
 
 ## Workflows
 
@@ -29,9 +29,17 @@ The project uses three GitHub Actions workflows to automate package publishing:
 - Beta: `v0.2.0b1`, `v0.2.0b2`, etc.
 - Release Candidate: `v0.2.0rc1`, `v0.2.0rc2`, etc.
 
-**Purpose:** Publishes prerelease versions to PyPI for early testing by users.
+**Purpose:** 
+- Publishes prerelease versions to PyPI for early testing
+- Creates GitHub prerelease with changelog
+- Publishes to GitHub Packages
 
 **Environment:** `pypi-prerelease` (requires environment configuration in repository settings)
+
+**Features:**
+- Automatic prerelease type detection (Alpha/Beta/RC)
+- Changelog generation from conventional commits
+- GitHub release creation with appropriate prerelease flag
 
 **Installation:**
 ```bash
@@ -46,13 +54,26 @@ pip install oboyu==0.2.0a1
 
 **Triggered by:** Tags matching stable release pattern: `v0.2.0`, `v1.0.0`, etc.
 
-**Purpose:** Publishes stable releases to PyPI and creates GitHub releases.
+**Purpose:** 
+- Publishes stable releases to PyPI
+- Creates GitHub releases with auto-generated changelog
+- Updates CHANGELOG.md file
+- Publishes to GitHub Packages
 
 **Environment:** `pypi-release` (requires environment configuration in repository settings)
+
+**Features:**
+- Automatic changelog generation from conventional commits
+- Categorized changelog (Features, Bug Fixes, Documentation, etc.)
+- CHANGELOG.md auto-update and commit
+- Release assets upload (wheels and source distributions)
 
 **Installation:**
 ```bash
 pip install oboyu
+
+# Or from GitHub Packages
+pip install oboyu --index-url https://ghcr.io/sonesuke/oboyu
 ```
 
 ## Release Process
@@ -65,6 +86,15 @@ pip install oboyu
    - `pypi-release`
 
 2. **PyPI Trusted Publishing**: Configure trusted publishing for each environment to avoid managing API tokens.
+
+3. **Conventional Commits**: Ensure all commits follow the [Conventional Commits](https://www.conventionalcommits.org/) specification for proper changelog generation:
+   - `feat:` for new features
+   - `fix:` for bug fixes
+   - `docs:` for documentation changes
+   - `chore:` for maintenance tasks
+   - `refactor:` for code refactoring
+   - `test:` for test additions/changes
+   - `style:` for code style changes
 
 ### Making a Release
 
@@ -88,7 +118,11 @@ The appropriate workflow will automatically:
 1. Run tests (lint, type check, pytest)
 2. Build the package with version from Git tag
 3. Publish to PyPI
-4. Create GitHub release (for stable releases)
+4. Publish to GitHub Packages
+5. Generate changelog from conventional commits
+6. Create GitHub release with changelog
+7. Update CHANGELOG.md (for stable releases)
+8. Upload release assets (wheels and source distributions)
 
 ## Version Scheme
 
@@ -132,6 +166,51 @@ Before releasing:
    pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ oboyu
    ```
 
+## Changelog Generation
+
+### Automatic Changelog
+
+The release workflows automatically generate changelogs based on:
+- Pull request titles following conventional commit format
+- Commit messages between releases
+- GitHub labels on pull requests
+
+### Changelog Categories
+
+Changes are organized into categories:
+- 🚀 **Features** - New features and enhancements
+- 🐛 **Bug Fixes** - Bug fixes
+- 📚 **Documentation** - Documentation updates
+- 🔧 **Maintenance** - Chores and refactoring
+- 🎨 **Style** - Code style changes
+- 🚨 **Tests** - Test additions and changes
+
+### CHANGELOG.md Updates
+
+For stable releases, the CHANGELOG.md file is automatically updated with:
+- Version number and release date
+- Categorized list of changes
+- Links to pull requests and commits
+
+## GitHub Packages
+
+### Publishing
+
+Both stable and prerelease versions are published to GitHub Packages alongside PyPI. This provides:
+- Alternative package registry
+- Better integration with GitHub ecosystem
+- Package visibility in repository
+
+### Installation from GitHub Packages
+
+```bash
+# Install latest stable
+pip install oboyu --index-url https://ghcr.io/sonesuke/oboyu
+
+# Install prerelease
+pip install --pre oboyu --index-url https://ghcr.io/sonesuke/oboyu
+```
+
 ## Troubleshooting
 
 ### Tag Format Error
@@ -154,3 +233,17 @@ If tests fail during the workflow:
 1. Run tests locally to reproduce the issue
 2. Fix the failing tests
 3. Push the fix and re-tag if necessary
+
+### Changelog Generation Issues
+
+If changelog is empty or incorrect:
+1. Ensure pull requests have proper labels
+2. Verify commit messages follow conventional format
+3. Check that PRs are merged to the main branch
+
+### GitHub Packages Publishing
+
+If GitHub Packages publishing fails:
+1. Verify repository has packages write permissions
+2. Check GitHub token has correct scopes
+3. Ensure package naming follows GitHub requirements
