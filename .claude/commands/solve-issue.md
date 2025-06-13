@@ -19,12 +19,12 @@ This command implements an advanced GitHub issue resolution workflow with git wo
    - Enable parallel issue work without branch conflicts
    - Set up clean dependency environment
 
-4. **Development with Early PR Creation**
-   - Start implementation of the solution in isolated worktree
-   - After first meaningful commit, create a **Draft PR** immediately
+4. **Development with Immediate PR Creation**
+   - Create a **Draft PR** immediately after starting work in isolated worktree
    - Use WIP title format: `WIP: Fix #{issue_number} - {issue_title}`
    - Link the issue in PR description with `Fixes #{issue_number}` or `Closes #{issue_number}`
    - Add comment to original issue: `Working on this in PR #{pr_number}`
+   - Begin implementation of the solution with full transparency
 
 5. **⭐ Automated CI/CD Monitoring**
    - Launch automated PR monitoring with real-time feedback
@@ -35,7 +35,7 @@ This command implements an advanced GitHub issue resolution workflow with git wo
    - Update PR title to reflect development progress:
      - `WIP: Fix #{issue_number} - [30%] Initial setup complete`
      - `WIP: Fix #{issue_number} - [70%] Core functionality implemented`
-     - `Ready: Fix #{issue_number} - {final_title}`
+     - `Fix #{issue_number} - {final_title}`
    - Make regular commits with descriptive messages
    - Update PR description with implementation details and progress
    - Receive automated notifications of CI/CD status changes
@@ -88,17 +88,9 @@ git worktree list
 echo "✅ Isolated development environment ready"
 ```
 
-### Step 3: Initial Development & PR Creation
+### Step 3: Immediate PR Creation & Initial Development
 ```bash
-# Start implementation in the worktree
-# Make meaningful initial commits
-
-# After first significant commit
-git add .
-git commit -m "feat: initial implementation for issue #${ISSUE_NUMBER}"
-git push -u origin ${BRANCH_NAME}
-
-# Create Draft PR with proper linking
+# Create Draft PR immediately after worktree setup
 gh pr create --draft \
   --title "WIP: Fix #${ISSUE_NUMBER} - {issue_title}" \
   --body "Fixes #${ISSUE_NUMBER}
@@ -122,7 +114,13 @@ gh pr create --draft \
 
 # Get PR number for monitoring
 PR_NUMBER=$(gh pr list --head ${BRANCH_NAME} --json number --jq '.[0].number')
-echo "📝 Draft PR #${PR_NUMBER} created"
+echo "📝 Draft PR #${PR_NUMBER} created immediately for transparency"
+
+# Now start implementation with full visibility
+git add .
+git commit -m "feat: initial setup for issue #${ISSUE_NUMBER}" --allow-empty
+git push -u origin ${BRANCH_NAME}
+echo "🚀 Ready to begin development with PR tracking active"
 ```
 
 ### Step 4: Launch Automated Monitoring
@@ -220,9 +218,9 @@ echo "🧹 Cleanup completed"
 - [ ] Dependencies installed in worktree
 
 ### Development Phase
-- [ ] First meaningful commit made
-- [ ] Draft PR created with proper linking
+- [ ] Draft PR created immediately with proper linking
 - [ ] Automated monitoring launched
+- [ ] Initial setup commit made
 - [ ] Progress tracking implemented
 - [ ] Core functionality implemented
 - [ ] Tests written/updated

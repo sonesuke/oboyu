@@ -61,9 +61,9 @@ promote_to_ready() {
     local pr_title
     pr_title=$(gh pr view "$PR_NUMBER" --json title --jq '.title')
     
-    # Remove WIP prefix and add Ready prefix if not already present
+    # Remove WIP prefix for clean final title
     if [[ "$pr_title" == WIP:* ]]; then
-        new_title="Ready:${pr_title#WIP:}"
+        new_title="${pr_title#WIP: }"
         gh pr edit "$PR_NUMBER" --title "$new_title"
         log "${GREEN}✅ Updated PR title: $new_title${NC}"
     fi
