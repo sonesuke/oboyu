@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 
+@pytest.mark.slow
 class TestWheelContentValidation:
     """Test suite to validate wheel package contents."""
 

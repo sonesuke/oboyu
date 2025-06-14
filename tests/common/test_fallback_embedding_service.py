@@ -3,6 +3,7 @@
 from unittest.mock import Mock, patch
 
 import numpy as np
+import pytest
 
 from oboyu.common.circuit_breaker import CircuitBreakerError, CircuitState
 from oboyu.common.fallback_embedding_service import (
@@ -258,6 +259,7 @@ class TestFallbackEmbeddingService:
 
         assert service.get_dimensions() == 512
 
+    @pytest.mark.slow
     def test_get_dimensions_fallback_chain(self):
         """Test getting dimensions from fallback chain."""
         service = FallbackEmbeddingService(primary_service=None, use_circuit_breaker=False)
@@ -276,6 +278,7 @@ class TestFallbackEmbeddingService:
 
         assert service.get_model_name() == "test-model"
 
+    @pytest.mark.slow
     def test_get_model_name_fallback_chain(self):
         """Test getting model name from fallback chain."""
         service = FallbackEmbeddingService(primary_service=None, model_name="fallback-model", use_circuit_breaker=False)

@@ -114,6 +114,13 @@ pythonpath = ["src"]
 python_files = ["test_*.py", "*_test.py"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "packaging: marks tests as packaging/installation related",
+]
+# Performance optimizations for fast tests
+addopts = [
+    "--tb=short",           # Shorter traceback format
+    "--no-header",          # Skip header in output
+    "--disable-warnings",   # Disable warnings for faster execution
 ]
 
 [tool.coverage.run]

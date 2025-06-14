@@ -62,4 +62,4 @@ if [ -z "$EXISTING_TEST_FILES" ]; then
 fi
 
 echo "Running tests for changed files: $EXISTING_TEST_FILES"
-uv run pytest -m "not slow" -k "not integration" --no-cov --tb=short -q $EXISTING_TEST_FILES
+uv run pytest -m "not slow" -k "not integration and not packaging" --no-cov --tb=short -q --disable-warnings $EXISTING_TEST_FILES

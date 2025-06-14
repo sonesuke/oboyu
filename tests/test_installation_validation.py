@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 
+@pytest.mark.slow
 class TestInstallationValidation:
     """Test suite to validate oboyu installation."""
 
