@@ -100,7 +100,7 @@ const config: Config = {
           items: [
             {
               label: 'Getting Started',
-              to: '/general-users/getting-started/installation',
+              to: '/getting-started/installation',
             },
             {
               label: 'CLI Reference',
@@ -108,7 +108,7 @@ const config: Config = {
             },
             {
               label: 'Configuration',
-              to: '/system-administrators/reference/configuration',
+              to: '/reference/configuration',
             },
           ],
         },
