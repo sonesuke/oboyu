@@ -2,10 +2,10 @@
 
 import mimetypes
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 if TYPE_CHECKING:
-    pass
+    from oboyu.cli.hierarchical_logger import HierarchicalLogger
 
 import chardet
 import charset_normalizer
@@ -30,11 +30,12 @@ class ContentExtractor:
         self.max_file_size = max_file_size
         self._pdf_processor = OptimizedPDFProcessor(max_file_size=max_file_size)
 
-    def extract_content(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
+    def extract_content(self, file_path: Path, logger: Optional["HierarchicalLogger"] = None) -> Tuple[str, Dict[str, Any]]:
         """Extract content from a file.
 
         Args:
             file_path: Path to the file
+            logger: Optional HierarchicalLogger for progress display
 
         Returns:
             Tuple of (content, metadata)
@@ -49,7 +50,7 @@ class ContentExtractor:
         file_type = self._get_file_type(file_path)
 
         # Extract content and metadata based on file type
-        content, metadata = self._extract_by_type(file_path, file_type)
+        content, metadata = self._extract_by_type(file_path, file_type, logger)
 
         return content, metadata
 
@@ -94,12 +95,13 @@ class ContentExtractor:
         # Default to text/plain if we can't determine
         return "text/plain"
 
-    def _extract_by_type(self, file_path: Path, file_type: str) -> Tuple[str, Dict[str, Any]]:
+    def _extract_by_type(self, file_path: Path, file_type: str, logger: Optional["HierarchicalLogger"] = None) -> Tuple[str, Dict[str, Any]]:
         """Extract content based on file type.
 
         Args:
             file_path: Path to the file
             file_type: File type string
+            logger: Optional HierarchicalLogger for progress display
 
         Returns:
             Tuple of (content, metadata)
@@ -107,7 +109,7 @@ class ContentExtractor:
         """
         # Check if it's a PDF file
         if file_type == "application/pdf" or file_type == "application" and file_path.suffix.lower() == ".pdf":
-            return self._extract_pdf_file(file_path)
+            return self._extract_pdf_file(file_path, logger)
 
         # Default to text file extraction
         return self._extract_text_file(file_path)
@@ -253,14 +255,15 @@ class ContentExtractor:
         # Return content without front matter and the metadata
         return post.content, metadata
 
-    def _extract_pdf_file(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
+    def _extract_pdf_file(self, file_path: Path, logger: Optional["HierarchicalLogger"] = None) -> Tuple[str, Dict[str, Any]]:
         """Extract content and metadata from a PDF file using optimized processor.
 
         Args:
             file_path: Path to the file
+            logger: Optional HierarchicalLogger for progress display
 
         Returns:
             Tuple of (content, metadata)
 
         """
-        return self._pdf_processor.extract_pdf(file_path)
+        return self._pdf_processor.extract_pdf(file_path, logger)

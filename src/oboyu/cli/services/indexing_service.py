@@ -172,7 +172,11 @@ class IndexingService:
                     respect_gitignore=crawler_config_dict.get("respect_gitignore", crawler_config.respect_gitignore),
                 )
 
-                all_crawler_results = crawler.crawl(directory)
+                # Pass logger to crawler if available
+                if self.console_manager:
+                    all_crawler_results = crawler.crawl(directory, logger=self.console_manager.logger)
+                else:
+                    all_crawler_results = crawler.crawl(directory)
 
                 # Apply change detection unless force is True
                 if force:
