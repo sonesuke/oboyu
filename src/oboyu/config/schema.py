@@ -74,6 +74,20 @@ class IndexerConfigSchema(BaseModel):
     n_probe: int = Field(default=10, ge=1, le=100, description="Number of probes for vector search")
     db_path: Optional[Path] = Field(default=None, description="Database path")
 
+    # Knowledge Graph settings
+    kg_enabled: bool = Field(default=False, description="Enable Knowledge Graph extraction")
+    kg_model_path: Optional[str] = Field(default=None, description="Path to ELYZA GGUF model file")
+    kg_batch_size: int = Field(default=8, ge=1, le=32, description="Batch size for KG extraction")
+    kg_max_tokens: int = Field(default=2048, ge=512, le=4096, description="Maximum tokens for LLM generation")
+    kg_temperature: float = Field(default=0.1, ge=0.0, le=2.0, description="LLM sampling temperature")
+    kg_confidence_threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Minimum confidence for KG extraction")
+    kg_entity_types: List[str] = Field(
+        default_factory=lambda: ["PERSON", "COMPANY", "ORGANIZATION", "PRODUCT", "LOCATION", "EVENT"], description="Entity types to extract"
+    )
+    kg_relation_types: List[str] = Field(
+        default_factory=lambda: ["WORKS_AT", "CEO_OF", "LOCATED_IN", "DEVELOPS", "PARTNER_WITH"], description="Relation types to extract"
+    )
+
     @field_validator("embedding_model")
     @classmethod
     def validate_model_name(cls, v: str) -> str:

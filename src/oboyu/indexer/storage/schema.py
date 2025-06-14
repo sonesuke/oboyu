@@ -15,29 +15,11 @@ Key features:
 - Support for both initial creation and migrations
 """
 
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-
-@dataclass
-class TableDefinition:
-    """Definition of a database table."""
-
-    name: str
-    sql: str
-    indexes: List[str]
-    dependencies: List[str]  # Tables this table depends on (for foreign keys)
-
-
-@dataclass
-class SchemaVersion:
-    """Schema version information."""
-
-    version: str
-    description: str
-    migration_sql: List[str]
-    rollback_sql: List[str]
+from .kg_schema import KnowledgeGraphSchema
+from .schema_types import SchemaVersion, TableDefinition
 
 
 class DatabaseSchema:
@@ -49,7 +31,7 @@ class DatabaseSchema:
     """
 
     # Current schema version
-    CURRENT_VERSION = "1.0.0"
+    CURRENT_VERSION = "1.2.0"
 
     def __init__(self, embedding_dimensions: int = 256) -> None:
         """Initialize schema with embedding dimensions.
@@ -59,6 +41,7 @@ class DatabaseSchema:
 
         """
         self.embedding_dimensions = embedding_dimensions
+        self.kg_schema = KnowledgeGraphSchema()
 
     def get_chunks_table(self) -> TableDefinition:
         """Get chunks table definition."""
@@ -238,6 +221,9 @@ class DatabaseSchema:
             self.get_file_metadata_table(),
         ]
 
+        # Add KG tables
+        tables.extend(self.kg_schema.get_all_kg_tables())
+
         # Sort by dependencies to ensure proper creation order
         return self._sort_by_dependencies(tables)
 
@@ -398,6 +384,80 @@ SCHEMA_MIGRATIONS: Dict[str, SchemaVersion] = {
         ],
         rollback_sql=[
             "DROP TABLE IF EXISTS file_metadata",
+        ],
+    ),
+    "1.2.0": SchemaVersion(
+        version="1.2.0",
+        description="Add Knowledge Graph tables for Property Graph Index functionality",
+        migration_sql=[
+            """
+            CREATE TABLE IF NOT EXISTS kg_entities (
+                id VARCHAR PRIMARY KEY,
+                name VARCHAR NOT NULL,
+                entity_type VARCHAR NOT NULL,
+                definition TEXT,
+                properties JSON,
+                chunk_id VARCHAR,
+                canonical_name VARCHAR,
+                merged_from JSON,
+                merge_confidence REAL,
+                confidence REAL NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (chunk_id) REFERENCES chunks (id)
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_kg_entities_name ON kg_entities(name)",
+            "CREATE INDEX IF NOT EXISTS idx_kg_entities_type ON kg_entities(entity_type)",
+            "CREATE INDEX IF NOT EXISTS idx_kg_entities_chunk ON kg_entities(chunk_id)",
+            "CREATE INDEX IF NOT EXISTS idx_kg_entities_canonical ON kg_entities(canonical_name)",
+            "CREATE INDEX IF NOT EXISTS idx_kg_entities_confidence ON kg_entities(confidence)",
+            """
+            CREATE TABLE IF NOT EXISTS kg_relations (
+                id VARCHAR PRIMARY KEY,
+                source_id VARCHAR NOT NULL,
+                target_id VARCHAR NOT NULL,
+                relation_type VARCHAR NOT NULL,
+                properties JSON,
+                chunk_id VARCHAR,
+                confidence REAL NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (source_id) REFERENCES kg_entities (id),
+                FOREIGN KEY (target_id) REFERENCES kg_entities (id),
+                FOREIGN KEY (chunk_id) REFERENCES chunks (id)
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_kg_relations_source ON kg_relations(source_id)",
+            "CREATE INDEX IF NOT EXISTS idx_kg_relations_target ON kg_relations(target_id)",
+            "CREATE INDEX IF NOT EXISTS idx_kg_relations_type ON kg_relations(relation_type)",
+            "CREATE INDEX IF NOT EXISTS idx_kg_relations_chunk ON kg_relations(chunk_id)",
+            "CREATE INDEX IF NOT EXISTS idx_kg_relations_confidence ON kg_relations(confidence)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_kg_relations_unique ON kg_relations(source_id, target_id, relation_type)",
+            """
+            CREATE TABLE IF NOT EXISTS kg_processing_status (
+                chunk_id VARCHAR PRIMARY KEY,
+                processed_at TIMESTAMP NOT NULL,
+                processing_version VARCHAR NOT NULL,
+                entity_count INTEGER DEFAULT 0,
+                relation_count INTEGER DEFAULT 0,
+                processing_time_ms INTEGER,
+                model_used VARCHAR,
+                error_message TEXT,
+                status VARCHAR DEFAULT 'completed',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (chunk_id) REFERENCES chunks (id)
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_kg_processing_status_processed ON kg_processing_status(processed_at)",
+            "CREATE INDEX IF NOT EXISTS idx_kg_processing_status_version ON kg_processing_status(processing_version)",
+            "CREATE INDEX IF NOT EXISTS idx_kg_processing_status_status ON kg_processing_status(status)",
+        ],
+        rollback_sql=[
+            "DROP TABLE IF EXISTS kg_processing_status",
+            "DROP TABLE IF EXISTS kg_relations",
+            "DROP TABLE IF EXISTS kg_entities",
         ],
     ),
     # Future migrations can be added here

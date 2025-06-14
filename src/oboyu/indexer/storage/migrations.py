@@ -18,7 +18,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from duckdb import DuckDBPyConnection
 
-from oboyu.indexer.storage.schema import SCHEMA_MIGRATIONS, DatabaseSchema, SchemaVersion
+from oboyu.indexer.storage.schema import SCHEMA_MIGRATIONS, DatabaseSchema
+from oboyu.indexer.storage.schema_types import SchemaVersion
 
 logger = logging.getLogger(__name__)
 
