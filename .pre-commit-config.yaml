@@ -50,15 +50,13 @@ repos:
       exclude: ^(bench/|tests/|scripts/)
     - id: mypy
       name: mypy
-      # Changed: run mypy with incremental mode and only on changed files
-      entry: uv run mypy --incremental --cache-dir=.mypy_cache
+      # Use pyproject.toml config which specifies files = ["src"]
+      entry: uv run mypy --incremental --cache-dir=.mypy_cache src/
       language: system
-      # Changed: pass files to mypy
-      pass_filenames: true
-      # Changed: only run on Python files
-      types: [python]
-      # Exclude benchmark, development files, and test files
-      exclude: ^(bench/|tests/|scripts/)
+      # Don't pass filenames, just check src/ directory as specified in pyproject.toml
+      pass_filenames: false
+      # Only run when src files change
+      files: ^src/
     - id: pytest
       name: pytest
       # Changed: use smart test runner that only runs affected tests
