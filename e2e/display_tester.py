@@ -3,6 +3,7 @@
 import json
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -164,40 +165,17 @@ class OboyuE2EDisplayTester:
             env={**os.environ, "ANTHROPIC_API_KEY": os.environ.get("ANTHROPIC_API_KEY", "")},
         )
 
-        stdout_lines = []
-        stderr_lines = []
-
-        # Read output in real-time
-        import sys
-
-        while True:
-            # Check if process is still running
-            if process.poll() is not None:
-                # Process finished, read remaining output
-                remaining_stdout, remaining_stderr = process.communicate()
-                if remaining_stdout:
-                    print(remaining_stdout, end="")
-                    stdout_lines.append(remaining_stdout)
-                if remaining_stderr:
-                    print(remaining_stderr, end="", file=sys.stderr)
-                    stderr_lines.append(remaining_stderr)
-                break
-
-            # Read available output
-            if process.stdout and process.stdout.readable():
-                line = process.stdout.readline()
-                if line:
-                    print(line, end="")
-                    stdout_lines.append(line)
-
-            if process.stderr and process.stderr.readable():
-                line = process.stderr.readline()
-                if line:
-                    print(line, end="", file=sys.stderr)
-                    stderr_lines.append(line)
-
-        stdout_text = "".join(stdout_lines)
-        stderr_text = "".join(stderr_lines)
+        # Use communicate() to properly wait for process completion
+        try:
+            stdout_text, stderr_text = process.communicate(timeout=120)  # 2 minute timeout
+            if stdout_text:
+                print(stdout_text, end="")
+            if stderr_text:
+                print(stderr_text, end="", file=sys.stderr)
+        except subprocess.TimeoutExpired:
+            print("\n⚠️ Claude Code process timed out after 2 minutes")
+            process.kill()
+            stdout_text, stderr_text = process.communicate()
 
         print("\n--- Claude Code Finished ---\n")
 
