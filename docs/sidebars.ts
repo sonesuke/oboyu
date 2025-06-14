@@ -122,6 +122,7 @@ const sidebars: SidebarsConfig = {
             'for-developers/reranker',
             'for-developers/japanese',
             'for-developers/e2e_display_testing',
+            'for-developers/pre-commit-optimization',
             'for-developers/release-process',
           ],
         },
