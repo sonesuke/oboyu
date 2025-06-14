@@ -43,7 +43,6 @@ def test_load_config_valid() -> None:
             },
             "query": {
                 "top_k": 10,
-                "vector_weight": 0.8,
             },
         }
 
@@ -56,7 +55,6 @@ def test_load_config_valid() -> None:
         assert loaded_config["indexer"]["chunk_size"] == 512
         assert loaded_config["indexer"]["embedding_model"] == "test-model"
         assert loaded_config["query"]["top_k"] == 10
-        assert loaded_config["query"]["vector_weight"] == 0.8
 
 
 def test_create_default_config() -> None:

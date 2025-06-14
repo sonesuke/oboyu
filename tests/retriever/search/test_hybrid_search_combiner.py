@@ -71,16 +71,6 @@ def test_combiner_custom_rrf_k():
     assert combiner.rrf_k == 100
 
 
-def test_combiner_deprecated_weights_warning(caplog):
-    """Test that deprecated weight parameters issue a warning."""
-    import logging
-
-    caplog.set_level(logging.WARNING)
-
-    combiner = HybridSearchCombiner(vector_weight=0.8, bm25_weight=0.2)
-    assert combiner.rrf_k == 60  # Should still use default RRF
-    assert "vector_weight and bm25_weight parameters are deprecated" in caplog.text
-
 
 def test_combiner_rrf_k_validation():
     """Test RRF k parameter validation."""

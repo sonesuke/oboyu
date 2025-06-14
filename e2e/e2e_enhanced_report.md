@@ -1,35 +1,37 @@
-# Oboyu E2E Display Test Report
+# Enhanced Oboyu E2E Display Test Report
+
+*Generated with ttyd + Playwright integration*
 
 ## Summary
 
 - Total tests run: 1
-- Test environment: /Users/sonesuke/oboyu/231-enhance-e2e-ttyd-playwright/e2e
-- Oboyu command: python3 -m oboyu
+- Test environment: /Users/sonesuke/oboyu/main/.worktree/issue-291
+- Oboyu command: oboyu
+- ttyd port: 7681
+- Screenshots directory: /var/folders/w6/68_pl4k5769c22sbnpfy8dt00000gn/T/oboyu_e2e_e2eb7m3e/screenshots
+
+## Enhancement Features
+
+- ✅ Browser-based terminal testing with ttyd
+- ✅ Real-time visual verification with Playwright
+- ✅ Screenshot capture at multiple stages
+- ✅ Interactive progress monitoring
+- ✅ Combined traditional + visual analysis
 
 ## Test Results
 
 ### Basic Cli Display
 
-Looking at the captured output, the display quality appears excellent:
 
-**Assessment: All display output is properly formatted and functioning correctly**
+## Visual Assets
 
-✓ **CLI formatting**: Clean, well-structured help text with proper indentation
-✓ **Text alignment**: Options, commands, and descriptions are consistently aligned
-✓ **Character encoding**: No garbled text or encoding issues detected
-✓ **Command completion**: All commands executed successfully with no stderr output
-✓ **Help structure**: Clear hierarchy with main options followed by subcommands
-
-The output demonstrates professional CLI design with:
-- Proper use of brackets for optional parameters
-- Environment variable hints (e.g., `OBOYU_DB_PATH`)
-- Descriptive help text for each command
-- Clean separation between options and commands
-
-No display abnormalities or issues found.
+- **Cli Commands:** 0 screenshots
+- **Progress Monitoring:** 0 screenshots
+- **Mcp Integration:** 0 screenshots
 
 ## Metadata
 
-- Total cost: $0.3340
-- Total duration: 11306ms
-- Total turns: 1
+- Total cost: $0.0000
+- Total duration: 29218ms
+- Total turns: 0
+- Enhanced testing: ttyd + Playwright

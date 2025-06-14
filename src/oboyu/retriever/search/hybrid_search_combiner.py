@@ -16,17 +16,12 @@ class HybridSearchCombiner:
         self,
         rrf_k: int = 60,
         score_normalizer: Optional[ScoreNormalizer] = None,
-        # Deprecated parameters for backward compatibility
-        vector_weight: Optional[float] = None,
-        bm25_weight: Optional[float] = None,
     ) -> None:
         """Initialize hybrid search combiner with RRF.
 
         Args:
             rrf_k: RRF parameter (default: 60)
             score_normalizer: Optional score normalizer for preprocessing scores
-            vector_weight: DEPRECATED - RRF doesn't use weights
-            bm25_weight: DEPRECATED - RRF doesn't use weights
 
         """
         if rrf_k <= 0:
@@ -34,12 +29,6 @@ class HybridSearchCombiner:
 
         self.rrf_k = rrf_k
         self.score_normalizer = score_normalizer
-
-        # Issue deprecation warning for weight parameters
-        if vector_weight is not None or bm25_weight is not None:
-            logger.warning(
-                "vector_weight and bm25_weight parameters are deprecated. RRF (Reciprocal Rank Fusion) does not use weights. Use rrf_k parameter instead."
-            )
 
     def combine(
         self,

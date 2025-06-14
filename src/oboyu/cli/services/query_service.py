@@ -39,8 +39,6 @@ class QueryService:
         query: str,
         mode: str = "hybrid",
         top_k: Optional[int] = None,
-        vector_weight: Optional[float] = None,
-        bm25_weight: Optional[float] = None,
         db_path: Optional[Path] = None,
         rerank: Optional[bool] = None,
     ) -> QueryResult:
@@ -50,8 +48,6 @@ class QueryService:
             query: Search query text
             mode: Search mode (vector, bm25, hybrid)
             top_k: Number of results to return
-            vector_weight: Weight for vector search in hybrid mode
-            bm25_weight: Weight for BM25 search in hybrid mode
             db_path: Optional database path override
             rerank: Whether to use reranking
 
@@ -66,10 +62,6 @@ class QueryService:
         cli_overrides: Dict[str, Any] = {}
         if top_k is not None:
             cli_overrides["top_k"] = top_k
-        if vector_weight is not None:
-            cli_overrides["vector_weight"] = vector_weight
-        if bm25_weight is not None:
-            cli_overrides["bm25_weight"] = bm25_weight
         if rerank is not None:
             cli_overrides["use_reranker"] = rerank
 
@@ -230,16 +222,12 @@ class QueryService:
     def get_query_config(
         self,
         top_k: Optional[int] = None,
-        vector_weight: Optional[float] = None,
-        bm25_weight: Optional[float] = None,
         rerank: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """Get query configuration with overrides.
 
         Args:
             top_k: Optional top_k override
-            vector_weight: Optional vector_weight override
-            bm25_weight: Optional bm25_weight override
             rerank: Optional rerank override
 
         Returns:
@@ -250,10 +238,6 @@ class QueryService:
         cli_overrides: Dict[str, Any] = {}
         if top_k is not None:
             cli_overrides["top_k"] = top_k
-        if vector_weight is not None:
-            cli_overrides["vector_weight"] = vector_weight
-        if bm25_weight is not None:
-            cli_overrides["bm25_weight"] = bm25_weight
         if rerank is not None:
             cli_overrides["use_reranker"] = rerank
 

@@ -165,27 +165,6 @@ EmbeddingModelOption = Annotated[
     ),
 ]
 
-# Vector weight option for hybrid search (DEPRECATED - RRF doesn't use weights)
-VectorWeightOption = Annotated[
-    Optional[float],
-    typer.Option(
-        "--vector-weight",
-        help="DEPRECATED: Weight for vector scores in hybrid search. RRF algorithm is now used instead.",
-        min=0.0,
-        max=1.0,
-    ),
-]
-
-# BM25 weight option for hybrid search (DEPRECATED - RRF doesn't use weights)
-BM25WeightOption = Annotated[
-    Optional[float],
-    typer.Option(
-        "--bm25-weight",
-        help="DEPRECATED: Weight for BM25 scores in hybrid search. RRF algorithm is now used instead.",
-        min=0.0,
-        max=1.0,
-    ),
-]
 
 # Reranking option for search commands
 RerankOption = Annotated[

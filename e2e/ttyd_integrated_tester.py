@@ -310,7 +310,8 @@ class TtydIntegratedOboyuTester(OboyuE2EDisplayTester):
     def generate_enhanced_report(self, results: dict[str, dict[str, Any]]) -> str:  # noqa: C901
         """Generate enhanced test report with visual analysis and screenshots."""
         report = ["# Enhanced Oboyu E2E Display Test Report", ""]
-        report.append("*Generated with ttyd + Playwright integration*", "")
+        report.append("*Generated with ttyd + Playwright integration*")
+        report.append("")
 
         # Summary
         report.append("## Summary")
