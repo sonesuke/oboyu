@@ -45,10 +45,11 @@ This command implements an advanced GitHub issue resolution workflow with git wo
    - Intelligent PR title updates reflecting completion status
    - Automated reviewer assignment based on changed files
 
-8. **⭐ Cleanup & Finalization**
-   - Automated worktree and branch cleanup after PR merge
-   - Clean environment management for future work
-   - Final status reporting and next steps guidance
+8. **⭐ Autonomous Completion**
+   - Continuous monitoring until PR merge/close
+   - Automated worktree and branch cleanup after completion
+   - Final status reporting without user intervention
+   - **Fully autonomous from monitoring start to completion**
 
 ## 🛠️ Detailed Implementation Steps
 
@@ -145,6 +146,18 @@ echo "📊 Auto-fixes common issues, promotes to Ready when checks pass"
 
 **Note**: Automation provides consistent workflow regardless of change size
 
+### 🤖 Claude Code Implementation Guide
+
+**For Claude Code users**: After launching monitoring, the workflow becomes fully autonomous:
+
+1. **DO NOT** wait for user confirmation to proceed
+2. **DO NOT** ask permission before each step  
+3. **CONTINUE** automatically as monitoring system progresses
+4. **ONLY** pause if errors require manual intervention
+5. **REPORT** progress but proceed without user input
+
+The goal is complete automation from monitoring start to PR completion.
+
 ### Step 5: Development with Real-time Feedback
 ```bash
 # Continue development with regular commits
@@ -197,36 +210,42 @@ uv run pytest -m "not slow" -k "not integration"
 .claude/scripts/fix-common-issues.sh
 ```
 
-### Step 7: Automated Promotion (Handled Automatically)
+### Step 7: Automated Promotion (Fully Automated)
 The monitoring system will automatically:
-- Detect when all CI/CD checks pass
-- Update PR title from "WIP:" to "Ready:"
+- Wait for ALL CI/CD checks to complete (no PENDING or IN_PROGRESS states)
+- Verify 2 consecutive successful check cycles for stability
+- Update PR title from "WIP:" to final clean title
 - Convert PR from Draft to Ready for Review
-- Notify about completion
+- **Continue automatically to cleanup phase without user intervention**
 
-### Step 8: Cleanup After Merge
+### Step 8: Automated Completion & Status Report
+
+**IMPORTANT**: This step executes automatically when monitoring system detects PR completion.
+
+The workflow will:
+1. **Monitor PR until merge/close**: Automated system continues monitoring
+2. **Auto-cleanup on completion**: Worktree and branches cleaned automatically  
+3. **Status reporting**: Final summary provided
+4. **No user intervention required**: Fully autonomous completion
 
 ```bash
-# Return to project root
-cd ../../
-
-# Use cleanup script if available, otherwise manual cleanup
+# This runs automatically via monitoring system when PR is merged/closed:
 if [[ -f ".claude/scripts/cleanup-issue-worktree.sh" ]]; then
     .claude/scripts/cleanup-issue-worktree.sh ${ISSUE_NUMBER}
 else
+    # Manual cleanup if script unavailable
+    cd ../../  # Return to project root
     git worktree remove ".worktree/issue-${ISSUE_NUMBER}" --force
     rm -rf ".worktree/issue-${ISSUE_NUMBER}"
+    git push origin --delete "${ISSUE_NUMBER}-{branch-name}"
+    git checkout main && git pull origin main
+    git branch -d "${ISSUE_NUMBER}-{branch-name}"
 fi
 
-# Clean up branches (only if merged)
-git push origin --delete "${ISSUE_NUMBER}-{branch-name}"
-git checkout main && git pull origin main
-git branch -d "${ISSUE_NUMBER}-{branch-name}"
-
-# Verify cleanup
-git worktree list
-echo "🧹 Cleanup completed"
+echo "🎉 Issue #${ISSUE_NUMBER} workflow completed successfully!"
 ```
+
+**Autonomous Operation**: Once monitoring starts, the entire workflow runs to completion without requiring user input.
 
 ## 📋 Enhanced Implementation Checklist
 
@@ -259,7 +278,7 @@ echo "🧹 Cleanup completed"
 ## 🚀 Automation Features
 
 ### Automated CI/CD Monitoring
-- **Real-time Check Status**: Monitor PR checks every 2 minutes
+- **Real-time Check Status**: Monitor PR checks every 30 seconds
 - **Auto-fix Common Issues**: Automatically fix linting, formatting, and import issues
 - **Intelligent Promotion**: Auto-promote Draft to Ready when all checks pass
 - **Continuous Feedback**: Real-time notifications of status changes
@@ -340,7 +359,7 @@ echo "🧹 Cleanup completed"
 When monitoring is active, you'll see:
 ```
 [2024-01-15 10:30:00] 🚀 Starting automated monitoring for PR #123
-[2024-01-15 10:30:00] 📝 Monitoring interval: 120s (2 minutes)
+[2024-01-15 10:30:00] 📝 Monitoring interval: 30s (30 seconds)
 [2024-01-15 10:30:00] 🛑 Press Ctrl+C to stop monitoring
 
 [2024-01-15 10:30:00] 📊 PR #123 Status:

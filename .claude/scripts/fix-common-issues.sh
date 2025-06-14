@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Script to automatically fix common CI/CD issues
-# Handles linting, formatting, import ordering, and basic type checking issues
+# Script to handle pre-commit failures and apply automated fixes
+# Focused on resolving pre-commit hook errors rather than duplicating functionality
 
 set -e
 
@@ -30,90 +30,100 @@ has_uncommitted_changes() {
     ! git diff-index --quiet HEAD --
 }
 
-# Function to run linting and formatting fixes
-fix_linting_issues() {
-    log "${BLUE}🔧 Running Ruff to fix linting and formatting issues...${NC}"
+# Function to run pre-commit and handle failures
+run_pre_commit_with_fixes() {
+    log "${BLUE}🔧 Running pre-commit hooks and handling failures...${NC}"
     
-    # Run ruff check with auto-fix
-    if uv run ruff check --fix .; then
-        log "${GREEN}✅ Ruff linting fixes applied${NC}"
-    else
-        log "${YELLOW}⚠️  Some ruff issues could not be auto-fixed${NC}"
-    fi
-    
-    # Run ruff format to fix formatting
-    if uv run ruff format .; then
-        log "${GREEN}✅ Ruff formatting applied${NC}"
-    else
-        log "${YELLOW}⚠️  Ruff formatting encountered issues${NC}"
-    fi
-}
-
-# Function to check and fix import ordering
-fix_import_issues() {
-    log "${BLUE}🔧 Checking import ordering...${NC}"
-    
-    # Ruff already handles import sorting with I001-I005 rules
-    # This is covered by the ruff check --fix command above
-    log "${GREEN}✅ Import ordering handled by Ruff${NC}"
-}
-
-# Function to run type checking and attempt basic fixes
-check_type_issues() {
-    log "${BLUE}🔍 Running MyPy type checking...${NC}"
-    
-    # Run mypy to check for type issues
-    if uv run mypy; then
-        log "${GREEN}✅ No type checking issues found${NC}"
+    # Attempt pre-commit run
+    if pre-commit run --all-files; then
+        log "${GREEN}✅ All pre-commit hooks passed${NC}"
         return 0
     else
-        log "${YELLOW}⚠️  Type checking issues detected${NC}"
-        log "${YELLOW}💡 Type issues typically require manual intervention${NC}"
-        log "${YELLOW}   Common fixes:${NC}"
-        echo "   - Add type annotations to function parameters and return values"
-        echo "   - Import missing types (from typing import List, Dict, Optional, etc.)"
-        echo "   - Fix type mismatches in variable assignments"
-        echo "   - Add # type: ignore comments for complex cases"
-        return 1
+        log "${YELLOW}⚠️  Pre-commit hooks failed. Attempting auto-fixes...${NC}"
+        
+        # Pre-commit may have made auto-fixes (like ruff format, ruff check --fix)
+        # Check if files were modified
+        if has_uncommitted_changes; then
+            log "${GREEN}🔧 Pre-commit hooks applied auto-fixes${NC}"
+            
+            # Run pre-commit again to see if fixes resolved issues
+            if pre-commit run --all-files; then
+                log "${GREEN}✅ Pre-commit hooks now pass after auto-fixes${NC}"
+                return 0
+            else
+                log "${YELLOW}⚠️  Some pre-commit issues remain after auto-fixes${NC}"
+                return 1
+            fi
+        else
+            log "${RED}❌ Pre-commit failed but no auto-fixes were applied${NC}"
+            return 1
+        fi
     fi
 }
 
-# Function to run fast tests
-run_fast_tests() {
-    log "${BLUE}🧪 Running fast tests...${NC}"
+# Function to handle specific pre-commit hook failures
+analyze_pre_commit_failures() {
+    log "${BLUE}🔍 Analyzing pre-commit failure patterns...${NC}"
     
-    if uv run pytest -m "not slow" -k "not integration" --tb=short; then
-        log "${GREEN}✅ Fast tests passed${NC}"
+    # Run individual hooks to identify specific failures
+    local hooks_to_check=("ruff-format" "ruff-check" "mypy" "pytest")
+    local failed_hooks=()
+    
+    for hook in "${hooks_to_check[@]}"; do
+        if ! pre-commit run "$hook" --all-files 2>/dev/null; then
+            failed_hooks+=("$hook")
+        fi
+    done
+    
+    if [ ${#failed_hooks[@]} -eq 0 ]; then
+        log "${GREEN}✅ All major hooks are passing${NC}"
         return 0
-    else
-        log "${RED}❌ Some fast tests failed${NC}"
-        log "${YELLOW}💡 Test failures typically require manual code fixes${NC}"
-        return 1
     fi
+    
+    log "${YELLOW}📋 Failed hooks detected:${NC}"
+    for hook in "${failed_hooks[@]}"; do
+        echo "  - $hook"
+    done
+    
+    # Provide specific guidance for each failure type
+    for hook in "${failed_hooks[@]}"; do
+        case "$hook" in
+            "ruff-format"|"ruff-check")
+                log "${YELLOW}💡 Ruff issues: Run 'pre-commit run ruff-format ruff-check --all-files' to auto-fix${NC}"
+                ;;
+            "mypy")
+                log "${YELLOW}💡 Type checking issues: Review mypy output and add type annotations${NC}"
+                ;;
+            "pytest")
+                log "${YELLOW}💡 Test failures: Review pytest output and fix failing tests${NC}"
+                ;;
+        esac
+    done
+    
+    return 1
 }
 
 # Function to commit changes if any were made
 commit_fixes() {
     if has_uncommitted_changes; then
-        log "${BLUE}📝 Committing auto-fixes...${NC}"
+        log "${BLUE}📝 Committing pre-commit auto-fixes...${NC}"
         
         # Add all changes
         git add .
         
         # Create a descriptive commit message
-        local commit_msg="fix: auto-fix linting, formatting, and import issues
+        local commit_msg="fix: auto-fix pre-commit hook failures
 
-🤖 Automated fixes applied:
-- Ruff linting auto-fixes
-- Code formatting standardization
-- Import ordering corrections
+🤖 Pre-commit auto-fixes applied:
+- Applied automated fixes from pre-commit hooks
+- Code quality improvements via pre-commit system
 
-Generated by fix-common-issues.sh script"
+Generated by fix-common-issues.sh (pre-commit handler)"
         
         # Commit the changes
         git commit -m "$commit_msg"
         
-        log "${GREEN}✅ Auto-fixes committed${NC}"
+        log "${GREEN}✅ Pre-commit auto-fixes committed${NC}"
         
         # Push the changes
         if git push; then
@@ -128,61 +138,53 @@ Generated by fix-common-issues.sh script"
 
 # Function to display summary
 display_summary() {
-    log "${BLUE}📊 Fix Summary:${NC}"
-    echo "  ✅ Linting and formatting fixes applied"
-    echo "  ✅ Import ordering checked"
-    echo "  🔍 Type checking performed"
-    echo "  🧪 Fast tests executed"
+    log "${BLUE}📊 Pre-commit Handler Summary:${NC}"
+    echo "  🔧 Pre-commit hooks executed with auto-fix handling"
+    echo "  ✅ Auto-fixable issues resolved via pre-commit system"
+    echo "  📋 Manual intervention guidance provided for remaining issues"
     echo ""
     echo "Next steps:"
-    echo "  - Review the committed changes"
-    echo "  - Address any remaining type checking issues manually"
-    echo "  - Fix any test failures that require code changes"
+    echo "  - Review any remaining pre-commit failures"
+    echo "  - Address manual issues identified by hooks"
+    echo "  - Re-run pre-commit to verify all hooks pass"
     echo "  - Monitor CI/CD pipeline for updated results"
 }
 
 # Main execution function
 main() {
-    log "${BLUE}🚀 Starting automated issue fixing...${NC}"
+    log "${BLUE}🚀 Starting pre-commit failure handling...${NC}"
     
     # Check prerequisites
     check_git_repo
     
     # Record initial state
-    local had_initial_changes=false
     if has_uncommitted_changes; then
-        had_initial_changes=true
-        log "${YELLOW}⚠️  Uncommitted changes detected. These will be included in the fix commit.${NC}"
+        log "${YELLOW}⚠️  Uncommitted changes detected. These will be included in any fix commit.${NC}"
     fi
     
-    # Apply fixes
-    fix_linting_issues
-    fix_import_issues
+    # Run pre-commit with auto-fix handling
+    local pre_commit_passed=false
+    if run_pre_commit_with_fixes; then
+        pre_commit_passed=true
+    fi
     
-    # Commit linting/formatting fixes first
+    # Commit any auto-fixes applied by pre-commit
     commit_fixes
     
-    # Run additional checks
-    local type_check_passed=true
-    local tests_passed=true
-    
-    if ! check_type_issues; then
-        type_check_passed=false
-    fi
-    
-    if ! run_fast_tests; then
-        tests_passed=false
+    # If pre-commit still fails, analyze specific failures
+    if [ "$pre_commit_passed" = false ]; then
+        analyze_pre_commit_failures
     fi
     
     # Display summary
     display_summary
     
     # Exit with appropriate status
-    if [ "$type_check_passed" = true ] && [ "$tests_passed" = true ]; then
-        log "${GREEN}🎉 All automated fixes completed successfully!${NC}"
+    if [ "$pre_commit_passed" = true ]; then
+        log "${GREEN}🎉 All pre-commit hooks are now passing!${NC}"
         exit 0
     else
-        log "${YELLOW}⚠️  Some issues require manual intervention${NC}"
+        log "${YELLOW}⚠️  Some pre-commit issues require manual intervention${NC}"
         exit 1
     fi
 }
@@ -192,16 +194,20 @@ case "${1:-}" in
     --help|-h)
         echo "Usage: $0 [options]"
         echo ""
-        echo "Automatically fixes common CI/CD issues including:"
-        echo "  - Linting errors (via ruff check --fix)"
-        echo "  - Code formatting (via ruff format)"
-        echo "  - Import ordering (via ruff I001-I005 rules)"
-        echo "  - Runs type checking and fast tests for validation"
+        echo "Handles pre-commit hook failures and applies automated fixes:"
+        echo "  - Runs pre-commit hooks and handles failures"
+        echo "  - Applies auto-fixes available through pre-commit system"
+        echo "  - Analyzes specific hook failures for manual intervention guidance"
+        echo "  - Commits and pushes any auto-fixes applied"
+        echo ""
+        echo "This script is focused on pre-commit error handling rather than"
+        echo "duplicating the functionality already provided by pre-commit hooks."
         echo ""
         echo "Options:"
         echo "  --help, -h    Show this help message"
         echo ""
-        echo "The script will automatically commit and push any fixes applied."
+        echo "The script leverages pre-commit's built-in auto-fix capabilities"
+        echo "and provides intelligent handling of hook failures."
         exit 0
         ;;
     "")
