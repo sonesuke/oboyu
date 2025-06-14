@@ -9,7 +9,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple
+
+if TYPE_CHECKING:
+    from oboyu.cli.hierarchical_logger import HierarchicalLogger
 
 try:
     import pymupdf
@@ -158,8 +161,17 @@ class OptimizedPDFProcessor:
         self.max_workers = max_workers
         self.cache = PDFCache()
 
-    def extract_pdf(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
-        """Extract content and metadata from PDF file."""
+    def extract_pdf(self, file_path: Path, logger: Optional["HierarchicalLogger"] = None) -> Tuple[str, Dict[str, Any]]:
+        """Extract content and metadata from PDF file.
+
+        Args:
+            file_path: Path to the PDF file
+            logger: Optional HierarchicalLogger for progress display
+
+        Returns:
+            Tuple of (content, metadata)
+
+        """
         if not HAS_PYMUPDF:
             raise RuntimeError(
                 "PyMuPDF4LLM library is required for PDF processing. "
@@ -170,16 +182,25 @@ class OptimizedPDFProcessor:
         # Check cache first
         cached_result = self.cache.get(file_path)
         if cached_result:
-            print(f"Using cached result for {file_path.name}")
+            if logger:
+                with logger.operation(f"Using cached result for {file_path.name}"):
+                    pass
+            else:
+                print(f"Using cached result for {file_path.name}")
             return cached_result
 
         # Analyze file characteristics
         metrics = PDFMetrics.analyze_pdf(file_path)
-        print(
+        processing_info = (
             f"Processing {file_path.name}: {metrics.recommended_strategy.value} strategy "
             f"({metrics.file_size_mb:.1f}MB, {metrics.total_pages} pages, "
             f"~{metrics.estimated_processing_time:.1f}s estimated)"
         )
+
+        if logger:
+            processing_op_id = logger.start_operation(processing_info)
+        else:
+            print(processing_info)
 
         # Check file size limit
         if file_path.stat().st_size > self.max_file_size:
@@ -189,27 +210,42 @@ class OptimizedPDFProcessor:
         start_time = time.time()
 
         if metrics.recommended_strategy == ProcessingStrategy.LIGHTWEIGHT:
-            content, metadata = self._extract_lightweight(file_path)
+            content, metadata = self._extract_lightweight(file_path, logger)
         elif metrics.recommended_strategy == ProcessingStrategy.STANDARD:
-            content, metadata = self._extract_standard(file_path)
+            content, metadata = self._extract_standard(file_path, logger)
         elif metrics.recommended_strategy == ProcessingStrategy.PARALLEL:
-            content, metadata = self._extract_parallel(file_path)
+            content, metadata = self._extract_parallel(file_path, logger)
         else:  # STREAMING
-            content, metadata = self._extract_streaming(file_path)
+            content, metadata = self._extract_streaming(file_path, logger)
 
         processing_time = time.time() - start_time
         metadata["processing_time"] = processing_time
         metadata["strategy_used"] = metrics.recommended_strategy.value
 
-        print(f"Completed in {processing_time:.2f}s (estimated {metrics.estimated_processing_time:.1f}s)")
+        completion_info = f"Completed in {processing_time:.2f}s (estimated {metrics.estimated_processing_time:.1f}s)"
+
+        if logger:
+            logger.update_operation(processing_op_id, f"{processing_info} - {completion_info}")
+            logger.complete_operation(processing_op_id)
+        else:
+            print(completion_info)
 
         # Cache result
         self.cache.set(file_path, content, metadata)
 
         return content, metadata
 
-    def _extract_lightweight(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
-        """Lightweight processing for small PDFs."""
+    def _extract_lightweight(self, file_path: Path, logger: Optional["HierarchicalLogger"] = None) -> Tuple[str, Dict[str, Any]]:
+        """Lightweight processing for small PDFs.
+
+        Args:
+            file_path: Path to the PDF file
+            logger: Optional HierarchicalLogger for progress display
+
+        Returns:
+            Tuple of (content, metadata)
+
+        """
         doc = pymupdf.open(file_path)
         self._handle_encryption(doc, file_path)
 
@@ -221,17 +257,40 @@ class OptimizedPDFProcessor:
 
         return md_text, metadata
 
-    def _extract_standard(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
-        """Process PDF using standard strategy with basic optimizations."""
-        return self._extract_lightweight(file_path)  # Same as lightweight for now
+    def _extract_standard(self, file_path: Path, logger: Optional["HierarchicalLogger"] = None) -> Tuple[str, Dict[str, Any]]:
+        """Process PDF using standard strategy with basic optimizations.
 
-    def _extract_parallel(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
-        """Parallel processing for medium-large PDFs."""
+        Args:
+            file_path: Path to the PDF file
+            logger: Optional HierarchicalLogger for progress display
+
+        Returns:
+            Tuple of (content, metadata)
+
+        """
+        return self._extract_lightweight(file_path, logger)  # Same as lightweight for now
+
+    def _extract_parallel(self, file_path: Path, logger: Optional["HierarchicalLogger"] = None) -> Tuple[str, Dict[str, Any]]:
+        """Parallel processing for medium-large PDFs.
+
+        Args:
+            file_path: Path to the PDF file
+            logger: Optional HierarchicalLogger for progress display
+
+        Returns:
+            Tuple of (content, metadata)
+
+        """
         doc = pymupdf.open(file_path)
         self._handle_encryption(doc, file_path)
 
         total_pages = doc.page_count
-        print(f"Processing {total_pages} pages in parallel with {self.max_workers} workers")
+        parallel_info = f"Processing {total_pages} pages in parallel with {self.max_workers} workers"
+
+        if logger:
+            parallel_op_id = logger.start_operation(parallel_info)
+        else:
+            print(parallel_info)
 
         # Use page_chunks option for parallel processing
         page_chunks = pymupdf4llm.to_markdown(doc, page_chunks=True)
@@ -262,9 +321,15 @@ class OptimizedPDFProcessor:
                 markdown_content[page_num] = text
 
                 completed += 1
-                if completed % max(1, total_pages // 10) == 0:
-                    progress = (completed / total_pages) * 100
-                    print(f"  Progress: {progress:.0f}% ({completed}/{total_pages} pages)")
+                progress = (completed / total_pages) * 100
+
+                # Update progress more frequently for better user experience
+                if completed % max(1, total_pages // 20) == 0 or completed == total_pages:
+                    progress_info = f"Progress: {progress:.0f}% ({completed}/{total_pages} pages)"
+                    if logger:
+                        logger.update_operation(parallel_op_id, f"{parallel_info} - {progress_info}")
+                    else:
+                        print(f"  {progress_info}")
 
         # Filter out None values and join
         valid_content = [text for text in markdown_content if text is not None and text]
@@ -274,10 +339,22 @@ class OptimizedPDFProcessor:
         metadata["extracted_pages"] = len(valid_content)
         doc.close()
 
+        if logger:
+            logger.complete_operation(parallel_op_id)
+
         return content, metadata
 
-    def _extract_streaming(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
-        """Memory-efficient streaming processing for large PDFs."""
+    def _extract_streaming(self, file_path: Path, logger: Optional["HierarchicalLogger"] = None) -> Tuple[str, Dict[str, Any]]:
+        """Memory-efficient streaming processing for large PDFs.
+
+        Args:
+            file_path: Path to the PDF file
+            logger: Optional HierarchicalLogger for progress display
+
+        Returns:
+            Tuple of (content, metadata)
+
+        """
         # For very large PDFs, process in chunks to limit memory usage
         chunk_size = 20  # Process 20 pages at a time
 
@@ -285,7 +362,12 @@ class OptimizedPDFProcessor:
         self._handle_encryption(doc, file_path)
 
         total_pages = doc.page_count
-        print(f"Streaming processing {total_pages} pages in chunks of {chunk_size}")
+        streaming_info = f"Streaming processing {total_pages} pages in chunks of {chunk_size}"
+
+        if logger:
+            streaming_op_id = logger.start_operation(streaming_info)
+        else:
+            print(streaming_info)
 
         all_content = []
         processed_pages = 0
@@ -318,13 +400,20 @@ class OptimizedPDFProcessor:
             processed_pages += len(pages_list)
 
             progress = (processed_pages / total_pages) * 100
-            print(f"  Chunk progress: {progress:.0f}% ({processed_pages}/{total_pages} pages)")
+            progress_info = f"Chunk progress: {progress:.0f}% ({processed_pages}/{total_pages} pages)"
+            if logger:
+                logger.update_operation(streaming_op_id, f"{streaming_info} - {progress_info}")
+            else:
+                print(f"  {progress_info}")
 
         content = "\n\n---\n\n".join(all_content)  # Use markdown page separator
 
         metadata = self._extract_metadata(doc)
         metadata["extracted_pages"] = len(all_content)
         doc.close()
+
+        if logger:
+            logger.complete_operation(streaming_op_id)
 
         return content, metadata
 
@@ -356,10 +445,19 @@ class OptimizedPDFProcessor:
 
         return metadata
 
-    async def extract_pdf_async(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
-        """Async wrapper for PDF extraction."""
+    async def extract_pdf_async(self, file_path: Path, logger: Optional["HierarchicalLogger"] = None) -> Tuple[str, Dict[str, Any]]:
+        """Async wrapper for PDF extraction.
+
+        Args:
+            file_path: Path to the PDF file
+            logger: Optional HierarchicalLogger for progress display
+
+        Returns:
+            Tuple of (content, metadata)
+
+        """
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self.extract_pdf, file_path)
+        return await loop.run_in_executor(None, self.extract_pdf, file_path, logger)
 
     def batch_process_pdfs(self, pdf_paths: List[Path], max_concurrent: int = 2) -> Iterator[Tuple[Path, Tuple[str, Dict[str, Any]]]]:
         """Batch process multiple PDFs with concurrency control."""

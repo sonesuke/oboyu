@@ -6,7 +6,10 @@ This module provides the Crawler class for discovering and processing documents.
 import concurrent.futures
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Set
+
+if TYPE_CHECKING:
+    from oboyu.cli.hierarchical_logger import HierarchicalLogger
 
 from oboyu.crawler.services import (
     ContentExtractor,
@@ -96,12 +99,18 @@ class Crawler:
         # Keep track of processed files to avoid duplicates
         self._processed_files: Set[Path] = set()
 
-    def crawl(self, directory: Path, progress_callback: Optional[Callable[[str, int, int], None]] = None) -> List[CrawlerResult]:
+    def crawl(
+        self,
+        directory: Path,
+        progress_callback: Optional[Callable[[str, int, int], None]] = None,
+        logger: Optional["HierarchicalLogger"] = None,
+    ) -> List[CrawlerResult]:
         """Crawl a directory for documents.
 
         Args:
             directory: Directory path to crawl
             progress_callback: Optional callback for progress updates (stage, current, total)
+            logger: Optional HierarchicalLogger for progress display
 
         Returns:
             List of processed document results
@@ -158,7 +167,7 @@ class Crawler:
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 # Submit all document processing tasks
                 future_to_doc = {
-                    executor.submit(self._process_document, doc_path, doc_metadata): (doc_path, doc_metadata) for doc_path, doc_metadata in new_docs
+                    executor.submit(self._process_document, doc_path, doc_metadata, logger): (doc_path, doc_metadata) for doc_path, doc_metadata in new_docs
                 }
 
                 # Collect results as they complete with periodic progress updates
@@ -192,12 +201,18 @@ class Crawler:
 
         return results
 
-    def _process_document(self, doc_path: Path, doc_metadata: Dict[str, object]) -> Optional[CrawlerResult]:
+    def _process_document(
+        self,
+        doc_path: Path,
+        doc_metadata: Dict[str, object],
+        logger: Optional["HierarchicalLogger"] = None,
+    ) -> Optional[CrawlerResult]:
         """Process a single document.
 
         Args:
             doc_path: Path to the document
             doc_metadata: Metadata for the document
+            logger: Optional HierarchicalLogger for progress display
 
         Returns:
             CrawlerResult if successful, None otherwise
@@ -205,7 +220,7 @@ class Crawler:
         """
         try:
             # Extract content using the content extractor service
-            content, extracted_metadata = self.content_extractor.extract_content(doc_path)
+            content, extracted_metadata = self.content_extractor.extract_content(doc_path, logger)
 
             # Detect language using the language detector service
             language = self.language_detector.detect_language(content)
