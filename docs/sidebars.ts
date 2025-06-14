@@ -21,74 +21,59 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '🎯 General Users',
+      label: 'Getting Started',
       collapsed: false,
       items: [
-        {
-          type: 'category',
-          label: 'Getting Started',
-          items: [
-            'general-users/getting-started/installation',
-            'general-users/getting-started/first-index',
-            'general-users/getting-started/first-search',
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Basic Usage',
-          items: [
-            'general-users/basic-usage/basic-workflow',
-            'general-users/basic-usage/document-types',
-            'general-users/basic-usage/search-patterns',
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Use Cases',
-          items: [
-            'general-users/use-cases/technical-docs',
-            'general-users/use-cases/meeting-notes',
-            'general-users/use-cases/research-papers',
-            'general-users/use-cases/personal-notes',
-          ],
-        },
+        'getting-started/installation',
+        'getting-started/first-index',
+        'getting-started/first-search',
       ],
     },
     {
       type: 'category',
-      label: '⚡ Power Users',
+      label: 'Basic Usage',
       collapsed: false,
       items: [
-        {
-          type: 'category',
-          label: 'Integration & Automation',
-          items: [
-            'power-users/integration-automation/mcp-integration',
-            'power-users/integration-automation/cli-workflows',
-            'power-users/integration-automation/automation',
-          ],
-        },
+        'basic-usage/basic-workflow',
+        'basic-usage/document-types',
+        'basic-usage/search-patterns',
       ],
     },
     {
       type: 'category',
-      label: '🔧 System Administrators',
+      label: 'Use Cases',
       collapsed: false,
       items: [
-        {
-          type: 'category',
-          label: 'Reference',
-          items: [
-            'system-administrators/reference/configuration',
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Troubleshooting',
-          items: [
-            'system-administrators/troubleshooting/troubleshooting',
-          ],
-        },
+        'use-cases/technical-docs',
+        'use-cases/meeting-notes',
+        'use-cases/research-papers',
+        'use-cases/personal-notes',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Integration & Automation',
+      collapsed: false,
+      items: [
+        'integration-automation/mcp-integration',
+        'integration-automation/cli-workflows',
+        'integration-automation/automation',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Reference',
+      collapsed: false,
+      items: [
+        'reference/configuration',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Troubleshooting',
+      collapsed: false,
+      items: [
+        'troubleshooting/troubleshooting',
       ],
     },
     {

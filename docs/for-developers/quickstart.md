@@ -1,50 +1,32 @@
-# Quick Start Guide
+# Developer Quick Start Guide
 
-Welcome to Oboyu! This guide will help you get up and running with semantic document search in under 5 minutes.
-
-## What is Oboyu?
-
-Oboyu is a powerful local semantic search engine that lets you search through your documents using natural language queries. It excels at:
-- Finding relevant content even when you don't know the exact keywords
-- Supporting Japanese text with automatic encoding detection
-- Providing fast, accurate search results through hybrid search (combining keyword and semantic search)
-- Working entirely offline with your private documents
+Welcome to the Oboyu development quick start! This guide assumes you already have Oboyu installed and covers development-specific workflows.
 
 ## Prerequisites
 
-- Python 3.11 or higher
-- pip (latest version recommended)
-- 2GB of free disk space (for models)
-- macOS or Linux (Windows support via WSL)
-- For building from source:
-  - C++ compiler (build-essential on Linux, Xcode on macOS)
-  - CMake (for sentencepiece)
+Before following this guide, make sure you have:
+- Oboyu installed on your system ([see installation guide](../getting-started/installation))
+- Basic familiarity with command-line tools
+- Understanding of semantic search concepts
 
-## Installation
+## Development-Specific Setup
 
-### 1. Install Oboyu
-
-Using UV (recommended):
-```bash
-uv tool install oboyu
-```
-
-Using pip:
-```bash
-pip install oboyu
-```
-
-### 2. Download Models (One-time Setup)
-
-Oboyu will automatically download required models on first use. To pre-download them:
+For development work with Oboyu, you may want to install the development version:
 
 ```bash
-oboyu --download-models
+# Install development version with all dependencies
+pip install oboyu[dev]
 ```
 
-This downloads:
-- Embedding model for semantic search (~90MB)
-- Tokenizer for text processing (~5MB)
+Or for contributing to Oboyu:
+
+```bash
+# Clone and install from source
+git clone https://github.com/sonesuke/oboyu.git
+cd oboyu
+uv sync
+uv run oboyu --version
+```
 
 ## Your First Search - 3 Simple Steps
 
