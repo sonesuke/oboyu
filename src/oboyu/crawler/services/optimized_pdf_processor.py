@@ -182,11 +182,7 @@ class OptimizedPDFProcessor:
         # Check cache first
         cached_result = self.cache.get(file_path)
         if cached_result:
-            if logger:
-                with logger.operation(f"Using cached result for {file_path.name}"):
-                    pass
-            else:
-                print(f"Using cached result for {file_path.name}")
+            # Skip individual cache messages for cleaner aggregate display
             return cached_result
 
         # Analyze file characteristics
