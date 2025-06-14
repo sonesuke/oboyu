@@ -158,6 +158,11 @@ class IndexingService:
                 elif progress_callback:
                     progress_callback(f"Scanning directory {directory}...")
 
+                # Create indexer progress callback early if console manager is available
+                indexer_progress_callback = None
+                if self.console_manager and scan_op_id:
+                    indexer_progress_callback = create_indexer_progress_callback(self.console_manager.logger, scan_op_id)
+
                 # First, discover all files in the directory
                 # Get crawler config from config manager
                 crawler_config_dict = self.config_manager.get_section("crawler")
@@ -174,9 +179,9 @@ class IndexingService:
 
                 # Pass logger to crawler if available
                 if self.console_manager:
-                    all_crawler_results = crawler.crawl(directory, logger=self.console_manager.logger)
+                    all_crawler_results = crawler.crawl(directory, progress_callback=indexer_progress_callback, logger=self.console_manager.logger)
                 else:
-                    all_crawler_results = crawler.crawl(directory)
+                    all_crawler_results = crawler.crawl(directory, progress_callback=indexer_progress_callback)
 
                 # Apply change detection unless force is True
                 if force:
@@ -213,11 +218,6 @@ class IndexingService:
                         if progress_callback:
                             progress_callback("No changes detected, skipping directory")
                         continue
-
-                # Create indexer progress callback if console manager is available
-                indexer_progress_callback = None
-                if self.console_manager and scan_op_id:
-                    indexer_progress_callback = create_indexer_progress_callback(self.console_manager.logger, scan_op_id)
 
                 result = indexer.index_documents(crawler_results, indexer_progress_callback)
 
