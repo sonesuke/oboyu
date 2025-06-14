@@ -16,7 +16,7 @@ class TestLanguageDetector:
     def test_detect_language_english(self) -> None:
         """Test English language detection."""
         detector = LanguageDetector()
-        
+
         english_text = "This is a sample English text. It contains multiple sentences to help with language detection."
         detected = detector.detect_language(english_text)
         assert detected == "en"
@@ -24,7 +24,7 @@ class TestLanguageDetector:
     def test_detect_language_japanese(self) -> None:
         """Test Japanese language detection."""
         detector = LanguageDetector()
-        
+
         # Test with mixed Japanese text (hiragana, katakana, kanji)
         japanese_text = "これは日本語のテストです。ひらがな、カタカナ、漢字が含まれています。"
         detected = detector.detect_language(japanese_text)
@@ -48,7 +48,7 @@ class TestLanguageDetector:
     def test_detect_language_short_text(self) -> None:
         """Test language detection with very short text."""
         detector = LanguageDetector()
-        
+
         # Very short text should default to English
         short_text = "Hi"
         detected = detector.detect_language(short_text)
@@ -67,7 +67,7 @@ class TestLanguageDetector:
     def test_detect_language_mixed_content(self) -> None:
         """Test language detection with mixed content."""
         detector = LanguageDetector()
-        
+
         # Mixed Japanese and English (Japanese should be detected due to quick pre-check)
         mixed_text = "This is English text. これは日本語です。More English here."
         detected = detector.detect_language(mixed_text)
@@ -82,7 +82,7 @@ class TestLanguageDetector:
     def test_detect_language_special_characters(self) -> None:
         """Test language detection with special characters and numbers."""
         detector = LanguageDetector()
-        
+
         # Text with numbers and punctuation
         text_with_numbers = "The year 2023 has been great! We achieved 95% success rate."
         detected = detector.detect_language(text_with_numbers)
@@ -96,7 +96,7 @@ class TestLanguageDetector:
     def test_detect_language_unicode_range_check(self) -> None:
         """Test the Japanese character range detection logic."""
         detector = LanguageDetector()
-        
+
         # Test with longer Japanese text to ensure proper detection
         # The Unicode range check should kick in for substantial Japanese content
         japanese_chars = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん"  # Longer hiragana
@@ -116,13 +116,13 @@ class TestLanguageDetector:
     def test_fasttext_model_loading(self) -> None:
         """Test FastText model loading (slow test due to model download)."""
         detector = LanguageDetector()
-        
+
         # This should trigger model loading
         sample_text = "This is a test text for FastText model loading."
         try:
             model = detector._get_fasttext_model()
             assert model is not None
-            
+
             # Test actual prediction
             detected = detector.detect_language(sample_text)
             assert detected is not None
@@ -134,26 +134,26 @@ class TestLanguageDetector:
     def test_detect_language_graceful_fallback(self) -> None:
         """Test that detection falls back gracefully when FastText fails."""
         detector = LanguageDetector()
-        
+
         # Mock a scenario where FastText might fail by testing with unusual text
         unusual_text = "\\x00\\x01\\x02 Some text with control characters"
         detected = detector.detect_language(unusual_text)
-        
+
         # Should still return a valid language code
         assert detected in ["en", "ja"] or len(detected) == 2
 
     def test_detect_language_common_languages(self) -> None:
         """Test detection of other common languages (if FastText works)."""
         detector = LanguageDetector()
-        
+
         # These tests may depend on FastText being available
         test_cases = [
             ("Bonjour, comment allez-vous?", "fr"),  # French
-            ("Hola, ¿cómo estás?", "es"),           # Spanish
-            ("Guten Tag, wie geht es Ihnen?", "de"), # German
-            ("Ciao, come stai?", "it"),             # Italian
+            ("Hola, ¿cómo estás?", "es"),  # Spanish
+            ("Guten Tag, wie geht es Ihnen?", "de"),  # German
+            ("Ciao, come stai?", "it"),  # Italian
         ]
-        
+
         for text, expected_lang in test_cases:
             try:
                 detected = detector.detect_language(text)

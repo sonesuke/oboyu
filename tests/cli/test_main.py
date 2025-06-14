@@ -27,11 +27,11 @@ def test_help_command() -> None:
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
     assert "Usage:" in result.stdout
-    
+
     # Check for index and query subcommands
     assert "index" in result.stdout
     assert "query" in result.stdout
-    
+
     # Check for global database path option
     assert "--db-path" in result.stdout
 
@@ -41,10 +41,10 @@ def test_index_help() -> None:
     result = runner.invoke(app, ["index", "--help"])
     assert result.exit_code == 0
     assert "Usage:" in result.stdout
-    
+
     # Check for recursive option (the exact format might vary)
     assert "recursive" in result.stdout.lower()
-    
+
     # Check for db-path option
     assert "--db-path" in result.stdout
 
@@ -54,7 +54,7 @@ def test_query_help() -> None:
     result = runner.invoke(app, ["query", "--help"])
     assert result.exit_code == 0
     assert "Usage:" in result.stdout
-    
+
     # Check for important option terms (the exact format might vary)
     assert "mode" in result.stdout.lower()
     assert "--db-path" in result.stdout

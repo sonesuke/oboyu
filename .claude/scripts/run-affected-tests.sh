@@ -47,10 +47,19 @@ done
 # Remove duplicates and trim whitespace
 TEST_FILES=$(echo "$TEST_FILES" | tr ' ' '\n' | sort -u | tr '\n' ' ' | xargs)
 
-if [ -z "$TEST_FILES" ]; then
+# Filter out non-existent files (e.g., deleted files)
+EXISTING_TEST_FILES=""
+for file in $TEST_FILES; do
+    if [ -f "$file" ]; then
+        EXISTING_TEST_FILES="$EXISTING_TEST_FILES $file"
+    fi
+done
+EXISTING_TEST_FILES=$(echo "$EXISTING_TEST_FILES" | xargs)
+
+if [ -z "$EXISTING_TEST_FILES" ]; then
     echo "No relevant test files found for changed files"
     exit 0
 fi
 
-echo "Running tests for changed files: $TEST_FILES"
-uv run pytest -m "not slow" -k "not integration" --no-cov --tb=short -q $TEST_FILES
+echo "Running tests for changed files: $EXISTING_TEST_FILES"
+uv run pytest -m "not slow" -k "not integration" --no-cov --tb=short -q $EXISTING_TEST_FILES

@@ -25,6 +25,8 @@ repos:
       pass_filenames: true
       # Changed: only run on Python files
       types: [python]
+      # Exclude benchmark, development files, and test files
+      exclude: ^(bench/|tests/|scripts/)
     - id: ruff-check
       name: ruff-check
       entry: uv run ruff check --fix
@@ -33,6 +35,8 @@ repos:
       pass_filenames: true
       # Changed: only run on Python files
       types: [python]
+      # Exclude benchmark, development files, and test files
+      exclude: ^(bench/|tests/|scripts/)
     - id: pylint-line-length
       name: pylint line length check
       # Changed: only run on changed files
@@ -42,6 +46,8 @@ repos:
       args: ["--disable=all", "--enable=too-many-lines"]
       # Changed: pass files to pylint
       pass_filenames: true
+      # Exclude benchmark, development files, and test files
+      exclude: ^(bench/|tests/|scripts/)
     - id: mypy
       name: mypy
       # Changed: run mypy with incremental mode and only on changed files
@@ -51,6 +57,8 @@ repos:
       pass_filenames: true
       # Changed: only run on Python files
       types: [python]
+      # Exclude benchmark, development files, and test files
+      exclude: ^(bench/|tests/|scripts/)
     - id: pytest
       name: pytest
       # Changed: use smart test runner that only runs affected tests

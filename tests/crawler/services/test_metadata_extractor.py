@@ -107,7 +107,7 @@ class TestMetadataExtractor:
     def test_extract_metadata_invalid_file(self) -> None:
         """Test metadata extraction with invalid file."""
         extractor = MetadataExtractor()
-        
+
         with pytest.raises(ValueError, match="File does not exist"):
             extractor.extract_metadata(Path("/nonexistent/file.txt"))
 
@@ -238,7 +238,7 @@ class TestMetadataExtractor:
             # Results should be consistent
             assert metadata_from_path["file_size"] == metadata_from_entry["file_size"]
             assert metadata_from_path["is_symlink"] == metadata_from_entry["is_symlink"]
-            
+
             # Timestamps might differ slightly due to access times, but should be close
             time_diff = abs((metadata_from_path["modified_at"] - metadata_from_entry["modified_at"]).total_seconds())
             assert time_diff < 2  # Should be within 2 seconds

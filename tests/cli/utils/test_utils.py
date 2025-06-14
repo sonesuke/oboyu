@@ -1,7 +1,5 @@
 """Tests for the Oboyu CLI utilities."""
 
-import pytest
-
 from oboyu.cli.utils import contains_japanese, format_snippet
 
 

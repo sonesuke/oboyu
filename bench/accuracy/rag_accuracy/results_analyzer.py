@@ -263,10 +263,7 @@ class ResultsAnalyzer:
         mode_performance.sort(key=lambda x: x[1], reverse=True)
         if len(mode_performance) > 1:
             best_mode = mode_performance[0]
-            insights.append(
-                f"Best search mode: {best_mode[0]} (avg NDCG@10: {best_mode[1]:.4f}, "
-                f"avg response time: {best_mode[2]:.3f}s)"
-            )
+            insights.append(f"Best search mode: {best_mode[0]} (avg NDCG@10: {best_mode[1]:.4f}, avg response time: {best_mode[2]:.3f}s)")
 
         # Analyze k value impact
         by_k = self._analyze_by_top_k(results)
@@ -338,10 +335,7 @@ class ResultsAnalyzer:
                 report.append(f"\n{dataset}:")
                 if data.get("best_config"):
                     config = data["best_config"]
-                    report.append(
-                        f"  Best config: {config['search_mode']} search, "
-                        f"k={config['top_k']} (NDCG@10: {config['ndcg@10']:.4f})"
-                    )
+                    report.append(f"  Best config: {config['search_mode']} search, k={config['top_k']} (NDCG@10: {config['ndcg@10']:.4f})")
                 report.append(f"  Evaluations: {len(data['results'])}")
 
         # Results by search mode
@@ -410,11 +404,7 @@ class ResultsAnalyzer:
             # Find matching configuration in run2
             r2_match = None
             for r2 in run2:
-                if (
-                    r1.get("dataset_name") == r2.get("dataset_name")
-                    and r1.get("search_mode") == r2.get("search_mode")
-                    and r1.get("top_k") == r2.get("top_k")
-                ):
+                if r1.get("dataset_name") == r2.get("dataset_name") and r1.get("search_mode") == r2.get("search_mode") and r1.get("top_k") == r2.get("top_k"):
                     r2_match = r2
                     break
 
@@ -430,17 +420,10 @@ class ResultsAnalyzer:
                             config = f"{r1['dataset_name']}/{r1['search_mode']}/k={r1['top_k']}"
 
                             if change > regression_threshold:
-                                comparison["improvements"].append(
-                                    {"config": config, "metric": metric, "change": change, "v1": v1, "v2": v2}
-                                )
+                                comparison["improvements"].append({"config": config, "metric": metric, "change": change, "v1": v1, "v2": v2})
                             elif change < -regression_threshold:
-                                comparison["regressions"].append(
-                                    {"config": config, "metric": metric, "change": change, "v1": v1, "v2": v2}
-                                )
+                                comparison["regressions"].append({"config": config, "metric": metric, "change": change, "v1": v1, "v2": v2})
                             else:
-                                comparison["stable"].append(
-                                    {"config": config, "metric": metric, "change": change, "v1": v1, "v2": v2}
-                                )
+                                comparison["stable"].append({"config": config, "metric": metric, "change": change, "v1": v1, "v2": v2})
 
         return comparison
-

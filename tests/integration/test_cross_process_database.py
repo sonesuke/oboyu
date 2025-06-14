@@ -25,26 +25,26 @@ def temp_db_path():
     """Create a temporary database path (file doesn't exist initially)."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=True) as f:
         db_path = Path(f.name)
-    
+
     # File is deleted when context exits, so we just have the path
     yield db_path
-    
+
     # Cleanup
     if db_path.exists():
         db_path.unlink()
 
 
-@pytest.fixture  
+@pytest.fixture
 def temp_content_dir():
     """Create temporary content directory with test files."""
     with tempfile.TemporaryDirectory() as temp_dir:
         content_dir = Path(temp_dir)
-        
+
         # Create test files
         (content_dir / "test1.txt").write_text("This is test file one with some content.")
         (content_dir / "test2.txt").write_text("This is test file two with different content.")
         (content_dir / "test3.md").write_text("# Test Document\n\nThis is a markdown file.")
-        
+
         yield content_dir
 
 
@@ -61,22 +61,17 @@ def indexer_config(temp_db_path):
 def run_oboyu_command(command: List[str], cwd: Path = None) -> subprocess.CompletedProcess:
     """Run oboyu CLI command in subprocess."""
     import sys
+
     cmd = [sys.executable, "-m", "oboyu"] + command
-    
-    result = subprocess.run(
-        cmd, 
-        capture_output=True, 
-        text=True, 
-        cwd=cwd or Path.cwd(),
-        timeout=30
-    )
-    
+
+    result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd or Path.cwd(), timeout=30)
+
     logger.info(f"Command: {' '.join(cmd)}")
     logger.info(f"Return code: {result.returncode}")
     logger.info(f"Stdout: {result.stdout}")
     if result.stderr:
         logger.info(f"Stderr: {result.stderr}")
-    
+
     return result
 
 
@@ -87,11 +82,13 @@ class TestCrossProcessDatabase:
         """Test indexing in one process and querying in another."""
         # Process A: Index documents
         indexer = Indexer(config=indexer_config)
-        
+
         try:
             # Create mock documents for indexing
             from datetime import datetime
+
             from oboyu.common.types import Chunk
+
             now = datetime.now()
             chunks = [
                 Chunk(
@@ -107,7 +104,7 @@ class TestCrossProcessDatabase:
                 ),
                 Chunk(
                     id="test2",
-                    path=temp_content_dir / "test2.txt", 
+                    path=temp_content_dir / "test2.txt",
                     title="Test Document 2",
                     content="Different content for testing search functionality",
                     chunk_index=0,
@@ -117,38 +114,38 @@ class TestCrossProcessDatabase:
                     metadata={"source": str(temp_content_dir / "test2.txt")},
                 ),
             ]
-            
+
             # Index the chunks by storing them directly and generating embeddings
             indexer.database_service.store_chunks(chunks)
-            
+
             # Generate embeddings for the chunks
             chunk_ids = [chunk.id for chunk in chunks]
             contents = [chunk.content for chunk in chunks]
             embeddings = indexer.embedding_service.generate_embeddings(contents)
             indexer.database_service.store_embeddings(chunk_ids, embeddings)
-            
+
             # Ensure HNSW index exists
             indexer.database_service.ensure_hnsw_index()
-            
+
             result = {"indexed_chunks": len(chunks), "total_documents": len(chunks)}
-            
+
         finally:
             indexer.close()
-        
+
         # Small delay to ensure file operations complete
         time.sleep(0.1)
-        
+
         # Process B: Query the indexed data
         retriever = Retriever(indexer_config)
-        
+
         try:
             # Search for content using the search method which should work
             results = retriever.search("test content", limit=10, mode="hybrid")
-            
+
             # Should find results from the indexing done in Process A
             assert len(results) > 0
             assert any("test content" in result.content.lower() for result in results)
-            
+
         finally:
             retriever.close()
 
@@ -156,10 +153,12 @@ class TestCrossProcessDatabase:
         """Test clear→index→query workflow reliability."""
         # Step 1: Initial indexing
         indexer = Indexer(config=indexer_config)
-        
+
         try:
             from datetime import datetime
+
             from oboyu.common.types import Chunk
+
             now = datetime.now()
             initial_chunks = [
                 Chunk(
@@ -174,7 +173,7 @@ class TestCrossProcessDatabase:
                     metadata={"source": "initial.txt"},
                 ),
             ]
-            
+
             # Index the chunks by storing them directly
             indexer.database_service.store_chunks(initial_chunks)
             chunk_ids = [chunk.id for chunk in initial_chunks]
@@ -182,24 +181,26 @@ class TestCrossProcessDatabase:
             embeddings = indexer.embedding_service.generate_embeddings(contents)
             indexer.database_service.store_embeddings(chunk_ids, embeddings)
             indexer.database_service.ensure_hnsw_index()
-            
+
             result = {"indexed_chunks": len(initial_chunks)}
-            
+
         finally:
             indexer.close()
-        
+
         # Step 2: Clear the database
         indexer = Indexer(config=indexer_config)
         try:
             indexer.database_service.clear_database()
         finally:
             indexer.close()
-        
+
         # Step 3: Index new content
         indexer = Indexer(config=indexer_config)
         try:
             from datetime import datetime
+
             from oboyu.common.types import Chunk
+
             now = datetime.now()
             new_chunks = [
                 Chunk(
@@ -216,7 +217,7 @@ class TestCrossProcessDatabase:
                 Chunk(
                     id="new2",
                     path=Path("new2.txt"),
-                    title="New Document 2", 
+                    title="New Document 2",
                     content="Additional new content for testing",
                     chunk_index=0,
                     language="en",
@@ -225,7 +226,7 @@ class TestCrossProcessDatabase:
                     metadata={"source": "new2.txt"},
                 ),
             ]
-            
+
             # Index the chunks by storing them directly
             indexer.database_service.store_chunks(new_chunks)
             chunk_ids = [chunk.id for chunk in new_chunks]
@@ -233,12 +234,12 @@ class TestCrossProcessDatabase:
             embeddings = indexer.embedding_service.generate_embeddings(contents)
             indexer.database_service.store_embeddings(chunk_ids, embeddings)
             indexer.database_service.ensure_hnsw_index()
-            
+
             result = {"indexed_chunks": len(new_chunks)}
-            
+
         finally:
             indexer.close()
-        
+
         # Step 4: Query the new content
         retriever = Retriever(indexer_config)
         try:
@@ -246,13 +247,13 @@ class TestCrossProcessDatabase:
             results = retriever.search("new content", limit=10, mode="hybrid")
             assert len(results) > 0
             assert any("new content" in result.content.lower() for result in results)
-            
+
             # Should NOT find initial content
             old_results = retriever.search("initial content", limit=10, mode="hybrid")
             # Either no results or results that don't contain the old content
             if old_results:
                 assert not any("initial content" in result.content.lower() for result in old_results)
-            
+
         finally:
             retriever.close()
 
@@ -260,10 +261,12 @@ class TestCrossProcessDatabase:
         """Test multiple processes querying simultaneously."""
         # First, index some content
         indexer = Indexer(config=indexer_config)
-        
+
         try:
             from datetime import datetime
+
             from oboyu.common.types import Chunk
+
             now = datetime.now()
             chunks = [
                 Chunk(
@@ -289,7 +292,7 @@ class TestCrossProcessDatabase:
                     metadata={"source": "multi2.txt"},
                 ),
             ]
-            
+
             # Index the chunks by storing them directly
             indexer.database_service.store_chunks(chunks)
             chunk_ids = [chunk.id for chunk in chunks]
@@ -297,12 +300,12 @@ class TestCrossProcessDatabase:
             embeddings = indexer.embedding_service.generate_embeddings(contents)
             indexer.database_service.store_embeddings(chunk_ids, embeddings)
             indexer.database_service.ensure_hnsw_index()
-            
+
             result = {"indexed_chunks": len(chunks)}
-            
+
         finally:
             indexer.close()
-        
+
         # Now test multiple retrievers accessing simultaneously
         retrievers = []
         try:
@@ -310,12 +313,12 @@ class TestCrossProcessDatabase:
             for i in range(3):
                 retriever = Retriever(indexer_config)
                 retrievers.append(retriever)
-            
+
             # All should be able to query successfully
             for i, retriever in enumerate(retrievers):
                 results = retriever.search("content", limit=5, mode="hybrid")
                 assert len(results) > 0, f"Retriever {i} failed to get results"
-                
+
         finally:
             for retriever in retrievers:
                 try:
@@ -327,10 +330,12 @@ class TestCrossProcessDatabase:
         """Test database recovery from corruption scenarios."""
         # Create initial database with content
         indexer = Indexer(config=indexer_config)
-        
+
         try:
             from datetime import datetime
+
             from oboyu.common.types import Chunk
+
             now = datetime.now()
             chunks = [
                 Chunk(
@@ -345,7 +350,7 @@ class TestCrossProcessDatabase:
                     metadata={"source": "recovery.txt"},
                 ),
             ]
-            
+
             # Index the chunks by storing them directly
             indexer.database_service.store_chunks(chunks)
             chunk_ids = [chunk.id for chunk in chunks]
@@ -353,22 +358,24 @@ class TestCrossProcessDatabase:
             embeddings = indexer.embedding_service.generate_embeddings(contents)
             indexer.database_service.store_embeddings(chunk_ids, embeddings)
             indexer.database_service.ensure_hnsw_index()
-            
+
             result = {"indexed_chunks": len(chunks)}
-            
+
         finally:
             indexer.close()
-        
+
         # Simulate corruption by truncating the database file
         with open(temp_db_path, "w") as f:
             f.write("corrupted")
-        
+
         # Should be able to recover by creating fresh database
         new_indexer = Indexer(config=indexer_config)
         try:
             # Should not crash, should initialize fresh database
             from datetime import datetime
+
             from oboyu.common.types import Chunk
+
             now = datetime.now()
             new_chunks = [
                 Chunk(
@@ -383,7 +390,7 @@ class TestCrossProcessDatabase:
                     metadata={"source": "recovery2.txt"},
                 ),
             ]
-            
+
             # Index the chunks by storing them directly
             new_indexer.database_service.store_chunks(new_chunks)
             chunk_ids = [chunk.id for chunk in new_chunks]
@@ -391,19 +398,19 @@ class TestCrossProcessDatabase:
             embeddings = new_indexer.embedding_service.generate_embeddings(contents)
             new_indexer.database_service.store_embeddings(chunk_ids, embeddings)
             new_indexer.database_service.ensure_hnsw_index()
-            
+
             result = {"indexed_chunks": len(new_chunks)}
-            
+
         finally:
             new_indexer.close()
-        
+
         # Should be able to query the recovered database
         retriever = Retriever(indexer_config)
         try:
             results = retriever.search("recovery", limit=10, mode="hybrid")
             # Should find the new content
             assert len(results) > 0
-            
+
         finally:
             retriever.close()
 
@@ -411,30 +418,16 @@ class TestCrossProcessDatabase:
     def test_cli_cross_process_workflow(self, temp_db_path, temp_content_dir):
         """Test cross-process workflow using CLI commands."""
         # Step 1: Clear using CLI
-        result = run_oboyu_command([
-            "clear", 
-            "--db-path", str(temp_db_path),
-            "--force"
-        ])
+        result = run_oboyu_command(["clear", "--db-path", str(temp_db_path), "--force"])
         assert result.returncode == 0
-        
-        # Step 2: Index using CLI  
-        result = run_oboyu_command([
-            "index",
-            str(temp_content_dir),
-            "--db-path", str(temp_db_path),
-            "--chunk-size", "100"
-        ])
+
+        # Step 2: Index using CLI
+        result = run_oboyu_command(["index", str(temp_content_dir), "--db-path", str(temp_db_path), "--chunk-size", "100"])
         assert result.returncode == 0
         assert "indexed" in result.stdout.lower() or "chunks" in result.stdout.lower()
-        
+
         # Step 3: Query using CLI
-        result = run_oboyu_command([
-            "query",
-            "--query", "test content",
-            "--db-path", str(temp_db_path),
-            "--top-k", "5"
-        ])
+        result = run_oboyu_command(["query", "--query", "test content", "--db-path", str(temp_db_path), "--top-k", "5"])
         assert result.returncode == 0
         # Should have some results
         assert len(result.stdout.strip()) > 0
@@ -443,10 +436,12 @@ class TestCrossProcessDatabase:
         """Test that fresh processes can load existing databases reliably."""
         # Create database in first process
         indexer1 = Indexer(config=indexer_config)
-        
+
         try:
             from datetime import datetime
+
             from oboyu.common.types import Chunk
+
             now = datetime.now()
             chunks = [
                 Chunk(
@@ -461,7 +456,7 @@ class TestCrossProcessDatabase:
                     metadata={"source": "fresh.txt"},
                 ),
             ]
-            
+
             # Index the chunks by storing them directly
             indexer1.database_service.store_chunks(chunks)
             chunk_ids = [chunk.id for chunk in chunks]
@@ -469,24 +464,26 @@ class TestCrossProcessDatabase:
             embeddings = indexer1.embedding_service.generate_embeddings(contents)
             indexer1.database_service.store_embeddings(chunk_ids, embeddings)
             indexer1.database_service.ensure_hnsw_index()
-            
+
             result = {"indexed_chunks": len(chunks)}
-            
+
         finally:
             indexer1.close()
-        
+
         # Simulate fresh process by creating new indexer instance
         # with same config (fresh process would reload from disk)
         indexer2 = Indexer(config=indexer_config)
-        
+
         try:
             # Should be able to access existing data
             stats = indexer2.get_database_stats()
             assert stats["chunk_count"] > 0
-            
+
             # Should be able to add more content
             from datetime import datetime
+
             from oboyu.common.types import Chunk
+
             now = datetime.now()
             more_chunks = [
                 Chunk(
@@ -501,7 +498,7 @@ class TestCrossProcessDatabase:
                     metadata={"source": "fresh2.txt"},
                 ),
             ]
-            
+
             # Index the chunks by storing them directly
             indexer2.database_service.store_chunks(more_chunks)
             chunk_ids = [chunk.id for chunk in more_chunks]
@@ -509,17 +506,17 @@ class TestCrossProcessDatabase:
             embeddings = indexer2.embedding_service.generate_embeddings(contents)
             indexer2.database_service.store_embeddings(chunk_ids, embeddings)
             indexer2.database_service.ensure_hnsw_index()
-            
+
             result = {"indexed_chunks": len(more_chunks)}
-            
+
         finally:
             indexer2.close()
-        
+
         # Third process should see all content
         retriever = Retriever(indexer_config)
         try:
             results = retriever.search("fresh", limit=10, mode="hybrid")
             assert len(results) >= 2  # Should find content from both processes
-            
+
         finally:
             retriever.close()

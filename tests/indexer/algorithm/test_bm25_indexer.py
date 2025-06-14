@@ -1,13 +1,12 @@
 """Tests for the BM25 indexer module."""
 
-import pytest
-from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Set
 
-from oboyu.indexer.algorithm.bm25_indexer import BM25Indexer
+import pytest
+
 from oboyu.common.types import Chunk
+from oboyu.indexer.algorithm.bm25_indexer import BM25Indexer
 
 
 class TestBM25Indexer:
@@ -129,7 +128,7 @@ class TestBM25Indexer:
             metadata={},
         )
         stats = bm25_indexer.index_chunks([empty_chunk])
-        
+
         assert bm25_indexer.document_count == 1
         assert bm25_indexer.document_lengths["empty_doc"] == 0
         assert stats["chunks_indexed"] == 1
@@ -147,7 +146,7 @@ class TestBM25Indexer:
             if doc_id == "doc1":
                 doc1_freq = freq
                 break
-        
+
         assert doc1_freq == 2  # "Python" appears twice in doc1 (case insensitive)
 
     def test_document_frequency(self, bm25_indexer, sample_chunks):
@@ -170,10 +169,10 @@ class TestBM25Indexer:
         query = ["tensorflow"]
         score1 = bm25_indexer.compute_bm25_score(query, "doc4", {"tensorflow": 1})
         score2 = bm25_indexer.compute_bm25_score(query, "doc2", {})
-        
+
         assert score1 > 0  # doc4 contains "tensorflow"
         assert score2 == 0  # doc2 doesn't contain "tensorflow"
-        
+
         # Test with common term (may have negative IDF due to high frequency)
         python_score = bm25_indexer.compute_bm25_score(["python"], "doc1", {"python": 2})
         # Python appears in 4/5 docs, so may have negative IDF - this is correct BM25 behavior
@@ -182,7 +181,7 @@ class TestBM25Indexer:
         query = ["tensorflow", "machine"]
         score_both = bm25_indexer.compute_bm25_score(query, "doc4", {"tensorflow": 1, "machine": 1})
         score_one = bm25_indexer.compute_bm25_score(query, "doc3", {"analysis": 1})  # Different term
-        
+
         assert score_both > score_one  # doc4 contains both query terms, doc3 contains neither
 
     def test_compute_bm25_score_edge_cases(self, bm25_indexer):
@@ -224,7 +223,7 @@ class TestBM25Indexer:
         assert len(bm25_indexer.inverted_index) > 0
         assert "python" in bm25_indexer.inverted_index
         assert "programming" in bm25_indexer.inverted_index
-        
+
         # Check structure of inverted index entries
         for term, postings in bm25_indexer.inverted_index.items():
             assert isinstance(postings, list)
@@ -236,11 +235,11 @@ class TestBM25Indexer:
         # Check document frequencies
         assert len(bm25_indexer.document_frequencies) > 0
         assert bm25_indexer.document_frequencies["python"] == 4
-        
+
         # Check collection frequencies
         assert len(bm25_indexer.collection_frequencies) > 0
         assert bm25_indexer.collection_frequencies["python"] >= 4
-        
+
         # Check document lengths
         assert len(bm25_indexer.document_lengths) == 5
         for doc_id, length in bm25_indexer.document_lengths.items():
@@ -275,44 +274,50 @@ class TestBM25Indexer:
         now = datetime.now()
         # 6 documents containing "common"
         for i in range(6):
-            chunks.append(Chunk(
-                id=f"doc{i}",
-                path=Path(f"/docs/doc{i}.md"),
-                title=f"Document {i}",
-                content="common word",
-                chunk_index=0,
-                language="en",
-                created_at=now,
-                modified_at=now,
-                metadata={},
-            ))
+            chunks.append(
+                Chunk(
+                    id=f"doc{i}",
+                    path=Path(f"/docs/doc{i}.md"),
+                    title=f"Document {i}",
+                    content="common word",
+                    chunk_index=0,
+                    language="en",
+                    created_at=now,
+                    modified_at=now,
+                    metadata={},
+                )
+            )
         # 2 documents containing "rare"
         for i in range(6, 8):
-            chunks.append(Chunk(
-                id=f"doc{i}",
-                path=Path(f"/docs/doc{i}.md"),
-                title=f"Document {i}",
-                content="rare word",
-                chunk_index=0,
-                language="en",
-                created_at=now,
-                modified_at=now,
-                metadata={},
-            ))
+            chunks.append(
+                Chunk(
+                    id=f"doc{i}",
+                    path=Path(f"/docs/doc{i}.md"),
+                    title=f"Document {i}",
+                    content="rare word",
+                    chunk_index=0,
+                    language="en",
+                    created_at=now,
+                    modified_at=now,
+                    metadata={},
+                )
+            )
         # 2 documents containing "other"
         for i in range(8, 10):
-            chunks.append(Chunk(
-                id=f"doc{i}",
-                path=Path(f"/docs/doc{i}.md"),
-                title=f"Document {i}",
-                content="other word",
-                chunk_index=0,
-                language="en",
-                created_at=now,
-                modified_at=now,
-                metadata={},
-            ))
-        
+            chunks.append(
+                Chunk(
+                    id=f"doc{i}",
+                    path=Path(f"/docs/doc{i}.md"),
+                    title=f"Document {i}",
+                    content="other word",
+                    chunk_index=0,
+                    language="en",
+                    created_at=now,
+                    modified_at=now,
+                    metadata={},
+                )
+            )
+
         bm25_indexer.index_chunks(chunks)
 
         # Calculate scores for documents containing each term
@@ -405,7 +410,7 @@ class TestBM25Indexer:
             "doc1": ["term"] * 5,
             "doc2": ["term"] * 1,
         }
-        
+
         now = datetime.now()
         chunks = [
             Chunk(
@@ -431,14 +436,14 @@ class TestBM25Indexer:
                 metadata={},
             ),
         ]
-        
+
         for indexer in [indexer_high_k1, indexer_low_k1, indexer_no_length_norm]:
             indexer.index_chunks(chunks)
 
         # Test k1 parameter effect (term frequency saturation)
         score_high_k1 = indexer_high_k1.compute_bm25_score(["term"], "doc1", {"term": 5})
         score_low_k1 = indexer_low_k1.compute_bm25_score(["term"], "doc1", {"term": 5})
-        
+
         # Lower k1 should saturate term frequency faster
         ratio_high_k1 = score_high_k1 / indexer_high_k1.compute_bm25_score(["term"], "doc2", {"term": 1})
         ratio_low_k1 = score_low_k1 / indexer_low_k1.compute_bm25_score(["term"], "doc2", {"term": 1})
@@ -448,14 +453,14 @@ class TestBM25Indexer:
         # When b=0, document length should not affect score
         score_no_norm_1 = indexer_no_length_norm.compute_bm25_score(["term"], "doc1", {"term": 5})
         score_no_norm_2 = indexer_no_length_norm.compute_bm25_score(["term"], "doc2", {"term": 1})
-        
+
         # With b=0, the ratio should be closer to the term frequency ratio than with b=0.75
         score_with_norm_1 = indexer_high_k1.compute_bm25_score(["term"], "doc1", {"term": 5})
         score_with_norm_2 = indexer_high_k1.compute_bm25_score(["term"], "doc2", {"term": 1})
-        
+
         ratio_no_norm = score_no_norm_1 / score_no_norm_2
         ratio_with_norm = score_with_norm_1 / score_with_norm_2
-        
+
         # The ratio without normalization should be closer to 5 (the term frequency ratio)
         # than the ratio with normalization
         assert abs(ratio_no_norm - 5.0) < abs(ratio_with_norm - 5.0)

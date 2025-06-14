@@ -4,24 +4,23 @@ This module tests the FileChangeDetector class and its various
 change detection strategies.
 """
 
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
+
+import pytest
 
 from oboyu.indexer.storage.change_detector import ChangeResult, FileChangeDetector
 
 
 class TestChangeResult:
     """Test ChangeResult data class."""
-    
+
     def test_change_result_properties(self):
         """Test ChangeResult properties and methods."""
         result = ChangeResult(
-            new_files=[Path("file1.txt"), Path("file2.txt")],
-            modified_files=[Path("file3.txt")],
-            deleted_files=[Path("file4.txt"), Path("file5.txt")]
+            new_files=[Path("file1.txt"), Path("file2.txt")], modified_files=[Path("file3.txt")], deleted_files=[Path("file4.txt"), Path("file5.txt")]
         )
-        
+
         assert result.total_changes == 5
         assert result.has_changes() is True
         assert len(result.new_files) == 2
@@ -31,7 +30,7 @@ class TestChangeResult:
     def test_empty_change_result(self):
         """Test empty ChangeResult."""
         result = ChangeResult(new_files=[], modified_files=[], deleted_files=[])
-        
+
         assert result.total_changes == 0
         assert result.has_changes() is False
 
@@ -56,7 +55,7 @@ class TestFileChangeDetector:
     def test_detector_initialization(self, mock_database):
         """Test FileChangeDetector initialization."""
         detector = FileChangeDetector(database=mock_database, batch_size=500)
-        
+
         assert detector.db == mock_database
         assert detector.batch_size == 500
 
@@ -67,13 +66,13 @@ class TestFileChangeDetector:
             Path("/test/file2.txt"),
             Path("/test/file3.txt"),
         ]
-        
+
         # Mock empty database (no existing files)
         mock_conn = mock_database._ensure_connection.return_value
         mock_conn.execute.return_value.fetchall.return_value = []
-        
+
         result = detector.detect_changes(file_paths)
-        
+
         # All files should be considered new when database is empty
         assert len(result.new_files) == 3
         assert len(result.modified_files) == 0
@@ -83,7 +82,7 @@ class TestFileChangeDetector:
     def test_detect_changes_empty_file_list(self, detector):
         """Test detecting changes with empty file list."""
         result = detector.detect_changes([])
-        
+
         assert len(result.new_files) == 0
         assert len(result.modified_files) == 0
         assert len(result.deleted_files) == 0

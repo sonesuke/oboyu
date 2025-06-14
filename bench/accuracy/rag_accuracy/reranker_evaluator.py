@@ -101,9 +101,7 @@ class RerankerEvaluator:
         self.logger = logger or BenchmarkLogger()
         self.metrics_calculator = MetricsCalculator()
 
-    def evaluate_reranking(
-        self, query_results: List[Any], top_k_values: List[int] = [5, 10, 20]
-    ) -> Dict[str, Any]:
+    def evaluate_reranking(self, query_results: List[Any], top_k_values: List[int] = [5, 10, 20]) -> Dict[str, Any]:
         """Evaluate reranking effectiveness on query results.
 
         Args:
@@ -277,9 +275,9 @@ class RerankerEvaluator:
             # Timing
             report.append("\nTiming Statistics:")
             timing = k_results["timing_stats"]
-            report.append(f"  Average reranking time: {timing['avg_reranking_time']*1000:.2f}ms")
-            report.append(f"  Min reranking time: {timing['min_reranking_time']*1000:.2f}ms")
-            report.append(f"  Max reranking time: {timing['max_reranking_time']*1000:.2f}ms")
+            report.append(f"  Average reranking time: {timing['avg_reranking_time'] * 1000:.2f}ms")
+            report.append(f"  Min reranking time: {timing['min_reranking_time'] * 1000:.2f}ms")
+            report.append(f"  Max reranking time: {timing['max_reranking_time'] * 1000:.2f}ms")
 
         # Aggregate metrics
         if evaluation_results["aggregate_metrics"]:
@@ -292,4 +290,3 @@ class RerankerEvaluator:
         report.append("\n" + "=" * 60)
 
         return "\n".join(report)
-

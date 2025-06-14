@@ -29,18 +29,18 @@ class TestIndexerConfig:
             embedding_model="custom-model",
             use_onnx=False,
         )
-        
+
         processing_config = ProcessingConfig(
             db_path=Path("custom.db"),
             chunk_size=512,
             chunk_overlap=128,
         )
-        
+
         search_config = SearchConfig(
             use_reranker=True,
             top_k_multiplier=3,
         )
-        
+
         config = IndexerConfig(
             model=model_config,
             processing=processing_config,
@@ -62,7 +62,7 @@ class TestIndexerConfig:
 
         # Test db_path property
         assert config.db_path == Path("test.db")
-        
+
         # Test db_path setter
         config.db_path = "new_path.db"
         assert config.db_path == Path("new_path.db")
@@ -71,12 +71,12 @@ class TestIndexerConfig:
         """Test that post_init creates default sub-configs if not provided."""
         # Create config without any sub-configs
         config = IndexerConfig(model=None, processing=None, search=None)
-        
+
         # Verify defaults were created
         assert config.model is not None
         assert config.processing is not None
         assert config.search is not None
-        
+
         # Verify they have default values
         assert isinstance(config.model, ModelConfig)
         assert isinstance(config.processing, ProcessingConfig)
@@ -86,7 +86,7 @@ class TestIndexerConfig:
         """Test reranker_model property."""
         model_config = ModelConfig(reranker_model="custom-reranker")
         config = IndexerConfig(model=model_config)
-        
+
         assert config.reranker_model == "custom-reranker"
 
     def test_use_reranker_combines_configs(self) -> None:
@@ -96,13 +96,13 @@ class TestIndexerConfig:
         model_config = ModelConfig(use_reranker=False)
         config = IndexerConfig(model=model_config, search=search_config)
         assert config.use_reranker is True
-        
+
         # Test with model config enabled
         search_config = SearchConfig(use_reranker=False)
         model_config = ModelConfig(use_reranker=True)
         config = IndexerConfig(model=model_config, search=search_config)
         assert config.use_reranker is True
-        
+
         # Test with both disabled
         search_config = SearchConfig(use_reranker=False)
         model_config = ModelConfig(use_reranker=False)

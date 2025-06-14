@@ -1,6 +1,5 @@
 """Tests for the Oboyu CLI configuration."""
 
-import os
 import tempfile
 from pathlib import Path
 
@@ -8,7 +7,6 @@ import pytest
 import yaml
 
 from oboyu.cli.config import create_default_config, load_config
-from oboyu.common.paths import DEFAULT_DB_PATH
 
 
 def test_load_config_nonexistent() -> None:
@@ -81,5 +79,5 @@ def test_create_default_config() -> None:
         assert "*.txt" in loaded_config["crawler"]["include_patterns"]
         assert loaded_config["indexer"]["chunk_size"] == 1000
         assert loaded_config["query"]["top_k"] == 10
-        
+
         # Note: db_path is not in the indexer defaults - it must be explicitly provided

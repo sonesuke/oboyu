@@ -298,6 +298,9 @@ monitor_pr() {
                     log "${YELLOW}🔧 Auto-fix applied. Continuing monitoring...${NC}"
                 else
                     log "${YELLOW}⚠️  Issues require manual intervention.${NC}"
+                    log "${YELLOW}📋 Displaying failed checks for review:${NC}"
+                    get_check_details | jq -r '.[] | select(.state == "FAILURE") | "  ❌ " + .name'
+                    log "${BLUE}⏸️  Monitoring will continue but manual fixes may be needed${NC}"
                 fi
                 ;;
             "PENDING"|"NO_CHECKS")

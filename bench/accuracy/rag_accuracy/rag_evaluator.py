@@ -79,7 +79,7 @@ class RAGEvaluator:
         # Ensure the directory exists
         db_path = Path(self.config.db_path)
         db_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Create database
         self.db = Database(db_path=self.config.db_path)
         self.db.setup()
@@ -141,8 +141,9 @@ class RAGEvaluator:
 
         # Create temporary files and index them
         import tempfile
+
         temp_dir = Path(tempfile.mkdtemp(prefix="oboyu_rag_eval_"))
-        
+
         # Add timeout check
         max_index_time = 300  # 5 minutes timeout (increased from 60s)
 
@@ -156,10 +157,10 @@ class RAGEvaluator:
                 total_chars += len(content)
                 doc_path.write_text(content, encoding="utf-8")
                 file_paths.append(str(doc_path))
-                
+
                 if i % 10 == 0:
-                    self.logger.debug(f"Writing documents: {i+1}/{len(documents)}")
-            
+                    self.logger.debug(f"Writing documents: {i + 1}/{len(documents)}")
+
             self.logger.info(f"Total characters to index: {total_chars:,}")
             avg_chars = total_chars / len(documents) if documents else 0
             self.logger.info(f"Average document size: {avg_chars:.0f} characters")
@@ -173,33 +174,34 @@ class RAGEvaluator:
                 chunk_overlap=self.config.indexer_config.chunk_overlap,
             )
             search_config = SearchConfig()
-            
+
             indexer_config = IndexerConfig(
                 model=model_config,
                 processing=processing_config,
                 search=search_config,
             )
-            
+
             # Create indexer and index files
             indexer = Indexer(config=indexer_config)
-            
+
             # Index with progress callback
             last_progress_time = time.time()
+
             def progress_callback(stage: str, current: int, total: int) -> None:
                 nonlocal last_progress_time
                 current_time = time.time()
-                
+
                 # Log progress every 5 seconds or every 10% completion
                 if current_time - last_progress_time > 5 or (current % max(1, total // 10) == 0):
                     progress_pct = (current / total * 100) if total > 0 else 0
                     elapsed = current_time - start_time
                     self.logger.info(f"{stage} progress: {current}/{total} ({progress_pct:.1f}%) - Elapsed: {elapsed:.1f}s")
                     last_progress_time = current_time
-                
+
                 # Check timeout
                 if current_time - start_time > max_index_time:
                     raise TimeoutError(f"Indexing exceeded {max_index_time}s timeout")
-            
+
             try:
                 indexer.index_directory(str(temp_dir), incremental=False, progress_callback=progress_callback)
             except Exception as e:
@@ -218,15 +220,14 @@ class RAGEvaluator:
         finally:
             # Clean up temporary files
             import shutil
+
             shutil.rmtree(temp_dir, ignore_errors=True)
-            
+
             # Close the indexer to release resources
-            if 'indexer' in locals():
+            if "indexer" in locals():
                 indexer.close()
 
-    def _evaluate_configuration(
-        self, dataset_name: str, queries: List[Dict[str, Any]], search_mode: str, top_k: int
-    ) -> EvaluationResult:
+    def _evaluate_configuration(self, dataset_name: str, queries: List[Dict[str, Any]], search_mode: str, top_k: int) -> EvaluationResult:
         """Evaluate a specific configuration.
 
         Args:
@@ -290,15 +291,15 @@ class RAGEvaluator:
             chunk_overlap=self.config.indexer_config.chunk_overlap,
         )
         search_config = SearchConfig()
-        
+
         indexer_config = IndexerConfig(
             model=model_config,
             processing=processing_config,
             search=search_config,
         )
-        
+
         indexer = Indexer(config=indexer_config)
-        
+
         # Perform search (currently only vector search is supported in indexer)
         # TODO: Add BM25 and hybrid search when available
         try:
@@ -382,4 +383,3 @@ class RAGEvaluator:
 
         Path(output_path).write_text(json.dumps(output_data, indent=2, ensure_ascii=False))
         self.logger.success(f"Results saved to {output_path}")
-

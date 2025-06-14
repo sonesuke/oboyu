@@ -69,9 +69,7 @@ class MetricsCalculator:
 
         return metrics
 
-    def calculate_reranking_metrics(
-        self, original_results: List[Any], reranked_results: List[Any], k: int
-    ) -> Dict[str, float]:
+    def calculate_reranking_metrics(self, original_results: List[Any], reranked_results: List[Any], k: int) -> Dict[str, float]:
         """Calculate metrics for reranking effectiveness.
 
         Args:
@@ -93,9 +91,7 @@ class MetricsCalculator:
         for metric_name in original_metrics:
             improvement_key = f"{metric_name}_improvement"
             if original_metrics[metric_name] > 0:
-                improvement = (
-                    (reranked_metrics[metric_name] - original_metrics[metric_name]) / original_metrics[metric_name]
-                ) * 100
+                improvement = ((reranked_metrics[metric_name] - original_metrics[metric_name]) / original_metrics[metric_name]) * 100
             else:
                 improvement = 0.0 if reranked_metrics[metric_name] == 0 else float("inf")
             metrics[improvement_key] = improvement
@@ -291,4 +287,3 @@ class MetricsCalculator:
                 aggregate[f"{metric}_max"] = np.max(values)
 
         return aggregate
-

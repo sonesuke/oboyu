@@ -38,7 +38,7 @@ def sample_chunk():
         modified_at=now,
         metadata={"test": True},
         start_char=0,
-        end_char=45
+        end_char=45,
     )
 
 
@@ -46,10 +46,10 @@ async def test_basic_chunk_storage_and_retrieval(repository, sample_chunk):
     """Test basic chunk storage and retrieval."""
     # Store chunk
     await repository.store_chunk(sample_chunk)
-    
+
     # Check it exists
     assert await repository.chunk_exists(sample_chunk.id)
-    
+
     # Retrieve it
     retrieved = await repository.find_by_chunk_id(sample_chunk.id)
     assert retrieved is not None
@@ -61,18 +61,14 @@ async def test_basic_embedding_storage_and_search(repository, sample_chunk):
     """Test basic embedding storage and vector search."""
     # Store chunk
     await repository.store_chunk(sample_chunk)
-    
+
     # Store embedding
     embedding = EmbeddingVector.create([0.1, 0.2, 0.3, 0.4, 0.5])
     await repository.store_embedding(sample_chunk.id, embedding)
-    
+
     # Search by vector similarity
-    results = await repository.find_by_vector_similarity(
-        query_vector=embedding,
-        top_k=5,
-        threshold=0.0
-    )
-    
+    results = await repository.find_by_vector_similarity(query_vector=embedding, top_k=5, threshold=0.0)
+
     # Should find our chunk
     assert len(results) > 0
     assert results[0].chunk_id == sample_chunk.id
@@ -82,17 +78,13 @@ async def test_basic_bm25_search(repository, sample_chunk):
     """Test basic BM25 search."""
     # Store chunk
     await repository.store_chunk(sample_chunk)
-    
+
     # Create query
-    query = Query(
-        text="test content",
-        mode=SearchMode.BM25,
-        top_k=10
-    )
-    
+    query = Query(text="test content", mode=SearchMode.BM25, top_k=10)
+
     # Search
     results = await repository.find_by_bm25(query)
-    
+
     # Should find our chunk
     assert len(results) > 0
     assert results[0].chunk_id == sample_chunk.id
@@ -103,11 +95,11 @@ async def test_chunk_deletion(repository, sample_chunk):
     # Store chunk
     await repository.store_chunk(sample_chunk)
     assert await repository.chunk_exists(sample_chunk.id)
-    
+
     # Delete chunk
     await repository.delete_chunk(sample_chunk.id)
     assert not await repository.chunk_exists(sample_chunk.id)
-    
+
     # Should not be retrievable
     retrieved = await repository.find_by_chunk_id(sample_chunk.id)
     assert retrieved is None
@@ -118,12 +110,12 @@ async def test_count_operations(repository, sample_chunk):
     # Initially empty
     assert await repository.get_chunk_count() == 0
     assert await repository.get_embedding_count() == 0
-    
+
     # Store chunk
     await repository.store_chunk(sample_chunk)
     assert await repository.get_chunk_count() == 1
     assert await repository.get_embedding_count() == 0
-    
+
     # Store embedding
     embedding = EmbeddingVector.create([0.1, 0.2, 0.3])
     await repository.store_embedding(sample_chunk.id, embedding)
@@ -135,7 +127,7 @@ def test_repository_instantiation():
     """Test that we can create repository instances."""
     repo = InMemorySearchRepository()
     assert repo is not None
-    
+
     # Test utility methods
     assert len(repo.get_indexed_terms()) == 0
     repo.clear()  # Should not raise

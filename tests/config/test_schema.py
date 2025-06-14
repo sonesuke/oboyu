@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from oboyu.common.config_schema import (
     ConfigSchema,
     CrawlerConfigSchema,
@@ -18,7 +16,7 @@ class TestCrawlerConfigSchema:
     def test_default_values(self):
         """Test default values for crawler config."""
         config = CrawlerConfigSchema()
-        
+
         assert config.max_workers == 4
         assert config.timeout == 30
         assert config.max_depth == 3
@@ -38,9 +36,9 @@ class TestCrawlerConfigSchema:
             "chunk_size": 2000,
             "extra_field": "ignored",
         }
-        
+
         config = CrawlerConfigSchema.from_dict(data)
-        
+
         assert config.max_workers == 10
         assert config.timeout == 60
         assert config.chunk_size == 2000
@@ -51,7 +49,7 @@ class TestCrawlerConfigSchema:
         """Test converting to dictionary."""
         config = CrawlerConfigSchema(max_workers=8, chunk_size=1500)
         data = config.to_dict()
-        
+
         assert data["max_workers"] == 8
         assert data["chunk_size"] == 1500
         assert data["timeout"] == 30  # Default value
@@ -65,7 +63,7 @@ class TestIndexerConfigSchema:
     def test_default_values(self):
         """Test default values for indexer config."""
         config = IndexerConfigSchema()
-        
+
         assert config.embedding_model == "cl-nagoya/ruri-v3-30m"
         assert config.batch_size == 128
         assert config.max_length == 8192
@@ -84,9 +82,9 @@ class TestIndexerConfigSchema:
             "batch_size": 64,
             "db_path": "/path/to/db",
         }
-        
+
         config = IndexerConfigSchema.from_dict(data)
-        
+
         assert config.embedding_model == "custom-model"
         assert config.batch_size == 64
         assert config.db_path == Path("/path/to/db")
@@ -97,21 +95,18 @@ class TestIndexerConfigSchema:
             "embedding_model": "custom-model",
             "batch_size": 64,
         }
-        
+
         config = IndexerConfigSchema.from_dict(data)
-        
+
         assert config.embedding_model == "custom-model"
         assert config.batch_size == 64
         assert config.db_path is None
 
     def test_to_dict_with_path(self):
         """Test converting to dictionary with path."""
-        config = IndexerConfigSchema(
-            embedding_model="test-model",
-            db_path=Path("/test/path")
-        )
+        config = IndexerConfigSchema(embedding_model="test-model", db_path=Path("/test/path"))
         data = config.to_dict()
-        
+
         assert data["embedding_model"] == "test-model"
         assert data["db_path"] == "/test/path"  # Converted to string
 
@@ -119,7 +114,7 @@ class TestIndexerConfigSchema:
         """Test converting to dictionary without path."""
         config = IndexerConfigSchema(embedding_model="test-model")
         data = config.to_dict()
-        
+
         assert data["embedding_model"] == "test-model"
         assert "db_path" not in data
 
@@ -130,7 +125,7 @@ class TestQueryConfigSchema:
     def test_default_values(self):
         """Test default values for query config."""
         config = QueryConfigSchema()
-        
+
         assert config.top_k == 10
         assert config.rerank is True
         assert config.rerank_model == "cl-nagoya/ruri-reranker-small"
@@ -144,9 +139,9 @@ class TestQueryConfigSchema:
             "rerank": False,
             "show_scores": True,
         }
-        
+
         config = QueryConfigSchema.from_dict(data)
-        
+
         assert config.top_k == 20
         assert config.rerank is False
         assert config.show_scores is True
@@ -157,7 +152,7 @@ class TestQueryConfigSchema:
         """Test converting to dictionary."""
         config = QueryConfigSchema(top_k=15, interactive=True)
         data = config.to_dict()
-        
+
         assert data["top_k"] == 15
         assert data["interactive"] is True
         assert data["rerank"] is True  # Default value
@@ -169,11 +164,11 @@ class TestConfigSchema:
     def test_default_values(self):
         """Test default values for complete config."""
         config = ConfigSchema()
-        
+
         assert isinstance(config.crawler, CrawlerConfigSchema)
         assert isinstance(config.indexer, IndexerConfigSchema)
         assert isinstance(config.query, QueryConfigSchema)
-        
+
         # Check some nested values
         assert config.crawler.max_workers == 4
         assert config.indexer.embedding_model == "cl-nagoya/ruri-v3-30m"
@@ -195,9 +190,9 @@ class TestConfigSchema:
                 "rerank": False,
             },
         }
-        
+
         config = ConfigSchema.from_dict(data)
-        
+
         assert config.crawler.max_workers == 8
         assert config.crawler.chunk_size == 1500
         assert config.indexer.batch_size == 48
@@ -212,12 +207,12 @@ class TestConfigSchema:
                 "top_k": 30,
             }
         }
-        
+
         config = ConfigSchema.from_dict(data)
-        
+
         # Query section is updated
         assert config.query.top_k == 30
-        
+
         # Other sections use defaults
         assert config.crawler.max_workers == 4
         assert config.indexer.embedding_model == "cl-nagoya/ruri-v3-30m"
@@ -228,13 +223,13 @@ class TestConfigSchema:
         config.crawler.max_workers = 12
         config.indexer.batch_size = 64
         config.query.top_k = 20
-        
+
         data = config.to_dict()
-        
+
         assert data["crawler"]["max_workers"] == 12
         assert data["indexer"]["batch_size"] == 64
         assert data["query"]["top_k"] == 20
-        
+
         # Check structure
         assert isinstance(data["crawler"], dict)
         assert isinstance(data["indexer"], dict)
