@@ -124,18 +124,20 @@ get_checks_status() {
     local pending_count
     local success_count
     local failure_count
+    local skipped_count
     local total_count
     
     pending_count=$(echo "$check_details" | jq '[.[] | select(.state == "PENDING" or .state == "IN_PROGRESS")] | length')
     success_count=$(echo "$check_details" | jq '[.[] | select(.state == "SUCCESS")] | length')
     failure_count=$(echo "$check_details" | jq '[.[] | select(.state == "FAILURE")] | length')
+    skipped_count=$(echo "$check_details" | jq '[.[] | select(.state == "SKIPPED")] | length')
     total_count=$(echo "$check_details" | jq 'length')
     
     if [ "$failure_count" -gt 0 ]; then
         echo "FAILURE"
     elif [ "$pending_count" -gt 0 ]; then
         echo "PENDING"
-    elif [ "$success_count" -eq "$total_count" ] && [ "$total_count" -gt 0 ]; then
+    elif [ "$((success_count + skipped_count))" -eq "$total_count" ] && [ "$total_count" -gt 0 ]; then
         echo "SUCCESS"
     else
         echo "UNKNOWN"
