@@ -3,8 +3,9 @@
 import tempfile
 from pathlib import Path
 from typing import Generator
+
 import pytest
-import os
+
 
 @pytest.fixture(scope="function")
 def temp_db_path() -> Generator[Path, None, None]:
@@ -26,15 +27,11 @@ def clean_project_root():
     """Automatically clean up database files from project root after each test."""
     # This fixture runs automatically for every test
     yield
-    
+
     # Cleanup after test
     project_root = Path(__file__).parent.parent
-    db_files = [
-        "test.db", "test.db.wal",
-        "index.db", "index.db.wal", 
-        "oboyu.db", "oboyu.db.wal"
-    ]
-    
+    db_files = ["test.db", "test.db.wal", "index.db", "index.db.wal", "oboyu.db", "oboyu.db.wal"]
+
     for db_file in db_files:
         db_path = project_root / db_file
         if db_path.exists():
@@ -56,10 +53,12 @@ def isolate_config_for_tests(monkeypatch):
 @pytest.fixture(autouse=True)
 def reset_circuit_breakers():
     """Reset all circuit breakers between tests to prevent state interference."""
+
     def _reset_circuit_breakers():
         """Helper function to reset circuit breakers."""
         try:
             from oboyu.common.circuit_breaker import get_circuit_breaker_registry
+
             registry = get_circuit_breaker_registry()
             # Reset all circuit breaker states first
             registry.reset_all()
@@ -69,12 +68,12 @@ def reset_circuit_breakers():
         except ImportError:
             # Circuit breaker module not available in this test context
             pass
-    
+
     # Reset before test to ensure clean state
     _reset_circuit_breakers()
-    
+
     # This fixture runs automatically for every test
     yield
-    
+
     # Reset after test to ensure clean state for next test
     _reset_circuit_breakers()

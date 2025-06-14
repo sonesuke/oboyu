@@ -19,19 +19,19 @@ console = Console()
 
 class Timer:
     """Simple timer context manager for measuring execution time."""
-    
+
     def __init__(self, name: str = "Operation") -> None:
         """Initialize timer with a name."""
         self.name = name
         self.start_time: float = 0
         self.end_time: float = 0
         self.elapsed: float = 0
-    
+
     def __enter__(self) -> "Timer":
         """Start the timer."""
         self.start_time = time.perf_counter()
         return self
-    
+
     def __exit__(self, *args: Any) -> None:
         """Stop the timer and calculate elapsed time."""
         self.end_time = time.perf_counter()
@@ -40,7 +40,7 @@ class Timer:
 
 class SystemMonitor:
     """Monitor system resources during benchmark execution."""
-    
+
     def __init__(self, sample_interval: float = 0.1) -> None:
         """Initialize system monitor."""
         self.sample_interval = sample_interval
@@ -48,29 +48,29 @@ class SystemMonitor:
         self.samples: List[Dict[str, float]] = []
         self._monitoring = False
         self._start_time = 0
-    
+
     def start(self) -> None:
         """Start monitoring system resources."""
         self._monitoring = True
         self._start_time = time.time()
         self.samples = []
-    
+
     def stop(self) -> None:
         """Stop monitoring system resources."""
         self._monitoring = False
-    
+
     def sample(self) -> Dict[str, float]:
         """Take a single sample of system resources."""
         try:
             cpu_percent = self.process.cpu_percent(interval=None)
             memory_info = self.process.memory_info()
-            
+
             result = {
                 "timestamp": time.time() - self._start_time,
                 "cpu_percent": cpu_percent,
                 "memory_usage_mb": memory_info.rss / 1024 / 1024,
             }
-            
+
             # io_counters is not available on all platforms (e.g., macOS)
             try:
                 io_counters = self.process.io_counters()
@@ -78,28 +78,28 @@ class SystemMonitor:
                 result["disk_io_write_mb"] = io_counters.write_bytes / 1024 / 1024
             except AttributeError:
                 pass
-            
+
             return result
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             return {}
-    
+
     def get_summary(self) -> Dict[str, float]:
         """Get summary statistics from collected samples."""
         if not self.samples:
             return {}
-        
+
         cpu_values = [s["cpu_percent"] for s in self.samples if "cpu_percent" in s]
         memory_values = [s["memory_usage_mb"] for s in self.samples if "memory_usage_mb" in s]
-        
+
         summary = {}
         if cpu_values:
             summary["cpu_percent_avg"] = sum(cpu_values) / len(cpu_values)
             summary["cpu_percent_max"] = max(cpu_values)
-        
+
         if memory_values:
             summary["memory_usage_mb_avg"] = sum(memory_values) / len(memory_values)
             summary["memory_usage_mb_max"] = max(memory_values)
-        
+
         return summary
 
 
@@ -141,10 +141,10 @@ def calculate_statistics(values: List[float]) -> Dict[str, float]:
     """Calculate basic statistics for a list of values."""
     if not values:
         return {}
-    
+
     sorted_values = sorted(values)
     n = len(values)
-    
+
     return {
         "min": min(values),
         "max": max(values),
@@ -152,7 +152,7 @@ def calculate_statistics(values: List[float]) -> Dict[str, float]:
         "median": sorted_values[n // 2] if n % 2 else (sorted_values[n // 2 - 1] + sorted_values[n // 2]) / 2,
         "p95": sorted_values[int(n * 0.95)] if n > 1 else sorted_values[0],
         "p99": sorted_values[int(n * 0.99)] if n > 1 else sorted_values[0],
-        "std": (sum((x - sum(values) / n) ** 2 for x in values) / n) ** 0.5 if n > 1 else 0
+        "std": (sum((x - sum(values) / n) ** 2 for x in values) / n) ** 0.5 if n > 1 else 0,
     }
 
 
@@ -180,18 +180,13 @@ def load_json(filepath: Path) -> Any:
 def get_timestamp() -> str:
     """Get current timestamp in configured format."""
     from bench.config import OUTPUT_CONFIG
+
     return datetime.now().strftime(OUTPUT_CONFIG["timestamp_format"])
 
 
 def create_progress_bar(description: str) -> Progress:
     """Create a Rich progress bar for long-running operations."""
-    return Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        TimeElapsedColumn(),
-        console=console,
-        transient=True
-    )
+    return Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), TimeElapsedColumn(), console=console, transient=True)
 
 
 def print_header(title: str) -> None:
@@ -218,7 +213,7 @@ def print_metric(name: str, value: Any, unit: str = "") -> None:
             value_str = f"{value:.2f}{' ' + unit if unit else ''}"
     else:
         value_str = f"{value}{' ' + unit if unit else ''}"
-    
+
     console.print(f"  {name:<30} [cyan]{value_str}[/cyan]")
 
 
@@ -226,6 +221,7 @@ def check_oboyu_installation() -> bool:
     """Check if Oboyu is properly installed."""
     try:
         import oboyu  # noqa: F401
+
         return True
     except ImportError:
         console.print("[red]Error: Oboyu is not installed or not in PYTHONPATH[/red]")
@@ -235,11 +231,7 @@ def check_oboyu_installation() -> bool:
 
 def get_python_info() -> Dict[str, str]:
     """Get Python environment information."""
-    return {
-        "version": sys.version,
-        "executable": sys.executable,
-        "platform": sys.platform
-    }
+    return {"version": sys.version, "executable": sys.executable, "platform": sys.platform}
 
 
 def run_warmup(func: Any, warmup_runs: int = 1) -> None:

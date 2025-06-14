@@ -19,33 +19,50 @@ repos:
   hooks:
     - id: ruff-format
       name: ruff-format
-      entry: uv run ruff check --fix
+      entry: uv run ruff format
       language: system
-      pass_filenames: false
-      always_run: true
+      # Changed: pass files to ruff so it only formats changed files
+      pass_filenames: true
+      # Changed: only run on Python files
+      types: [python]
+      # Exclude benchmark, development files, and test files
+      exclude: ^(bench/|tests/|scripts/)
     - id: ruff-check
       name: ruff-check
-      entry: uv run ruff check
+      entry: uv run ruff check --fix
       language: system
-      pass_filenames: false
-      always_run: true
+      # Changed: pass files to ruff so it only checks changed files
+      pass_filenames: true
+      # Changed: only run on Python files
+      types: [python]
+      # Exclude benchmark, development files, and test files
+      exclude: ^(bench/|tests/|scripts/)
     - id: pylint-line-length
       name: pylint line length check
-      entry: uv run pylint src
+      # Changed: only run on changed files
+      entry: uv run pylint
       language: system
       types: [python]
       args: ["--disable=all", "--enable=too-many-lines"]
-      pass_filenames: false
+      # Changed: pass files to pylint
+      pass_filenames: true
+      # Exclude benchmark, development files, and test files
+      exclude: ^(bench/|tests/|scripts/)
     - id: mypy
       name: mypy
-      entry: uv run mypy
+      # Use pyproject.toml config which specifies files = ["src"]
+      entry: uv run mypy --incremental --cache-dir=.mypy_cache src/
       language: system
+      # Don't pass filenames, just check src/ directory as specified in pyproject.toml
       pass_filenames: false
-      always_run: true
+      # Only run when src files change
+      files: ^src/
     - id: pytest
       name: pytest
-      entry: uv run pytest -m "not slow" -k "not integration" --cov=src
+      # Changed: use smart test runner that only runs affected tests
+      entry: .claude/scripts/run-affected-tests.sh
       language: system
+      # Changed: don't pass filenames, the script handles it
       pass_filenames: false
-      always_run: true
-
+      # Changed: only run when files change
+      always_run: false

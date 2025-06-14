@@ -201,7 +201,7 @@ class TestFileDiscoveryService:
     def test_discover_files_invalid_directory(self) -> None:
         """Test discovery with invalid directory."""
         service = FileDiscoveryService()
-        
+
         with pytest.raises(ValueError, match="Directory does not exist"):
             service.discover_files(
                 root_paths=[Path("/nonexistent/path")],
@@ -222,7 +222,7 @@ class TestFileDiscoveryService:
         # Test exclude patterns - note that Path.match() uses different semantics
         assert service._should_exclude(Path("test/node_modules/file.js"), ["*/node_modules/*"])
         assert not service._should_exclude(Path("src/test.txt"), ["*/node_modules/*"])
-        
+
         # Additional pattern tests
         assert service._should_exclude(Path("some/path/node_modules/file.txt"), ["*/node_modules/*"])
         assert not service._should_exclude(Path("node_modules_backup/file.txt"), ["*/node_modules/*"])

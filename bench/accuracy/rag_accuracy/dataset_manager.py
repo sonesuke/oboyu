@@ -16,6 +16,7 @@ try:
 except ImportError:
     import sys
     from pathlib import Path
+
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
     from bench.logger import BenchmarkLogger
 
@@ -122,9 +123,9 @@ class SyntheticJapaneseDatasetLoader(DatasetLoader):
 
             # Add variation to content
             variations = [
-                f"これは{title}に関する文書{i+1}です。",
+                f"これは{title}に関する文書{i + 1}です。",
                 f"{base_content}",
-                f"文書ID: doc_{i+1:04d}",
+                f"文書ID: doc_{i + 1:04d}",
                 f"詳細な説明: {title}の応用例や実装方法について説明します。",
             ]
 
@@ -132,8 +133,8 @@ class SyntheticJapaneseDatasetLoader(DatasetLoader):
 
             documents.append(
                 Document(
-                    doc_id=f"doc_{i+1:04d}",
-                    title=f"{title} - 文書{i+1}",
+                    doc_id=f"doc_{i + 1:04d}",
+                    title=f"{title} - 文書{i + 1}",
                     content=content,
                     metadata={"topic": title, "index": i},
                 )
@@ -162,11 +163,7 @@ class SyntheticJapaneseDatasetLoader(DatasetLoader):
                 other_topic = random.choice([t for t in topics if t != topic])  # noqa: S311
                 query_text = template.format(topic=topic, other_topic=other_topic)
                 # Find relevant docs for both topics
-                relevant_docs = [
-                    doc.doc_id
-                    for doc in documents
-                    if doc.metadata and doc.metadata["topic"] in [topic, other_topic]
-                ]
+                relevant_docs = [doc.doc_id for doc in documents if doc.metadata and doc.metadata["topic"] in [topic, other_topic]]
             else:
                 query_text = template.format(topic=topic)
                 # Find relevant docs for the topic
@@ -177,7 +174,7 @@ class SyntheticJapaneseDatasetLoader(DatasetLoader):
 
             queries.append(
                 Query(
-                    query_id=f"query_{i+1:03d}",
+                    query_id=f"query_{i + 1:03d}",
                     text=query_text,
                     relevant_docs=relevant_docs,
                     metadata={"topic": topic},
@@ -229,14 +226,14 @@ class JMTEBDatasetLoader(DatasetLoader):
             import datasets
         except ImportError:
             raise ImportError("Please install datasets library: pip install datasets")
-        
+
         # Create synthetic data for now (until actual datasets are available)
         # In production, this would load actual JMTEB datasets
         return self._create_jmteb_like_dataset()
-    
+
     def _create_jmteb_like_dataset(self) -> Dataset:
         """Create a JMTEB-like dataset with Japanese content.
-        
+
         Returns:
             Dataset mimicking the structure of JMTEB datasets
 
@@ -251,20 +248,28 @@ class JMTEBDatasetLoader(DatasetLoader):
             return self._create_jacwir_like()
         else:
             raise ValueError(f"Unknown dataset: {self.dataset_name}")
-    
+
     def _create_miracl_ja_like(self) -> Dataset:
         """Create MIRACL-ja like dataset."""
         # Simulate multilingual IR dataset with Japanese focus
         topics = [
-            "人工知能", "機械学習", "深層学習", "自然言語処理", "コンピュータビジョン",
-            "ロボティクス", "データサイエンス", "量子コンピューティング", "ブロックチェーン", "IoT"
+            "人工知能",
+            "機械学習",
+            "深層学習",
+            "自然言語処理",
+            "コンピュータビジョン",
+            "ロボティクス",
+            "データサイエンス",
+            "量子コンピューティング",
+            "ブロックチェーン",
+            "IoT",
         ]
-        
+
         documents = []
         for i in range(100):  # Reduced from 150 to 100
             topic = topics[i % len(topics)]
-            doc_id = f"miracl_doc_{i+1:05d}"
-            title = f"{topic}に関する研究論文 {i+1}"
+            doc_id = f"miracl_doc_{i + 1:05d}"
+            title = f"{topic}に関する研究論文 {i + 1}"
             content = f"""
 {topic}は現代の技術革新において重要な役割を果たしています。
 本論文では、{topic}の最新の研究動向と応用について詳しく説明します。
@@ -278,75 +283,52 @@ class JMTEBDatasetLoader(DatasetLoader):
 
 この分野の研究は急速に進化しており、新しい発見が次々と報告されています。
 """
-            documents.append(Document(
-                doc_id=doc_id,
-                title=title,
-                content=content,
-                metadata={"topic": topic, "language": "ja", "source": "academic"}
-            ))
-        
+            documents.append(Document(doc_id=doc_id, title=title, content=content, metadata={"topic": topic, "language": "ja", "source": "academic"}))
+
         # Create queries
         queries = []
-        query_templates = [
-            "{topic}の最新研究",
-            "{topic}の日本での応用",
-            "{topic}の基本原理",
-            "{topic}と{other_topic}の関係",
-            "{topic}の将来展望"
-        ]
-        
+        query_templates = ["{topic}の最新研究", "{topic}の日本での応用", "{topic}の基本原理", "{topic}と{other_topic}の関係", "{topic}の将来展望"]
+
         for i in range(30):
             template = query_templates[i % len(query_templates)]
             topic = topics[i % len(topics)]
-            
+
             if "{other_topic}" in template:
                 other_topic = topics[(i + 1) % len(topics)]
                 query_text = template.format(topic=topic, other_topic=other_topic)
-                relevant_docs = [
-                    doc.doc_id for doc in documents
-                    if doc.metadata and (doc.metadata["topic"] == topic or doc.metadata["topic"] == other_topic)
-                ][:5]
+                relevant_docs = [doc.doc_id for doc in documents if doc.metadata and (doc.metadata["topic"] == topic or doc.metadata["topic"] == other_topic)][
+                    :5
+                ]
             else:
                 query_text = template.format(topic=topic)
-                relevant_docs = [
-                    doc.doc_id for doc in documents
-                    if doc.metadata and doc.metadata["topic"] == topic
-                ][:5]
-            
-            queries.append(Query(
-                query_id=f"miracl_q_{i+1:03d}",
-                text=query_text,
-                relevant_docs=relevant_docs,
-                metadata={"topic": topic}
-            ))
-        
+                relevant_docs = [doc.doc_id for doc in documents if doc.metadata and doc.metadata["topic"] == topic][:5]
+
+            queries.append(Query(query_id=f"miracl_q_{i + 1:03d}", text=query_text, relevant_docs=relevant_docs, metadata={"topic": topic}))
+
         return Dataset(
             name="miracl-ja",
             documents=documents,
             queries=queries,
             language="ja",
-            description=f"MIRACL Japanese - Multilingual Information Retrieval (Synthetic, {len(documents)} docs)"
+            description=f"MIRACL Japanese - Multilingual Information Retrieval (Synthetic, {len(documents)} docs)",
         )
-    
+
     def _create_mldr_ja_like(self) -> Dataset:
         """Create MLDR-ja like dataset with long documents."""
         # Simulate long document retrieval
-        topics = [
-            "日本の歴史", "経済政策", "環境問題", "教育システム", "医療技術",
-            "文化遺産", "科学技術", "国際関係", "社会保障", "エネルギー政策"
-        ]
-        
+        topics = ["日本の歴史", "経済政策", "環境問題", "教育システム", "医療技術", "文化遺産", "科学技術", "国際関係", "社会保障", "エネルギー政策"]
+
         documents = []
         for i in range(50):  # Reduced from 100 to 50 for faster processing
             topic = topics[i % len(topics)]
-            doc_id = f"mldr_doc_{i+1:05d}"
+            doc_id = f"mldr_doc_{i + 1:05d}"
             title = f"{topic}に関する詳細報告書"
-            
+
             # Create longer content (simulating long documents)
             sections = []
             for j in range(3):  # Reduced from 5 to 3 sections
                 sections.append(f"""
-第{j+1}章：{topic}の{['概要', '現状分析', '将来展望'][j]}
+第{j + 1}章：{topic}の{["概要", "現状分析", "将来展望"][j]}
 
 {topic}について、本章では詳細な分析を行います。
 日本における{topic}の重要性は年々高まっており、
@@ -357,72 +339,52 @@ class JMTEBDatasetLoader(DatasetLoader):
 - 実施されている施策
 - 今後の展望
 """)
-            
+
             content = "\n\n".join(sections)
-            
-            documents.append(Document(
-                doc_id=doc_id,
-                title=title,
-                content=content,
-                metadata={"topic": topic, "language": "ja", "doc_type": "report", "length": "long"}
-            ))
-        
+
+            documents.append(
+                Document(doc_id=doc_id, title=title, content=content, metadata={"topic": topic, "language": "ja", "doc_type": "report", "length": "long"})
+            )
+
         # Create queries for long documents
         queries = []
         for i in range(25):
             topic = topics[i % len(topics)]
-            query_types = [
-                f"{topic}の現状と課題",
-                f"{topic}に関する政策提言",
-                f"{topic}の国際比較",
-                f"{topic}の将来予測",
-                f"{topic}の経済的影響"
-            ]
-            
+            query_types = [f"{topic}の現状と課題", f"{topic}に関する政策提言", f"{topic}の国際比較", f"{topic}の将来予測", f"{topic}の経済的影響"]
+
             query_text = query_types[i % len(query_types)]
-            relevant_docs = [
-                doc.doc_id for doc in documents
-                if doc.metadata and doc.metadata["topic"] == topic
-            ][:3]  # Fewer relevant docs for long document retrieval
-            
-            queries.append(Query(
-                query_id=f"mldr_q_{i+1:03d}",
-                text=query_text,
-                relevant_docs=relevant_docs,
-                metadata={"topic": topic, "query_type": "analytical"}
-            ))
-        
+            relevant_docs = [doc.doc_id for doc in documents if doc.metadata and doc.metadata["topic"] == topic][
+                :3
+            ]  # Fewer relevant docs for long document retrieval
+
+            queries.append(
+                Query(query_id=f"mldr_q_{i + 1:03d}", text=query_text, relevant_docs=relevant_docs, metadata={"topic": topic, "query_type": "analytical"})
+            )
+
         return Dataset(
-            name="mldr-ja",
-            documents=documents,
-            queries=queries,
-            language="ja",
-            description="Multilingual Long Document Retrieval - Japanese (Synthetic)"
+            name="mldr-ja", documents=documents, queries=queries, language="ja", description="Multilingual Long Document Retrieval - Japanese (Synthetic)"
         )
-    
+
     def _create_jagovfaqs_like(self) -> Dataset:
         """Create JaGovFaqs-like dataset."""
         # Simulate government FAQ dataset
-        categories = [
-            "税金", "社会保険", "教育", "医療", "年金",
-            "住民登録", "パスポート", "運転免許", "子育て支援", "労働"
-        ]
-        
+        categories = ["税金", "社会保険", "教育", "医療", "年金", "住民登録", "パスポート", "運転免許", "子育て支援", "労働"]
+
         documents = []
         for i in range(100):  # Reduced from 200 to 100
             category = categories[i % len(categories)]
-            doc_id = f"govfaq_doc_{i+1:05d}"
-            
+            doc_id = f"govfaq_doc_{i + 1:05d}"
+
             faq_templates = [
                 (f"{category}の手続きについて", f"{category}に関する手続きは、市役所または区役所で行うことができます。必要な書類は身分証明書と申請書です。"),
                 (f"{category}の申請方法", f"{category}の申請は、オンラインまたは窓口で可能です。詳細は政府のウェブサイトをご確認ください。"),
                 (f"{category}の必要書類", f"{category}の手続きには、本人確認書類、住民票、印鑑が必要です。"),
                 (f"{category}の費用", f"{category}に関する費用は、ケースによって異なります。詳細は担当窓口にお問い合わせください。"),
-                (f"{category}の期限", f"{category}の手続きには期限があります。早めの申請をお勧めします。")
+                (f"{category}の期限", f"{category}の手続きには期限があります。早めの申請をお勧めします。"),
             ]
-            
+
             title, content = faq_templates[i % len(faq_templates)]
-            
+
             # Expand content
             content += f"""
 
@@ -444,14 +406,9 @@ A: 原則として、事由が発生してから14日以内に申請してくだ
 - 混雑時は待ち時間が長くなる場合があります
 - 詳細は各自治体のホームページをご確認ください
 """
-            
-            documents.append(Document(
-                doc_id=doc_id,
-                title=title,
-                content=content,
-                metadata={"category": category, "type": "faq", "source": "government"}
-            ))
-        
+
+            documents.append(Document(doc_id=doc_id, title=title, content=content, metadata={"category": category, "type": "faq", "source": "government"}))
+
         # Create queries
         queries = []
         for i in range(40):
@@ -461,54 +418,39 @@ A: 原則として、事由が発生してから14日以内に申請してくだ
                 f"{category}に必要な書類は何ですか",
                 f"{category}の申請期限はいつまでですか",
                 f"{category}の費用はいくらかかりますか",
-                f"{category}はオンラインで申請できますか"
+                f"{category}はオンラインで申請できますか",
             ]
-            
+
             query_text = query_templates[i % len(query_templates)]
-            relevant_docs = [
-                doc.doc_id for doc in documents
-                if doc.metadata and doc.metadata["category"] == category
-            ][:5]
-            
-            queries.append(Query(
-                query_id=f"govfaq_q_{i+1:03d}",
-                text=query_text,
-                relevant_docs=relevant_docs,
-                metadata={"category": category, "type": "faq"}
-            ))
-        
-        return Dataset(
-            name="jagovfaqs-22k",
-            documents=documents,
-            queries=queries,
-            language="ja",
-            description="Japanese Government FAQs Dataset (Synthetic)"
-        )
-    
+            relevant_docs = [doc.doc_id for doc in documents if doc.metadata and doc.metadata["category"] == category][:5]
+
+            queries.append(
+                Query(query_id=f"govfaq_q_{i + 1:03d}", text=query_text, relevant_docs=relevant_docs, metadata={"category": category, "type": "faq"})
+            )
+
+        return Dataset(name="jagovfaqs-22k", documents=documents, queries=queries, language="ja", description="Japanese Government FAQs Dataset (Synthetic)")
+
     def _create_jacwir_like(self) -> Dataset:
         """Create JaCWIR-like dataset."""
         # Simulate casual web information retrieval
-        topics = [
-            "料理レシピ", "旅行", "健康", "美容", "ファッション",
-            "スポーツ", "エンターテインメント", "テクノロジー", "ビジネス", "ライフスタイル"
-        ]
-        
+        topics = ["料理レシピ", "旅行", "健康", "美容", "ファッション", "スポーツ", "エンターテインメント", "テクノロジー", "ビジネス", "ライフスタイル"]
+
         documents = []
         for i in range(80):  # Reduced from 180 to 80
             topic = topics[i % len(topics)]
-            doc_id = f"jacwir_doc_{i+1:05d}"
-            
+            doc_id = f"jacwir_doc_{i + 1:05d}"
+
             # Create casual web content
             content_templates = [
                 f"今日は{topic}について書いてみたいと思います。最近{topic}にハマっていて、いろいろ調べてみました。",
                 f"{topic}初心者の私が、実際に試してみた感想をシェアします。意外と簡単でした！",
                 f"{topic}のプロが教える、知っておきたい5つのポイント。これを知れば、あなたも{topic}マスター！",
                 f"【保存版】{topic}の基本から応用まで。この記事を読めば、{topic}の全てがわかります。",
-                f"{topic}で失敗しないために。私の経験から学んだ、大切なことをお伝えします。"
+                f"{topic}で失敗しないために。私の経験から学んだ、大切なことをお伝えします。",
             ]
-            
+
             title = content_templates[i % len(content_templates)]
-            
+
             content = f"""
 {title}
 
@@ -533,46 +475,21 @@ A: 原則として、事由が発生してから14日以内に申請してくだ
 
 ##{topic} #日本 #初心者向け #わかりやすい
 """
-            
-            documents.append(Document(
-                doc_id=doc_id,
-                title=title,
-                content=content,
-                metadata={"topic": topic, "style": "casual", "platform": "blog"}
-            ))
-        
+
+            documents.append(Document(doc_id=doc_id, title=title, content=content, metadata={"topic": topic, "style": "casual", "platform": "blog"}))
+
         # Create casual queries
         queries = []
         for i in range(35):
             topic = topics[i % len(topics)]
-            query_templates = [
-                f"{topic} 初心者",
-                f"{topic} おすすめ",
-                f"{topic} 簡単",
-                f"{topic} コツ",
-                f"{topic} 方法"
-            ]
-            
+            query_templates = [f"{topic} 初心者", f"{topic} おすすめ", f"{topic} 簡単", f"{topic} コツ", f"{topic} 方法"]
+
             query_text = query_templates[i % len(query_templates)]
-            relevant_docs = [
-                doc.doc_id for doc in documents
-                if doc.metadata and doc.metadata["topic"] == topic
-            ][:6]
-            
-            queries.append(Query(
-                query_id=f"jacwir_q_{i+1:03d}",
-                text=query_text,
-                relevant_docs=relevant_docs,
-                metadata={"topic": topic, "style": "casual"}
-            ))
-        
-        return Dataset(
-            name="jacwir",
-            documents=documents,
-            queries=queries,
-            language="ja",
-            description="Japanese Casual Web Information Retrieval (Synthetic)"
-        )
+            relevant_docs = [doc.doc_id for doc in documents if doc.metadata and doc.metadata["topic"] == topic][:6]
+
+            queries.append(Query(query_id=f"jacwir_q_{i + 1:03d}", text=query_text, relevant_docs=relevant_docs, metadata={"topic": topic, "style": "casual"}))
+
+        return Dataset(name="jacwir", documents=documents, queries=queries, language="ja", description="Japanese Casual Web Information Retrieval (Synthetic)")
 
 
 class CustomDatasetLoader(DatasetLoader):
@@ -696,10 +613,7 @@ class DatasetManager:
         dataset = loader.load()
         self._loaded_datasets[cache_key] = dataset
 
-        self.logger.success(
-            f"Loaded dataset '{dataset.name}' with {len(dataset.documents)} documents "
-            f"and {len(dataset.queries)} queries"
-        )
+        self.logger.success(f"Loaded dataset '{dataset.name}' with {len(dataset.documents)} documents and {len(dataset.queries)} queries")
 
         return dataset
 
@@ -758,4 +672,3 @@ class DatasetManager:
         available = ["synthetic", "custom"]
         available.extend(JMTEBDatasetLoader.SUPPORTED_DATASETS.keys())
         return available
-

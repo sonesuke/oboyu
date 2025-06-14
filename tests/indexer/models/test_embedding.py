@@ -4,16 +4,7 @@ Note: Most complex embedding functionality was part of the old API.
 This file contains basic tests that work with the new architecture.
 """
 
-import tempfile
-from datetime import datetime
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import numpy as np
-import pytest
-
 from oboyu.indexer.services.embedding import EmbeddingService
-from oboyu.common.types import Chunk
 
 
 class TestEmbeddingCache:
@@ -27,7 +18,7 @@ class TestEmbeddingCache:
             batch_size=2,
             use_onnx=False,
         )
-        
+
         # Verify basic attributes
         assert service.model_name == "cl-nagoya/ruri-v3-30m"
         assert service.batch_size == 2
@@ -40,10 +31,10 @@ class TestEmbeddingCache:
             batch_size=1,
             use_onnx=False,
         )
-        
+
         # Verify service was created
         assert service is not None
-        assert hasattr(service, 'generate_embeddings')
+        assert hasattr(service, "generate_embeddings")
 
 
 class TestEmbeddingGenerator:
@@ -57,10 +48,10 @@ class TestEmbeddingGenerator:
             batch_size=2,
             use_onnx=False,
         )
-        
+
         # Verify service has expected methods
-        assert hasattr(service, 'generate_embeddings')
-        assert hasattr(service, 'model_name')
+        assert hasattr(service, "generate_embeddings")
+        assert hasattr(service, "model_name")
         assert service.model_name == "cl-nagoya/ruri-v3-30m"
 
 
@@ -75,8 +66,8 @@ class TestEmbeddingGeneratorMocked:
             batch_size=1,
             use_onnx=False,
         )
-        
+
         # Verify basic attributes
         assert service.model_name == "cl-nagoya/ruri-v3-30m"
         assert service.batch_size == 1
-        assert hasattr(service, 'generate_embeddings')
+        assert hasattr(service, "generate_embeddings")

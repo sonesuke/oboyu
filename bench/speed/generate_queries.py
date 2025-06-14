@@ -26,7 +26,7 @@ QUERY_TEMPLATES = {
             "{tech}のパフォーマンス最適化",
             "{tech}のセキュリティ考慮事項",
             "{tech}のトラブルシューティング方法",
-            "{tech}の最新動向"
+            "{tech}の最新動向",
         ],
         "business": [
             "{company}の{year}年度事業計画",
@@ -38,7 +38,7 @@ QUERY_TEMPLATES = {
             "{metric}の改善提案書",
             "{process}プロセスの効率化",
             "顧客満足度向上のための施策",
-            "{region}市場への参入戦略"
+            "{region}市場への参入戦略",
         ],
         "general": [
             "{topic}について詳しく知りたい",
@@ -50,7 +50,7 @@ QUERY_TEMPLATES = {
             "{topic}を始めるには",
             "{topic}の注意点",
             "{topic}の将来性",
-            "{topic}関連の情報"
+            "{topic}関連の情報",
         ],
         "code": [
             "{language}で{algorithm}を実装する方法",
@@ -62,8 +62,8 @@ QUERY_TEMPLATES = {
             "{language}での{task}処理",
             "{tool}の設定ファイル",
             "{language}のデバッグ手法",
-            "{framework}のベンチマーク結果"
-        ]
+            "{framework}のベンチマーク結果",
+        ],
     },
     "english": {
         "technical": [
@@ -76,7 +76,7 @@ QUERY_TEMPLATES = {
             "Performance optimization for {tech}",
             "Security considerations for {tech}",
             "Troubleshooting {tech} issues",
-            "Latest trends in {tech}"
+            "Latest trends in {tech}",
         ],
         "business": [
             "{company} business plan for {year}",
@@ -88,7 +88,7 @@ QUERY_TEMPLATES = {
             "Improvement proposal for {metric}",
             "Efficiency optimization for {process} process",
             "Customer satisfaction improvement initiatives",
-            "Market entry strategy for {region}"
+            "Market entry strategy for {region}",
         ],
         "general": [
             "I want to know more about {topic}",
@@ -100,7 +100,7 @@ QUERY_TEMPLATES = {
             "How to get started with {topic}",
             "Important considerations for {topic}",
             "Future prospects of {topic}",
-            "Information related to {topic}"
+            "Information related to {topic}",
         ],
         "code": [
             "How to implement {algorithm} in {language}",
@@ -112,8 +112,8 @@ QUERY_TEMPLATES = {
             "{task} processing in {language}",
             "Configuration file for {tool}",
             "Debugging techniques in {language}",
-            "Benchmark results for {framework}"
-        ]
+            "Benchmark results for {framework}",
+        ],
     },
     "mixed": {
         "technical": [
@@ -128,31 +128,43 @@ QUERY_TEMPLATES = {
             "Getting started with {topic}ガイド",
             "{topic}に関するFAQ document",
             "Troubleshooting guide for {topic}関連issues",
-            "{topic}のroadmapとfuture plans"
-        ]
-    }
+            "{topic}のroadmapとfuture plans",
+        ],
+    },
 }
 
 # Sample data for filling templates
 TEMPLATE_DATA = {
     "tech": [
-        "Docker", "Kubernetes", "機械学習", "ブロックチェーン", "React",
-        "データベース", "マイクロサービス", "API", "クラウド", "AI",
-        "IoT", "ビッグデータ", "DevOps", "CI/CD", "セキュリティ"
+        "Docker",
+        "Kubernetes",
+        "機械学習",
+        "ブロックチェーン",
+        "React",
+        "データベース",
+        "マイクロサービス",
+        "API",
+        "クラウド",
+        "AI",
+        "IoT",
+        "ビッグデータ",
+        "DevOps",
+        "CI/CD",
+        "セキュリティ",
     ],
-    "tech2": [
-        "AWS", "Azure", "GCP", "オンプレミス", "レガシーシステム",
-        "モノリス", "サーバーレス", "コンテナ", "仮想マシン"
-    ],
-    "concept": [
-        "スケーラビリティ", "可用性", "冗長性", "レジリエンス",
-        "パフォーマンス", "セキュリティ", "監視", "ログ管理",
-        "自動化", "最適化"
-    ],
+    "tech2": ["AWS", "Azure", "GCP", "オンプレミス", "レガシーシステム", "モノリス", "サーバーレス", "コンテナ", "仮想マシン"],
+    "concept": ["スケーラビリティ", "可用性", "冗長性", "レジリエンス", "パフォーマンス", "セキュリティ", "監視", "ログ管理", "自動化", "最適化"],
     "task": [
-        "デプロイメント", "モニタリング", "バックアップ", "リストア",
-        "スケーリング", "マイグレーション", "インテグレーション",
-        "テスト", "デバッグ", "最適化"
+        "デプロイメント",
+        "モニタリング",
+        "バックアップ",
+        "リストア",
+        "スケーリング",
+        "マイグレーション",
+        "インテグレーション",
+        "テスト",
+        "デバッグ",
+        "最適化",
     ],
     "company": ["テック株式会社", "イノベーション社", "デジタル企業", "Tech Corp", "Innovation Inc"],
     "year": ["2024", "2025", "2023"],
@@ -160,9 +172,16 @@ TEMPLATE_DATA = {
     "department": ["開発", "営業", "マーケティング", "人事", "財務"],
     "project": ["デジタル変革", "新システム導入", "業務改善", "DX推進", "Innovation"],
     "topic": [
-        "人工知能", "持続可能性", "リモートワーク", "デジタルマーケティング",
-        "ブランディング", "イノベーション", "グローバル展開", "ESG",
-        "カスタマーエクスペリエンス", "アジャイル開発"
+        "人工知能",
+        "持続可能性",
+        "リモートワーク",
+        "デジタルマーケティング",
+        "ブランディング",
+        "イノベーション",
+        "グローバル展開",
+        "ESG",
+        "カスタマーエクスペリエンス",
+        "アジャイル開発",
     ],
     "industry": ["IT", "製造業", "金融", "ヘルスケア", "小売"],
     "metric": ["売上", "利益率", "顧客満足度", "生産性", "品質"],
@@ -175,142 +194,123 @@ TEMPLATE_DATA = {
     "error": ["NullPointer", "Timeout", "Memory Leak", "Permission Denied", "Connection Refused"],
     "pattern": ["Singleton", "Factory", "Observer", "MVC", "Repository"],
     "library": ["NumPy", "Pandas", "TensorFlow", "jQuery", "Lodash"],
-    "tool": ["Git", "Docker", "Jenkins", "Webpack", "ESLint"]
+    "tool": ["Git", "Docker", "Jenkins", "Webpack", "ESLint"],
 }
 
 
 def generate_query(template: str) -> str:
     """Generate a query from a template by filling in placeholders."""
     query = template
-    
+
     # Find all placeholders in the template
     import re
-    placeholders = re.findall(r'\{(\w+)\}', template)
-    
+
+    placeholders = re.findall(r"\{(\w+)\}", template)
+
     # Replace each placeholder with random data
     for placeholder in placeholders:
         if placeholder in TEMPLATE_DATA:
             value = secrets.choice(TEMPLATE_DATA[placeholder])
             query = query.replace(f"{{{placeholder}}}", value)
-    
+
     return query
 
 
-def generate_query_set(
-    language: str,
-    query_type: str,
-    count: int
-) -> List[Dict[str, str]]:
+def generate_query_set(language: str, query_type: str, count: int) -> List[Dict[str, str]]:
     """Generate a set of queries for a specific language and type."""
     queries = []
     templates = QUERY_TEMPLATES.get(language, {}).get(query_type, [])
-    
+
     if not templates:
         console.print(f"[yellow]Warning: No templates for {language}/{query_type}[/yellow]")
         return queries
-    
+
     for i in range(count):
         template = secrets.choice(templates)
         query_text = generate_query(template)
-        
-        queries.append({
-            "id": f"{language}_{query_type}_{i:03d}",
-            "text": query_text,
-            "language": language,
-            "type": query_type,
-            "metadata": {
-                "template": template,
-                "generated": True
+
+        queries.append(
+            {
+                "id": f"{language}_{query_type}_{i:03d}",
+                "text": query_text,
+                "language": language,
+                "type": query_type,
+                "metadata": {"template": template, "generated": True},
             }
-        })
-    
+        )
+
     return queries
 
 
 def generate_all_queries() -> Dict[str, List[Dict[str, str]]]:
     """Generate all query datasets based on configuration."""
     all_queries = {}
-    
+
     for language, config in QUERY_CONFIG.items():
         print_section(f"Generating {language.capitalize()} queries")
-        
+
         language_queries = []
-        
+
         for query_type, type_count in config["types"].items():
             queries = generate_query_set(language, query_type, type_count)
             language_queries.extend(queries)
             print_metric(f"  {query_type}", len(queries), "queries")
-        
+
         all_queries[language] = language_queries
         print_metric("Total", len(language_queries), "queries")
-    
+
     return all_queries
 
 
 def save_queries(queries: Dict[str, List[Dict[str, str]]], output_dir: Path) -> None:
     """Save query datasets to files."""
     ensure_directory(output_dir)
-    
+
     for language, query_list in queries.items():
         # Save as JSON
         json_file = output_dir / f"{language}_queries.json"
         save_json(query_list, json_file)
-        
+
         # Also save as plain text for easy viewing
         txt_file = output_dir / f"{language}_queries.txt"
         with open(txt_file, "w", encoding="utf-8") as f:
             f.write(f"# {language.capitalize()} Queries\n")
             f.write(f"# Total: {len(query_list)} queries\n\n")
-            
+
             for query in query_list:
                 f.write(f"[{query['id']}] ({query['type']})\n")
                 f.write(f"{query['text']}\n\n")
-        
+
         console.print(f"✓ Saved {language} queries to {json_file.name} and {txt_file.name}")
 
 
 def main() -> None:
     """Generate query datasets."""
     parser = argparse.ArgumentParser(description="Generate query datasets for Oboyu benchmarks")
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=QUERIES_DIR,
-        help="Output directory for query datasets"
-    )
-    parser.add_argument(
-        "--languages",
-        nargs="+",
-        choices=["japanese", "english", "mixed", "all"],
-        default=["all"],
-        help="Languages to generate queries for"
-    )
-    
+    parser.add_argument("--output-dir", type=Path, default=QUERIES_DIR, help="Output directory for query datasets")
+    parser.add_argument("--languages", nargs="+", choices=["japanese", "english", "mixed", "all"], default=["all"], help="Languages to generate queries for")
+
     args = parser.parse_args()
-    
+
     print_header("Oboyu Query Generator")
-    
+
     # Generate queries
     all_queries = generate_all_queries()
-    
+
     # Filter by requested languages
     if "all" not in args.languages:
-        all_queries = {
-            lang: queries
-            for lang, queries in all_queries.items()
-            if lang in args.languages
-        }
-    
+        all_queries = {lang: queries for lang, queries in all_queries.items() if lang in args.languages}
+
     # Save queries
     print_section("Saving query datasets")
     save_queries(all_queries, args.output_dir)
-    
+
     # Print summary
     print_section("Summary")
     total_queries = sum(len(queries) for queries in all_queries.values())
     print_metric("Total queries generated", total_queries)
     print_metric("Output directory", str(args.output_dir))
-    
+
     console.print("\n[green]✨ Query generation complete![/green]")
 
 

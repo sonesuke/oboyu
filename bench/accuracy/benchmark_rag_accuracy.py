@@ -110,9 +110,7 @@ def run_dataset_evaluation(
     dataset = dataset_manager.load_dataset(dataset_name, custom_path)
 
     # Prepare for evaluation
-    queries, documents = dataset_manager.prepare_dataset_for_evaluation(
-        dataset, max_queries=evaluator.config.test_size
-    )
+    queries, documents = dataset_manager.prepare_dataset_for_evaluation(dataset, max_queries=evaluator.config.test_size)
 
     # Run evaluation
     results = evaluator.evaluate_dataset(dataset.name, queries, documents, reindex=reindex)
@@ -158,7 +156,7 @@ def main() -> None:
     # Setup evaluation configuration
     db_path = args.results_dir / "rag_accuracy_test.db"
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Clean up any existing test database to ensure clean state
     if db_path.exists():
         db_path.unlink()
@@ -168,9 +166,9 @@ def main() -> None:
         processing=ProcessingConfig(
             db_path=db_path,
             chunk_size=BENCHMARK_CONFIG.get("indexing", {}).get("chunk_size", 300),
-            chunk_overlap=BENCHMARK_CONFIG.get("indexing", {}).get("chunk_overlap", 75)
+            chunk_overlap=BENCHMARK_CONFIG.get("indexing", {}).get("chunk_overlap", 75),
         ),
-        model=ModelConfig()
+        model=ModelConfig(),
     )
 
     eval_config = RAGEvaluationConfig(
@@ -192,23 +190,23 @@ def main() -> None:
 
     # Run evaluation for each dataset
     for i, dataset_name in enumerate(args.datasets):
-        logger.section(f"Dataset {i+1}/{len(args.datasets)}: {dataset_name}")
+        logger.section(f"Dataset {i + 1}/{len(args.datasets)}: {dataset_name}")
 
         try:
             # Recreate evaluator for each dataset to ensure clean state
             if i > 0:
                 # Close previous evaluator if it has a db attribute
-                if hasattr(evaluator, 'db'):
+                if hasattr(evaluator, "db"):
                     evaluator.db.close()
-                
+
                 # Clean up database
                 if db_path.exists():
                     db_path.unlink()
                     logger.info("Cleaned up database for fresh start")
-                
+
                 # Recreate evaluator
                 evaluator = RAGEvaluator(eval_config, logger)
-            
+
             custom_path = args.custom_dataset_path if dataset_name == "custom" else None
             results = run_dataset_evaluation(
                 evaluator,
@@ -227,9 +225,7 @@ def main() -> None:
                 # Get query results from first configuration for reranking eval
                 sample_result = results[0]
                 if "query_results" in sample_result:
-                    rerank_eval = reranker_evaluator.evaluate_reranking(
-                        sample_result["query_results"], args.top_k_values
-                    )
+                    rerank_eval = reranker_evaluator.evaluate_reranking(sample_result["query_results"], args.top_k_values)
 
                     # Save reranking results
                     rerank_path = args.results_dir / f"rag_reranking_{dataset_name}_{timestamp}.json"
@@ -243,6 +239,7 @@ def main() -> None:
             logger.error(f"Failed to evaluate {dataset_name}: {e}")
             if args.verbose:
                 import traceback
+
                 traceback.print_exc()
             # Continue with next dataset instead of stopping
             continue
@@ -277,18 +274,12 @@ def main() -> None:
             if comparison["regressions"]:
                 logger.warning("\nRegressions detected:")
                 for reg in comparison["regressions"]:
-                    logger.warning(
-                        f"  {reg['config']} - {reg['metric']}: "
-                        f"{reg['v1']:.4f} -> {reg['v2']:.4f} ({reg['change']*100:+.1f}%)"
-                    )
+                    logger.warning(f"  {reg['config']} - {reg['metric']}: {reg['v1']:.4f} -> {reg['v2']:.4f} ({reg['change'] * 100:+.1f}%)")
 
             if comparison["improvements"]:
                 logger.success("\nImprovements:")
                 for imp in comparison["improvements"]:
-                    logger.success(
-                        f"  {imp['config']} - {imp['metric']}: "
-                        f"{imp['v1']:.4f} -> {imp['v2']:.4f} ({imp['change']*100:+.1f}%)"
-                    )
+                    logger.success(f"  {imp['config']} - {imp['metric']}: {imp['v1']:.4f} -> {imp['v2']:.4f} ({imp['change'] * 100:+.1f}%)")
 
             # Save comparison results
             comparison_path = args.results_dir / f"rag_comparison_{timestamp}.json"
@@ -296,11 +287,11 @@ def main() -> None:
 
     # Final cleanup
     try:
-        if hasattr(evaluator, 'db'):
+        if hasattr(evaluator, "db"):
             evaluator.db.close()
     except:
         pass
-    
+
     # Clean up test database
     if db_path.exists():
         db_path.unlink()
@@ -311,4 +302,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

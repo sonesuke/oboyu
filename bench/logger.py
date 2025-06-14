@@ -85,12 +85,12 @@ class BenchmarkLogger:
 
         """
         from rich.table import Table
-        
+
         table = Table()
         for header in headers:
             table.add_column(header)
-        
+
         for row in rows:
             table.add_row(*[str(cell) for cell in row])
-        
+
         self.console.print(table)

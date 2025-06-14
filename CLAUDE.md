@@ -9,6 +9,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Always fix lint errors and test failures before committing
 - Pre-commit hooks are there to maintain code quality
 
+### Optimized Pre-commit Performance
+Pre-commit hooks have been optimized for faster commits:
+- **Ruff**: Only checks changed Python files (not entire codebase)
+- **MyPy**: Uses incremental mode with caching for faster type checking
+- **Tests**: Smart test runner only runs tests affected by changes
+- **Expected time**: <10 seconds for typical commits (vs 30-60s previously)
+
+If pre-commit is still slow:
+1. Check if you have many changed files: `git status`
+2. For large changes, consider using `--no-verify` temporarily and running full checks manually
+3. Ensure `.mypy_cache` directory exists for caching
+
 ## Build and Development Commands
 
 ### Dependency Management

@@ -45,9 +45,9 @@ def test_store_chunks_single_chunk(chunk_repository, mock_connection):
         modified_at=datetime.now(),
         metadata={"key": "value"},
     )
-    
+
     chunk_repository.store_chunks([chunk])
-    
+
     # Verify executemany was called with correct SQL (batch operations)
     mock_connection.executemany.assert_called()
     call_args = mock_connection.executemany.call_args
@@ -72,10 +72,10 @@ def test_store_chunks_with_progress_callback(chunk_repository, mock_connection):
         )
         for i in range(5)
     ]
-    
+
     progress_callback = Mock()
     chunk_repository.store_chunks(chunks, progress_callback)
-    
+
     # Progress callback should be called at least once
     progress_callback.assert_called()
     # Last call should have total count
@@ -97,9 +97,9 @@ def test_get_chunk_by_id_found(chunk_repository, mock_connection):
         '{"key": "value"}',
         [0.1, 0.2, 0.3],
     )
-    
+
     result = chunk_repository.get_chunk_by_id("test-id")
-    
+
     assert result is not None
     assert result["id"] == "test-id"
     assert result["path"] == "/test/file.txt"
@@ -110,18 +110,18 @@ def test_get_chunk_by_id_found(chunk_repository, mock_connection):
 def test_get_chunk_by_id_not_found(chunk_repository, mock_connection):
     """Test getting chunk by ID when not found."""
     mock_connection.execute.return_value.fetchone.return_value = None
-    
+
     result = chunk_repository.get_chunk_by_id("non-existent-id")
-    
+
     assert result is None
 
 
 def test_delete_chunks_by_path(chunk_repository, mock_connection):
     """Test deleting chunks by path."""
     mock_connection.execute.return_value.rowcount = 5
-    
+
     count = chunk_repository.delete_chunks_by_path("/test/file.txt")
-    
+
     assert count == 5
     mock_connection.execute.assert_called()
     call_args = mock_connection.execute.call_args
@@ -133,9 +133,9 @@ def test_delete_chunks_by_path(chunk_repository, mock_connection):
 def test_get_chunk_count(chunk_repository, mock_connection):
     """Test getting chunk count."""
     mock_connection.execute.return_value.fetchone.return_value = (42,)
-    
+
     count = chunk_repository.get_chunk_count()
-    
+
     assert count == 42
     mock_connection.execute.assert_called_with("SELECT COUNT(*) FROM chunks")
 
@@ -147,9 +147,9 @@ def test_get_paths_with_chunks(chunk_repository, mock_connection):
         ("/test/file2.txt",),
         ("/test/file3.txt",),
     ]
-    
+
     paths = chunk_repository.get_paths_with_chunks()
-    
+
     assert len(paths) == 3
     assert "/test/file1.txt" in paths
     assert "/test/file2.txt" in paths
@@ -184,9 +184,9 @@ def test_get_chunks_by_path(chunk_repository, mock_connection):
             None,
         ),
     ]
-    
+
     chunks = chunk_repository.get_chunks_by_path("/test/file.txt")
-    
+
     assert len(chunks) == 2
     assert chunks[0]["id"] == "test-id-1"
     assert chunks[1]["id"] == "test-id-2"
@@ -197,7 +197,7 @@ def test_get_chunks_by_path(chunk_repository, mock_connection):
 def test_clear_all_chunks(chunk_repository, mock_connection):
     """Test clearing all chunks."""
     chunk_repository.clear_all_chunks()
-    
+
     mock_connection.execute.assert_called_with("DELETE FROM chunks")
 
 
@@ -208,14 +208,14 @@ def test_get_chunk_ids_without_embeddings(chunk_repository, mock_connection):
         ("chunk-id-2",),
         ("chunk-id-3",),
     ]
-    
+
     chunk_ids = chunk_repository.get_chunk_ids_without_embeddings(limit=10)
-    
+
     assert len(chunk_ids) == 3
     assert "chunk-id-1" in chunk_ids
     assert "chunk-id-2" in chunk_ids
     assert "chunk-id-3" in chunk_ids
-    
+
     # Check SQL contains LIMIT
     call_args = mock_connection.execute.call_args
     sql = call_args[0][0]

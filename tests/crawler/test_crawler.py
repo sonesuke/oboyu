@@ -3,9 +3,7 @@
 import tempfile
 from pathlib import Path
 
-import pytest
-
-from oboyu.crawler.crawler import Crawler, CrawlerResult
+from oboyu.crawler.crawler import Crawler
 from oboyu.crawler.services import (
     ContentExtractor,
     EncodingDetector,
@@ -17,7 +15,7 @@ from oboyu.crawler.services import (
 
 class TestCrawler:
     """Test cases for the Crawler class."""
-    
+
     def test_crawler_initialization(self) -> None:
         """Test Crawler initialization with default and custom parameters."""
         # Test with default parameters
@@ -26,14 +24,14 @@ class TestCrawler:
         assert "*.txt" in crawler.include_patterns
         assert "*/node_modules/*" in crawler.exclude_patterns
         assert crawler.max_workers == 4  # Default worker count
-        
+
         # Check that services are initialized
         assert isinstance(crawler.discovery_service, FileDiscoveryService)
         assert isinstance(crawler.content_extractor, ContentExtractor)
         assert isinstance(crawler.language_detector, LanguageDetector)
         assert isinstance(crawler.encoding_detector, EncodingDetector)
         assert isinstance(crawler.metadata_extractor, MetadataExtractor)
-        
+
         # Test with custom parameters
         crawler = Crawler(
             depth=5,
@@ -45,73 +43,73 @@ class TestCrawler:
         assert crawler.include_patterns == ["*.csv"]
         assert crawler.exclude_patterns == ["*/temp/*"]
         assert crawler.max_workers == 8
-    
+
     def test_crawler_crawl(self) -> None:
         """Test crawling a directory."""
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create test files
             test_dir = Path(temp_dir)
-            
+
             # Create text file
             text_file = test_dir / "test.txt"
             text_file.write_text("This is a test file")
-            
+
             # Create markdown file
             md_file = test_dir / "test.md"
             md_file.write_text("# Test Markdown")
-            
+
             # Create Japanese file
             ja_file = test_dir / "japanese.txt"
             ja_file.write_text("これは日本語のテストファイルです。")
-            
+
             # Create excluded file
             excluded_dir = test_dir / "node_modules"
             excluded_dir.mkdir()
             excluded_file = excluded_dir / "excluded.txt"
             excluded_file.write_text("This should be excluded")
-            
+
             # Create crawler and crawl directory
             crawler = Crawler(
                 include_patterns=["*.txt", "*.md"],
                 exclude_patterns=["*/node_modules/*"],
             )
             results = crawler.crawl(test_dir)
-            
+
             # Check results
             assert len(results) == 3  # Should find 3 files
-            
+
             # Check paths
             paths = [str(result.path) for result in results]
             assert str(text_file) in paths
             assert str(md_file) in paths
             assert str(ja_file) in paths
             assert str(excluded_file) not in paths
-            
+
             # Check language detection
             for result in results:
                 if "japanese" in str(result.path):
                     assert result.language == "ja"
                 else:
                     assert result.language == "en"
-    
+
     def test_generate_title(self) -> None:
         """Test title generation from content and filename."""
         crawler = Crawler()
-        
+
         # Test title from metadata
         path = Path("test.txt")
         content = "Title Line\nSecond line\nThird line"
         metadata = {"title": "Metadata Title"}
         title = crawler._generate_title(path, content, metadata)
         assert title == "Metadata Title"
-        
+
         # Test title from content when no metadata
         path = Path("test.txt")
         content = "Title Line\nSecond line\nThird line"
         metadata = {}
         title = crawler._generate_title(path, content, metadata)
         assert title == "Title Line"
-        
+
         # Test title from filename when content doesn't have a good title
         path = Path("document-title.txt")
         content = "This is not a good title because it is too long and contains multiple sentences. It should not be used as a title."
@@ -156,14 +154,14 @@ class TestCrawler:
 
             # Create test file with front matter
             test_file = test_dir / "test.md"
-            test_content = '''---
+            test_content = """---
 title: Service Composition Test
 ---
 
 # Service Composition Test
 
 This tests the orchestration of services.
-'''
+"""
             test_file.write_text(test_content)
 
             # Create crawler and crawl
@@ -186,64 +184,64 @@ This tests the orchestration of services.
 
             # Check that metadata includes both extracted and file metadata
             assert "file_size" in result.metadata  # From file metadata
-            assert "title" in result.metadata     # From front matter
+            assert "title" in result.metadata  # From front matter
 
     def test_crawler_pdf_integration(self) -> None:
         """Test crawling with PDF files included."""
         with tempfile.TemporaryDirectory() as temp_dir:
             test_dir = Path(temp_dir)
-            
+
             # Create mixed content
             text_file = test_dir / "document.txt"
             text_file.write_text("This is a regular text document.")
-            
+
             # Copy test PDF to temp directory
             pdf_source = Path(__file__).parent.parent / "fixtures" / "pdf" / "simple_text.pdf"
             if pdf_source.exists():
                 pdf_dest = test_dir / "document.pdf"
                 pdf_dest.write_bytes(pdf_source.read_bytes())
-                
+
                 # Create crawler with PDF support
                 crawler = Crawler(
                     include_patterns=["*.txt", "*.pdf"],
                     exclude_patterns=[],
                 )
                 results = crawler.crawl(test_dir)
-                
+
                 # Should find both files
                 assert len(results) >= 2
-                
+
                 # Check PDF was processed
-                pdf_results = [r for r in results if str(r.path).endswith('.pdf')]
+                pdf_results = [r for r in results if str(r.path).endswith(".pdf")]
                 assert len(pdf_results) == 1
-                
+
                 pdf_result = pdf_results[0]
                 assert "Simple Test PDF" in pdf_result.content
                 assert pdf_result.language in ["en", "unknown"]  # Language detection may vary
                 assert pdf_result.title  # Should have a title
-    
+
     def test_crawler_pdf_multipage(self) -> None:
         """Test crawling multi-page PDF files."""
         with tempfile.TemporaryDirectory() as temp_dir:
             test_dir = Path(temp_dir)
-            
+
             # Copy multipage test PDF
             pdf_source = Path(__file__).parent.parent / "fixtures" / "pdf" / "multipage_text.pdf"
             if pdf_source.exists():
                 pdf_dest = test_dir / "multipage.pdf"
                 pdf_dest.write_bytes(pdf_source.read_bytes())
-                
+
                 crawler = Crawler(include_patterns=["*.pdf"])
                 results = crawler.crawl(test_dir)
-                
+
                 assert len(results) == 1
                 result = results[0]
-                
+
                 # Check all pages are included
                 assert "Page 1: Introduction" in result.content
-                assert "Page 2: Content" in result.content  
+                assert "Page 2: Content" in result.content
                 assert "Page 3: Conclusion" in result.content
-                
+
                 # Content should be properly concatenated
                 assert "first page" in result.content
                 assert "second page" in result.content
