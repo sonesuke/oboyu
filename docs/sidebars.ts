@@ -48,6 +48,7 @@ const sidebars: SidebarsConfig = {
         'use-cases/meeting-notes',
         'use-cases/research-papers',
         'use-cases/personal-notes',
+        'use-cases/nikkei225-securities-reports',
       ],
     },
     {
