@@ -53,7 +53,7 @@ get_pr_status() {
 
 # Function to get detailed check information
 get_check_details() {
-    gh pr checks "$PR_NUMBER" --json name,state,conclusion,detailsUrl
+    gh pr checks "$PR_NUMBER" --json name,state,completedAt
 }
 
 # Function to promote draft PR to ready
@@ -84,15 +84,15 @@ analyze_and_fix_issues() {
     local has_test_failures=false
     
     # Parse check results for common patterns
-    if echo "$check_details" | jq -r '.[] | select(.state == "FAILURE" or .conclusion == "FAILURE") | .name' | grep -qi "lint\|ruff\|format"; then
+    if echo "$check_details" | jq -r '.[] | select(.state == "FAILURE") | .name' | grep -qi "lint\|ruff\|format"; then
         has_lint_issues=true
     fi
     
-    if echo "$check_details" | jq -r '.[] | select(.state == "FAILURE" or .conclusion == "FAILURE") | .name' | grep -qi "type\|mypy"; then
+    if echo "$check_details" | jq -r '.[] | select(.state == "FAILURE") | .name' | grep -qi "type\|mypy"; then
         has_type_issues=true
     fi
     
-    if echo "$check_details" | jq -r '.[] | select(.state == "FAILURE" or .conclusion == "FAILURE") | .name' | grep -qi "test\|pytest"; then
+    if echo "$check_details" | jq -r '.[] | select(.state == "FAILURE") | .name' | grep -qi "test\|pytest"; then
         has_test_failures=true
     fi
     
@@ -105,7 +105,7 @@ analyze_and_fix_issues() {
     
     if [ "$has_test_failures" = true ]; then
         log "${YELLOW}⚠️  Test failures detected. Manual intervention may be required.${NC}"
-        echo "$check_details" | jq -r '.[] | select(.state == "FAILURE" or .conclusion == "FAILURE") | select(.name | test("test|pytest"; "i")) | "  - " + .name + ": " + .detailsUrl'
+        echo "$check_details" | jq -r '.[] | select(.state == "FAILURE") | select(.name | test("test|pytest"; "i")) | "  - " + .name'
     fi
     
     return 1
@@ -126,9 +126,9 @@ get_checks_status() {
     local failure_count
     local total_count
     
-    pending_count=$(echo "$check_details" | jq '[.[] | select(.state == "PENDING" or .state == "IN_PROGRESS" or .conclusion == "")] | length')
-    success_count=$(echo "$check_details" | jq '[.[] | select(.state == "SUCCESS" or .conclusion == "SUCCESS")] | length')
-    failure_count=$(echo "$check_details" | jq '[.[] | select(.state == "FAILURE" or .conclusion == "FAILURE")] | length')
+    pending_count=$(echo "$check_details" | jq '[.[] | select(.state == "PENDING" or .state == "IN_PROGRESS")] | length')
+    success_count=$(echo "$check_details" | jq '[.[] | select(.state == "SUCCESS")] | length')
+    failure_count=$(echo "$check_details" | jq '[.[] | select(.state == "FAILURE")] | length')
     total_count=$(echo "$check_details" | jq 'length')
     
     if [ "$failure_count" -gt 0 ]; then
@@ -168,7 +168,7 @@ display_status() {
     if [ "$check_details" != "null" ] && [ "$check_details" != "[]" ]; then
         echo ""
         echo "  Individual Checks:"
-        echo "$check_details" | jq -r '.[] | "    " + .name + ": " + (.state // .conclusion // "pending")'
+        echo "$check_details" | jq -r '.[] | "    " + .name + ": " + .state'
     fi
     
     echo ""
@@ -211,7 +211,7 @@ monitor_pr() {
                 local check_details
                 check_details=$(get_check_details)
                 local still_pending
-                still_pending=$(echo "$check_details" | jq '[.[] | select(.state == "PENDING" or .state == "IN_PROGRESS" or .conclusion == "")] | length')
+                still_pending=$(echo "$check_details" | jq '[.[] | select(.state == "PENDING" or .state == "IN_PROGRESS")] | length')
                 
                 if [ "$still_pending" -eq 0 ]; then
                     consecutive_successes=$((consecutive_successes + 1))
