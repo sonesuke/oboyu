@@ -15,13 +15,12 @@ except ImportError as e:
     ENHANCED_TESTING_AVAILABLE = False
     IMPORT_ERROR = str(e)
 
-# Fallback to standard testing if enhanced dependencies not available
-from display_tester import OboyuE2EDisplayTester
+# Enhanced testing only - no fallback needed
 
 
 def main() -> None:  # noqa: C901
     """Run enhanced E2E tests with various options."""
-    parser = argparse.ArgumentParser(description="Run enhanced E2E tests for Oboyu using ttyd + Playwright integration")
+    parser = argparse.ArgumentParser(description="Run browser-based E2E tests for Oboyu using ttyd + Playwright integration")
     parser.add_argument(
         "--test",
         choices=[
@@ -36,7 +35,7 @@ def main() -> None:  # noqa: C901
             "enhanced-indexing",
         ],
         default="all",
-        help="Which test(s) to run (default: all)",
+        help="Which browser-based test(s) to run (default: all)",
     )
     parser.add_argument(
         "--oboyu-path",
@@ -45,8 +44,8 @@ def main() -> None:  # noqa: C901
     )
     parser.add_argument(
         "--report",
-        default="e2e/e2e_enhanced_report.md",
-        help="Path to save the test report (default: e2e/e2e_enhanced_report.md)",
+        default="e2e_simple_report.md",
+        help="Path to save the test report (default: e2e_simple_report.md)",
     )
     parser.add_argument(
         "--no-cleanup",
@@ -58,11 +57,6 @@ def main() -> None:  # noqa: C901
         type=int,
         default=7681,
         help="Port for ttyd server (default: 7681)",
-    )
-    parser.add_argument(
-        "--fallback-mode",
-        action="store_true",
-        help="Force fallback to standard testing (no ttyd/Playwright)",
     )
     parser.add_argument(
         "--install-deps",
@@ -90,81 +84,46 @@ def main() -> None:  # noqa: C901
             print(f"✗ Failed to install dependencies: {e}")
             sys.exit(1)
 
-    # Determine testing mode
-    use_enhanced = ENHANCED_TESTING_AVAILABLE and not args.fallback_mode
+    # Check if enhanced testing is available
+    if not ENHANCED_TESTING_AVAILABLE:
+        print("⚠️  Enhanced testing dependencies not available.")
+        print(f"Import error: {IMPORT_ERROR}")
+        print("Run with --install-deps to install them.")
+        sys.exit(1)
 
-    if not use_enhanced:
-        if not ENHANCED_TESTING_AVAILABLE and not args.fallback_mode:
-            print("⚠️  Enhanced testing dependencies not available.")
-            print(f"Import error: {IMPORT_ERROR}")
-            print("Run with --install-deps to install them, or use --fallback-mode for standard testing.")
-            print("Falling back to standard E2E testing...\n")
-        elif args.fallback_mode:
-            print("🔄 Fallback mode enabled - using standard E2E testing...\n")
-
-    # Create appropriate tester
-    if use_enhanced:
-        print("🚀 Starting enhanced E2E testing with ttyd + Playwright")
-        print(f"ttyd port: {args.ttyd_port}")
-        tester = TtydIntegratedOboyuTester(oboyu_path=args.oboyu_path, ttyd_port=args.ttyd_port)
-        is_enhanced = True
-    else:
-        print("📋 Starting standard E2E testing")
-        tester = OboyuE2EDisplayTester(oboyu_path=args.oboyu_path)
-        is_enhanced = False
+    # Create enhanced tester
+    print("🚀 Starting browser-based E2E testing with ttyd + Playwright")
+    print(f"ttyd port: {args.ttyd_port}")
+    tester = TtydIntegratedOboyuTester(oboyu_path=args.oboyu_path, ttyd_port=args.ttyd_port)
 
     tester.setup()
 
     try:
         results = {}
 
-        # Define test mapping based on tester type
-        if is_enhanced:
-            test_mapping = {
-                "basic": ("basic_cli_display", tester.test_basic_cli_display),
-                "indexing": ("indexing_progress_display", tester.test_indexing_progress_display),
-                "search": ("search_result_display", tester.test_search_result_display),
-                "error": ("error_display", tester.test_error_display),
-                "visual-cli": ("visual_cli_commands", lambda: asyncio.run(tester.test_visual_cli_commands())),
-                "interactive-progress": ("interactive_indexing_progress", lambda: asyncio.run(tester.test_interactive_indexing_progress())),
-                "enhanced-basic": ("enhanced_basic_cli_display", tester.test_enhanced_basic_cli_display),
-                "enhanced-indexing": ("enhanced_indexing_progress_display", tester.test_enhanced_indexing_progress_display),
-            }
-        else:
-            test_mapping = {
-                "basic": ("basic_cli_display", tester.test_basic_cli_display),
-                "indexing": ("indexing_progress_display", tester.test_indexing_progress_display),
-                "search": ("search_result_display", tester.test_search_result_display),
-                "error": ("error_display", tester.test_error_display),
-            }
+        # Define test mapping for simple tester - focused on core functionality
+        test_mapping = {
+            "basic": ("visual_cli_commands", lambda: asyncio.run(tester.test_visual_cli_commands())),
+            "visual-cli": ("visual_cli_commands", lambda: asyncio.run(tester.test_visual_cli_commands())),
+        }
 
         # Determine which tests to run
         if args.test == "all":
-            if is_enhanced:
-                # For enhanced mode, run enhanced versions of core tests
-                tests_to_run = [
-                    ("enhanced_basic_cli_display", tester.test_enhanced_basic_cli_display),
-                    ("enhanced_indexing_progress_display", tester.test_enhanced_indexing_progress_display),
-                    ("search_result_display", tester.test_search_result_display),
-                    ("error_display", tester.test_error_display),
-                ]
-            else:
-                tests_to_run = list(test_mapping.values())
+            # Run all available simple tests
+            tests_to_run = [
+                ("visual_cli_commands", lambda: asyncio.run(tester.test_visual_cli_commands())),
+            ]
         else:
             if args.test in test_mapping:
                 test_name, test_func = test_mapping[args.test]
                 tests_to_run = [(test_name, test_func)]
             else:
-                if not is_enhanced and args.test in ["visual-cli", "interactive-progress", "enhanced-basic", "enhanced-indexing"]:
-                    print(f"✗ Test '{args.test}' requires enhanced mode. Install dependencies or remove --fallback-mode.")
-                    sys.exit(1)
-                else:
-                    print(f"✗ Unknown test: {args.test}")
-                    sys.exit(1)
+                print(f"✗ Unknown test: {args.test}")
+                sys.exit(1)
 
         print(f"Running E2E tests with oboyu command: {args.oboyu_path}")
         print(f"Test selection: {args.test}")
-        print(f"Mode: {'Enhanced (ttyd + Playwright)' if is_enhanced else 'Standard'}")
+        print("Mode: Enhanced (ttyd + Playwright) - All Browser-Based")
         print("-" * 60)
 
         failed_tests = []
@@ -216,17 +175,14 @@ def main() -> None:  # noqa: C901
         if results:
             print("\nGenerating test report...")
 
-            if is_enhanced and hasattr(tester, "generate_enhanced_report"):
-                report = tester.generate_enhanced_report(results)
-            else:
-                report = tester.generate_report(results)
+            report = tester.generate_report(results)
 
             report_path = Path(args.report)
             report_path.write_text(report, encoding="utf-8")
             print(f"Report saved to: {report_path}")
 
-            # Add visual validation summary for enhanced mode
-            if is_enhanced and hasattr(tester, "screenshots_dir") and tester.screenshots_dir:
+            # Add visual validation summary
+            if hasattr(tester, "screenshots_dir") and tester.screenshots_dir:
                 print("\nGenerating visual assets summary...")
                 manifest = VisualValidationHelper.create_screenshot_manifest(tester.screenshots_dir)
                 if manifest.get("exists", False):
@@ -247,7 +203,7 @@ def main() -> None:  # noqa: C901
             print(f"Total tests: {total_tests}")
             print(f"Passed: {passed_tests}")
             print(f"Failed: {failed_count}")
-            print(f"Mode: {'Enhanced' if is_enhanced else 'Standard'}")
+            print("Mode: Enhanced")
 
             if failed_count > 0:
                 print("\nFailed tests:")
@@ -264,17 +220,16 @@ def main() -> None:  # noqa: C901
                 print(f"\nTotal API cost: ${total_cost:.4f}")
 
             # Enhanced mode specific output
-            if is_enhanced:
-                print("\n🎯 Enhanced testing completed")
-                if hasattr(tester, "screenshots_dir") and tester.screenshots_dir:
-                    print(f"📁 Visual assets: {tester.screenshots_dir}")
+            print("\n🎯 Enhanced testing completed")
+            if hasattr(tester, "screenshots_dir") and tester.screenshots_dir:
+                print(f"📁 Visual assets: {tester.screenshots_dir}")
 
     finally:
         if not args.no_cleanup:
             tester.teardown()
         else:
             print(f"\nTest data preserved at: {tester.test_data_dir}")
-            if is_enhanced and hasattr(tester, "screenshots_dir") and tester.screenshots_dir:
+            if hasattr(tester, "screenshots_dir") and tester.screenshots_dir:
                 print(f"Screenshots preserved at: {tester.screenshots_dir}")
 
 

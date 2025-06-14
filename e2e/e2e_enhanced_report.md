@@ -8,7 +8,7 @@
 - Test environment: /Users/sonesuke/oboyu/main/.worktree/issue-291
 - Oboyu command: oboyu
 - ttyd port: 7681
-- Screenshots directory: /var/folders/w6/68_pl4k5769c22sbnpfy8dt00000gn/T/oboyu_e2e_wohdkpk7/screenshots
+- Screenshots directory: /var/folders/w6/68_pl4k5769c22sbnpfy8dt00000gn/T/oboyu_e2e_hhxmqbjc/screenshots
 
 ## Enhancement Features
 
