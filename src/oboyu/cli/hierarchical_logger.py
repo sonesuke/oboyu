@@ -132,7 +132,7 @@ class HierarchicalLogger:
                 self.operations.append(operation)
 
             self.operation_stack.append(operation)
-            # Initial display for new operations
+            # Always display new operations immediately
             self._refresh_display()
             return op_id
 
@@ -152,22 +152,32 @@ class HierarchicalLogger:
             **metadata: Additional metadata to update
 
         """
-        operation = self._find_operation(op_id)
-        if operation:
-            if description:
-                operation.description = description
-            if details:
-                operation.details = details
-            operation.metadata.update(metadata)
-            # Refresh display with throttling to reduce flickering
-            current_time = time.time()
-            if not hasattr(self, "_last_refresh_time"):
-                self._last_refresh_time = 0.0
-            # Force refresh for completion indicators or throttle for regular updates
-            is_completion = description and ("100%" in description or description.endswith("..."))
-            if is_completion or current_time - self._last_refresh_time > 0.5:  # Throttle to every 0.5 seconds except for completion
-                self._refresh_display()
-                self._last_refresh_time = current_time
+        with self._lock:
+            operation = self._find_operation(op_id)
+            if operation:
+                if description:
+                    operation.description = description
+                if details:
+                    operation.details = details
+                operation.metadata.update(metadata)
+                # Improved throttling for concurrent operations
+                current_time = time.time()
+                if not hasattr(self, "_last_refresh_time"):
+                    self._last_refresh_time = 0.0
+
+                # Force refresh for completion indicators or important progress updates
+                is_completion = description and ("100%" in description or description.endswith("...") or "completed" in description.lower())
+                is_progress_update = description and (
+                    "(" in description and "/" in description and ")" in description
+                )  # Detect progress patterns like "(5/10)"
+                is_first_update = self._last_refresh_time == 0.0  # Always show first update
+
+                # More frequent updates for progress, less frequent for other updates
+                throttle_interval = 0.3 if is_progress_update else 0.75  # Faster updates for progress counters
+
+                if is_completion or is_progress_update or is_first_update or current_time - self._last_refresh_time > throttle_interval:
+                    self._refresh_display()
+                    self._last_refresh_time = current_time
 
     def complete_operation(self, op_id: Optional[str] = None, error: bool = False) -> None:
         """Mark an operation as complete.
@@ -215,9 +225,11 @@ class HierarchicalLogger:
         # Build the line
         line = Text()
 
-        # Add indentation for children
+        # Add indentation for children - simple 2-space indentation per level
+        if operation.indent_level > 0:
+            line.append("  " * operation.indent_level)
         if is_child:
-            line.append("  ⎿ ")
+            line.append("⎿ ")
 
         # Add status indicator
         indicator = self.STATUS_INDICATORS.get(operation.status, "⏺")
@@ -278,30 +290,27 @@ class HierarchicalLogger:
 
         # Add path line if using two-line format
         if path_line:
+            indented_path_line = Text()
+            if operation.indent_level > 0:
+                indented_path_line.append("  " * operation.indent_level)
             if is_child:
-                indented_path_line = Text("  ⎿ ")
-                indented_path_line.append(path_line)
-                lines.append(indented_path_line)
-            else:
-                lines.append(path_line)
+                indented_path_line.append("⎿ ")
+            indented_path_line.append(path_line)
+            lines.append(indented_path_line)
 
-        # Render children with proper indentation
-        for child in operation.children:
-            child_lines = self._render_operation(child, is_child=True)
-            for child_line in child_lines:
-                # Add extra indentation for nested children
-                if operation.indent_level > 0:
-                    indented_line = Text("  " * operation.indent_level)
-                    indented_line.append(child_line)
-                    lines.append(indented_line)
-                else:
-                    lines.append(child_line)
+        # Render children with proper indentation (limit nesting depth)
+        max_display_depth = 3  # Limit to 3 levels deep for readability
+        if operation.indent_level < max_display_depth:
+            for child in operation.children:
+                child_lines = self._render_operation(child, is_child=True)
+                lines.extend(child_lines)
 
         return lines
 
     def _refresh_display(self) -> None:
         """Refresh the display with current state."""
         if self.live:
+            # Note: _lock should already be held by caller
             output = Text()
             for operation in self.operations:
                 op_lines = self._render_operation(operation)
@@ -316,11 +325,13 @@ class HierarchicalLogger:
         self.live = Live(
             "",
             console=self.console,
-            refresh_per_second=4,  # Higher refresh rate for smooth updates
+            refresh_per_second=2,  # Reduced refresh rate for better stability with concurrent operations
             transient=False,
         )
         with self.live:
-            self._refresh_display()
+            # Ensure initial display is shown
+            with self._lock:
+                self._refresh_display()
             yield self
         self.live = None
 

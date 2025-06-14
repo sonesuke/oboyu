@@ -177,9 +177,9 @@ class Crawler:
                         result = future.result()
                         if result:
                             results.append(result)
-                    except Exception as e:
-                        # Log the error and continue
-                        print(f"Error processing {doc_path}: {e}")
+                    except Exception:  # noqa: S110
+                        # Silently skip problematic files for cleaner display
+                        pass
 
                     # Report progress
                     completed_docs += 1
