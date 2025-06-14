@@ -44,8 +44,8 @@ def main() -> None:  # noqa: C901
     )
     parser.add_argument(
         "--report",
-        default="e2e_enhanced_report.md",
-        help="Path to save the test report (default: e2e_enhanced_report.md)",
+        default="e2e/e2e_enhanced_report.md",
+        help="Path to save the test report (default: e2e/e2e_enhanced_report.md)",
     )
     parser.add_argument(
         "--no-cleanup",
