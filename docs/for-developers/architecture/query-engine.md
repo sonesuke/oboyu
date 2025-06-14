@@ -135,7 +135,7 @@ Hybrid search combines both approaches for optimal results using **RRF (Reciproc
 
 ```bash
 # Default RRF hybrid search (recommended for most use cases)
-oboyu query "Pythonでの非同期処理の実装方法"
+oboyu query --query "Pythonでの非同期処理の実装方法"
 
 # Custom RRF parameter for different fusion behavior
 oboyu query --rrf-k 30 "database optimization techniques"  # More aggressive fusion
@@ -186,16 +186,16 @@ Text normalization ensures consistent matching:
 
 ```bash
 # Natural Japanese queries
-oboyu query "機械学習のアルゴリズムについて教えて"
-oboyu query "Pythonでのデータ処理方法"
+oboyu query --query "機械学習のアルゴリズムについて教えて"
+oboyu query --query "Pythonでのデータ処理方法"
 
 # Mixed Japanese-English queries
-oboyu query "REST APIの設計パターン"
-oboyu query "データベースのNormalization理論"
+oboyu query --query "REST APIの設計パターン"
+oboyu query --query "データベースのNormalization理論"
 
 # Technical terminology
-oboyu query "非同期処理とPromise"
-oboyu query "マイクロサービスアーキテクチャの利点"
+oboyu query --query "非同期処理とPromise"
+oboyu query --query "マイクロサービスアーキテクチャの利点"
 ```
 
 ### Search Mode Recommendations for Japanese
@@ -233,7 +233,7 @@ The Query Engine provides a comprehensive command-line interface:
 
 ```bash
 # Default hybrid search
-oboyu query "システムの設計原則について教えてください"
+oboyu query --query "システムの設計原則について教えてください"
 
 # Specify search mode
 oboyu query --mode vector "What are the key concepts?"
@@ -281,7 +281,7 @@ oboyu query --mode vector "distributed systems consistency models"
 oboyu query --mode bm25 "REST API status codes 404"
 
 # Balanced search for documentation
-oboyu query "Pythonでの例外処理のベストプラクティス"
+oboyu query --query "Pythonでの例外処理のベストプラクティス"
 
 # Technical documentation with custom RRF parameter
 oboyu query --rrf-k 30 --limit 15 "database normalization rules"

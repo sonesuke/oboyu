@@ -17,7 +17,7 @@ oboyu [command] [subcommand] [options] [arguments]
 
 # Examples:
 oboyu index ~/Documents --db-path ~/indexes/personal.db
-oboyu query "search term" --limit 10
+oboyu query --query "search term" --limit 10
 oboyu config set query.top_k 20
 ```
 
@@ -53,15 +53,15 @@ oboyu index ~/Documents --update --quiet
 
 # Search for today's tasks
 echo -e "\n📋 Today's Tasks:"
-oboyu query "TODO today OR deadline $(date +%Y-%m-%d)" --limit 5
+oboyu query --query "TODO today OR deadline $(date +%Y-%m-%d)" --limit 5
 
 # Recent meeting notes
 echo -e "\n📝 Recent Meetings:"
-oboyu query "meeting" --days 3 --limit 5
+oboyu query --query "meeting" --days 3 --limit 5
 
 # Urgent items
 echo -e "\n🚨 Urgent Items:"
-oboyu query "urgent OR ASAP OR critical" --days 7 --limit 5
+oboyu query --query "urgent OR ASAP OR critical" --days 7 --limit 5
 ```
 
 ### Project Search Workflow
@@ -77,7 +77,7 @@ search_project() {
     local query="$1"
     local mode="${2:-hybrid}"
     
-    oboyu query "$query" \
+    oboyu query --query "$query" \
         --filter "path:*/$PROJECT/*" \
         --mode "$mode" \
         --limit 10 \
@@ -107,7 +107,7 @@ find_similar() {
     local reference="$1"
     echo "Finding documents similar to: $reference"
     
-    oboyu query "similar to $reference" \
+    oboyu query --query "similar to $reference" \
         --mode vector \
         --limit 10 \
         --exclude "$reference"
@@ -118,7 +118,7 @@ find_cluster() {
     local topic="$1"
     echo "Finding $topic cluster..."
     
-    oboyu query "$topic" \
+oboyu query --query "$topic" \
         --mode hybrid \
         --expand-query \
         --group-by similarity \
@@ -141,7 +141,7 @@ find_cluster "machine learning"
 # Read queries from file
 while IFS= read -r query; do
     echo "Searching: $query"
-    oboyu query "$query" \
+    oboyu query --query "$query" \
         --limit 5 \
         --format json \
         >> results.jsonl
@@ -155,16 +155,16 @@ jq -s 'group_by(.query) | map({query: .[0].query, count: length, top_score: (map
 
 ```bash
 # Search and process results
-oboyu query "configuration" --format json | \
+oboyu query --query "configuration" --format json | \
     jq -r '.[] | select(.score > 0.8) | .path' | \
     xargs grep -l "database"
 
 # Find and backup important documents
-oboyu query "important confidential" --format paths | \
+oboyu query --query "important confidential" --format paths | \
     tar -czf important-docs-$(date +%Y%m%d).tar.gz -T -
 
 # Search and open in editor
-oboyu query "TODO fix" --limit 1 --format path | \
+oboyu query --query "TODO fix" --limit 1 --format path | \
     xargs -I {} code {}
 ```
 
@@ -183,7 +183,7 @@ search_with_history() {
     local query="$1"
     echo "$query" >> "$HISTORY_FILE"
     
-    oboyu query "$query" \
+    oboyu query --query "$query" \
         --interactive \
         --save-session \
         --format rich
@@ -361,9 +361,9 @@ alias oidx-update='oboyu index update --all'
 alias oidx-stats='oboyu index stats'
 
 # Common searches
-alias qtodo='oboyu query "TODO OR FIXME" --days 7'
-alias qmeeting='oboyu query "meeting" --days 7'
-alias qrecent='oboyu query "*" --days 1 --sort date'
+alias qtodo='oboyu query --query "TODO OR FIXME" --days 7'
+alias qmeeting='oboyu query --query "meeting" --days 7'
+alias qrecent='oboyu query --query "*" --days 1 --sort date'
 
 # Project-specific
 alias qwork='oboyu query --db-path ~/indexes/work.db'
@@ -379,7 +379,7 @@ alias qpersonal='oboyu query --db-path ~/indexes/personal.db'
 osearch() {
     local query="$*"
     local selected=$(
-        oboyu query "$query" --format json | \
+        oboyu query --query "$query" --format json | \
         jq -r '.[] | "\(.score|tostring[0:4]) \(.path)"' | \
         fzf --preview 'echo {} | cut -d" " -f2- | xargs oboyu show'
     )
@@ -389,7 +389,7 @@ osearch() {
 
 # Search and edit
 oedit() {
-    local result=$(oboyu query "$*" --limit 1 --format path)
+    local result=$(oboyu query --query "$*" --limit 1 --format path)
     [[ -n "$result" ]] && ${EDITOR:-vim} "$result"
 }
 
@@ -451,8 +451,8 @@ jobs:
       
       - name: Test search
         run: |
-          oboyu query "installation" --db-path ~/indexes/docs.db
-          oboyu query "contributing" --db-path ~/indexes/readme.db
+          oboyu query --query "installation" --db-path ~/indexes/docs.db
+          oboyu query --query "contributing" --db-path ~/indexes/readme.db
       
       - name: Upload index
         uses: actions/upload-artifact@v3
@@ -501,7 +501,7 @@ safe_search() {
     local retry=0
     
     while [[ $retry -lt $max_retries ]]; do
-        if oboyu query "$query" --timeout 30; then
+        if oboyu query --query "$query" --timeout 30; then
             return 0
         else
             echo "Search failed, retry $((retry + 1))/$max_retries"
@@ -517,7 +517,7 @@ safe_search() {
 # Usage with fallback
 if ! safe_search "$1"; then
     echo "Falling back to basic search"
-    oboyu query "$1" --mode bm25 --limit 5
+    oboyu query --query "$1" --mode bm25 --limit 5
 fi
 ```
 
@@ -534,7 +534,7 @@ search_index() {
     local index="$1"
     local query="$2"
     echo "[$index]"
-    oboyu query "$query" --db-path ~/indexes/example.db --limit 3
+oboyu query --query "$query" --db-path ~/indexes/example.db --limit 3
 }
 
 export -f search_index
@@ -560,7 +560,7 @@ benchmark_mode() {
     
     total=0
     for i in $(seq 1 $iterations); do
-        duration=$(oboyu query "$query" --mode "$mode" --format json | \
+        duration=$(oboyu query --query "$query" --mode "$mode" --format json | \
                   jq -r '.[0].search_duration_ms')
         total=$((total + duration))
     done
@@ -581,4 +581,4 @@ done
 
 - Set up [Automation](automation.md) for scheduled tasks
 - Explore [MCP Integration](mcp-integration.md) for AI assistance
-- Review [Configuration](../../system-administrators/reference/configuration.md) for optimization
+- Review [Configuration](../reference/configuration.md) for optimization

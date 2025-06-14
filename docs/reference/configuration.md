@@ -8,7 +8,7 @@ For most users, Oboyu works great with zero configuration. Simply run:
 
 ```bash
 oboyu index /path/to/documents
-oboyu query "your search"
+oboyu query --query "your search"
 ```
 
 If you need to customize behavior, create a simple configuration file.
@@ -581,7 +581,7 @@ If you're upgrading from an older version with complex configuration:
 
 4. **Test everything still works**:
    ```bash
-   oboyu query "test search"
+   oboyu query --query "test search"
    ```
 
 ### Removed Options Reference

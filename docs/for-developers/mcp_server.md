@@ -1203,7 +1203,7 @@ oboyu index manage check
 echo '{"jsonrpc":"2.0","method":"tools/list","id":1}' | oboyu mcp
 
 # Test search functionality
-oboyu query "test" --db-path ~/.oboyu/index.db
+oboyu query --query "test" --db-path ~/.oboyu/index.db
 
 # View server metrics (if enabled)
 curl http://localhost:8080/metrics

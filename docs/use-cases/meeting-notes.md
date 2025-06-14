@@ -299,4 +299,4 @@ prepare_meeting "Project Phoenix Review"
 
 - Learn about [Research Paper Search](research-papers.md) for academic meetings
 - Explore [Personal Notes Search](personal-notes.md) for individual productivity
-- Set up [Automation](../../power-users/integration-automation/automation.md) for meeting workflows
+- Set up [Automation](../integration-automation/automation.md) for meeting workflows

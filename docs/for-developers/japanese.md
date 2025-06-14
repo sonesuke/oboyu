@@ -222,7 +222,7 @@ Oboyu optimizes search ranking for Japanese characteristics:
 #### Technical Documentation Search
 ```bash
 # Search for machine learning concepts
-oboyu query "機械学習アルゴリズム"
+oboyu query --query "機械学習アルゴリズム"
 
 # Results ranked by:
 # 1. Exact phrase matches
@@ -234,7 +234,7 @@ oboyu query "機械学習アルゴリズム"
 #### Business Document Search
 ```bash
 # Search for meeting notes
-oboyu query "営業会議 議事録 2024年"
+oboyu query --query "営業会議 議事録 2024年"
 
 # Intelligent date parsing and entity recognition
 ```
@@ -242,7 +242,7 @@ oboyu query "営業会議 議事録 2024年"
 #### Code Documentation
 ```bash
 # Mixed language search
-oboyu query "async/await 非同期処理"
+oboyu query --query "async/await 非同期処理"
 
 # Handles technical terms in both languages
 ```
@@ -281,11 +281,11 @@ API設計のベストプラクティス
 
 ```bash
 # Japanese query finding English content
-oboyu query "認証システム"
+oboyu query --query "認証システム"
 # Also finds: "authentication system", "auth module"
 
 # English query finding Japanese content  
-oboyu query "database optimization"
+oboyu query --query "database optimization"
 # Also finds: "データベース最適化", "DB高速化"
 ```
 
@@ -352,28 +352,28 @@ oboyu query "database optimization"
 1. **Use Natural Phrases**
    ```bash
    # Good: Natural Japanese
-   oboyu query "ユーザー認証の実装方法"
+   oboyu query --query "ユーザー認証の実装方法"
    
    # Less optimal: Keyword list
-   oboyu query "ユーザー 認証 実装 方法"
+   oboyu query --query "ユーザー 認証 実装 方法"
    ```
 
 2. **Leverage Filters**
    ```bash
    # Filter by file type for technical docs
-   oboyu query "API設計" --filter "*.md"
+   oboyu query --query "API設計" --filter "*.md"
    
    # Filter by date for recent content
-   oboyu query "会議録" --filter "2024-*"
+   oboyu query --query "会議録" --filter "2024-*"
    ```
 
 3. **Mode Selection**
    ```bash
    # Semantic for concepts
-   oboyu query "オブジェクト指向の原則" --mode semantic
+   oboyu query --query "オブジェクト指向の原則" --mode semantic
    
    # Keyword for exact terms
-   oboyu query "エラーコード E001" --mode keyword
+   oboyu query --query "エラーコード E001" --mode keyword
    ```
 
 ## Best Practices
@@ -535,10 +535,10 @@ All search modes benefit from consistent text processing, ensuring reliable resu
 2. **Use appropriate search mode**:
    ```bash
    # For technical terms
-   oboyu query "機械学習" --mode hybrid
+   oboyu query --query "機械学習" --mode hybrid
    
    # For concepts
-   oboyu query "人工知能の応用" --mode semantic
+   oboyu query --query "人工知能の応用" --mode semantic
    ```
 
 3. **Rebuild index**:

@@ -86,16 +86,16 @@ indexer:
 
 ```bash
 # Search with reranking (uses config default)
-oboyu query "システムの設計原則について"
+oboyu query --query "システムの設計原則について"
 
 # Explicitly enable reranking
-oboyu query "design principles" --rerank
+oboyu query --query "design principles" --rerank
 
 # Disable reranking for this query
-oboyu query "quick lookup" --no-rerank
+oboyu query --query "quick lookup" --no-rerank
 
 # Rerank with custom top-k
-oboyu query "重要な概念" --rerank --top-k 5
+oboyu query --query "重要な概念" --rerank --top-k 5
 ```
 
 ### Python API
@@ -248,7 +248,7 @@ rm -rf ~/.cache/oboyu/embedding/cache/models/onnx/
 2. **Out of Memory**: Reduce batch size or disable reranking temporarily:
    ```yaml
    reranker_batch_size: 4
-   # Or disable for this query: oboyu query "text" --no-rerank
+   # Or disable for this query: oboyu query --query "text" --no-rerank
    ```
 
 3. **ONNX Conversion Fails**: Disable ONNX optimization:

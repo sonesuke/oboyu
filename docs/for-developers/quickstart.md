@@ -1,50 +1,32 @@
-# Quick Start Guide
+# Developer Quick Start Guide
 
-Welcome to Oboyu! This guide will help you get up and running with semantic document search in under 5 minutes.
-
-## What is Oboyu?
-
-Oboyu is a powerful local semantic search engine that lets you search through your documents using natural language queries. It excels at:
-- Finding relevant content even when you don't know the exact keywords
-- Supporting Japanese text with automatic encoding detection
-- Providing fast, accurate search results through hybrid search (combining keyword and semantic search)
-- Working entirely offline with your private documents
+Welcome to the Oboyu development quick start! This guide assumes you already have Oboyu installed and covers development-specific workflows.
 
 ## Prerequisites
 
-- Python 3.11 or higher
-- pip (latest version recommended)
-- 2GB of free disk space (for models)
-- macOS or Linux (Windows support via WSL)
-- For building from source:
-  - C++ compiler (build-essential on Linux, Xcode on macOS)
-  - CMake (for sentencepiece)
+Before following this guide, make sure you have:
+- Oboyu installed on your system ([see installation guide](../getting-started/installation))
+- Basic familiarity with command-line tools
+- Understanding of semantic search concepts
 
-## Installation
+## Development-Specific Setup
 
-### 1. Install Oboyu
-
-Using UV (recommended):
-```bash
-uv tool install oboyu
-```
-
-Using pip:
-```bash
-pip install oboyu
-```
-
-### 2. Download Models (One-time Setup)
-
-Oboyu will automatically download required models on first use. To pre-download them:
+For development work with Oboyu, you may want to install the development version:
 
 ```bash
-oboyu --download-models
+# Install development version with all dependencies
+pip install oboyu[dev]
 ```
 
-This downloads:
-- Embedding model for semantic search (~90MB)
-- Tokenizer for text processing (~5MB)
+Or for contributing to Oboyu:
+
+```bash
+# Clone and install from source
+git clone https://github.com/sonesuke/oboyu.git
+cd oboyu
+uv sync
+uv run oboyu --version
+```
 
 ## Your First Search - 3 Simple Steps
 
@@ -73,7 +55,7 @@ Index created successfully!
 Search using natural language:
 
 ```bash
-oboyu query "how to configure Python logging"
+oboyu query --query "how to configure Python logging"
 ```
 
 ### Step 3: Interactive Search (Recommended)
@@ -99,7 +81,7 @@ This opens a search interface where you can:
 oboyu index ~/projects/myapp/docs
 
 # Find specific implementation details
-oboyu query "authentication flow"
+oboyu query --query "authentication flow"
 ```
 
 ### 2. Research Notes and Documentation
@@ -108,7 +90,7 @@ oboyu query "authentication flow"
 oboyu index ~/research/notes --include "*.md"
 
 # Find related concepts
-oboyu query "machine learning optimization techniques"
+oboyu query --query "machine learning optimization techniques"
 ```
 
 ### 3. Code Documentation Search
@@ -117,7 +99,7 @@ oboyu query "machine learning optimization techniques"
 oboyu index ~/projects --include "*.md"
 
 # Search for API usage
-oboyu query "API authentication examples"
+oboyu query --query "API authentication examples"
 ```
 
 ### 4. Japanese Document Search
@@ -126,7 +108,7 @@ oboyu query "API authentication examples"
 oboyu index ~/documents/japanese
 
 # Search in Japanese
-oboyu query "機械学習の最適化"
+oboyu query --query "機械学習の最適化"
 ```
 
 ## Search Modes
@@ -135,17 +117,17 @@ Oboyu offers three search modes for different needs:
 
 1. **Hybrid** (default): Combines keyword and semantic search
    ```bash
-   oboyu query "Python logging" --mode hybrid
+   oboyu query --query "Python logging" --mode hybrid
    ```
 
 2. **Semantic**: Finds conceptually related content
    ```bash
-   oboyu query "how to debug applications" --mode semantic
+   oboyu query --query "how to debug applications" --mode semantic
    ```
 
 3. **Keyword**: Traditional keyword matching
    ```bash
-   oboyu query "ERROR FileNotFoundError" --mode keyword
+   oboyu query --query "ERROR FileNotFoundError" --mode keyword
    ```
 
 ## Pro Tips
@@ -153,16 +135,16 @@ Oboyu offers three search modes for different needs:
 ### 1. Use Filters for Targeted Search
 ```bash
 # Search only in specific files
-oboyu query "configuration" --filter "*.yaml"
+oboyu query --query "configuration" --filter "*.yaml"
 
 # Search in a specific directory
-oboyu query "testing" --filter "tests/"
+oboyu query --query "testing" --filter "tests/"
 ```
 
 ### 2. Rerank for Better Accuracy
 Enable reranking for more accurate results (slower but better):
 ```bash
-oboyu query "complex technical concept" --rerank
+oboyu query --query "complex technical concept" --rerank
 ```
 
 ### 3. Index Incrementally
@@ -182,14 +164,14 @@ oboyu index --clear
 Now that you're up and running:
 
 1. **Explore Interactive Mode**: Try `oboyu query -i` for the full experience
-2. **Read Configuration Guide**: Learn about [customization options](../system-administrators/reference/configuration.md)
+2. **Read Configuration Guide**: Learn about [customization options](../reference/configuration.md)
 3. **Check CLI Reference**: See all available [commands and options](cli.md)
 4. **Learn About Architecture**: Understand [how Oboyu works](architecture.md)
 
 ## Need Help?
 
 - Run `oboyu --help` for command help
-- Check [Troubleshooting Guide](../system-administrators/troubleshooting/troubleshooting.md) for common issues
+- Check [Troubleshooting Guide](../troubleshooting/troubleshooting.md) for common issues
 - Visit our [GitHub repository](https://github.com/sonesuke/oboyu) for support
 
 ## Quick Command Reference
@@ -198,7 +180,7 @@ Now that you're up and running:
 |------|---------|
 | Install Oboyu | `uv tool install oboyu` |
 | Index documents | `oboyu index /path/to/docs` |
-| Search | `oboyu query "your search"` |
+| Search | `oboyu query --query "your search"` |
 | Interactive mode | `oboyu query --interactive` |
 | Update index | `oboyu index /path --incremental` |
 | Clear index | `oboyu index --clear` |
