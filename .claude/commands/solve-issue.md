@@ -136,27 +136,32 @@ if [[ ! -f ".claude/scripts/monitor-pr-checks.sh" ]]; then
     exit 1
 fi
 
-# Launch automated monitoring (ALWAYS, regardless of task complexity)
-.claude/scripts/monitor-pr-checks.sh ${PR_NUMBER} &
-MONITOR_PID=$!
+# Launch automated monitoring in FOREGROUND (ALWAYS, regardless of task complexity)
+# IMPORTANT: Run in foreground so Claude Code can properly wait for completion
+.claude/scripts/monitor-pr-checks.sh ${PR_NUMBER}
 
-echo "🤖 Automated monitoring started (PID: ${MONITOR_PID})"
-echo "📊 Auto-fixes common issues, promotes to Ready when checks pass"
+# The script will run until:
+# - All CI/CD checks pass and PR is promoted to Ready
+# - PR is merged or closed
+# - Manual interruption (Ctrl+C)
 ```
 
 **Note**: Automation provides consistent workflow regardless of change size
 
 ### 🤖 Claude Code Implementation Guide
 
-**For Claude Code users**: After launching monitoring, the workflow becomes fully autonomous:
+**For Claude Code users**: The monitoring system runs in FOREGROUND for proper execution flow:
 
-1. **DO NOT** wait for user confirmation to proceed
-2. **DO NOT** ask permission before each step  
-3. **CONTINUE** automatically as monitoring system progresses
-4. **ONLY** pause if errors require manual intervention
-5. **REPORT** progress but proceed without user input
+1. **RUN** monitoring in foreground (no `&` background operator)
+2. **WAIT** for monitoring script to complete its full cycle
+3. **CONTINUE** automatically when monitoring exits successfully
+4. **HANDLE** any errors that cause monitoring to exit early
+5. **PROCEED** to cleanup only after monitoring completes
 
-The goal is complete automation from monitoring start to PR completion.
+**Critical**: Use foreground execution so Claude Code can properly wait for CI/CD completion and handle the workflow sequentially. The monitoring script will exit when:
+- All checks pass and PR is promoted to Ready
+- PR is merged/closed
+- Fatal error occurs requiring intervention
 
 ### Step 5: Development with Real-time Feedback
 ```bash
@@ -378,4 +383,7 @@ When monitoring is active, you'll see:
 [2024-01-15 10:34:00] ✅ All checks passed! (1/2)
 [2024-01-15 10:36:00] ✅ All checks passed! (2/2)
 [2024-01-15 10:36:00] 🎉 PR #123 promoted to Ready for Review!
+[2024-01-15 10:36:00] 🔚 Monitoring complete. Exiting...
+
+# Script exits here, Claude Code continues to next step
 ```
