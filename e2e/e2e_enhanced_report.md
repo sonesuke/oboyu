@@ -8,7 +8,7 @@
 - Test environment: /Users/sonesuke/oboyu/main/.worktree/issue-291
 - Oboyu command: oboyu
 - ttyd port: 7681
-- Screenshots directory: /var/folders/w6/68_pl4k5769c22sbnpfy8dt00000gn/T/oboyu_e2e_e2eb7m3e/screenshots
+- Screenshots directory: /var/folders/w6/68_pl4k5769c22sbnpfy8dt00000gn/T/oboyu_e2e_ob0ymll2/screenshots
 
 ## Enhancement Features
 
@@ -32,6 +32,6 @@
 ## Metadata
 
 - Total cost: $0.0000
-- Total duration: 29218ms
+- Total duration: 29673ms
 - Total turns: 0
 - Enhanced testing: ttyd + Playwright

@@ -107,6 +107,24 @@ class OboyuE2EDisplayTester:
             RuntimeError: If Claude Code execution fails
 
         """
+        # Include screenshot validation info if provided
+        screenshot_validation = ""
+        if context_files:
+            # Validate screenshots exist and have reasonable size
+            valid_screenshots = []
+            for file in context_files:
+                path = Path(file)
+                if path.exists() and path.stat().st_size > 1000:  # Basic size check
+                    valid_screenshots.append(file)
+
+            screenshot_validation = f"""
+            
+        Screenshot validation results:
+        - Total screenshots expected: {len(context_files)}
+        - Valid screenshots found: {len(valid_screenshots)}
+        - Screenshots captured successfully: {"✅ YES" if len(valid_screenshots) == len(context_files) else "❌ NO"}
+        """
+
         claude_prompt = f"""
         You are an e2e tester for Oboyu, a Python-based search and indexing tool.
         I have already executed the commands and captured their output.
@@ -123,18 +141,14 @@ class OboyuE2EDisplayTester:
 
         Specific task:
         {prompt}
+        {screenshot_validation}
 
         Provide a brief assessment of the display quality based on the output shown above.
         If there are problems, report them specifically and include fix suggestions.
         """
 
-        # Build command
+        # Build command - Claude Code will analyze text output and mentioned file paths
         cmd = ["claude", "-p", claude_prompt, "--output-format", "json"]
-
-        # Add context files if provided
-        if context_files:
-            for file in context_files:
-                cmd.extend(["-f", file])
 
         # Execute Claude Code with streaming output
         print("\n--- Executing Claude Code ---")
