@@ -382,5 +382,5 @@ oboyu query --query "経済成長 economic growth GDP連動" --mode hybrid
 
 - Explore [Research Paper Search](research-papers.md) for academic financial research
 - Learn about [Meeting Notes Search](meeting-notes.md) for investment committee documentation  
-- Set up [PDF Processing](../technical-setup/pdf-processing.md) for advanced document handling
 - Configure [Automation](../integration-automation/automation.md) for regular report updates
+- Review [Basic Usage](../basic-usage/document-types.md) for PDF processing capabilities
