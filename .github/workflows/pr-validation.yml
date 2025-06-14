@@ -1,5 +1,7 @@
 name: PR Validation
 
+# This workflow runs on PRs and performs fast validation checks
+# Uses pre-commit hooks which include optimized linting, type checking, and testing
 on:
   pull_request:
     branches: [main]
@@ -42,25 +44,22 @@ jobs:
 
       - name: Run pre-commit on all files
         run: uv run pre-commit run -a
-
-      - name: Lint with ruff
-        run: uv run ruff check --fix
-
-      - name: Type check with mypy
-        run: uv run mypy
-
-      - name: Run fast tests
-        run: uv run pytest -m "not slow" -k "not integration"
+        
+      # Note: pre-commit already includes ruff, mypy, and pytest
+      # No need for duplicate checks
 
       - name: Report failure
         if: failure()
         run: |
           echo "::error::PR validation checks failed. Please fix the issues and push again."
-          echo "Run the following commands locally to debug:"
+          echo "Run the following command locally to debug:"
           echo "  uv run pre-commit run -a"
-          echo "  uv run ruff check --fix"
-          echo "  uv run mypy"
-          echo "  uv run pytest -m 'not slow' -k 'not integration'"
+          echo ""
+          echo "This includes linting, type checking, and fast tests."
+          echo "Individual commands for debugging:"
+          echo "  uv run ruff check --fix    # Fix linting issues"
+          echo "  uv run mypy                # Check types"
+          echo "  uv run pytest -m 'not slow' -k 'not integration'  # Run tests"
           exit 1
 
   docs-build-validation:

@@ -1,10 +1,10 @@
-name: Publish to Test PyPI
+name: Build and Publish to Test PyPI
 
+# This workflow runs only on push to main/develop branches
+# It performs comprehensive testing, builds packages, and publishes to Test PyPI
 on:
   push:
     branches: [main, develop]
-  pull_request:
-    branches: [main]
 
 jobs:
   test:
@@ -35,14 +35,13 @@ jobs:
     - name: Install dependencies
       run: uv sync --all-extras
     
-    - name: Lint with ruff
-      run: uv run ruff check --fix
-    
-    - name: Type check with mypy
-      run: uv run mypy
-    
-    - name: Run fast tests
-      run: uv run pytest -m "not slow" -k "not integration"
+    - name: Run comprehensive tests for release
+      run: uv run pytest --cov=src
+      
+    - name: Verify code quality
+      run: |
+        uv run ruff check --fix
+        uv run mypy
 
   build:
     needs: test
