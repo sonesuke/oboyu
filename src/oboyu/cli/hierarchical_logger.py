@@ -132,7 +132,7 @@ class HierarchicalLogger:
                 self.operations.append(operation)
 
             self.operation_stack.append(operation)
-            # Initial display for new operations
+            # Always display new operations immediately
             self._refresh_display()
             return op_id
 
@@ -167,11 +167,12 @@ class HierarchicalLogger:
             # Force refresh for completion indicators or important progress updates
             is_completion = description and ("100%" in description or description.endswith("...") or "completed" in description.lower())
             is_progress_update = description and ("(" in description and "/" in description and ")" in description)  # Detect progress patterns like "(5/10)"
+            is_first_update = self._last_refresh_time == 0.0  # Always show first update
 
             # More frequent updates for progress, less frequent for other updates
             throttle_interval = 0.3 if is_progress_update else 0.75  # Faster updates for progress counters
 
-            if is_completion or is_progress_update or current_time - self._last_refresh_time > throttle_interval:
+            if is_completion or is_progress_update or is_first_update or current_time - self._last_refresh_time > throttle_interval:
                 self._refresh_display()
                 self._last_refresh_time = current_time
 
