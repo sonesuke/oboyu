@@ -45,10 +45,10 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'use-cases/technical-docs',
-        'use-cases/meeting-notes',
         'use-cases/research-papers',
         'use-cases/personal-notes',
         'use-cases/nikkei225-securities-reports',
+        'use-cases/github-issues-search',
       ],
     },
     {

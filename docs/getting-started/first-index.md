@@ -122,7 +122,7 @@ Structure your files logically before indexing:
 ├── projects/
 │   ├── project-a/
 │   └── project-b/
-├── meeting-notes/
+├── github-issues/
 └── research/
 ```
 

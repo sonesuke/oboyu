@@ -1,7 +1,7 @@
 ---
 id: github-issues-search
 title: GitHub Issues Search Examples
-sidebar_position: 5
+sidebar_position: 6
 ---
 
 # GitHub Issues Search Examples
@@ -295,7 +295,6 @@ query:
 ## Next Steps
 
 - [Technical Documentation Search](technical-docs.md) - Search through code documentation and technical specs
-- [Meeting Notes Search](meeting-notes.md) - Find decisions and action items from team meetings
 - [Personal Knowledge Base](personal-notes.md) - Organize individual development notes and learnings
 
 ---

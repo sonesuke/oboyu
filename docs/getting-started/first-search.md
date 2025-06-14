@@ -32,8 +32,8 @@ Searching for: "project deadline"
    ...The project deadline has been set for March 15th, with key milestones 
    scheduled for February 1st and February 20th. All team members should...
 
-2. meeting-notes-jan.txt (Score: 0.87)
-   Path: ~/Documents/meetings/meeting-notes-jan.txt
+2. github-issue-123.md (Score: 0.87)
+   Path: ~/Documents/github-issues/github-issue-123.md
    Modified: 2024-01-10
    
    ...discussed the upcoming project deadline and resource allocation. 
