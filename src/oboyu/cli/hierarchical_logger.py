@@ -152,29 +152,32 @@ class HierarchicalLogger:
             **metadata: Additional metadata to update
 
         """
-        operation = self._find_operation(op_id)
-        if operation:
-            if description:
-                operation.description = description
-            if details:
-                operation.details = details
-            operation.metadata.update(metadata)
-            # Improved throttling for concurrent operations
-            current_time = time.time()
-            if not hasattr(self, "_last_refresh_time"):
-                self._last_refresh_time = 0.0
+        with self._lock:
+            operation = self._find_operation(op_id)
+            if operation:
+                if description:
+                    operation.description = description
+                if details:
+                    operation.details = details
+                operation.metadata.update(metadata)
+                # Improved throttling for concurrent operations
+                current_time = time.time()
+                if not hasattr(self, "_last_refresh_time"):
+                    self._last_refresh_time = 0.0
 
-            # Force refresh for completion indicators or important progress updates
-            is_completion = description and ("100%" in description or description.endswith("...") or "completed" in description.lower())
-            is_progress_update = description and ("(" in description and "/" in description and ")" in description)  # Detect progress patterns like "(5/10)"
-            is_first_update = self._last_refresh_time == 0.0  # Always show first update
+                # Force refresh for completion indicators or important progress updates
+                is_completion = description and ("100%" in description or description.endswith("...") or "completed" in description.lower())
+                is_progress_update = description and (
+                    "(" in description and "/" in description and ")" in description
+                )  # Detect progress patterns like "(5/10)"
+                is_first_update = self._last_refresh_time == 0.0  # Always show first update
 
-            # More frequent updates for progress, less frequent for other updates
-            throttle_interval = 0.3 if is_progress_update else 0.75  # Faster updates for progress counters
+                # More frequent updates for progress, less frequent for other updates
+                throttle_interval = 0.3 if is_progress_update else 0.75  # Faster updates for progress counters
 
-            if is_completion or is_progress_update or is_first_update or current_time - self._last_refresh_time > throttle_interval:
-                self._refresh_display()
-                self._last_refresh_time = current_time
+                if is_completion or is_progress_update or is_first_update or current_time - self._last_refresh_time > throttle_interval:
+                    self._refresh_display()
+                    self._last_refresh_time = current_time
 
     def complete_operation(self, op_id: Optional[str] = None, error: bool = False) -> None:
         """Mark an operation as complete.
@@ -307,14 +310,14 @@ class HierarchicalLogger:
     def _refresh_display(self) -> None:
         """Refresh the display with current state."""
         if self.live:
-            with self._lock:  # Add thread safety for display updates
-                output = Text()
-                for operation in self.operations:
-                    op_lines = self._render_operation(operation)
-                    for line in op_lines:
-                        output.append(line)
-                        output.append("\n")
-                self.live.update(output)
+            # Note: _lock should already be held by caller
+            output = Text()
+            for operation in self.operations:
+                op_lines = self._render_operation(operation)
+                for line in op_lines:
+                    output.append(line)
+                    output.append("\n")
+            self.live.update(output)
 
     @contextmanager
     def live_display(self) -> Iterator["HierarchicalLogger"]:
