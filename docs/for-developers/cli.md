@@ -21,7 +21,7 @@ This document describes the available command-line interface (CLI) commands for 
 ```bash
 # Quick start: Index a codebase and search
 oboyu index ~/projects/myapp --include-patterns "*.py,*.js"
-oboyu query "database connection" --top-k 10
+oboyu query --query "database connection" --top-k 10
 
 # Incremental updates with cleanup
 oboyu index ~/documents --cleanup-deleted
@@ -253,25 +253,25 @@ Search indexed documents.
 
 ```bash
 # Basic query
-oboyu query "search term"
+oboyu query --query "search term"
 
 # Specify search mode
-oboyu query "search term" --mode vector
+oboyu query --query "search term" --mode vector
 
 # Get more results
-oboyu query "search term" --top-k 10
+oboyu query --query "search term" --top-k 10
 
 # Use hybrid search with custom weights
-oboyu query "search term" --mode hybrid --vector-weight 0.8 --bm25-weight 0.2
+oboyu query --query "search term" --mode hybrid --vector-weight 0.8 --bm25-weight 0.2
 
 # Enable reranking for better accuracy
-oboyu query "search term" --rerank
+oboyu query --query "search term" --rerank
 
 # Disable reranking for faster results
-oboyu query "search term" --no-rerank
+oboyu query --query "search term" --no-rerank
 
 # Get detailed explanation of results
-oboyu query "search term" --explain
+oboyu query --query "search term" --explain
 
 # Start interactive search session
 oboyu query --interactive
@@ -296,37 +296,37 @@ Options:
 **Search for function definitions in code:**
 ```bash
 # Find function definitions with specific names
-oboyu query "def process_data" --mode bm25 --top-k 20
+oboyu query --query "def process_data" --mode bm25 --top-k 20
 
 # Search for class implementations
-oboyu query "class DatabaseConnection" --explain
+oboyu query --query "class DatabaseConnection" --explain
 ```
 
 **Multi-language search with reranking:**
 ```bash
 # Search across English and Japanese content
-oboyu query "machine learning 機械学習" --rerank --top-k 10
+oboyu query --query "machine learning 機械学習" --rerank --top-k 10
 ```
 
 **Export results for processing:**
 ```bash
 # Get JSON output for scripting
-oboyu query "error handling" --format json | jq '.results[].file_path'
+oboyu query --query "error handling" --format json | jq '.results[].file_path'
 
 # Save results to file
-oboyu query "TODO" --top-k 50 --format json > todos.json
+oboyu query --query "TODO" --top-k 50 --format json > todos.json
 ```
 
 **Fine-tuned hybrid search:**
 ```bash
 # Emphasize semantic similarity
-oboyu query "authentication flow" \
+oboyu query --query "authentication flow" \
   --mode hybrid \
   --vector-weight 0.9 \
   --bm25-weight 0.1
 
 # Balance keyword and semantic search
-oboyu query "database optimization techniques" \
+oboyu query --query "database optimization techniques" \
   --mode hybrid \
   --vector-weight 0.5 \
   --bm25-weight 0.5
@@ -653,7 +653,7 @@ else
 fi
 
 # Search with error handling
-oboyu query "important document" --format json > results.json
+oboyu query --query "important document" --format json > results.json
 if [ $? -eq 0 ]; then
     echo "Found $(jq '.total' results.json) results"
 else
@@ -750,7 +750,7 @@ oboyu index ~/docs --db-path ~/alternative.db
 rm -rf ~/.cache/huggingface/hub/*oboyu*
 
 # Retry with verbose output
-oboyu query "test" --verbose
+oboyu query --query "test" --verbose
 
 # Use a different model
 oboyu index ~/docs --embedding-model sentence-transformers/all-MiniLM-L6-v2
@@ -837,13 +837,13 @@ Add to your shell configuration:
 
 ```bash
 # Quick search functions
-alias todos='oboyu query "TODO|FIXME" --mode bm25 --top-k 50'
-alias errors='oboyu query "error|exception|traceback" --rerank'
+alias todos='oboyu query --query "TODO|FIXME" --mode bm25 --top-k 50'
+alias errors='oboyu query --query "error|exception|traceback" --rerank'
 alias recent='oboyu query --interactive --mode hybrid'
 
 # Project-specific search
 function search_project() {
-    oboyu query "$1" --db-path ~/projects/${2:-current}.db
+    oboyu query --query "$1" --db-path ~/projects/${2:-current}.db
 }
 ```
 
@@ -851,12 +851,12 @@ function search_project() {
 
 ```bash
 # Find and open files in editor
-oboyu query "$1" --format json | \
+oboyu query --query "$1" --format json | \
     jq -r '.results[0].file_path' | \
     xargs code
 
 # Search and preview with bat
-oboyu query "$1" --format json | \
+oboyu query --query "$1" --format json | \
     jq -r '.results[].file_path' | \
     xargs bat --paging=never
 ```
@@ -865,9 +865,9 @@ oboyu query "$1" --format json | \
 
 ```bash
 # Benchmark different search modes
-time oboyu query "database connection" --mode vector --no-rerank
-time oboyu query "database connection" --mode bm25 --no-rerank
-time oboyu query "database connection" --mode hybrid --rerank
+time oboyu query --query "database connection" --mode vector --no-rerank
+time oboyu query --query "database connection" --mode bm25 --no-rerank
+time oboyu query --query "database connection" --mode hybrid --rerank
 
 # Profile indexing performance
 time oboyu index ~/large-codebase --force
@@ -932,7 +932,7 @@ search_and_process() {
     local query=$1
     local results_file="/tmp/oboyu-results-$$.json"
     
-    if oboyu query "$query" --format json --top-k 20 > "$results_file"; then
+    if oboyu query --query "$query" --format json --top-k 20 > "$results_file"; then
         # Process results with jq
         jq -r '.results[] | "\(.score)\t\(.file_path)"' "$results_file" | \
         while IFS=$'\t' read -r score path; do
@@ -1003,10 +1003,10 @@ jobs:
       - name: Run quality checks
         run: |
           # Search for TODOs
-          oboyu query "TODO" --format json > todos.json
+          oboyu query --query "TODO" --format json > todos.json
           
           # Check for security issues
-          oboyu query "password|secret|api_key" --format json > security-check.json
+          oboyu query --query "password|secret|api_key" --format json > security-check.json
           
           # Generate report
           python scripts/analyze_search_results.py

@@ -55,7 +55,7 @@ Index created successfully!
 Search using natural language:
 
 ```bash
-oboyu query "how to configure Python logging"
+oboyu query --query "how to configure Python logging"
 ```
 
 ### Step 3: Interactive Search (Recommended)
@@ -81,7 +81,7 @@ This opens a search interface where you can:
 oboyu index ~/projects/myapp/docs
 
 # Find specific implementation details
-oboyu query "authentication flow"
+oboyu query --query "authentication flow"
 ```
 
 ### 2. Research Notes and Documentation
@@ -90,7 +90,7 @@ oboyu query "authentication flow"
 oboyu index ~/research/notes --include "*.md"
 
 # Find related concepts
-oboyu query "machine learning optimization techniques"
+oboyu query --query "machine learning optimization techniques"
 ```
 
 ### 3. Code Documentation Search
@@ -99,7 +99,7 @@ oboyu query "machine learning optimization techniques"
 oboyu index ~/projects --include "*.md"
 
 # Search for API usage
-oboyu query "API authentication examples"
+oboyu query --query "API authentication examples"
 ```
 
 ### 4. Japanese Document Search
@@ -108,7 +108,7 @@ oboyu query "API authentication examples"
 oboyu index ~/documents/japanese
 
 # Search in Japanese
-oboyu query "機械学習の最適化"
+oboyu query --query "機械学習の最適化"
 ```
 
 ## Search Modes
@@ -117,17 +117,17 @@ Oboyu offers three search modes for different needs:
 
 1. **Hybrid** (default): Combines keyword and semantic search
    ```bash
-   oboyu query "Python logging" --mode hybrid
+   oboyu query --query "Python logging" --mode hybrid
    ```
 
 2. **Semantic**: Finds conceptually related content
    ```bash
-   oboyu query "how to debug applications" --mode semantic
+   oboyu query --query "how to debug applications" --mode semantic
    ```
 
 3. **Keyword**: Traditional keyword matching
    ```bash
-   oboyu query "ERROR FileNotFoundError" --mode keyword
+   oboyu query --query "ERROR FileNotFoundError" --mode keyword
    ```
 
 ## Pro Tips
@@ -135,16 +135,16 @@ Oboyu offers three search modes for different needs:
 ### 1. Use Filters for Targeted Search
 ```bash
 # Search only in specific files
-oboyu query "configuration" --filter "*.yaml"
+oboyu query --query "configuration" --filter "*.yaml"
 
 # Search in a specific directory
-oboyu query "testing" --filter "tests/"
+oboyu query --query "testing" --filter "tests/"
 ```
 
 ### 2. Rerank for Better Accuracy
 Enable reranking for more accurate results (slower but better):
 ```bash
-oboyu query "complex technical concept" --rerank
+oboyu query --query "complex technical concept" --rerank
 ```
 
 ### 3. Index Incrementally
@@ -180,7 +180,7 @@ Now that you're up and running:
 |------|---------|
 | Install Oboyu | `uv tool install oboyu` |
 | Index documents | `oboyu index /path/to/docs` |
-| Search | `oboyu query "your search"` |
+| Search | `oboyu query --query "your search"` |
 | Interactive mode | `oboyu query --interactive` |
 | Update index | `oboyu index /path --incremental` |
 | Clear index | `oboyu index --clear` |

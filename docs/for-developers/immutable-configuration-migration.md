@@ -23,7 +23,7 @@ The new immutable configuration system addresses the most reported user experien
 query:
   rerank: true
 
-# User runs: oboyu query "test" --rerank=false
+# User runs: oboyu query --query "test" --rerank=false
 # Result: reranker might still be enabled due to config file
 ```
 
@@ -33,7 +33,7 @@ query:
 query:
   rerank: true
 
-# User runs: oboyu query "test" --rerank=false
+# User runs: oboyu query --query "test" --rerank=false
 # Result: reranker is GUARANTEED to be disabled
 # Logs show: "🎯 Reranker: false (EXPLICITLY set from CLI)"
 ```
@@ -101,8 +101,8 @@ CLI commands work exactly the same:
 
 ```bash
 # These commands work as before, but now with guaranteed precedence
-oboyu query "test" --rerank=true
-oboyu query "test" --top-k=5 --rerank=false
+oboyu query --query "test" --rerank=true
+oboyu query --query "test" --top-k=5 --rerank=false
 ```
 
 ### 3. Programmatic Usage

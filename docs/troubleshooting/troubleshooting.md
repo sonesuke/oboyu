@@ -244,13 +244,13 @@ oboyu index --stats
 2. **Try different search modes**:
 ```bash
 # Try BM25 for exact matches
-oboyu query "exact phrase" --mode bm25
+oboyu query --query "exact phrase" --mode bm25
 
 # Try vector search for concepts
-oboyu query "concept description" --mode vector
+oboyu query --query "concept description" --mode vector
 
 # Try hybrid for best of both
-oboyu query "search terms" --mode hybrid
+oboyu query --query "search terms" --mode hybrid
 ```
 
 3. **Use broader queries**:
@@ -262,7 +262,7 @@ oboyu query "search terms" --mode hybrid
 oboyu query '"exact phrase here"'
 
 # Use simpler terms
-oboyu query "main keyword"
+oboyu query --query "main keyword"
 ```
 
 ### Poor Search Quality
@@ -273,7 +273,7 @@ oboyu query "main keyword"
 
 1. **Enable reranking** for better accuracy:
    ```bash
-   oboyu query "your search" --rerank
+   oboyu query --query "your search" --rerank
    oboyu config set indexer.use_reranker true
    ```
 
@@ -307,16 +307,16 @@ oboyu config set indexer.chunk_size 2048
 **Quick Fixes**:
 ```bash
 # Use faster mode
-oboyu query "search term" --mode bm25
+oboyu query --query "search term" --mode bm25
 
 # Limit results
-oboyu query "search term" --limit 5
+oboyu query --query "search term" --limit 5
 
 # Add filters to narrow search
-oboyu query "search term" --file-type md --days 30
+oboyu query --query "search term" --file-type md --days 30
 
 # Disable reranking for faster searches
-oboyu query "search" --no-rerank
+oboyu query --query "search" --no-rerank
 ```
 
 **Optimization**:
@@ -459,10 +459,10 @@ oboyu config set indexer.japanese_preprocessing true
 3. **Try different query formats**:
    ```bash
    # With spaces
-   oboyu query "機械 学習 最適化"
+   oboyu query --query "機械 学習 最適化"
    
    # Without spaces
-   oboyu query "機械学習最適化"
+   oboyu query --query "機械学習最適化"
    ```
 
 ## MCP Server Issues
@@ -674,7 +674,7 @@ export OBOYU_LOG_LEVEL=DEBUG
 oboyu index ~/Documents --verbose --debug
 
 # Save debug log
-oboyu query "search" --debug > debug.log 2>&1
+oboyu query --query "search" --debug > debug.log 2>&1
 ```
 
 ### Collect Diagnostic Information
