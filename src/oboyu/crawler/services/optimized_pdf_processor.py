@@ -14,9 +14,13 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 try:
     import pymupdf
     import pymupdf4llm
-except ImportError:
+
+    HAS_PYMUPDF = True
+except ImportError as e:
     pymupdf = None
     pymupdf4llm = None
+    HAS_PYMUPDF = False
+    _IMPORT_ERROR = str(e)
 
 
 class ProcessingStrategy(Enum):
@@ -45,9 +49,13 @@ class PDFMetrics:
 
         # Quick page count estimation (without full parsing)
         try:
-            doc = pymupdf.open(file_path)
-            total_pages = doc.page_count
-            doc.close()
+            if HAS_PYMUPDF:
+                doc = pymupdf.open(file_path)
+                total_pages = doc.page_count
+                doc.close()
+            else:
+                # Fallback estimation based on file size when PyMuPDF unavailable
+                total_pages = max(1, int(file_size_mb * 10))  # Rough estimate
         except Exception:
             # Fallback estimation based on file size
             total_pages = max(1, int(file_size_mb * 10))  # Rough estimate
@@ -152,8 +160,12 @@ class OptimizedPDFProcessor:
 
     def extract_pdf(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
         """Extract content and metadata from PDF file."""
-        if pymupdf4llm is None:
-            raise RuntimeError("pymupdf4llm library is required for PDF processing")
+        if not HAS_PYMUPDF:
+            raise RuntimeError(
+                "PyMuPDF4LLM library is required for PDF processing. "
+                "Install it with: pip install 'pymupdf4llm>=0.0.25' or uv add pymupdf4llm. "
+                f"Import error: {_IMPORT_ERROR if '_IMPORT_ERROR' in globals() else 'Unknown import error'}"
+            )
 
         # Check cache first
         cached_result = self.cache.get(file_path)
