@@ -581,4 +581,4 @@ done
 
 - Set up [Automation](automation.md) for scheduled tasks
 - Explore [MCP Integration](mcp-integration.md) for AI assistance
-- Review [Configuration](../../system-administrators/reference/configuration.md) for optimization
+- Review [Configuration](../reference/configuration.md) for optimization

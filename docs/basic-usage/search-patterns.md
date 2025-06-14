@@ -353,5 +353,5 @@ oboyu query --query "pattern"
 ## Next Steps
 
 - Apply these patterns in [Real-world Scenarios](../use-cases/technical-docs.md)
-- Optimize search with [Search Optimization](../../system-administrators/reference/configuration.md)
-- Automate patterns with [CLI Workflows](../../power-users/integration-automation/cli-workflows.md)
+- Optimize search with [Search Optimization](../reference/configuration.md)
+- Automate patterns with [CLI Workflows](../integration-automation/cli-workflows.md)

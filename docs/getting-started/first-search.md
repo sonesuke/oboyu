@@ -263,4 +263,4 @@ oboyu query --query "documents" --rrf-k 30
 Now that you can search effectively:
 - Explore [Basic Workflows](../basic-usage/basic-workflow.md) for daily usage patterns
 - Learn about [Search Patterns](../basic-usage/search-patterns.md) for advanced techniques
-- Configure [Search Optimization](../../system-administrators/reference/configuration.md) for better results
+- Configure [Search Optimization](../reference/configuration.md) for better results

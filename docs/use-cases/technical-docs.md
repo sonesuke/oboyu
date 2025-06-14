@@ -288,4 +288,4 @@ oboyu query --query "test suite integration unit" --mode vector
 
 - Explore [Meeting Notes Search](meeting-notes.md) for team communication
 - Learn about [Research Paper Search](research-papers.md) for academic content
-- Set up [Automation](../../power-users/integration-automation/automation.md) for documentation updates
+- Set up [Automation](../integration-automation/automation.md) for documentation updates
