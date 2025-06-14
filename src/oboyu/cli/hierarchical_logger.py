@@ -164,13 +164,14 @@ class HierarchicalLogger:
             if not hasattr(self, "_last_refresh_time"):
                 self._last_refresh_time = 0.0
 
-            # Force refresh for completion indicators or throttle for regular updates
+            # Force refresh for completion indicators or important progress updates
             is_completion = description and ("100%" in description or description.endswith("...") or "completed" in description.lower())
+            is_progress_update = description and ("(" in description and "/" in description and ")" in description)  # Detect progress patterns like "(5/10)"
 
-            # More aggressive throttling for concurrent operations to reduce display corruption
-            throttle_interval = 0.75  # Increased to 0.75 seconds for better stability
+            # More frequent updates for progress, less frequent for other updates
+            throttle_interval = 0.3 if is_progress_update else 0.75  # Faster updates for progress counters
 
-            if is_completion or current_time - self._last_refresh_time > throttle_interval:
+            if is_completion or is_progress_update or current_time - self._last_refresh_time > throttle_interval:
                 self._refresh_display()
                 self._last_refresh_time = current_time
 

@@ -191,7 +191,8 @@ class OptimizedPDFProcessor:
 
         # Analyze file characteristics
         metrics = PDFMetrics.analyze_pdf(file_path)
-        processing_info = f"Processing {file_path.name}"
+        # Show essential info: filename and page count (but not strategy details)
+        processing_info = f"Processing {file_path.name} ({metrics.total_pages} pages)"
 
         if logger:
             processing_op_id = logger.start_operation(processing_info)

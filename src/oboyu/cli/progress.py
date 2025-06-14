@@ -207,7 +207,7 @@ class IndexerProgressAdapter:
             "rate_unit": "files/sec",
         },
         "processing": {
-            "description": "Reading and chunking files...",
+            "description": "Processing files",
             "rate_unit": "files/sec",
         },
         "embedding": {
@@ -215,7 +215,7 @@ class IndexerProgressAdapter:
             "rate_unit": "batches/sec",
         },
         "storing": {
-            "description": "Storing chunks in database...",
+            "description": "Storing chunks",
             "rate_unit": "chunks/sec",
         },
         "storing_embeddings": {
