@@ -191,13 +191,7 @@ class OptimizedPDFProcessor:
 
         # Analyze file characteristics
         metrics = PDFMetrics.analyze_pdf(file_path)
-        # Show essential info: filename and page count (but not strategy details)
-        processing_info = f"Processing {file_path.name} ({metrics.total_pages} pages)"
-
-        if logger:
-            processing_op_id = logger.start_operation(processing_info)
-        else:
-            print(processing_info)
+        # Don't create individual file operations for cleaner aggregate display
 
         # Check file size limit
         if file_path.stat().st_size > self.max_file_size:
@@ -221,10 +215,8 @@ class OptimizedPDFProcessor:
 
         completion_info = f"Completed in {processing_time:.2f}s (estimated {metrics.estimated_processing_time:.1f}s)"
 
-        if logger:
-            logger.update_operation(processing_op_id, f"{processing_info} - {completion_info}")
-            logger.complete_operation(processing_op_id)
-        else:
+        # Skip individual file completion for cleaner aggregate display
+        if not logger:
             print(completion_info)
 
         # Cache result
@@ -282,12 +274,7 @@ class OptimizedPDFProcessor:
         self._handle_encryption(doc, file_path)
 
         total_pages = doc.page_count
-        parallel_info = f"Processing PDF pages ({total_pages} pages)"
-
-        if logger:
-            parallel_op_id = logger.start_operation(parallel_info)
-        else:
-            print(parallel_info)
+        # Skip individual PDF operation for cleaner aggregate display
 
         # Use page_chunks option for parallel processing
         page_chunks = pymupdf4llm.to_markdown(doc, page_chunks=True)
@@ -320,12 +307,10 @@ class OptimizedPDFProcessor:
                 completed += 1
                 progress = (completed / total_pages) * 100
 
-                # Update progress more frequently for better user experience
+                # Skip individual progress updates for cleaner aggregate display
                 if completed % max(1, total_pages // 20) == 0 or completed == total_pages:
-                    progress_info = f"Processing pages ({completed}/{total_pages}, {progress:.0f}%)"
-                    if logger:
-                        logger.update_operation(parallel_op_id, progress_info)
-                    else:
+                    if not logger:
+                        progress_info = f"Processing pages ({completed}/{total_pages}, {progress:.0f}%)"
                         print(f"  {progress_info}")
 
         # Filter out None values and join
@@ -336,9 +321,7 @@ class OptimizedPDFProcessor:
         metadata["extracted_pages"] = len(valid_content)
         doc.close()
 
-        if logger:
-            logger.complete_operation(parallel_op_id)
-
+        # Skip individual operation completion for cleaner aggregate display
         return content, metadata
 
     def _extract_streaming(self, file_path: Path, logger: Optional["HierarchicalLogger"] = None) -> Tuple[str, Dict[str, Any]]:
@@ -359,12 +342,7 @@ class OptimizedPDFProcessor:
         self._handle_encryption(doc, file_path)
 
         total_pages = doc.page_count
-        streaming_info = f"Processing large PDF ({total_pages} pages)"
-
-        if logger:
-            streaming_op_id = logger.start_operation(streaming_info)
-        else:
-            print(streaming_info)
+        # Skip individual PDF operation for cleaner aggregate display
 
         all_content = []
         processed_pages = 0
@@ -397,10 +375,8 @@ class OptimizedPDFProcessor:
             processed_pages += len(pages_list)
 
             progress = (processed_pages / total_pages) * 100
-            progress_info = f"Processing chunks ({processed_pages}/{total_pages}, {progress:.0f}%)"
-            if logger:
-                logger.update_operation(streaming_op_id, progress_info)
-            else:
+            if not logger:
+                progress_info = f"Processing chunks ({processed_pages}/{total_pages}, {progress:.0f}%)"
                 print(f"  {progress_info}")
 
         content = "\n\n---\n\n".join(all_content)  # Use markdown page separator
@@ -409,9 +385,7 @@ class OptimizedPDFProcessor:
         metadata["extracted_pages"] = len(all_content)
         doc.close()
 
-        if logger:
-            logger.complete_operation(streaming_op_id)
-
+        # Skip individual operation completion for cleaner aggregate display
         return content, metadata
 
     def _handle_encryption(self, doc: "pymupdf.Document", file_path: Path) -> None:
@@ -466,6 +440,6 @@ class OptimizedPDFProcessor:
                 try:
                     result = future.result()
                     yield path, result
-                except Exception as e:
-                    print(f"Error processing {path}: {e}")
+                except Exception:  # noqa: S112
+                    # Silently skip problematic files for cleaner display
                     continue
