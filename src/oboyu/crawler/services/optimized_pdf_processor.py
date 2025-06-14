@@ -12,9 +12,11 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 try:
-    import pypdf
+    import pymupdf
+    import pymupdf4llm
 except ImportError:
-    pypdf = None
+    pymupdf = None
+    pymupdf4llm = None
 
 
 class ProcessingStrategy(Enum):
@@ -43,15 +45,16 @@ class PDFMetrics:
 
         # Quick page count estimation (without full parsing)
         try:
-            with open(file_path, "rb") as f:
-                reader = pypdf.PdfReader(f)
-                total_pages = len(reader.pages)
+            doc = pymupdf.open(file_path)
+            total_pages = doc.page_count
+            doc.close()
         except Exception:
             # Fallback estimation based on file size
             total_pages = max(1, int(file_size_mb * 10))  # Rough estimate
 
         # Estimate processing time based on test results
-        estimated_time = (file_size_mb * 0.57) + (total_pages * 0.086)
+        # PyMuPDF4LLM is faster, so adjust estimates
+        estimated_time = (file_size_mb * 0.35) + (total_pages * 0.05)
 
         # Determine strategy
         if file_size_mb < 5 and total_pages < 50:
@@ -149,8 +152,8 @@ class OptimizedPDFProcessor:
 
     def extract_pdf(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
         """Extract content and metadata from PDF file."""
-        if pypdf is None:
-            raise RuntimeError("pypdf library is required for PDF processing")
+        if pymupdf4llm is None:
+            raise RuntimeError("pymupdf4llm library is required for PDF processing")
 
         # Check cache first
         cached_result = self.cache.get(file_path)
@@ -195,23 +198,16 @@ class OptimizedPDFProcessor:
 
     def _extract_lightweight(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
         """Lightweight processing for small PDFs."""
-        with open(file_path, "rb") as f:
-            reader = pypdf.PdfReader(f)
-            self._handle_encryption(reader, file_path)
+        doc = pymupdf.open(file_path)
+        self._handle_encryption(doc, file_path)
 
-            text_content = []
-            for page in reader.pages:
-                try:
-                    page_text = page.extract_text()
-                    if page_text and page_text.strip():
-                        text_content.append(page_text)
-                except Exception:  # noqa: S112
-                    continue
+        # Use pymupdf4llm for direct markdown conversion
+        md_text = pymupdf4llm.to_markdown(doc)
 
-            content = "\n\n".join(text_content)
-            metadata = self._extract_metadata(reader, len(text_content))
+        metadata = self._extract_metadata(doc)
+        doc.close()
 
-            return content, metadata
+        return md_text, metadata
 
     def _extract_standard(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
         """Process PDF using standard strategy with basic optimizations."""
@@ -219,118 +215,130 @@ class OptimizedPDFProcessor:
 
     def _extract_parallel(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
         """Parallel processing for medium-large PDFs."""
-        with open(file_path, "rb") as f:
-            reader = pypdf.PdfReader(f)
-            self._handle_encryption(reader, file_path)
+        doc = pymupdf.open(file_path)
+        self._handle_encryption(doc, file_path)
 
-            pages = reader.pages
-            total_pages = len(pages)
+        total_pages = doc.page_count
+        print(f"Processing {total_pages} pages in parallel with {self.max_workers} workers")
 
-            print(f"Processing {total_pages} pages in parallel with {self.max_workers} workers")
+        # Use page_chunks option for parallel processing
+        page_chunks = pymupdf4llm.to_markdown(doc, page_chunks=True)
 
-            # Parallel page processing
-            text_content: List[Optional[str]] = [None] * total_pages
+        # Parallel processing of page chunks
+        markdown_content: List[Optional[str]] = [None] * total_pages
 
-            def extract_page_text(page_data: Tuple[int, Any]) -> Tuple[int, str]:
-                page_num, page = page_data
-                try:
-                    text = page.extract_text()
-                    return page_num, text if text and text.strip() else ""
-                except Exception as e:
-                    print(f"Warning: Failed to extract page {page_num + 1}: {e}")
-                    return page_num, ""
+        def process_page_chunk(chunk_data: Tuple[int, Dict[str, Any]]) -> Tuple[int, str]:
+            page_num, chunk = chunk_data
+            try:
+                # Each chunk contains 'text' and metadata
+                text = chunk.get("text", "")
+                return page_num, text if text and text.strip() else ""
+            except Exception as e:
+                print(f"Warning: Failed to process page {page_num + 1}: {e}")
+                return page_num, ""
 
-            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                page_data = [(i, page) for i, page in enumerate(pages)]
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            chunk_data = [(i, chunk) for i, chunk in enumerate(page_chunks)]
 
-                # Submit all tasks
-                future_to_page = {executor.submit(extract_page_text, data): data[0] for data in page_data}
+            # Submit all tasks
+            future_to_page = {executor.submit(process_page_chunk, data): data[0] for data in chunk_data}
 
-                # Collect results with progress
-                completed = 0
-                for future in as_completed(future_to_page):
-                    page_num, text = future.result()
-                    text_content[page_num] = text
+            # Collect results with progress
+            completed = 0
+            for future in as_completed(future_to_page):
+                page_num, text = future.result()
+                markdown_content[page_num] = text
 
-                    completed += 1
-                    if completed % max(1, total_pages // 10) == 0:
-                        progress = (completed / total_pages) * 100
-                        print(f"  Progress: {progress:.0f}% ({completed}/{total_pages} pages)")
+                completed += 1
+                if completed % max(1, total_pages // 10) == 0:
+                    progress = (completed / total_pages) * 100
+                    print(f"  Progress: {progress:.0f}% ({completed}/{total_pages} pages)")
 
-            # Filter out None values and join
-            valid_content = [text for text in text_content if text is not None and text]
-            content = "\n\n".join(valid_content)
-            metadata = self._extract_metadata(reader, len(valid_content))
+        # Filter out None values and join
+        valid_content = [text for text in markdown_content if text is not None and text]
+        content = "\n\n---\n\n".join(valid_content)  # Use markdown page separator
 
-            return content, metadata
+        metadata = self._extract_metadata(doc)
+        metadata["extracted_pages"] = len(valid_content)
+        doc.close()
+
+        return content, metadata
 
     def _extract_streaming(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
         """Memory-efficient streaming processing for large PDFs."""
         # For very large PDFs, process in chunks to limit memory usage
         chunk_size = 20  # Process 20 pages at a time
 
-        with open(file_path, "rb") as f:
-            reader = pypdf.PdfReader(f)
-            self._handle_encryption(reader, file_path)
+        doc = pymupdf.open(file_path)
+        self._handle_encryption(doc, file_path)
 
-            total_pages = len(reader.pages)
-            print(f"Streaming processing {total_pages} pages in chunks of {chunk_size}")
+        total_pages = doc.page_count
+        print(f"Streaming processing {total_pages} pages in chunks of {chunk_size}")
 
-            all_content = []
-            processed_pages = 0
+        all_content = []
+        processed_pages = 0
 
-            # Process in chunks
-            for chunk_start in range(0, total_pages, chunk_size):
-                chunk_end = min(chunk_start + chunk_size, total_pages)
-                chunk_pages = reader.pages[chunk_start:chunk_end]
+        # Process in chunks
+        for chunk_start in range(0, total_pages, chunk_size):
+            chunk_end = min(chunk_start + chunk_size, total_pages)
 
-                # Process chunk in parallel
-                chunk_content = []
+            # Extract pages for this chunk
+            pages_list = list(range(chunk_start, chunk_end))
 
-                def extract_chunk_page(page_data: Tuple[int, Any]) -> str:
-                    page_num, page = page_data
-                    try:
-                        return page.extract_text() or ""
-                    except Exception:
-                        return ""
+            # Process chunk with pymupdf4llm
+            chunk_md = pymupdf4llm.to_markdown(doc, pages=pages_list, page_chunks=True)
 
-                with ThreadPoolExecutor(max_workers=min(self.max_workers, len(chunk_pages))) as executor:
-                    chunk_data = [(i, page) for i, page in enumerate(chunk_pages)]
-                    chunk_results = list(executor.map(extract_chunk_page, chunk_data))
+            # Process chunk in parallel
+            def extract_chunk_page(page_data: Tuple[int, Dict[str, Any]]) -> str:
+                page_num, chunk = page_data
+                try:
+                    return chunk.get("text", "") or ""
+                except Exception:
+                    return ""
 
-                    chunk_content = [text for text in chunk_results if text.strip()]
+            with ThreadPoolExecutor(max_workers=min(self.max_workers, len(chunk_md))) as executor:
+                chunk_data = [(i, chunk) for i, chunk in enumerate(chunk_md)]
+                chunk_results = list(executor.map(extract_chunk_page, chunk_data))
 
-                all_content.extend(chunk_content)
-                processed_pages += len(chunk_pages)
+                chunk_content = [text for text in chunk_results if text.strip()]
 
-                progress = (processed_pages / total_pages) * 100
-                print(f"  Chunk progress: {progress:.0f}% ({processed_pages}/{total_pages} pages)")
+            all_content.extend(chunk_content)
+            processed_pages += len(pages_list)
 
-            content = "\n\n".join(all_content)
-            metadata = self._extract_metadata(reader, len(all_content))
+            progress = (processed_pages / total_pages) * 100
+            print(f"  Chunk progress: {progress:.0f}% ({processed_pages}/{total_pages} pages)")
 
-            return content, metadata
+        content = "\n\n---\n\n".join(all_content)  # Use markdown page separator
 
-    def _handle_encryption(self, reader: "pypdf.PdfReader", file_path: Path) -> None:
+        metadata = self._extract_metadata(doc)
+        metadata["extracted_pages"] = len(all_content)
+        doc.close()
+
+        return content, metadata
+
+    def _handle_encryption(self, doc: "pymupdf.Document", file_path: Path) -> None:
         """Handle PDF encryption."""
-        if reader.is_encrypted:
-            if not reader.decrypt(""):
+        if doc.is_encrypted:
+            if not doc.authenticate(""):
                 raise RuntimeError(f"PDF file is password-protected: {file_path.name}")
 
-    def _extract_metadata(self, reader: "pypdf.PdfReader", extracted_pages: int) -> Dict[str, Any]:
+    def _extract_metadata(self, doc: "pymupdf.Document") -> Dict[str, Any]:
         """Extract PDF metadata."""
-        metadata = {"total_pages": len(reader.pages), "extracted_pages": extracted_pages}
+        metadata = {"total_pages": doc.page_count}
 
-        if reader.metadata:
+        # Extract document metadata
+        doc_metadata = doc.metadata
+        if doc_metadata:
             try:
-                if reader.metadata.title:
-                    metadata["title"] = reader.metadata.title
-                if reader.metadata.creator:
-                    metadata["creator"] = reader.metadata.creator
-                if reader.metadata.creation_date:
-                    metadata["creation_date"] = reader.metadata.creation_date.isoformat()
-                if reader.metadata.modification_date:
-                    metadata["modification_date"] = reader.metadata.modification_date.isoformat()
+                if doc_metadata.get("title"):
+                    metadata["title"] = doc_metadata["title"]
+                if doc_metadata.get("author"):
+                    metadata["creator"] = doc_metadata["author"]
+                if doc_metadata.get("creationDate"):
+                    # PyMuPDF returns dates as strings
+                    metadata["creation_date"] = doc_metadata["creationDate"]
+                if doc_metadata.get("modDate"):
+                    metadata["modification_date"] = doc_metadata["modDate"]
             except Exception:  # noqa: S110
                 pass
 

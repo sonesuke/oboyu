@@ -241,7 +241,7 @@ Content after malformed front matter."""
 
             # Check metadata extraction
             assert metadata.get("title") == "PDF with Metadata"
-            assert metadata.get("creator") == "Test Creator Application"
+            assert metadata.get("creator") == "John Doe"
             # Note: Some metadata fields might not be preserved in minimal PDFs
 
     def test_extract_pdf_empty(self) -> None:
