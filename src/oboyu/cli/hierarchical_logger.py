@@ -330,7 +330,8 @@ class HierarchicalLogger:
         )
         with self.live:
             # Ensure initial display is shown
-            self._refresh_display()
+            with self._lock:
+                self._refresh_display()
             yield self
         self.live = None
 
