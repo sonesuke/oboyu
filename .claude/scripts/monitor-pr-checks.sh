@@ -11,7 +11,7 @@ usage() {
     echo "Example: $0 123"
     echo ""
     echo "This script will:"
-    echo "- Monitor PR checks every 2 minutes"
+    echo "- Monitor PR checks every 30 seconds"
     echo "- Auto-fix common CI/CD issues when detected"
     echo "- Auto-promote Draft PR to Ready when all checks pass"
     echo "- Continue monitoring until manually stopped (Ctrl+C)"
@@ -24,7 +24,7 @@ if [ $# -eq 0 ]; then
 fi
 
 PR_NUMBER=$1
-MONITOR_INTERVAL=120  # 2 minutes in seconds
+MONITOR_INTERVAL=30   # 30 seconds
 
 # Colors for output
 RED='\033[0;31m'
@@ -48,12 +48,12 @@ check_pr_exists() {
 
 # Function to get PR status
 get_pr_status() {
-    gh pr view "$PR_NUMBER" --json isDraft,state,statusCheckRollupState --jq '{isDraft, state, checksState: .statusCheckRollupState}'
+    gh pr view "$PR_NUMBER" --json isDraft,state,statusCheckRollup --jq '{isDraft, state, statusCheckRollup}'
 }
 
 # Function to get detailed check information
 get_check_details() {
-    gh pr checks "$PR_NUMBER" --json name,state,conclusion,detailsUrl
+    gh pr checks "$PR_NUMBER" --json name,state,completedAt
 }
 
 # Function to promote draft PR to ready
@@ -84,15 +84,15 @@ analyze_and_fix_issues() {
     local has_test_failures=false
     
     # Parse check results for common patterns
-    if echo "$check_details" | jq -r '.[] | select(.state == "FAILURE" or .conclusion == "FAILURE") | .name' | grep -qi "lint\|ruff\|format"; then
+    if echo "$check_details" | jq -r '.[] | select(.state == "FAILURE") | .name' | grep -qi "lint\|ruff\|format"; then
         has_lint_issues=true
     fi
     
-    if echo "$check_details" | jq -r '.[] | select(.state == "FAILURE" or .conclusion == "FAILURE") | .name' | grep -qi "type\|mypy"; then
+    if echo "$check_details" | jq -r '.[] | select(.state == "FAILURE") | .name' | grep -qi "type\|mypy"; then
         has_type_issues=true
     fi
     
-    if echo "$check_details" | jq -r '.[] | select(.state == "FAILURE" or .conclusion == "FAILURE") | .name' | grep -qi "test\|pytest"; then
+    if echo "$check_details" | jq -r '.[] | select(.state == "FAILURE") | .name' | grep -qi "test\|pytest"; then
         has_test_failures=true
     fi
     
@@ -105,10 +105,43 @@ analyze_and_fix_issues() {
     
     if [ "$has_test_failures" = true ]; then
         log "${YELLOW}⚠️  Test failures detected. Manual intervention may be required.${NC}"
-        echo "$check_details" | jq -r '.[] | select(.state == "FAILURE" or .conclusion == "FAILURE") | select(.name | test("test|pytest"; "i")) | "  - " + .name + ": " + .detailsUrl'
+        echo "$check_details" | jq -r '.[] | select(.state == "FAILURE") | select(.name | test("test|pytest"; "i")) | "  - " + .name'
     fi
     
     return 1
+}
+
+# Function to get simplified check status
+get_checks_status() {
+    local check_details
+    check_details=$(get_check_details)
+    
+    if [ "$check_details" = "null" ] || [ "$check_details" = "[]" ]; then
+        echo "NO_CHECKS"
+        return
+    fi
+    
+    local pending_count
+    local success_count
+    local failure_count
+    local skipped_count
+    local total_count
+    
+    pending_count=$(echo "$check_details" | jq '[.[] | select(.state == "PENDING" or .state == "IN_PROGRESS")] | length')
+    success_count=$(echo "$check_details" | jq '[.[] | select(.state == "SUCCESS")] | length')
+    failure_count=$(echo "$check_details" | jq '[.[] | select(.state == "FAILURE")] | length')
+    skipped_count=$(echo "$check_details" | jq '[.[] | select(.state == "SKIPPED")] | length')
+    total_count=$(echo "$check_details" | jq 'length')
+    
+    if [ "$failure_count" -gt 0 ]; then
+        echo "FAILURE"
+    elif [ "$pending_count" -gt 0 ]; then
+        echo "PENDING"
+    elif [ "$((success_count + skipped_count))" -eq "$total_count" ] && [ "$total_count" -gt 0 ]; then
+        echo "SUCCESS"
+    else
+        echo "UNKNOWN"
+    fi
 }
 
 # Function to display current status
@@ -118,11 +151,12 @@ display_status() {
     
     local is_draft
     local state
-    local checks_state
     
     is_draft=$(echo "$status_json" | jq -r '.isDraft')
     state=$(echo "$status_json" | jq -r '.state')
-    checks_state=$(echo "$status_json" | jq -r '.checksState')
+    
+    local checks_state
+    checks_state=$(get_checks_status)
     
     log "${BLUE}📊 PR #$PR_NUMBER Status:${NC}"
     echo "  - State: $state"
@@ -136,7 +170,7 @@ display_status() {
     if [ "$check_details" != "null" ] && [ "$check_details" != "[]" ]; then
         echo ""
         echo "  Individual Checks:"
-        echo "$check_details" | jq -r '.[] | "    " + .name + ": " + (.state // .conclusion // "pending")'
+        echo "$check_details" | jq -r '.[] | "    " + .name + ": " + .state'
     fi
     
     echo ""
@@ -145,7 +179,7 @@ display_status() {
 # Function to monitor PR
 monitor_pr() {
     log "${BLUE}🚀 Starting automated monitoring for PR #$PR_NUMBER${NC}"
-    log "${BLUE}📝 Monitoring interval: ${MONITOR_INTERVAL}s (2 minutes)${NC}"
+    log "${BLUE}📝 Monitoring interval: ${MONITOR_INTERVAL}s (30 seconds)${NC}"
     log "${BLUE}🛑 Press Ctrl+C to stop monitoring${NC}"
     echo ""
     
@@ -162,7 +196,7 @@ monitor_pr() {
         local checks_state
         
         is_draft=$(echo "$status_json" | jq -r '.isDraft')
-        checks_state=$(echo "$status_json" | jq -r '.checksState')
+        checks_state=$(get_checks_status)
         
         # Check if PR is closed/merged
         local state
@@ -175,16 +209,28 @@ monitor_pr() {
         # Handle different check states
         case "$checks_state" in
             "SUCCESS")
-                consecutive_successes=$((consecutive_successes + 1))
-                log "${GREEN}✅ All checks passed! (${consecutive_successes}/${required_successes})${NC}"
+                # Additional verification: ensure no checks are still pending
+                local check_details
+                check_details=$(get_check_details)
+                local still_pending
+                still_pending=$(echo "$check_details" | jq '[.[] | select(.state == "PENDING" or .state == "IN_PROGRESS")] | length')
                 
-                if [ "$consecutive_successes" -ge "$required_successes" ] && [ "$is_draft" = "true" ]; then
-                    promote_to_ready
-                    log "${GREEN}🎯 Monitoring complete! PR is ready for review.${NC}"
-                    break
-                elif [ "$is_draft" = "false" ]; then
-                    log "${GREEN}✅ PR is already ready for review and all checks pass!${NC}"
-                    break
+                if [ "$still_pending" -eq 0 ]; then
+                    consecutive_successes=$((consecutive_successes + 1))
+                    log "${GREEN}✅ All checks passed! (${consecutive_successes}/${required_successes})${NC}"
+                    
+                    if [ "$consecutive_successes" -ge "$required_successes" ] && [ "$is_draft" = "true" ]; then
+                        log "${GREEN}🔍 Final verification: All checks truly complete and successful${NC}"
+                        promote_to_ready
+                        log "${GREEN}🎯 Monitoring complete! PR is ready for review.${NC}"
+                        break
+                    elif [ "$is_draft" = "false" ]; then
+                        log "${GREEN}✅ PR is already ready for review and all checks pass!${NC}"
+                        break
+                    fi
+                else
+                    consecutive_successes=0
+                    log "${YELLOW}⏳ Some checks still pending despite SUCCESS status. Waiting...${NC}"
                 fi
                 ;;
             "FAILURE")
@@ -196,9 +242,9 @@ monitor_pr() {
                     log "${YELLOW}⚠️  Issues require manual intervention.${NC}"
                 fi
                 ;;
-            "PENDING"|"null")
+            "PENDING"|"NO_CHECKS")
                 consecutive_successes=0
-                log "${YELLOW}⏳ Checks are still running...${NC}"
+                log "${YELLOW}⏳ Checks are still running or no checks found...${NC}"
                 ;;
             *)
                 consecutive_successes=0

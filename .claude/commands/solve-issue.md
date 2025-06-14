@@ -45,10 +45,11 @@ This command implements an advanced GitHub issue resolution workflow with git wo
    - Intelligent PR title updates reflecting completion status
    - Automated reviewer assignment based on changed files
 
-8. **⭐ Cleanup & Finalization**
-   - Automated worktree and branch cleanup after PR merge
-   - Clean environment management for future work
-   - Final status reporting and next steps guidance
+8. **⭐ Autonomous Completion**
+   - Continuous monitoring until PR merge/close
+   - Automated worktree and branch cleanup after completion
+   - Final status reporting without user intervention
+   - **Fully autonomous from monitoring start to completion**
 
 ## 🛠️ Detailed Implementation Steps
 
@@ -68,22 +69,23 @@ gh issue view $ISSUE_NUMBER
 ```
 
 ### Step 2: Worktree Environment Setup
+
+Use `.worktree/` directory for isolated development environments. Create if it doesn't exist.
+
 ```bash
-# Get current project directory name
-PROJECT_DIR=$(basename "$PWD")
+# Ensure you're on latest main branch
+git checkout main && git pull origin main
+
+# Create worktree with new branch
 ISSUE_NUMBER={issue_number}  # Replace with actual issue number
-BRANCH_NAME=$(git branch --show-current)
+mkdir -p .worktree
+git worktree add ".worktree/issue-${ISSUE_NUMBER}" -b "${ISSUE_NUMBER}-{descriptive-branch-name}"
 
-# Create git worktree in parallel directory
-git worktree add "../${PROJECT_DIR}-issue-${ISSUE_NUMBER}" "${BRANCH_NAME}"
-
-# Navigate to worktree
-cd "../${PROJECT_DIR}-issue-${ISSUE_NUMBER}"
-
-# Install dependencies in the isolated environment
+# Navigate to worktree and install dependencies
+cd ".worktree/issue-${ISSUE_NUMBER}"
 uv sync
 
-# Verify worktree status
+# Verify setup
 git worktree list
 echo "✅ Isolated development environment ready"
 ```
@@ -124,18 +126,42 @@ echo "🚀 Ready to begin development with PR tracking active"
 ```
 
 ### Step 4: Launch Automated Monitoring
-```bash
-# Start automated CI/CD monitoring in background
-.claude/scripts/monitor-pr-checks.sh ${PR_NUMBER} &
-MONITOR_PID=$!
 
-echo "🤖 Automated monitoring started (PID: ${MONITOR_PID})"
-echo "📊 Monitoring will:"
-echo "  - Check PR status every 2 minutes"
-echo "  - Auto-fix common CI/CD issues"
-echo "  - Auto-promote to Ready when all checks pass"
-echo "  - Run until manually stopped (Ctrl+C)"
+**ALWAYS** launch automated monitoring regardless of task complexity for consistency.
+
+```bash
+# Check if automation scripts exist
+if [[ ! -f ".claude/scripts/monitor-pr-checks.sh" ]]; then
+    echo "⚠️  Automation scripts not found. Using manual workflow."
+    exit 1
+fi
+
+# Launch automated monitoring in FOREGROUND (ALWAYS, regardless of task complexity)
+# IMPORTANT: Run in foreground so Claude Code can properly wait for completion
+.claude/scripts/monitor-pr-checks.sh ${PR_NUMBER}
+
+# The script will run until:
+# - All CI/CD checks pass and PR is promoted to Ready
+# - PR is merged or closed
+# - Manual interruption (Ctrl+C)
 ```
+
+**Note**: Automation provides consistent workflow regardless of change size
+
+### 🤖 Claude Code Implementation Guide
+
+**For Claude Code users**: The monitoring system runs in FOREGROUND for proper execution flow:
+
+1. **RUN** monitoring in foreground (no `&` background operator)
+2. **WAIT** for monitoring script to complete its full cycle
+3. **CONTINUE** automatically when monitoring exits successfully
+4. **HANDLE** any errors that cause monitoring to exit early
+5. **PROCEED** to cleanup only after monitoring completes
+
+**Critical**: Use foreground execution so Claude Code can properly wait for CI/CD completion and handle the workflow sequentially. The monitoring script will exit when:
+- All checks pass and PR is promoted to Ready
+- PR is merged/closed
+- Fatal error occurs requiring intervention
 
 ### Step 5: Development with Real-time Feedback
 ```bash
@@ -189,25 +215,42 @@ uv run pytest -m "not slow" -k "not integration"
 .claude/scripts/fix-common-issues.sh
 ```
 
-### Step 7: Automated Promotion (Handled Automatically)
+### Step 7: Automated Promotion (Fully Automated)
 The monitoring system will automatically:
-- Detect when all CI/CD checks pass
-- Update PR title from "WIP:" to "Ready:"
+- Wait for ALL CI/CD checks to complete (no PENDING or IN_PROGRESS states)
+- Verify 2 consecutive successful check cycles for stability
+- Update PR title from "WIP:" to final clean title
 - Convert PR from Draft to Ready for Review
-- Notify about completion
+- **Continue automatically to cleanup phase without user intervention**
 
-### Step 8: Cleanup After Merge
+### Step 8: Automated Completion & Status Report
+
+**IMPORTANT**: This step executes automatically when monitoring system detects PR completion.
+
+The workflow will:
+1. **Monitor PR until merge/close**: Automated system continues monitoring
+2. **Auto-cleanup on completion**: Worktree and branches cleaned automatically  
+3. **Status reporting**: Final summary provided
+4. **No user intervention required**: Fully autonomous completion
+
 ```bash
-# After PR is merged, return to main project
-cd ../{main_project_directory}
+# This runs automatically via monitoring system when PR is merged/closed:
+if [[ -f ".claude/scripts/cleanup-issue-worktree.sh" ]]; then
+    .claude/scripts/cleanup-issue-worktree.sh ${ISSUE_NUMBER}
+else
+    # Manual cleanup if script unavailable
+    cd ../../  # Return to project root
+    git worktree remove ".worktree/issue-${ISSUE_NUMBER}" --force
+    rm -rf ".worktree/issue-${ISSUE_NUMBER}"
+    git push origin --delete "${ISSUE_NUMBER}-{branch-name}"
+    git checkout main && git pull origin main
+    git branch -d "${ISSUE_NUMBER}-{branch-name}"
+fi
 
-# Use automated cleanup script
-.claude/scripts/cleanup-issue-worktree.sh ${ISSUE_NUMBER}
-
-# Verify cleanup
-git worktree list
-echo "🧹 Cleanup completed"
+echo "🎉 Issue #${ISSUE_NUMBER} workflow completed successfully!"
 ```
+
+**Autonomous Operation**: Once monitoring starts, the entire workflow runs to completion without requiring user input.
 
 ## 📋 Enhanced Implementation Checklist
 
@@ -240,7 +283,7 @@ echo "🧹 Cleanup completed"
 ## 🚀 Automation Features
 
 ### Automated CI/CD Monitoring
-- **Real-time Check Status**: Monitor PR checks every 2 minutes
+- **Real-time Check Status**: Monitor PR checks every 30 seconds
 - **Auto-fix Common Issues**: Automatically fix linting, formatting, and import issues
 - **Intelligent Promotion**: Auto-promote Draft to Ready when all checks pass
 - **Continuous Feedback**: Real-time notifications of status changes
@@ -266,20 +309,29 @@ echo "🧹 Cleanup completed"
 
 ## 💡 Enhanced Tips for Success
 
+### Claude Code Specific Considerations
+- **Directory Restrictions**: Use `.worktree/` instead of `../` directories
+- **Script Verification**: Always check if automation scripts exist before using
+- **Task Assessment**: Evaluate complexity before applying full workflow
+- **Git Operations**: Be mindful of branch creation order (main → worktree → branch)
+
 ### Parallel Development
 - Use worktrees to work on multiple issues simultaneously
 - Keep each worktree focused on a single issue
 - Maintain clean separation between different features
+- Ensure `.worktree/` is properly ignored in git
 
 ### Automation Benefits
 - Let the monitoring system handle routine CI/CD issues
 - Focus on implementation while automation handles quality gates
 - Trust the auto-promotion system for consistent PR management
+- Skip automation for simple single-file changes
 
 ### Quality Management
 - Rely on automated fixes for common issues
 - Address complex problems that require manual intervention
 - Monitor automated feedback for continuous improvement
+- Always run manual checks if automation is unavailable
 
 ### Team Collaboration
 - Create PR early for visibility and collaboration opportunities
@@ -287,12 +339,32 @@ echo "🧹 Cleanup completed"
 - Keep team informed of progress through automated PR comments
 - Address review feedback promptly after auto-promotion
 
+## ⚠️ Common Pitfalls and Solutions
+
+### Worktree Issues
+- **Problem**: `fatal: branch already checked out`
+  - **Solution**: Create worktree from main branch, not feature branch
+- **Problem**: Cannot navigate to worktree
+  - **Solution**: Use `.worktree/` structure within project directory
+
+### Script Dependencies
+- **Problem**: Automation scripts not found
+  - **Solution**: Verify scripts exist in `.claude/scripts/` before use
+- **Problem**: Monitoring fails to start
+  - **Solution**: Fall back to manual workflow, don't block on automation
+
+### Complexity Assessment
+- **Problem**: Over-engineering simple tasks
+  - **Solution**: Use judgment - simple tasks don't need full automation
+- **Problem**: Under-estimating complex tasks
+  - **Solution**: Use full workflow for multi-file changes
+
 ## 📊 Monitoring Dashboard
 
 When monitoring is active, you'll see:
 ```
 [2024-01-15 10:30:00] 🚀 Starting automated monitoring for PR #123
-[2024-01-15 10:30:00] 📝 Monitoring interval: 120s (2 minutes)
+[2024-01-15 10:30:00] 📝 Monitoring interval: 30s (30 seconds)
 [2024-01-15 10:30:00] 🛑 Press Ctrl+C to stop monitoring
 
 [2024-01-15 10:30:00] 📊 PR #123 Status:
@@ -311,4 +383,7 @@ When monitoring is active, you'll see:
 [2024-01-15 10:34:00] ✅ All checks passed! (1/2)
 [2024-01-15 10:36:00] ✅ All checks passed! (2/2)
 [2024-01-15 10:36:00] 🎉 PR #123 promoted to Ready for Review!
+[2024-01-15 10:36:00] 🔚 Monitoring complete. Exiting...
+
+# Script exits here, Claude Code continues to next step
 ```

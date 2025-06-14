@@ -3,9 +3,9 @@ name: Test Installation
 on:
   push:
     branches: [main, develop]
-  pull_request:
   release:
     types: [published, prereleased]
+  workflow_dispatch:
   schedule:
     - cron: '0 2 * * *'  # Daily at 2 AM UTC
   workflow_call:  # Allow this workflow to be called by other workflows
