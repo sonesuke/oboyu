@@ -48,10 +48,10 @@ Each tool now:
 
 | Scenario | Before | After |
 |----------|--------|-------|
-| Single file change | 30-60s | <5s |
-| Documentation only | 30-60s | <1s |
+| Single file change | 30-60s | &lt;5s |
+| Documentation only | 30-60s | &lt;1s |
 | Multiple file changes | 60s+ | 10-15s |
-| No Python changes | 30-60s | <1s |
+| No Python changes | 30-60s | &lt;1s |
 
 ## Usage Guidelines
 
