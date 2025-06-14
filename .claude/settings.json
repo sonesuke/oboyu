@@ -38,6 +38,7 @@
       "Bash(gh pr checks:*)",
       "Bash(gh pr ready:*)",
       "Bash(gh run view:*)",
+      "Bash(gh run list:*)",
       "Bash(.claude/scripts/monitor-pr-checks.sh:*)",
       "Bash(.claude/scripts/fix-common-issues.sh:*)",
       "Bash(.claude/scripts/cleanup-issue-worktree.sh:*)",
