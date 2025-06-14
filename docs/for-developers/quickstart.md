@@ -9,6 +9,44 @@ Before following this guide, make sure you have:
 - Basic familiarity with command-line tools
 - Understanding of semantic search concepts
 
+### Development Environment Prerequisites
+
+For development work, ensure you have:
+- Python 3.13+ (3.11+ supported)
+- UV package manager (recommended) or pip
+- Git
+- System build dependencies (see below if needed)
+
+#### System Dependencies for Development
+
+If you plan to build from source or work with native dependencies:
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get update && sudo apt-get install -y \
+    git \
+    curl \
+    build-essential \
+    cmake \
+    pkg-config \
+    libssl-dev \
+    python3-dev \
+    libfreetype6-dev \
+    libfontconfig1-dev \
+    libjpeg-dev \
+    libpng-dev \
+    zlib1g-dev
+```
+
+**macOS:**
+```bash
+# Install Xcode Command Line Tools
+xcode-select --install
+
+# Install additional dependencies via Homebrew
+brew install cmake pkg-config uv
+```
+
 ## Development-Specific Setup
 
 For development work with Oboyu, you may want to install the development version:
