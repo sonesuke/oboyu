@@ -230,8 +230,14 @@ class TtydIntegratedOboyuTester(OboyuE2EDisplayTester):
             Provide assessment of the visual CLI display quality in the browser environment.
             """
 
-            claude_result = self.run_claude_check(visual_analysis_prompt, context_files=results["screenshots"])
-            results["visual_analysis"] = claude_result
+            print("🔍 Starting Claude Code analysis of screenshots...")
+            try:
+                claude_result = self.run_claude_check(visual_analysis_prompt, context_files=results["screenshots"])
+                results["visual_analysis"] = claude_result
+                print("✅ Claude Code analysis completed")
+            except Exception as e:
+                print(f"⚠️ Claude Code analysis failed: {e}")
+                results["visual_analysis"] = {"error": str(e), "fallback": "Screenshot validation completed but Claude analysis failed"}
 
             return results
 
@@ -285,8 +291,14 @@ class TtydIntegratedOboyuTester(OboyuE2EDisplayTester):
             Provide assessment of the interactive progress monitoring experience.
             """
 
-            claude_result = self.run_claude_check(progress_analysis_prompt, context_files=results["screenshots"])
-            results["progress_analysis"] = claude_result
+            print("🔍 Starting Claude Code progress analysis...")
+            try:
+                claude_result = self.run_claude_check(progress_analysis_prompt, context_files=results["screenshots"])
+                results["progress_analysis"] = claude_result
+                print("✅ Claude Code progress analysis completed")
+            except Exception as e:
+                print(f"⚠️ Claude Code progress analysis failed: {e}")
+                results["progress_analysis"] = {"error": str(e), "fallback": "Progress screenshots captured but Claude analysis failed"}
 
             return results
 

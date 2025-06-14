@@ -2,6 +2,7 @@
 """Run enhanced E2E tests for Oboyu using ttyd + Playwright integration."""
 
 import argparse
+import asyncio
 import sys
 from pathlib import Path
 
@@ -124,8 +125,8 @@ def main() -> None:  # noqa: C901
                 "indexing": ("indexing_progress_display", tester.test_indexing_progress_display),
                 "search": ("search_result_display", tester.test_search_result_display),
                 "error": ("error_display", tester.test_error_display),
-                "visual-cli": ("visual_cli_commands", lambda: tester.test_visual_cli_commands()),
-                "interactive-progress": ("interactive_indexing_progress", lambda: tester.test_interactive_indexing_progress()),
+                "visual-cli": ("visual_cli_commands", lambda: asyncio.run(tester.test_visual_cli_commands())),
+                "interactive-progress": ("interactive_indexing_progress", lambda: asyncio.run(tester.test_interactive_indexing_progress())),
                 "enhanced-basic": ("enhanced_basic_cli_display", tester.test_enhanced_basic_cli_display),
                 "enhanced-indexing": ("enhanced_indexing_progress_display", tester.test_enhanced_indexing_progress_display),
             }
