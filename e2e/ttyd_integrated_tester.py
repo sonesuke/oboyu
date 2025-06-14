@@ -116,9 +116,17 @@ class TtydIntegratedOboyuTester(OboyuE2EDisplayTester):
         # Launch Playwright browser
         print("Launching Playwright browser...")
         playwright = await async_playwright().start()
-        self.browser = await playwright.chromium.launch(headless=False)  # Visible for debugging
+        # Explicitly configure for visible browser with slow motion for debugging
+        self.browser = await playwright.chromium.launch(
+            headless=False,  # Make browser visible
+            slow_mo=1000,  # Slow down actions for visibility (1 second delay)
+            args=["--no-sandbox", "--disable-dev-shm-usage"],  # For compatibility
+        )
         self.context = await self.browser.new_context()
         self.page = await self.context.new_page()
+
+        print("✅ Browser launched successfully!")
+        print(f"🌐 Navigating to ttyd terminal at http://localhost:{self.ttyd_port}")
 
         # Navigate to ttyd terminal
         await self.page.goto(f"http://localhost:{self.ttyd_port}")
