@@ -46,14 +46,14 @@ Connect with Claude Desktop for AI-powered document assistance.
 
 ## Common Use Cases
 
-### 📋 **Meeting Notes & Project Management**
-Never lose track of decisions, action items, or project status again.
+### 📋 **GitHub Issues & Project Management**
+Never lose track of bug reports, feature requests, or project status again.
 
-- Find last week's meeting notes instantly
-- Track project deadlines across documents
-- Discover action items assigned to team members
+- Find related GitHub issues instantly
+- Track bug reports and feature requests
+- Discover development patterns and solutions
 
-[**Learn more →**](use-cases/meeting-notes)
+[**Learn more →**](use-cases/github-issues-search)
 
 ### 💻 **Technical Documentation**
 Search through code documentation, API references, and technical guides.

@@ -286,6 +286,6 @@ oboyu query --query "test suite integration unit" --mode vector
 
 ## Next Steps
 
-- Explore [Meeting Notes Search](meeting-notes.md) for team communication
+- Explore [GitHub Issues Search](github-issues-search.md) for team communication and project tracking
 - Learn about [Research Paper Search](research-papers.md) for academic content
 - Set up [Automation](../integration-automation/automation.md) for documentation updates
