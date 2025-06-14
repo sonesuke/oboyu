@@ -191,11 +191,7 @@ class OptimizedPDFProcessor:
 
         # Analyze file characteristics
         metrics = PDFMetrics.analyze_pdf(file_path)
-        processing_info = (
-            f"Processing {file_path.name}: {metrics.recommended_strategy.value} strategy "
-            f"({metrics.file_size_mb:.1f}MB, {metrics.total_pages} pages, "
-            f"~{metrics.estimated_processing_time:.1f}s estimated)"
-        )
+        processing_info = f"Processing {file_path.name}"
 
         if logger:
             processing_op_id = logger.start_operation(processing_info)
@@ -285,7 +281,7 @@ class OptimizedPDFProcessor:
         self._handle_encryption(doc, file_path)
 
         total_pages = doc.page_count
-        parallel_info = f"Processing {total_pages} pages in parallel with {self.max_workers} workers"
+        parallel_info = f"Processing PDF pages ({total_pages} pages)"
 
         if logger:
             parallel_op_id = logger.start_operation(parallel_info)
@@ -325,9 +321,9 @@ class OptimizedPDFProcessor:
 
                 # Update progress more frequently for better user experience
                 if completed % max(1, total_pages // 20) == 0 or completed == total_pages:
-                    progress_info = f"Progress: {progress:.0f}% ({completed}/{total_pages} pages)"
+                    progress_info = f"Processing pages ({completed}/{total_pages}, {progress:.0f}%)"
                     if logger:
-                        logger.update_operation(parallel_op_id, f"{parallel_info} - {progress_info}")
+                        logger.update_operation(parallel_op_id, progress_info)
                     else:
                         print(f"  {progress_info}")
 
@@ -362,7 +358,7 @@ class OptimizedPDFProcessor:
         self._handle_encryption(doc, file_path)
 
         total_pages = doc.page_count
-        streaming_info = f"Streaming processing {total_pages} pages in chunks of {chunk_size}"
+        streaming_info = f"Processing large PDF ({total_pages} pages)"
 
         if logger:
             streaming_op_id = logger.start_operation(streaming_info)
@@ -400,9 +396,9 @@ class OptimizedPDFProcessor:
             processed_pages += len(pages_list)
 
             progress = (processed_pages / total_pages) * 100
-            progress_info = f"Chunk progress: {progress:.0f}% ({processed_pages}/{total_pages} pages)"
+            progress_info = f"Processing chunks ({processed_pages}/{total_pages}, {progress:.0f}%)"
             if logger:
-                logger.update_operation(streaming_op_id, f"{streaming_info} - {progress_info}")
+                logger.update_operation(streaming_op_id, progress_info)
             else:
                 print(f"  {progress_info}")
 
