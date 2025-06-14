@@ -126,7 +126,7 @@ echo "🚀 Ready to begin development with PR tracking active"
 
 ### Step 4: Launch Automated Monitoring
 
-Verify scripts exist before launching. For simple tasks, consider skipping automation.
+**ALWAYS** launch automated monitoring regardless of task complexity for consistency.
 
 ```bash
 # Check if automation scripts exist
@@ -135,7 +135,7 @@ if [[ ! -f ".claude/scripts/monitor-pr-checks.sh" ]]; then
     exit 1
 fi
 
-# Launch automated monitoring (for complex tasks)
+# Launch automated monitoring (ALWAYS, regardless of task complexity)
 .claude/scripts/monitor-pr-checks.sh ${PR_NUMBER} &
 MONITOR_PID=$!
 
@@ -143,7 +143,7 @@ echo "🤖 Automated monitoring started (PID: ${MONITOR_PID})"
 echo "📊 Auto-fixes common issues, promotes to Ready when checks pass"
 ```
 
-**When to skip automation**: Single file edits, simple configuration changes
+**Note**: Automation provides consistent workflow regardless of change size
 
 ### Step 5: Development with Real-time Feedback
 ```bash
