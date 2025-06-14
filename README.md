@@ -25,12 +25,52 @@
 
 ### Prerequisites
 
-- Python 3.11 or higher
+- Python 3.13 or higher (3.11+ supported)
 - pip (latest version recommended)
 - Operating System: Linux, macOS, or Windows with WSL
-- For building from source:
-  - C++ compiler (build-essential on Linux, Xcode on macOS)
-  - CMake (for sentencepiece)
+
+#### System Dependencies (for building from source)
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get install -y \
+    git \
+    curl \
+    build-essential \
+    cmake \
+    pkg-config \
+    libfreetype6-dev \
+    libfontconfig1-dev \
+    libjpeg-dev \
+    libpng-dev \
+    zlib1g-dev \
+    libssl-dev
+```
+
+**Linux (CentOS/RHEL):**
+```bash
+sudo yum install -y \
+    git \
+    curl \
+    gcc-c++ \
+    cmake \
+    pkg-config \
+    freetype-devel \
+    fontconfig-devel \
+    libjpeg-devel \
+    libpng-devel \
+    zlib-devel \
+    openssl-devel
+```
+
+**macOS:**
+```bash
+# Install Xcode Command Line Tools
+xcode-select --install
+
+# Install additional dependencies via Homebrew
+brew install cmake pkg-config
+```
 
 ### Installation
 
@@ -97,12 +137,14 @@ pip install -e .
 
 ### System Requirements
 
-- **Python**: 3.13 or higher
+- **Python**: 3.13 or higher (3.11+ supported)
 - **OS**: macOS, Linux (Windows via WSL)
-- **Memory**: 2GB RAM minimum
+- **Memory**: 2GB RAM minimum (4GB recommended)
 - **Storage**: 1GB for models and index
+- **Build Tools**: See system dependencies above if building from source
 
 > **Note**: Models are automatically downloaded on first use (~90MB).
+> For installation from PyPI, most system dependencies are not required as we provide pre-built wheels.
 
 ## Usage Examples
 

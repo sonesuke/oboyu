@@ -10,13 +10,63 @@ This guide will help you install Oboyu on your system. Oboyu is a command-line t
 
 ## Prerequisites
 
-- Python 3.11 or higher (3.13 recommended)
+- Python 3.13 or higher (3.11+ supported, 3.13 recommended)
 - pip (Python package manager, latest version recommended)
 - Operating System: Linux, macOS, or Windows with WSL
-- For building from source:
-  - C++ compiler (build-essential on Linux, Xcode on macOS)
-  - CMake (for building sentencepiece)
-  - Git (for development installation)
+
+### System Dependencies (for building from source)
+
+Most users installing via `pip install oboyu` won't need these dependencies as we provide pre-built wheels. However, if you're building from source or encounter compilation issues, install the following:
+
+> **Why these dependencies?** Oboyu depends on several Python packages with native extensions:
+> - **fasttext**: Fast text classification and representation learning (C++)
+> - **sentencepiece**: Text tokenization (C++)
+> - **cryptography**: Cryptographic operations (Rust/C)
+> - **pymupdf**: PDF processing (C++)
+> - **Image processing libraries**: For handling images in PDFs
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get update && sudo apt-get install -y \
+    git \
+    curl \
+    build-essential \
+    cmake \
+    pkg-config \
+    libfreetype6-dev \
+    libfontconfig1-dev \
+    libjpeg-dev \
+    libpng-dev \
+    zlib1g-dev \
+    libssl-dev \
+    python3-dev
+```
+
+**Linux (CentOS/RHEL):**
+```bash
+sudo yum install -y \
+    git \
+    curl \
+    gcc-c++ \
+    cmake \
+    pkg-config \
+    freetype-devel \
+    fontconfig-devel \
+    libjpeg-devel \
+    libpng-devel \
+    zlib-devel \
+    openssl-devel \
+    python3-devel
+```
+
+**macOS:**
+```bash
+# Install Xcode Command Line Tools
+xcode-select --install
+
+# Install additional dependencies via Homebrew
+brew install cmake pkg-config
+```
 
 ## Quick Install
 
@@ -124,17 +174,38 @@ All required dependencies are included in the base installation. If you encounte
 pip install --upgrade oboyu  # Update to latest version
 ```
 
-#### Build Errors (sentencepiece)
-If you see errors building sentencepiece:
+#### Build Errors (Native Dependencies)
+If you encounter build errors for native dependencies (sentencepiece, fasttext, cryptography, etc.):
+
 ```bash
-# Linux
-sudo apt-get install build-essential cmake
+# Linux (Ubuntu/Debian) - Install complete build environment
+sudo apt-get update && sudo apt-get install -y \
+    build-essential \
+    cmake \
+    pkg-config \
+    libssl-dev \
+    python3-dev \
+    libfreetype6-dev \
+    libfontconfig1-dev \
+    libjpeg-dev \
+    libpng-dev \
+    zlib1g-dev
+
+# Linux (CentOS/RHEL)
+sudo yum install -y gcc-c++ cmake pkg-config openssl-devel python3-devel \
+    freetype-devel fontconfig-devel libjpeg-devel libpng-devel zlib-devel
 
 # macOS
 xcode-select --install
-brew install cmake
+brew install cmake pkg-config
 
 # Then retry installation
+pip install oboyu
+```
+
+If you still encounter issues, try upgrading pip and setuptools:
+```bash
+pip install --upgrade pip setuptools wheel
 pip install oboyu
 ```
 

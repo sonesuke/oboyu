@@ -167,12 +167,39 @@ oboyu --help
 
 1. **Missing system libraries**:
    ```bash
-   # Ubuntu/Debian
-   sudo apt-get update
-   sudo apt-get install python3-dev build-essential
+   # Ubuntu/Debian - Complete build environment
+   sudo apt-get update && sudo apt-get install -y \
+       git \
+       curl \
+       build-essential \
+       cmake \
+       pkg-config \
+       libssl-dev \
+       python3-dev \
+       libfreetype6-dev \
+       libfontconfig1-dev \
+       libjpeg-dev \
+       libpng-dev \
+       zlib1g-dev
    
-   # CentOS/RHEL
-   sudo yum install python3-devel gcc
+   # CentOS/RHEL - Complete build environment
+   sudo yum install -y \
+       git \
+       curl \
+       gcc-c++ \
+       cmake \
+       pkg-config \
+       openssl-devel \
+       python3-devel \
+       freetype-devel \
+       fontconfig-devel \
+       libjpeg-devel \
+       libpng-devel \
+       zlib-devel
+   
+   # macOS - Ensure Xcode tools and dependencies
+   xcode-select --install
+   brew install cmake pkg-config
    ```
 
 ## Environment Setup
