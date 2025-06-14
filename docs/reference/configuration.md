@@ -244,7 +244,6 @@ These are now CLI flags only (not in config files):
 - `language_filter` - Use `--language` flag
 
 ### Replaced by Better Algorithms
-- `vector_weight`, `bm25_weight` - Replaced by RRF (Reciprocal Rank Fusion)
 - `change_detection_strategy` - Smart default handles all cases
 
 ## Configuration Examples
@@ -436,7 +435,6 @@ oboyu config migrate
 Deprecated options will show warnings with explanations:
 ```
 Warning: indexer.batch_size is deprecated - now auto-optimized based on system memory
-Warning: query.vector_weight is deprecated - replaced by RRF algorithm
 ```
 
 ## Performance Impact Notes
@@ -595,8 +593,6 @@ If you're upgrading from an older version with complex configuration:
 | `crawler.max_workers` | Auto-optimized | Based on CPU cores |
 | `crawler.timeout` | Hard-coded | 30 seconds |
 | `crawler.max_file_size` | Hard-coded | 10MB |
-| `query.vector_weight` | Removed | RRF algorithm |
-| `query.bm25_weight` | Removed | RRF algorithm |
 | `query.show_scores` | Runtime flag | `--show-scores` |
 | `query.interactive` | Runtime flag | `--interactive` |
 

@@ -261,8 +261,8 @@ oboyu query --query "search term" --mode vector
 # Get more results
 oboyu query --query "search term" --top-k 10
 
-# Use hybrid search with custom weights
-oboyu query --query "search term" --mode hybrid --vector-weight 0.8 --bm25-weight 0.2
+# Use hybrid search (automatically uses RRF algorithm)
+oboyu query --query "search term" --mode hybrid
 
 # Enable reranking for better accuracy
 oboyu query --query "search term" --rerank
@@ -285,8 +285,6 @@ Options:
 - `--top-k`: Number of results to return - default: 5
 - `--explain`: Show detailed explanation of results
 - `--format`: Output format (text, json) - default: text
-- `--vector-weight`: Weight for vector scores in hybrid search (0.0-1.0) - default: 0.7
-- `--bm25-weight`: Weight for BM25 scores in hybrid search (0.0-1.0) - default: 0.3
 - `--db-path`: Path to database file
 - `--rerank/--no-rerank`: Enable or disable reranking of search results - default: enabled
 - `--interactive`: Start interactive search session for continuous queries
@@ -319,17 +317,11 @@ oboyu query --query "TODO" --top-k 50 --format json > todos.json
 
 **Fine-tuned hybrid search:**
 ```bash
-# Emphasize semantic similarity
-oboyu query --query "authentication flow" \
-  --mode hybrid \
-  --vector-weight 0.9 \
-  --bm25-weight 0.1
+# Use semantic search for concept-based queries
+oboyu query --query "authentication flow" --mode vector
 
-# Balance keyword and semantic search
-oboyu query --query "database optimization techniques" \
-  --mode hybrid \
-  --vector-weight 0.5 \
-  --bm25-weight 0.5
+# Use hybrid search for balanced semantic and keyword matching
+oboyu query --query "database optimization techniques" --mode hybrid
 ```
 
 #### Interactive Mode
@@ -354,7 +346,7 @@ oboyu query --interactive
 oboyu query --interactive --rerank
 
 # Interactive mode with custom settings
-oboyu query --interactive --mode hybrid --top-k 10 --vector-weight 0.8
+oboyu query --interactive --mode hybrid --top-k 10
 ```
 
 **Interactive Commands:**
@@ -369,7 +361,6 @@ All interactive commands start with `/` to distinguish them from search queries.
 | `/mode <mode>` | Change search mode | `/mode vector` | Options: vector, bm25, hybrid |
 | `/topk <number>` | Change number of results | `/topk 10` | Must be positive integer |
 | `/top-k <number>` | Alias for topk | `/top-k 15` | Same as `/topk` |
-| `/weights <v> <b>` | Change hybrid weights | `/weights 0.8 0.2` | Vector weight, BM25 weight (0.0-1.0) |
 | `/rerank on/off` | Toggle reranker | `/rerank on` | Enable or disable reranking |
 | `/settings` | Show current settings | `/settings` | Display all current configuration |
 | `/clear` | Clear screen | `/clear` | Unix-style screen clearing |

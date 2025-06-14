@@ -161,8 +161,7 @@ class ProcessingConfig:
 class SearchConfig:
     """Search-related configuration."""
     
-    vector_weight: float = 0.7
-    bm25_weight: float = 0.3
+    rrf_k: int = 60  # RRF parameter for hybrid search
     use_reranker: bool = False
     top_k_multiplier: int = 2
     bm25_k1: float = 1.2
@@ -554,8 +553,7 @@ IndexerConfig(
         m=16,
     ),
     search=SearchConfig(
-        vector_weight=0.7,
-        bm25_weight=0.3,
+        rrf_k=60,
         use_reranker=False,
         top_k_multiplier=2,
         bm25_k1=1.2,
@@ -618,8 +616,7 @@ config = IndexerConfig(
         use_reranker=True,
     ),
     search=SearchConfig(
-        vector_weight=0.6,
-        bm25_weight=0.4,
+        rrf_k=60,
         use_reranker=True,
     )
 )

@@ -124,9 +124,6 @@ class BackwardCompatibilityMapper:
         "crawler.follow_symlinks": "hard-coded to false for safety",
         "crawler.encoding": "auto-detected using proven algorithms",
         "crawler.use_japanese_tokenizer": "auto-detected based on content",
-        # Query deprecations
-        "query.vector_weight": "replaced by RRF algorithm",
-        "query.bm25_weight": "replaced by RRF algorithm",
         "query.rrf_k": "auto-optimized default of 60",
         "query.show_scores": "runtime option only",
         "query.interactive": "runtime option only",
