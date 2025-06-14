@@ -68,22 +68,23 @@ gh issue view $ISSUE_NUMBER
 ```
 
 ### Step 2: Worktree Environment Setup
+
+Use `.worktree/` directory for isolated development environments. Create if it doesn't exist.
+
 ```bash
-# Get current project directory name
-PROJECT_DIR=$(basename "$PWD")
+# Ensure you're on latest main branch
+git checkout main && git pull origin main
+
+# Create worktree with new branch
 ISSUE_NUMBER={issue_number}  # Replace with actual issue number
-BRANCH_NAME=$(git branch --show-current)
+mkdir -p .worktree
+git worktree add ".worktree/issue-${ISSUE_NUMBER}" -b "${ISSUE_NUMBER}-{descriptive-branch-name}"
 
-# Create git worktree in parallel directory
-git worktree add "../${PROJECT_DIR}-issue-${ISSUE_NUMBER}" "${BRANCH_NAME}"
-
-# Navigate to worktree
-cd "../${PROJECT_DIR}-issue-${ISSUE_NUMBER}"
-
-# Install dependencies in the isolated environment
+# Navigate to worktree and install dependencies
+cd ".worktree/issue-${ISSUE_NUMBER}"
 uv sync
 
-# Verify worktree status
+# Verify setup
 git worktree list
 echo "✅ Isolated development environment ready"
 ```
@@ -124,18 +125,25 @@ echo "🚀 Ready to begin development with PR tracking active"
 ```
 
 ### Step 4: Launch Automated Monitoring
+
+Verify scripts exist before launching. For simple tasks, consider skipping automation.
+
 ```bash
-# Start automated CI/CD monitoring in background
+# Check if automation scripts exist
+if [[ ! -f ".claude/scripts/monitor-pr-checks.sh" ]]; then
+    echo "⚠️  Automation scripts not found. Using manual workflow."
+    exit 1
+fi
+
+# Launch automated monitoring (for complex tasks)
 .claude/scripts/monitor-pr-checks.sh ${PR_NUMBER} &
 MONITOR_PID=$!
 
 echo "🤖 Automated monitoring started (PID: ${MONITOR_PID})"
-echo "📊 Monitoring will:"
-echo "  - Check PR status every 2 minutes"
-echo "  - Auto-fix common CI/CD issues"
-echo "  - Auto-promote to Ready when all checks pass"
-echo "  - Run until manually stopped (Ctrl+C)"
+echo "📊 Auto-fixes common issues, promotes to Ready when checks pass"
 ```
+
+**When to skip automation**: Single file edits, simple configuration changes
 
 ### Step 5: Development with Real-time Feedback
 ```bash
@@ -197,12 +205,23 @@ The monitoring system will automatically:
 - Notify about completion
 
 ### Step 8: Cleanup After Merge
-```bash
-# After PR is merged, return to main project
-cd ../{main_project_directory}
 
-# Use automated cleanup script
-.claude/scripts/cleanup-issue-worktree.sh ${ISSUE_NUMBER}
+```bash
+# Return to project root
+cd ../../
+
+# Use cleanup script if available, otherwise manual cleanup
+if [[ -f ".claude/scripts/cleanup-issue-worktree.sh" ]]; then
+    .claude/scripts/cleanup-issue-worktree.sh ${ISSUE_NUMBER}
+else
+    git worktree remove ".worktree/issue-${ISSUE_NUMBER}" --force
+    rm -rf ".worktree/issue-${ISSUE_NUMBER}"
+fi
+
+# Clean up branches (only if merged)
+git push origin --delete "${ISSUE_NUMBER}-{branch-name}"
+git checkout main && git pull origin main
+git branch -d "${ISSUE_NUMBER}-{branch-name}"
 
 # Verify cleanup
 git worktree list
@@ -266,26 +285,55 @@ echo "🧹 Cleanup completed"
 
 ## 💡 Enhanced Tips for Success
 
+### Claude Code Specific Considerations
+- **Directory Restrictions**: Use `.worktree/` instead of `../` directories
+- **Script Verification**: Always check if automation scripts exist before using
+- **Task Assessment**: Evaluate complexity before applying full workflow
+- **Git Operations**: Be mindful of branch creation order (main → worktree → branch)
+
 ### Parallel Development
 - Use worktrees to work on multiple issues simultaneously
 - Keep each worktree focused on a single issue
 - Maintain clean separation between different features
+- Ensure `.worktree/` is properly ignored in git
 
 ### Automation Benefits
 - Let the monitoring system handle routine CI/CD issues
 - Focus on implementation while automation handles quality gates
 - Trust the auto-promotion system for consistent PR management
+- Skip automation for simple single-file changes
 
 ### Quality Management
 - Rely on automated fixes for common issues
 - Address complex problems that require manual intervention
 - Monitor automated feedback for continuous improvement
+- Always run manual checks if automation is unavailable
 
 ### Team Collaboration
 - Create PR early for visibility and collaboration opportunities
 - Use descriptive commit messages and PR updates
 - Keep team informed of progress through automated PR comments
 - Address review feedback promptly after auto-promotion
+
+## ⚠️ Common Pitfalls and Solutions
+
+### Worktree Issues
+- **Problem**: `fatal: branch already checked out`
+  - **Solution**: Create worktree from main branch, not feature branch
+- **Problem**: Cannot navigate to worktree
+  - **Solution**: Use `.worktree/` structure within project directory
+
+### Script Dependencies
+- **Problem**: Automation scripts not found
+  - **Solution**: Verify scripts exist in `.claude/scripts/` before use
+- **Problem**: Monitoring fails to start
+  - **Solution**: Fall back to manual workflow, don't block on automation
+
+### Complexity Assessment
+- **Problem**: Over-engineering simple tasks
+  - **Solution**: Use judgment - simple tasks don't need full automation
+- **Problem**: Under-estimating complex tasks
+  - **Solution**: Use full workflow for multi-file changes
 
 ## 📊 Monitoring Dashboard
 
