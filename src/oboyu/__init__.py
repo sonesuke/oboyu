@@ -4,4 +4,10 @@ This package provides utilities for creating a semantic search index of text doc
 with special handling for Japanese text.
 """
 
-__version__ = "0.1.0"
+try:
+    from importlib.metadata import version
+
+    __version__ = version("oboyu")
+except ImportError:
+    # Fallback for development
+    __version__ = "0.1.0-dev"

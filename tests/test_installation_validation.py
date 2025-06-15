@@ -54,7 +54,7 @@ class TestInstallationValidation:
 
     def test_cli_commands_available(self):
         """Test that main CLI commands are available."""
-        commands = ["index", "query", "manage", "health"]
+        commands = ["index", "search", "build-kg", "mcp"]
 
         for command in commands:
             result = subprocess.run([sys.executable, "-m", "oboyu", command, "--help"], capture_output=True, text=True)
@@ -140,9 +140,9 @@ class TestInstallationValidation:
         [
             ["version"],
             ["--help"],
-            ["health", "--help"],
+            ["search", "--help"],
             ["index", "--help"],
-            ["query", "--help"],
+            ["build-kg", "--help"],
         ],
     )
     def test_cli_command_execution(self, command):
