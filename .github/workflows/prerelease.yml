@@ -182,7 +182,7 @@ jobs:
           echo "emoji=🧪" >> $GITHUB_OUTPUT
         elif [[ $VERSION == *"b"* ]]; then
           echo "type=Beta" >> $GITHUB_OUTPUT
-          echo "emoji=🇾" >> $GITHUB_OUTPUT
+          echo "emoji=🔧" >> $GITHUB_OUTPUT
         elif [[ $VERSION == *"rc"* ]]; then
           echo "type=Release Candidate" >> $GITHUB_OUTPUT
           echo "emoji=🎯" >> $GITHUB_OUTPUT
