@@ -18,9 +18,7 @@ from typing_extensions import Annotated
 
 from oboyu import __version__
 from oboyu.cli.clear import clear
-from oboyu.cli.commands.graphrag import app as graphrag_app
 from oboyu.cli.commands.kg import app as kg_app
-from oboyu.cli.commands.kg_property_graph import app as kg_graph_app
 from oboyu.cli.common_options import ConfigOption, DatabasePathOption, VerboseOption
 from oboyu.cli.health import app as health_app
 from oboyu.cli.index import app as index_app
@@ -52,9 +50,7 @@ app.add_typer(query_app, name="query", help="Search indexed documents")
 app.add_typer(manage_app, name="manage", help="Manage the index database")
 app.add_typer(health_app, name="health", help="Health monitoring and diagnostics")
 app.add_typer(mcp_app, name="mcp", help="Run an MCP server for AI assistant integration")
-app.add_typer(kg_app, name="kg", help="Knowledge graph operations")
-app.add_typer(kg_graph_app, name="graph", help="Property graph queries and analytics")
-app.add_typer(graphrag_app, name="graphrag", help="GraphRAG enhanced search and retrieval")
+app.add_typer(kg_app, name="kg", help="Knowledge graph operations and GraphRAG enhanced search")
 
 # Add top-level commands
 app.command("clear")(clear)
