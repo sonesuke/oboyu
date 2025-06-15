@@ -72,15 +72,6 @@ class KGExtractionService(ABC):
 
         """
 
-    @abstractmethod
-    async def validate_extraction_schema(self) -> bool:
-        """Validate that the model can produce valid JSON schema output.
-
-        Returns:
-            True if model supports required JSON schema format
-
-        """
-
 
 class ExtractionError(Exception):
     """Exception raised when knowledge graph extraction fails."""
