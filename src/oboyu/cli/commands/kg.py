@@ -1,7 +1,7 @@
 """Knowledge Graph CLI commands.
 
 This module provides command-line interface for building and managing
-the Property Graph Index functionality.
+Knowledge Graph operations and GraphRAG enhanced search functionality.
 """
 
 import asyncio
@@ -18,8 +18,9 @@ from oboyu.adapters.kg_extraction import LLMKGExtractionService
 from oboyu.adapters.kg_repositories import DuckDBKGRepository
 from oboyu.application.kg import KnowledgeGraphService
 from oboyu.cli.base import BaseCommand
+from oboyu.cli.commands import kg_graphrag
 
-app = typer.Typer(help="Knowledge Graph operations")
+app = typer.Typer(help="Knowledge Graph operations and GraphRAG enhanced search")
 logger = logging.getLogger(__name__)
 
 
@@ -442,6 +443,14 @@ def find_duplicates(
             raise typer.Exit(1)
 
     asyncio.run(_find_duplicates())
+
+
+# Register GraphRAG commands from the separate module
+app.command(name="expand-query")(kg_graphrag.expand_query)
+app.command(name="search")(kg_graphrag.search)
+app.command(name="explain-query")(kg_graphrag.explain_query)
+app.command(name="entity-summaries")(kg_graphrag.entity_summaries)
+app.command(name="find-clusters")(kg_graphrag.find_clusters)
 
 
 if __name__ == "__main__":

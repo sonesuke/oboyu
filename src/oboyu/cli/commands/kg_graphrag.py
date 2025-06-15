@@ -1,7 +1,7 @@
-"""GraphRAG CLI commands.
+"""GraphRAG CLI commands for Knowledge Graph operations.
 
-This module provides command-line interface for GraphRAG (Graph Retrieval
-Augmented Generation) operations and enhanced semantic search.
+This module provides GraphRAG (Graph Retrieval Augmented Generation)
+commands that are part of the consolidated knowledge graph interface.
 """
 
 import asyncio
@@ -16,7 +16,6 @@ from oboyu.adapters.kg_repositories import DuckDBKGRepository
 from oboyu.adapters.property_graph import DuckPGQPropertyGraphService
 from oboyu.cli.base import BaseCommand
 
-app = typer.Typer(help="GraphRAG operations")
 logger = logging.getLogger(__name__)
 
 
@@ -73,7 +72,6 @@ class GraphRAGCommand(BaseCommand):
         return graphrag_service
 
 
-@app.command()
 def expand_query(
     ctx: typer.Context,
     query: str = typer.Argument(..., help="Query to expand with knowledge graph entities"),
@@ -131,11 +129,17 @@ def expand_query(
             command.console.print(f"[red]❌ Query expansion failed: {e}[/red]")
             logger.error(f"Query expansion failed: {e}")
             raise typer.Exit(1)
+        finally:
+            # Clean up resources
+            try:
+                if "graphrag_service" in locals() and hasattr(graphrag_service, "_indexer"):
+                    graphrag_service._indexer.close()
+            except Exception as cleanup_error:
+                logger.debug(f"Error during cleanup: {cleanup_error}")
 
     asyncio.run(_expand_query())
 
 
-@app.command()
 def search(
     ctx: typer.Context,
     query: str = typer.Argument(..., help="Search query"),
@@ -195,11 +199,17 @@ def search(
             command.console.print(f"[red]❌ GraphRAG search failed: {e}[/red]")
             logger.error(f"GraphRAG search failed: {e}")
             raise typer.Exit(1)
+        finally:
+            # Clean up resources
+            try:
+                if "graphrag_service" in locals() and hasattr(graphrag_service, "_indexer"):
+                    graphrag_service._indexer.close()
+            except Exception as cleanup_error:
+                logger.debug(f"Error during cleanup: {cleanup_error}")
 
     asyncio.run(_search())
 
 
-@app.command()
 def explain_query(
     ctx: typer.Context,
     query: str = typer.Argument(..., help="Query to explain"),
@@ -254,11 +264,17 @@ def explain_query(
             command.console.print(f"[red]❌ Query explanation failed: {e}[/red]")
             logger.error(f"Query explanation failed: {e}")
             raise typer.Exit(1)
+        finally:
+            # Clean up resources
+            try:
+                if "graphrag_service" in locals() and hasattr(graphrag_service, "_indexer"):
+                    graphrag_service._indexer.close()
+            except Exception as cleanup_error:
+                logger.debug(f"Error during cleanup: {cleanup_error}")
 
     asyncio.run(_explain_query())
 
 
-@app.command()
 def entity_summaries(
     ctx: typer.Context,
     entity_names: str = typer.Argument(..., help="Comma-separated entity names"),
@@ -309,11 +325,17 @@ def entity_summaries(
             command.console.print(f"[red]❌ Summary generation failed: {e}[/red]")
             logger.error(f"Summary generation failed: {e}")
             raise typer.Exit(1)
+        finally:
+            # Clean up resources
+            try:
+                if "graphrag_service" in locals() and hasattr(graphrag_service, "_indexer"):
+                    graphrag_service._indexer.close()
+            except Exception as cleanup_error:
+                logger.debug(f"Error during cleanup: {cleanup_error}")
 
     asyncio.run(_entity_summaries())
 
 
-@app.command()
 def find_clusters(
     ctx: typer.Context,
     seed_entities: str = typer.Argument(..., help="Comma-separated seed entity names"),
@@ -374,9 +396,12 @@ def find_clusters(
             command.console.print(f"[red]❌ Cluster finding failed: {e}[/red]")
             logger.error(f"Cluster finding failed: {e}")
             raise typer.Exit(1)
+        finally:
+            # Clean up resources
+            try:
+                if "graphrag_service" in locals() and hasattr(graphrag_service, "_indexer"):
+                    graphrag_service._indexer.close()
+            except Exception as cleanup_error:
+                logger.debug(f"Error during cleanup: {cleanup_error}")
 
     asyncio.run(_find_clusters())
-
-
-if __name__ == "__main__":
-    app()
