@@ -60,7 +60,7 @@ repos:
     - id: pytest
       name: pytest
       # Changed: use smart test runner that only runs affected tests
-      entry: .claude/scripts/run-affected-tests.sh
+      entry: scripts/ci/run-affected-tests.sh
       language: system
       # Changed: don't pass filenames, the script handles it
       pass_filenames: false

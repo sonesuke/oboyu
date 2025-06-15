@@ -131,14 +131,14 @@ echo "🚀 Ready to begin development with PR tracking active"
 
 ```bash
 # Check if automation scripts exist
-if [[ ! -f ".claude/scripts/monitor-pr-checks.sh" ]]; then
+if [[ ! -f "scripts/ci/monitor-pr-checks.sh" ]]; then
     echo "⚠️  Automation scripts not found. Using manual workflow."
     exit 1
 fi
 
 # Launch automated monitoring in FOREGROUND (ALWAYS, regardless of task complexity)
 # IMPORTANT: Run in foreground so Claude Code can properly wait for completion
-.claude/scripts/monitor-pr-checks.sh ${PR_NUMBER}
+scripts/ci/monitor-pr-checks.sh ${PR_NUMBER}
 
 # The script will run until:
 # - All CI/CD checks pass and PR is promoted to Ready
@@ -212,7 +212,7 @@ uv run ruff check --fix && uv run mypy
 uv run pytest -m "not slow" -k "not integration"
 
 # The monitoring system handles this automatically, but manual execution is also available:
-.claude/scripts/fix-common-issues.sh
+scripts/dev/fix-common-issues.sh
 ```
 
 ### Step 7: Automated Promotion (Fully Automated)
@@ -235,8 +235,8 @@ The workflow will:
 
 ```bash
 # This runs automatically via monitoring system when PR is merged/closed:
-if [[ -f ".claude/scripts/cleanup-issue-worktree.sh" ]]; then
-    .claude/scripts/cleanup-issue-worktree.sh ${ISSUE_NUMBER}
+if [[ -f "scripts/dev/cleanup-issue-worktree.sh" ]]; then
+    scripts/dev/cleanup-issue-worktree.sh ${ISSUE_NUMBER}
 else
     # Manual cleanup if script unavailable
     cd ../../  # Return to project root
@@ -349,7 +349,7 @@ echo "🎉 Issue #${ISSUE_NUMBER} workflow completed successfully!"
 
 ### Script Dependencies
 - **Problem**: Automation scripts not found
-  - **Solution**: Verify scripts exist in `.claude/scripts/` before use
+  - **Solution**: Verify scripts exist in `scripts/` before use
 - **Problem**: Monitoring fails to start
   - **Solution**: Fall back to manual workflow, don't block on automation
 
