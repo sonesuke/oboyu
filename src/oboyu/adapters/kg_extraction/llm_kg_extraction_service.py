@@ -462,17 +462,6 @@ JSON形式のみで回答してください:"""
 
         return self._model_loaded and self._llm is not None
 
-    async def validate_extraction_schema(self) -> bool:
-        """Validate that the model can produce valid JSON schema output."""
-        # First check if model is loaded
-        if not self.is_model_loaded():
-            logger.warning("Model not loaded during schema validation")
-            return False
-
-        # For now, just check model loading - actual inference validation takes too long
-        logger.info("Model validation passed (lightweight check - model is loaded and ready)")
-        return True
-
     def __del__(self) -> None:
         """Cleanup resources."""
         if self._llm is not None:

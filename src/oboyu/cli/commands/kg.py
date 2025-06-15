@@ -118,7 +118,6 @@ def build(
     full: bool = typer.Option(False, "--full", help="Rebuild entire knowledge graph"),
     batch_size: Optional[int] = typer.Option(None, "--batch-size", help="Processing batch size"),
     limit: Optional[int] = typer.Option(None, "--limit", help="Limit number of chunks to process"),
-    skip_validation: bool = typer.Option(False, "--skip-validation", help="Skip extraction service validation"),
 ) -> None:
     """Build knowledge graph from existing chunks."""
 
@@ -137,22 +136,6 @@ def build(
             config_manager = command.get_config_manager()
             config_data = config_manager.get_section("indexer")
             kg_service = await command._get_kg_service(config_data)
-
-            # Validate extraction service with detailed logging
-            command.console.print("🔍 Validating extraction service...")
-            try:
-                validation_result = await kg_service.validate_extraction_service()
-                if not validation_result:
-                    command.console.print("[red]❌ Extraction service validation returned False[/red]")
-                    raise typer.Exit(1)
-                command.console.print("[green]✅ Extraction service validated[/green]")
-            except Exception as e:
-                command.console.print(f"[red]❌ Validation failed with exception: {e}[/red]")
-                import traceback
-
-                logger.error(f"KG validation failed: {e}")
-                logger.error(f"Full traceback: {traceback.format_exc()}")
-                raise typer.Exit(1)
 
             # Get chunks to process
             if full:
@@ -308,33 +291,6 @@ def stats(ctx: typer.Context) -> None:
                 logger.debug(f"Error during cleanup: {cleanup_error}")
 
     asyncio.run(_stats())
-
-
-@app.command()
-def validate(ctx: typer.Context) -> None:
-    """Validate knowledge graph extraction service."""
-
-    async def _validate() -> None:
-        command = KGCommand(ctx)
-        try:
-            config_manager = command.get_config_manager()
-            config_data = config_manager.get_section("indexer")
-            kg_service = await command._get_kg_service(config_data)
-
-            command.console.print("🔍 Validating extraction service...")
-
-            if await kg_service.validate_extraction_service():
-                command.console.print("[green]✅ Extraction service is working correctly[/green]")
-            else:
-                command.console.print("[red]❌ Extraction service validation failed[/red]")
-                raise typer.Exit(1)
-
-        except Exception as e:
-            command.console.print(f"[red]❌ Validation failed: {e}[/red]")
-            logger.error(f"KG validation failed: {e}")
-            raise typer.Exit(1)
-
-    asyncio.run(_validate())
 
 
 @app.command()

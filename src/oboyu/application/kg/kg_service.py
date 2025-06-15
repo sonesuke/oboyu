@@ -294,35 +294,6 @@ class KnowledgeGraphService:
             logger.error(f"Failed to get KG stats: {e}")
             raise ServiceError(f"Failed to get statistics: {e}")
 
-    async def validate_extraction_service(self) -> bool:
-        """Validate that the extraction service is working properly.
-
-        Returns:
-            True if service is ready for use
-
-        """
-        try:
-            # Check if model is loaded
-            is_loaded = self.extraction_service.is_model_loaded()
-            logger.info(f"Model loaded status: {is_loaded}")
-
-            if not is_loaded:
-                logger.warning("Extraction model is not loaded")
-                return False
-
-            # Check schema validation
-            logger.info("Starting schema validation...")
-            schema_valid = await self.extraction_service.validate_extraction_schema()
-            logger.info(f"Schema validation result: {schema_valid}")
-
-            return schema_valid
-        except Exception as e:
-            logger.error(f"Extraction service validation failed: {e}")
-            import traceback
-
-            logger.error(f"Validation traceback: {traceback.format_exc()}")
-            return False
-
     async def deduplicate_all_entities(
         self,
         entity_type: Optional[str] = None,
