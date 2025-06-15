@@ -84,6 +84,7 @@ dev = [
     "mypy>=1.16.0",
     "pre-commit>=4.2.0",
     "pytest>=8.3.5",
+    "pytest-asyncio>=0.21.0",
     "pytest-cov>=6.1.1",
     "ruff>=0.11.12",
     "hatch-vcs>=0.3.0",
@@ -113,6 +114,8 @@ disable_error_code = ["import-untyped", "no-any-return", "attr-defined", "call-a
 testpaths = ["tests"]
 pythonpath = ["src"]
 python_files = ["test_*.py", "*_test.py"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "packaging: marks tests as packaging/installation related",

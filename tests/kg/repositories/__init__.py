@@ -1,0 +1,1 @@
+"""KG repository implementation tests."""
