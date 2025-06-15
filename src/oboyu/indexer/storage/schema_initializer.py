@@ -1,4 +1,4 @@
-"""Schema initialization for database setup."""
+"""Schema initialization for database setup with retry logic for concurrent access."""
 
 import logging
 from pathlib import Path
@@ -62,32 +62,50 @@ class SchemaInitializer:
                 # Create tables with individual transactions to avoid write conflicts
                 tables = schema.get_all_tables()
                 for table in tables:
-                    try:
-                        # Use individual transactions for each table to minimize lock time
-                        conn.execute("BEGIN TRANSACTION")
-                        conn.execute(table.sql)
+                    # Retry logic for catalog conflicts
+                    max_retries = 3
+                    retry_delay = 0.1  # Start with 100ms delay
 
-                        # Create indexes for this table
-                        for index_sql in table.indexes:
-                            conn.execute(index_sql)
-
-                        conn.execute("COMMIT")
-                        logger.debug(f"Created table {table.name}")
-
-                    except Exception as table_error:
+                    for attempt in range(max_retries):
                         try:
-                            conn.execute("ROLLBACK")
-                        except Exception as rollback_error:
-                            logger.debug(f"Rollback failed: {rollback_error}")
+                            # Use individual transactions for each table to minimize lock time
+                            conn.execute("BEGIN TRANSACTION")
+                            conn.execute(table.sql)
 
-                        # Check if the error is because table already exists
-                        error_msg = str(table_error).lower()
-                        if "already exists" in error_msg or "relation" in error_msg:
-                            logger.debug(f"Table {table.name} already exists, skipping")
-                            continue
-                        else:
-                            logger.error(f"Failed to create table {table.name}: {table_error}")
-                            raise
+                            # Create indexes for this table
+                            for index_sql in table.indexes:
+                                conn.execute(index_sql)
+
+                            conn.execute("COMMIT")
+                            logger.debug(f"Created table {table.name}")
+                            break  # Success, exit retry loop
+
+                        except Exception as table_error:
+                            try:
+                                conn.execute("ROLLBACK")
+                            except Exception as rollback_error:
+                                logger.debug(f"Rollback failed: {rollback_error}")
+
+                            # Check if the error is because table already exists
+                            error_msg = str(table_error).lower()
+                            if "already exists" in error_msg or "relation" in error_msg:
+                                logger.debug(f"Table {table.name} already exists, skipping")
+                                break  # Exit retry loop, table exists
+                            elif "catalog write-write conflict" in error_msg:
+                                # Catalog conflict - retry with exponential backoff
+                                if attempt < max_retries - 1:
+                                    import time
+
+                                    logger.debug(f"Catalog conflict for table {table.name}, retrying in {retry_delay}s (attempt {attempt + 1}/{max_retries})")
+                                    time.sleep(retry_delay)
+                                    retry_delay *= 2  # Exponential backoff
+                                    continue
+                                else:
+                                    logger.error(f"Failed to create table {table.name} after {max_retries} attempts: {table_error}")
+                                    raise
+                            else:
+                                logger.error(f"Failed to create table {table.name}: {table_error}")
+                                raise
 
                 # Run migrations
                 try:
