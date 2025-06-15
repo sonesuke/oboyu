@@ -109,6 +109,76 @@ oboyu index ~/Documents --db-path ~/indexes/messy-docs.db
 oboyu search "final project update" --db-path ~/indexes/messy-docs.db
 ```
 
+## Data Enrichment Workflow
+
+### Enhancing CSV Data with Knowledge Base
+When you have CSV data that needs enrichment with information from your documents:
+
+```bash
+# Start with basic CSV data
+cat companies.csv
+# company_name,industry
+# Apple Inc.,Technology
+# Microsoft Corporation,Technology
+
+# Create enrichment schema
+cat > enrichment-schema.json << 'EOF'
+{
+  "input_schema": {
+    "columns": {
+      "company_name": {"type": "string", "required": true},
+      "industry": {"type": "string", "required": false}
+    },
+    "primary_keys": ["company_name"]
+  },
+  "enrichment_schema": {
+    "columns": {
+      "description": {
+        "type": "string",
+        "description": "Company description and business overview",
+        "source_strategy": "search_content",
+        "query_template": "{company_name} business overview description",
+        "extraction_method": "summarize"
+      },
+      "founded_year": {
+        "type": "integer",
+        "description": "Year company was founded",
+        "source_strategy": "search_content",
+        "query_template": "{company_name} founded established year",
+        "extraction_method": "pattern_match",
+        "extraction_pattern": "\\b(19|20)\\d{2}\\b"
+      }
+    }
+  }
+}
+EOF
+
+# Enrich data with knowledge base information
+oboyu enrich companies.csv enrichment-schema.json --output enriched-companies.csv
+
+# View enriched results
+cat enriched-companies.csv
+# company_name,industry,description,founded_year
+# Apple Inc.,Technology,"Technology company specializing in consumer electronics and software",1976
+# Microsoft Corporation,Technology,"Software and cloud computing company",1975
+```
+
+### Daily Enrichment Tasks
+Common enrichment scenarios:
+
+```bash
+# Enrich customer data with company information
+oboyu enrich customers.csv customer-enrichment.json
+
+# Enrich financial data with market information
+oboyu enrich stocks.csv financial-enrichment.json --confidence 0.8
+
+# Enrich research data with publication details
+oboyu enrich research-papers.csv publication-enrichment.json --batch-size 5
+```
+
+For detailed enrichment workflows, see the [CSV Enrichment Use Case](../use-cases/csv-enrichment.md) guide.
+
 ## Quick Access Patterns
 
 ### Recent Files Workflow

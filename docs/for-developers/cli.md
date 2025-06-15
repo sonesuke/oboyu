@@ -12,6 +12,7 @@ This document describes the available command-line interface (CLI) commands for 
 | `oboyu status <path>` | Show indexing status | `--detailed` |
 | `oboyu index <path>` | Index documents | `--force`, `--chunk-size`, `--include-patterns` |
 | `oboyu search <query>` | Search documents with GraphRAG enhancement | `--mode`, `--top-k`, `--no-graph`, `--rerank` |
+| `oboyu enrich <csv> <schema>` | Enrich CSV data with knowledge base information | `--batch-size`, `--confidence`, `--output` |
 | `oboyu build-kg` | Build knowledge graph from indexed documents | `--full`, `--batch-size` |
 | `oboyu deduplicate` | Deduplicate entities in knowledge graph | `--type`, `--similarity` |
 
@@ -25,6 +26,9 @@ oboyu search "database connection" --top-k 10
 # Incremental updates with cleanup
 oboyu index ~/documents --cleanup-deleted
 oboyu status ~/documents --detailed
+
+# Enrich CSV data with knowledge base information
+oboyu enrich companies.csv enrichment-schema.json --output enriched.csv
 
 ```
 
@@ -225,6 +229,150 @@ oboyu status /path/to/docs --db-path custom.db
 Options:
 - `--detailed`, `-d`: Show detailed file-by-file status
 - `--db-path`: Path to database file
+
+## Data Enrichment Commands
+
+### `oboyu enrich`
+
+Enrich CSV data with information from your indexed knowledge base using semantic search and GraphRAG. This command processes CSV files according to configurable schemas and supports multiple extraction strategies.
+
+```bash
+# Basic enrichment
+oboyu enrich companies.csv enrichment-schema.json
+
+# Specify output file
+oboyu enrich data.csv config.json --output enriched-data.csv
+
+# Adjust batch processing settings
+oboyu enrich large-dataset.csv schema.json --batch-size 5
+
+# Fine-tune search parameters
+oboyu enrich data.csv config.json \
+  --confidence 0.7 \
+  --max-results 3 \
+  --batch-size 10
+
+# Disable GraphRAG for faster processing
+oboyu enrich data.csv config.json --no-graph
+
+# Use custom database
+oboyu enrich data.csv config.json --db-path custom.db
+```
+
+Options:
+- `csv_file`: Input CSV file path (required)
+- `schema_file`: JSON schema configuration file (required)
+- `--output PATH`: Output CSV file path (auto-generated if not specified)
+- `--batch-size INTEGER`: Processing batch size (default: 10)
+- `--max-results INTEGER`: Maximum search results per query (default: 5)
+- `--confidence FLOAT`: Confidence threshold for results (default: 0.5)
+- `--no-graph`: Disable GraphRAG enhancement
+- `--db-path PATH`: Custom database file path
+
+#### Schema Configuration
+
+The enrichment schema defines how to enrich your CSV data. Create a JSON file with the following structure:
+
+```json
+{
+  "input_schema": {
+    "columns": {
+      "company_name": {
+        "type": "string",
+        "description": "会社名",
+        "required": true
+      }
+    },
+    "primary_keys": ["company_name"]
+  },
+  "enrichment_schema": {
+    "columns": {
+      "description": {
+        "type": "string",
+        "description": "会社概要",
+        "source_strategy": "search_content",
+        "query_template": "{company_name} 概要 事業内容",
+        "extraction_method": "summarize"
+      },
+      "employees": {
+        "type": "integer",
+        "description": "従業員数",
+        "source_strategy": "search_content",
+        "query_template": "{company_name} 従業員数",
+        "extraction_method": "pattern_match",
+        "extraction_pattern": "\\d+(?:人|名)"
+      },
+      "founded_year": {
+        "type": "integer",
+        "description": "設立年",
+        "source_strategy": "graph_relations",
+        "query_template": "{company_name} 設立",
+        "relation_types": ["FOUNDED_IN"],
+        "target_entity_types": ["DATE", "YEAR"]
+      }
+    }
+  },
+  "search_config": {
+    "search_mode": "hybrid",
+    "use_graphrag": true,
+    "rerank": true,
+    "top_k": 5,
+    "similarity_threshold": 0.5
+  }
+}
+```
+
+#### Extraction Strategies
+
+**`search_content`**: Semantic search with content extraction
+- `extraction_method`: `first_result`, `first_sentence`, `summarize`, `pattern_match`
+- `extraction_pattern`: Regex pattern (for pattern_match method)
+
+**`entity_extraction`**: Knowledge graph entity extraction
+- `entity_types`: Filter by entity types (e.g., `["PERSON", "ORGANIZATION"]`)
+- `similarity_threshold`: Minimum similarity score
+
+**`graph_relations`**: Graph relationship traversal
+- `relation_types`: Types of relationships to follow
+- `target_entity_types`: Types of target entities
+
+#### Enrichment Examples
+
+**Company Data Enrichment:**
+```bash
+# Create sample CSV
+echo "company_name,industry
+株式会社ソフトバンク,通信
+トヨタ自動車株式会社,自動車" > companies.csv
+
+# Run enrichment
+oboyu enrich companies.csv schema.json --batch-size 2
+```
+
+**Performance Tuning:**
+```bash
+# Fast processing for large datasets
+oboyu enrich large-data.csv schema.json \
+  --batch-size 20 \
+  --confidence 0.3 \
+  --no-graph
+
+# High accuracy with smaller batches
+oboyu enrich data.csv schema.json \
+  --batch-size 5 \
+  --confidence 0.8 \
+  --max-results 10
+```
+
+**Error Recovery:**
+```bash
+# Resume failed enrichment with lower confidence
+oboyu enrich failed-data.csv schema.json \
+  --confidence 0.3 \
+  --batch-size 2
+```
+
+For detailed usage examples and advanced configuration, see the [CSV Enrichment Use Case](../use-cases/csv-enrichment.md) documentation.
 
 ## Knowledge Graph Commands
 

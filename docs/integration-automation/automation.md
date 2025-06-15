@@ -644,6 +644,430 @@ if __name__ == '__main__':
         time.sleep(60)
 ```
 
+## CSV Enrichment Automation
+
+### Automated Data Pipeline
+
+Set up automated enrichment pipelines for regular data processing:
+
+```bash
+#!/bin/bash
+# enrichment_pipeline.sh - Automated CSV enrichment workflow
+
+# Configuration
+DATA_DIR="$HOME/data/raw"
+OUTPUT_DIR="$HOME/data/enriched"
+SCHEMA_DIR="$HOME/schemas"
+LOG_FILE="$HOME/.oboyu/logs/enrichment-$(date +%Y%m%d).log"
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+# Process all CSV files in data directory
+process_csv_files() {
+    for csv_file in "$DATA_DIR"/*.csv; do
+        if [[ -f "$csv_file" ]]; then
+            local basename=$(basename "$csv_file" .csv)
+            local schema_file="$SCHEMA_DIR/${basename}-schema.json"
+            local output_file="$OUTPUT_DIR/${basename}-enriched.csv"
+            
+            if [[ -f "$schema_file" ]]; then
+                log "Processing: $csv_file with schema: $schema_file"
+                
+                if oboyu enrich "$csv_file" "$schema_file" \
+                   --output "$output_file" \
+                   --batch-size 10 \
+                   --confidence 0.6 2>>"$LOG_FILE"; then
+                    log "Successfully enriched: $basename"
+                    
+                    # Archive processed file
+                    mv "$csv_file" "$DATA_DIR/processed/"
+                else
+                    log "Failed to enrich: $basename"
+                    mv "$csv_file" "$DATA_DIR/failed/"
+                fi
+            else
+                log "No schema found for: $basename"
+            fi
+        fi
+    done
+}
+
+# Create necessary directories
+mkdir -p "$OUTPUT_DIR" "$DATA_DIR/processed" "$DATA_DIR/failed"
+
+# Run enrichment pipeline
+log "Starting automated enrichment pipeline"
+process_csv_files
+log "Enrichment pipeline completed"
+```
+
+### Scheduled Enrichment
+
+```bash
+# Add to crontab for daily enrichment
+# Run every night at 1 AM
+0 1 * * * /usr/local/bin/enrichment_pipeline.sh
+
+# Process new data every 4 hours during business hours
+0 9,13,17 * * 1-5 /usr/local/bin/enrichment_pipeline.sh
+```
+
+### Email-Triggered Enrichment
+
+```python
+#!/usr/bin/env python3
+# email_enrichment.py - Process CSV files from email attachments
+
+import email
+import imaplib
+import subprocess
+import tempfile
+import json
+from pathlib import Path
+
+def process_email_attachments():
+    """Process CSV attachments from emails and enrich them"""
+    
+    # Email configuration
+    IMAP_SERVER = 'imap.gmail.com'
+    EMAIL = 'your-email@gmail.com'
+    PASSWORD = 'app-password'
+    
+    # Connect to email
+    mail = imaplib.IMAP4_SSL(IMAP_SERVER)
+    mail.login(EMAIL, PASSWORD)
+    mail.select('inbox')
+    
+    # Search for emails with CSV attachments
+    _, message_numbers = mail.search(None, 
+        'UNSEEN SUBJECT "Data for enrichment"')
+    
+    for num in message_numbers[0].split():
+        _, msg_data = mail.fetch(num, '(RFC822)')
+        email_body = msg_data[0][1]
+        email_message = email.message_from_bytes(email_body)
+        
+        # Process CSV attachments
+        for part in email_message.walk():
+            if (part.get_content_disposition() == 'attachment' and 
+                part.get_filename().endswith('.csv')):
+                
+                filename = part.get_filename()
+                
+                # Save attachment to temp directory
+                with tempfile.NamedTemporaryFile(
+                    mode='wb', suffix='.csv', delete=False
+                ) as tmp_file:
+                    tmp_file.write(part.get_payload(decode=True))
+                    csv_path = tmp_file.name
+                
+                # Determine schema based on filename
+                schema_name = filename.replace('.csv', '-schema.json')
+                schema_path = Path.home() / 'schemas' / schema_name
+                
+                if schema_path.exists():
+                    output_path = Path.home() / 'data/enriched' / \
+                                 f"{filename.replace('.csv', '')}-enriched.csv"
+                    
+                    # Run enrichment
+                    result = subprocess.run([
+                        'oboyu', 'enrich', csv_path, str(schema_path),
+                        '--output', str(output_path),
+                        '--batch-size', '5',
+                        '--confidence', '0.7'
+                    ], capture_output=True, text=True)
+                    
+                    if result.returncode == 0:
+                        print(f"Successfully enriched: {filename}")
+                        send_completion_email(filename, str(output_path))
+                    else:
+                        print(f"Failed to enrich: {filename}")
+                        send_error_email(filename, result.stderr)
+                else:
+                    print(f"No schema found for: {filename}")
+                
+                # Cleanup temp file
+                Path(csv_path).unlink()
+    
+    mail.close()
+    mail.logout()
+
+def send_completion_email(filename, output_path):
+    """Send completion notification"""
+    # Implementation for sending completion email
+    pass
+
+def send_error_email(filename, error):
+    """Send error notification"""
+    # Implementation for sending error email
+    pass
+
+if __name__ == "__main__":
+    process_email_attachments()
+```
+
+### Dynamic Schema Selection
+
+```python
+#!/usr/bin/env python3
+# smart_enrichment.py - Automatically select appropriate schemas
+
+import pandas as pd
+import json
+import subprocess
+from pathlib import Path
+
+class SmartEnrichmentSystem:
+    def __init__(self, schema_dir="~/schemas"):
+        self.schema_dir = Path(schema_dir).expanduser()
+        self.schema_templates = self.load_schema_templates()
+    
+    def load_schema_templates(self):
+        """Load available schema templates"""
+        templates = {}
+        for schema_file in self.schema_dir.glob("*.json"):
+            with open(schema_file) as f:
+                schema = json.load(f)
+                templates[schema_file.stem] = schema
+        return templates
+    
+    def analyze_csv_structure(self, csv_path):
+        """Analyze CSV to determine appropriate schema"""
+        df = pd.read_csv(csv_path, nrows=5)  # Sample first 5 rows
+        
+        columns = df.columns.tolist()
+        
+        # Heuristics for schema selection
+        if 'company_name' in columns or 'company' in columns:
+            return 'company-enrichment'
+        elif 'person_name' in columns or 'name' in columns:
+            return 'person-enrichment'
+        elif 'product_name' in columns or 'product' in columns:
+            return 'product-enrichment'
+        else:
+            return 'generic-enrichment'
+    
+    def auto_enrich(self, csv_path, output_path=None):
+        """Automatically enrich CSV with best matching schema"""
+        # Determine schema
+        schema_type = self.analyze_csv_structure(csv_path)
+        schema_path = self.schema_dir / f"{schema_type}.json"
+        
+        if not schema_path.exists():
+            print(f"Schema not found: {schema_path}")
+            return False
+        
+        # Generate output path if not provided
+        if output_path is None:
+            csv_file = Path(csv_path)
+            output_path = csv_file.parent / f"{csv_file.stem}-enriched.csv"
+        
+        print(f"Using schema: {schema_type}")
+        print(f"Input: {csv_path}")
+        print(f"Output: {output_path}")
+        
+        # Run enrichment
+        result = subprocess.run([
+            'oboyu', 'enrich', csv_path, str(schema_path),
+            '--output', str(output_path),
+            '--batch-size', '8',
+            '--confidence', '0.6'
+        ], capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            print("Enrichment completed successfully")
+            return True
+        else:
+            print(f"Enrichment failed: {result.stderr}")
+            return False
+
+# Usage example
+enricher = SmartEnrichmentSystem()
+
+# Process multiple files
+for csv_file in Path("~/data/incoming").glob("*.csv"):
+    enricher.auto_enrich(csv_file)
+```
+
+### Performance Monitoring for Enrichment
+
+```bash
+#!/bin/bash
+# monitor_enrichment.sh - Monitor enrichment performance
+
+METRICS_FILE="$HOME/.oboyu/enrichment_metrics.json"
+ALERT_THRESHOLD_MS=30000  # 30 seconds
+
+log_enrichment_metrics() {
+    local csv_file="$1"
+    local schema_file="$2"
+    local start_time="$3"
+    local end_time="$4"
+    local status="$5"
+    
+    local duration_ms=$(( (end_time - start_time) * 1000 ))
+    local timestamp=$(date -Iseconds)
+    
+    # Create metrics entry
+    local metric_entry=$(cat <<EOF
+{
+  "timestamp": "$timestamp",
+  "csv_file": "$csv_file",
+  "schema_file": "$schema_file",
+  "duration_ms": $duration_ms,
+  "status": "$status"
+}
+EOF
+    )
+    
+    # Append to metrics file
+    if [[ -f "$METRICS_FILE" ]]; then
+        # Read existing metrics and append new one
+        jq ". += [$metric_entry]" "$METRICS_FILE" > "${METRICS_FILE}.tmp"
+        mv "${METRICS_FILE}.tmp" "$METRICS_FILE"
+    else
+        echo "[$metric_entry]" > "$METRICS_FILE"
+    fi
+    
+    # Check for performance issues
+    if [[ $duration_ms -gt $ALERT_THRESHOLD_MS ]]; then
+        send_performance_alert "$csv_file" "$duration_ms"
+    fi
+}
+
+send_performance_alert() {
+    local csv_file="$1"
+    local duration_ms="$2"
+    
+    local message="Slow enrichment detected:
+File: $csv_file
+Duration: ${duration_ms}ms
+Threshold: ${ALERT_THRESHOLD_MS}ms"
+    
+    echo "$message" | mail -s "Oboyu Enrichment Performance Alert" admin@example.com
+}
+
+# Enhanced enrichment wrapper
+monitored_enrich() {
+    local csv_file="$1"
+    local schema_file="$2"
+    local output_file="$3"
+    
+    local start_time=$(date +%s)
+    
+    if oboyu enrich "$csv_file" "$schema_file" --output "$output_file"; then
+        local end_time=$(date +%s)
+        log_enrichment_metrics "$csv_file" "$schema_file" "$start_time" "$end_time" "success"
+        return 0
+    else
+        local end_time=$(date +%s)
+        log_enrichment_metrics "$csv_file" "$schema_file" "$start_time" "$end_time" "failed"
+        return 1
+    fi
+}
+
+# Generate performance report
+generate_enrichment_report() {
+    if [[ -f "$METRICS_FILE" ]]; then
+        echo "Enrichment Performance Report"
+        echo "============================="
+        
+        # Average duration
+        local avg_duration=$(jq '[.[] | select(.status == "success") | .duration_ms] | add / length' "$METRICS_FILE")
+        echo "Average Duration: ${avg_duration}ms"
+        
+        # Success rate
+        local total=$(jq 'length' "$METRICS_FILE")
+        local successful=$(jq '[.[] | select(.status == "success")] | length' "$METRICS_FILE")
+        local success_rate=$(echo "scale=2; $successful * 100 / $total" | bc)
+        echo "Success Rate: ${success_rate}%"
+        
+        # Slowest files
+        echo ""
+        echo "Slowest Enrichments:"
+        jq -r 'sort_by(.duration_ms) | reverse | .[0:5] | .[] | "\(.duration_ms)ms - \(.csv_file)"' "$METRICS_FILE"
+    fi
+}
+
+# Usage
+# monitored_enrich input.csv schema.json output.csv
+# generate_enrichment_report
+```
+
+### Integration with Data Warehouses
+
+```python
+#!/usr/bin/env python3
+# warehouse_enrichment.py - Enrich data from/to data warehouse
+
+import pandas as pd
+import sqlalchemy
+import subprocess
+import tempfile
+from pathlib import Path
+
+class WarehouseEnrichmentPipeline:
+    def __init__(self, db_url, oboyu_schemas_dir):
+        self.engine = sqlalchemy.create_engine(db_url)
+        self.schemas_dir = Path(oboyu_schemas_dir)
+    
+    def extract_and_enrich(self, query, schema_name, table_name):
+        """Extract data from warehouse, enrich, and load back"""
+        
+        # Extract data
+        df = pd.read_sql(query, self.engine)
+        
+        # Save to temporary CSV
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.csv', delete=False
+        ) as tmp_csv:
+            df.to_csv(tmp_csv.name, index=False)
+            csv_path = tmp_csv.name
+        
+        # Enrich data
+        enriched_csv = csv_path.replace('.csv', '-enriched.csv')
+        schema_path = self.schemas_dir / f"{schema_name}.json"
+        
+        result = subprocess.run([
+            'oboyu', 'enrich', csv_path, str(schema_path),
+            '--output', enriched_csv,
+            '--batch-size', '20',
+            '--confidence', '0.7'
+        ], capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            # Load enriched data back to warehouse
+            enriched_df = pd.read_csv(enriched_csv)
+            enriched_df.to_sql(
+                table_name, 
+                self.engine, 
+                if_exists='replace', 
+                index=False
+            )
+            print(f"Successfully enriched and loaded {len(enriched_df)} rows")
+        else:
+            print(f"Enrichment failed: {result.stderr}")
+        
+        # Cleanup
+        Path(csv_path).unlink()
+        Path(enriched_csv).unlink()
+
+# Usage example
+pipeline = WarehouseEnrichmentPipeline(
+    'postgresql://user:pass@localhost/db',
+    '~/schemas'
+)
+
+# Enrich customer data
+pipeline.extract_and_enrich(
+    "SELECT company_name, industry FROM customers WHERE enriched_at IS NULL",
+    "company-enrichment",
+    "enriched_customers"
+)
+```
+
 ## Backup Automation
 
 ### Incremental Backup
@@ -729,3 +1153,5 @@ if __name__ == "__main__":
 - Review [Performance Tuning](../reference/configuration.md) for optimization
 - Explore [CLI Workflows](cli-workflows.md) for manual automation
 - Set up [MCP Integration](mcp-integration.md) for AI-powered automation
+- Learn about [CSV Enrichment Use Case](../use-cases/csv-enrichment.md) for detailed enrichment workflows
+- Explore enrichment in [Basic Workflow](../basic-usage/basic-workflow.md) for daily usage patterns

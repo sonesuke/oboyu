@@ -44,6 +44,7 @@ const sidebars: SidebarsConfig = {
       label: 'Use Cases',
       collapsed: false,
       items: [
+        'use-cases/csv-enrichment',
         'use-cases/technical-docs',
         'use-cases/research-papers',
         'use-cases/personal-notes',
