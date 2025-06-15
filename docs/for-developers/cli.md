@@ -12,7 +12,11 @@ This document describes the available command-line interface (CLI) commands for 
 | `oboyu clear` | Clear index data | `--force` |
 | `oboyu status <path>` | Show indexing status | `--detailed` |
 | `oboyu index <path>` | Index documents | `--force`, `--chunk-size`, `--include-patterns` |
-| `oboyu query <text>` | Search indexed documents | `--mode`, `--top-k`, `--rerank` |
+| `oboyu query` | Search indexed documents | `--query`, `--mode`, `--top-k`, `--rerank` |
+| `oboyu kg build` | Build knowledge graph | `--full`, `--batch-size` |
+| `oboyu kg search <query>` | GraphRAG-enhanced search | `--max-results`, `--use-graph` |
+| `oboyu kg expand-query <query>` | Expand query with entities | `--max-entities`, `--similarity` |
+| `oboyu health check` | System health check | `--format` |
 
 ### Common Workflows
 
@@ -243,13 +247,154 @@ Options:
 - `--detailed`, `-d`: Show detailed file-by-file status
 - `--db-path`: Path to database file
 
-### Deprecated Commands
+## Knowledge Graph Commands
 
-The following commands are deprecated and will be removed in a future version:
+Oboyu provides powerful knowledge graph operations for enhanced search capabilities through GraphRAG (Graph Retrieval-Augmented Generation).
 
-- `oboyu manage clear` → Use `oboyu clear` instead
-- `oboyu manage status` → Use `oboyu status` instead
-- `oboyu manage diff` → Use `oboyu status --detailed` instead
+### `oboyu kg build`
+
+Build knowledge graph from existing indexed chunks.
+
+```bash
+# Build knowledge graph incrementally
+oboyu kg build
+
+# Force rebuild entire knowledge graph
+oboyu kg build --full
+
+# Build with custom batch size
+oboyu kg build --batch-size 100
+
+# Build limited number of chunks
+oboyu kg build --limit 1000
+
+# Build without validation
+oboyu kg build --skip-validation
+```
+
+Options:
+- `--full`: Rebuild entire knowledge graph from scratch
+- `--batch-size INTEGER`: Processing batch size for chunks
+- `--limit INTEGER`: Limit number of chunks to process
+- `--skip-validation`: Skip extraction service validation
+
+### `oboyu kg stats`
+
+Show knowledge graph statistics and health information.
+
+```bash
+# Show basic knowledge graph statistics
+oboyu kg stats
+```
+
+### `oboyu kg search`
+
+Perform GraphRAG-enhanced semantic search using the knowledge graph.
+
+```bash
+# Basic GraphRAG search
+oboyu kg search "machine learning algorithms"
+
+# Search with more results
+oboyu kg search "database optimization" --max-results 20
+
+# Search without graph expansion
+oboyu kg search "python functions" --use-graph false
+
+# Search without reranking
+oboyu kg search "error handling" --rerank false
+```
+
+Options:
+- `--max-results INTEGER`: Maximum number of results (default: 10)
+- `--use-graph`: Use graph expansion for enhanced results (default: True)
+- `--rerank`: Rerank results with graph centrality (default: True)
+
+### `oboyu kg expand-query`
+
+Expand a query with relevant entities from the knowledge graph.
+
+```bash
+# Basic query expansion
+oboyu kg expand-query "neural networks"
+
+# Expand with more entities
+oboyu kg expand-query "data processing" --max-entities 20
+
+# Expand with higher similarity threshold
+oboyu kg expand-query "web frameworks" --similarity 0.8
+
+# Expand with deeper entity relationships
+oboyu kg expand-query "authentication" --depth 2
+```
+
+Options:
+- `--max-entities INTEGER`: Maximum entities to include (default: 10)
+- `--similarity FLOAT`: Entity similarity threshold (default: 0.7)
+- `--depth INTEGER`: Entity expansion depth (default: 1)
+
+### Other Knowledge Graph Commands
+
+Additional knowledge graph management commands:
+
+```bash
+# Validate knowledge graph extraction service
+oboyu kg validate
+
+# Remove duplicate entities
+oboyu kg deduplicate
+
+# Find potential duplicates for an entity
+oboyu kg find-duplicates "entity name"
+
+# Generate explanations for queries
+oboyu kg explain-query "search term"
+
+# Generate entity summaries
+oboyu kg entity-summaries
+
+# Find entity clusters
+oboyu kg find-clusters
+```
+
+## Manage Commands
+
+### `oboyu manage clear`
+
+Clear all data from the index database.
+
+```bash
+# Clear with confirmation prompt
+oboyu manage clear
+
+# Force clear without confirmation
+oboyu manage clear --force
+```
+
+### `oboyu manage status`
+
+Show indexing status for specified directories.
+
+```bash
+# Show basic status for directories
+oboyu manage status /path/to/docs
+
+# Show detailed file-by-file status
+oboyu manage status /path/to/docs --detailed
+```
+
+### `oboyu manage diff`
+
+Show what would be updated if indexing were run now.
+
+```bash
+# Show diff for directories
+oboyu manage diff /path/to/docs
+```
+
+**Note:** The manage commands are still available, but the top-level equivalents are preferred:
+- Use `oboyu clear` instead of `oboyu manage clear`
+- Use `oboyu status` instead of `oboyu manage status`
 
 ### `oboyu query`
 
