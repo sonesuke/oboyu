@@ -20,6 +20,7 @@ from oboyu.cli.build_kg import app as build_kg_app
 from oboyu.cli.clear import clear
 from oboyu.cli.common_options import ConfigOption, DatabasePathOption, VerboseOption
 from oboyu.cli.deduplicate import app as deduplicate_app
+from oboyu.cli.enrich import app as enrich_app
 from oboyu.cli.index import app as index_app
 from oboyu.cli.mcp import app as mcp_app
 from oboyu.cli.search import app as search_app
@@ -45,6 +46,7 @@ console = Console()
 # Main commands (simplified structure)
 app.add_typer(index_app, name="index", help="Index documents for search")
 app.add_typer(search_app, name="search", help="Search documents with GraphRAG enhancement")
+app.add_typer(enrich_app, name="enrich", help="Enrich CSV data using semantic search and GraphRAG")
 app.add_typer(build_kg_app, name="build-kg", help="Build knowledge graph from indexed documents")
 app.add_typer(deduplicate_app, name="deduplicate", help="Deduplicate entities in knowledge graph")
 app.add_typer(mcp_app, name="mcp", help="Run MCP server for AI assistant integration")
