@@ -14,9 +14,14 @@ This document describes the available command-line interface (CLI) commands for 
 | `oboyu index <path>` | Index documents | `--force`, `--chunk-size`, `--include-patterns` |
 | `oboyu query` | Search indexed documents | `--query`, `--mode`, `--top-k`, `--rerank` |
 | `oboyu kg build` | Build knowledge graph | `--full`, `--batch-size` |
+| `oboyu kg stats` | Show KG statistics | - |
 | `oboyu kg search <query>` | GraphRAG-enhanced search | `--max-results`, `--use-graph` |
 | `oboyu kg expand-query <query>` | Expand query with entities | `--max-entities`, `--similarity` |
-| `oboyu health check` | System health check | `--format` |
+| `oboyu kg deduplicate` | Remove duplicate entities | `--type`, `--similarity` |
+| `oboyu kg find-duplicates <name>` | Find potential duplicates | `--type`, `--limit` |
+| `oboyu kg explain-query <query>` | Generate query explanation | `--max-entities` |
+| `oboyu kg entity-summaries <names>` | Generate entity summaries | `--include-relations`, `--max-length` |
+| `oboyu kg find-clusters <seeds>` | Find entity clusters | `--threshold`, `--max-size` |
 
 ### Common Workflows
 
@@ -267,16 +272,12 @@ oboyu kg build --batch-size 100
 
 # Build limited number of chunks
 oboyu kg build --limit 1000
-
-# Build without validation
-oboyu kg build --skip-validation
 ```
 
 Options:
 - `--full`: Rebuild entire knowledge graph from scratch
 - `--batch-size INTEGER`: Processing batch size for chunks
 - `--limit INTEGER`: Limit number of chunks to process
-- `--skip-validation`: Skip extraction service validation
 
 ### `oboyu kg stats`
 
@@ -333,28 +334,66 @@ Options:
 - `--similarity FLOAT`: Entity similarity threshold (default: 0.7)
 - `--depth INTEGER`: Entity expansion depth (default: 1)
 
+### `oboyu kg deduplicate`
+
+Remove duplicate entities from the knowledge graph.
+
+```bash
+# Deduplicate all entities
+oboyu kg deduplicate
+
+# Deduplicate specific entity type
+oboyu kg deduplicate --type "PERSON"
+
+# Custom similarity thresholds
+oboyu kg deduplicate --similarity 0.9 --verification 0.85
+
+# Custom batch size for large datasets
+oboyu kg deduplicate --batch-size 200
+```
+
+Options:
+- `--type`: Entity type to deduplicate (all if not specified)
+- `--similarity FLOAT`: Vector similarity threshold (default: 0.85)
+- `--verification FLOAT`: LLM verification threshold (default: 0.8)
+- `--batch-size INTEGER`: Processing batch size (default: 100)
+
+### `oboyu kg find-duplicates`
+
+Find potential duplicate entities for a given name.
+
+```bash
+# Find duplicates for a specific entity
+oboyu kg find-duplicates "John Smith"
+
+# Filter by entity type
+oboyu kg find-duplicates "Apple" --type "ORGANIZATION"
+
+# Adjust similarity threshold
+oboyu kg find-duplicates "Python" --similarity 0.9
+
+# Limit number of results
+oboyu kg find-duplicates "machine learning" --limit 5
+```
+
+Options:
+- `--type`: Entity type filter
+- `--similarity FLOAT`: Minimum similarity threshold (default: 0.85)
+- `--limit INTEGER`: Maximum number of results (default: 10)
+
 ### Other Knowledge Graph Commands
 
 Additional knowledge graph management commands:
 
 ```bash
-# Validate knowledge graph extraction service
-oboyu kg validate
-
-# Remove duplicate entities
-oboyu kg deduplicate
-
-# Find potential duplicates for an entity
-oboyu kg find-duplicates "entity name"
-
 # Generate explanations for queries
 oboyu kg explain-query "search term"
 
-# Generate entity summaries
-oboyu kg entity-summaries
+# Generate entity summaries (comma-separated names)
+oboyu kg entity-summaries "entity1,entity2"
 
-# Find entity clusters
-oboyu kg find-clusters
+# Find entity clusters (comma-separated seed entities)
+oboyu kg find-clusters "seed1,seed2"
 ```
 
 ## Manage Commands
@@ -427,10 +466,11 @@ oboyu query --query "search term" --explain
 Options:
 - `--mode`: Search mode (vector, bm25, hybrid) - default: hybrid
 - `--top-k`: Number of results to return - default: 5
-- `--explain`: Show detailed explanation of results
+- `--explain/--no-explain`: Show detailed explanation of results - default: no-explain
 - `--format`: Output format (text, json) - default: text
+- `--rrf-k`: RRF ranking parameter for hybrid search
 - `--db-path`: Path to database file
-- `--rerank/--no-rerank`: Enable or disable reranking of search results - default: enabled
+- `--rerank/--no-rerank`: Enable or disable reranking of search results
 
 #### Query Examples
 
