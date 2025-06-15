@@ -1,7 +1,7 @@
-"""Knowledge Graph CLI commands.
+"""Build Knowledge Graph command implementation for Oboyu CLI.
 
-This module provides command-line interface for building and managing
-Knowledge Graph operations and GraphRAG enhanced search functionality.
+This module provides the command-line interface for building knowledge graphs
+from indexed documents. Moved from oboyu kg build to top-level command.
 """
 
 import asyncio
@@ -12,23 +12,23 @@ import typer
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 from sentence_transformers import SentenceTransformer
+from typing_extensions import Annotated
 
 from oboyu.adapters.entity_deduplication import EDCDeduplicationService
 from oboyu.adapters.kg_extraction import LLMKGExtractionService
 from oboyu.adapters.kg_repositories import DuckDBKGRepository
 from oboyu.application.kg import KnowledgeGraphService
 from oboyu.cli.base import BaseCommand
-from oboyu.cli.commands import kg_graphrag
 
-app = typer.Typer(help="Knowledge Graph operations and GraphRAG enhanced search")
+app = typer.Typer(help="Build knowledge graph from indexed documents")
 logger = logging.getLogger(__name__)
 
 
-class KGCommand(BaseCommand):
-    """Base class for Knowledge Graph commands."""
+class BuildKGCommand(BaseCommand):
+    """Build Knowledge Graph command."""
 
     def __init__(self, ctx: typer.Context) -> None:
-        """Initialize KG command."""
+        """Initialize build KG command."""
         super().__init__(ctx)
 
     async def _get_kg_service(self, config: dict) -> KnowledgeGraphService:
@@ -112,17 +112,27 @@ class KGCommand(BaseCommand):
         return kg_service
 
 
-@app.command()
-def build(
+@app.callback(invoke_without_command=True)
+def build_kg(
     ctx: typer.Context,
-    full: bool = typer.Option(False, "--full", help="Rebuild entire knowledge graph"),
-    batch_size: Optional[int] = typer.Option(None, "--batch-size", help="Processing batch size"),
-    limit: Optional[int] = typer.Option(None, "--limit", help="Limit number of chunks to process"),
+    full: Annotated[bool, typer.Option("--full", help="Rebuild entire knowledge graph")] = False,
+    batch_size: Annotated[Optional[int], typer.Option("--batch-size", help="Processing batch size")] = None,
+    limit: Annotated[Optional[int], typer.Option("--limit", help="Limit number of chunks to process")] = None,
 ) -> None:
-    """Build knowledge graph from existing chunks."""
+    """Build knowledge graph from existing chunks.
+
+    This command extracts entities and relations from your indexed documents
+    to build a knowledge graph for enhanced search capabilities.
+
+    Examples:
+        oboyu build-kg
+        oboyu build-kg --full
+        oboyu build-kg --batch-size 20 --limit 100
+
+    """
 
     async def _build() -> None:
-        command = KGCommand(ctx)
+        command = BuildKGCommand(ctx)
 
         # First-time user guidance
         command.console.print("\n[bold cyan]Building Knowledge Graph from indexed documents[/bold cyan]")
@@ -253,160 +263,6 @@ def build(
                 logger.debug(f"Error during cleanup: {cleanup_error}")
 
     asyncio.run(_build())
-
-
-@app.command()
-def stats(ctx: typer.Context) -> None:
-    """Show knowledge graph statistics."""
-
-    async def _stats() -> None:
-        command = KGCommand(ctx)
-        try:
-            config_manager = command.get_config_manager()
-            config_data = config_manager.get_section("indexer")
-            kg_service = await command._get_kg_service(config_data)
-
-            stats = await kg_service.get_knowledge_graph_stats()
-
-            table = Table(title="Knowledge Graph Statistics")
-            table.add_column("Metric", style="cyan")
-            table.add_column("Value", style="green")
-
-            table.add_row("Total Entities", str(stats["entity_count"]))
-            table.add_row("Total Relations", str(stats["relation_count"]))
-            table.add_row("Processing Version", stats["processing_version"])
-
-            command.console.print(table)
-
-        except Exception as e:
-            command.console.print(f"[red]❌ Failed to get statistics: {e}[/red]")
-            logger.error(f"Failed to get KG stats: {e}")
-            raise typer.Exit(1)
-        finally:
-            # Clean up resources
-            try:
-                if "kg_service" in locals() and hasattr(kg_service, "_indexer"):
-                    kg_service._indexer.close()
-            except Exception as cleanup_error:
-                logger.debug(f"Error during cleanup: {cleanup_error}")
-
-    asyncio.run(_stats())
-
-
-@app.command()
-def deduplicate(
-    ctx: typer.Context,
-    entity_type: Optional[str] = typer.Option(None, "--type", help="Entity type to deduplicate (all if not specified)"),
-    similarity_threshold: float = typer.Option(0.85, "--similarity", help="Vector similarity threshold"),
-    verification_threshold: float = typer.Option(0.8, "--verification", help="LLM verification threshold"),
-    batch_size: int = typer.Option(100, "--batch-size", help="Processing batch size"),
-) -> None:
-    """Deduplicate entities in the knowledge graph."""
-
-    async def _deduplicate() -> None:
-        command = KGCommand(ctx)
-        try:
-            config_manager = command.get_config_manager()
-            config_data = config_manager.get_section("indexer")
-            kg_service = await command._get_kg_service(config_data)
-
-            if not kg_service.deduplication_service:
-                command.console.print("[red]❌ Entity deduplication service not available[/red]")
-                raise typer.Exit(1)
-
-            command.console.print("🔄 Starting entity deduplication...")
-
-            # Perform deduplication
-            stats = await kg_service.deduplicate_all_entities(
-                entity_type=entity_type,
-                similarity_threshold=similarity_threshold,
-                verification_threshold=verification_threshold,
-                batch_size=batch_size,
-            )
-
-            # Display results
-            table = Table(title="Entity Deduplication Results")
-            table.add_column("Metric", style="cyan")
-            table.add_column("Value", style="green")
-
-            table.add_row("Original Entities", str(stats["original_count"]))
-            table.add_row("Deduplicated Entities", str(stats["deduplicated_count"]))
-            table.add_row("Entities Merged", str(stats["merged_count"]))
-
-            if stats["original_count"] > 0:
-                reduction_percent = (stats["merged_count"] / stats["original_count"]) * 100
-                table.add_row("Reduction", f"{reduction_percent:.1f}%")
-
-            command.console.print(table)
-
-        except Exception as e:
-            command.console.print(f"[red]❌ Entity deduplication failed: {e}[/red]")
-            logger.error(f"Entity deduplication failed: {e}")
-            raise typer.Exit(1)
-
-    asyncio.run(_deduplicate())
-
-
-@app.command()
-def find_duplicates(
-    ctx: typer.Context,
-    entity_name: str = typer.Argument(..., help="Entity name to search for duplicates"),
-    entity_type: Optional[str] = typer.Option(None, "--type", help="Entity type filter"),
-    similarity_threshold: float = typer.Option(0.85, "--similarity", help="Minimum similarity threshold"),
-    limit: int = typer.Option(10, "--limit", help="Maximum number of results"),
-) -> None:
-    """Find potential duplicate entities for a given name."""
-
-    async def _find_duplicates() -> None:
-        command = KGCommand(ctx)
-        try:
-            config_manager = command.get_config_manager()
-            config_data = config_manager.get_section("indexer")
-            kg_service = await command._get_kg_service(config_data)
-
-            if not kg_service.deduplication_service:
-                command.console.print("[red]❌ Entity deduplication service not available[/red]")
-                raise typer.Exit(1)
-
-            command.console.print(f"🔍 Searching for duplicates of '{entity_name}'...")
-
-            # Find potential duplicates
-            duplicates = await kg_service.find_duplicate_entities(
-                entity_name=entity_name,
-                entity_type=entity_type,
-                similarity_threshold=similarity_threshold,
-            )
-
-            if not duplicates:
-                command.console.print("[green]✅ No potential duplicates found[/green]")
-                return
-
-            # Display results
-            table = Table(title=f"Potential Duplicates for '{entity_name}'")
-            table.add_column("Entity ID", style="cyan")
-            table.add_column("Name", style="yellow")
-            table.add_column("Similarity", style="green")
-
-            for entity_id, name, similarity in duplicates[:limit]:
-                table.add_row(entity_id[:12] + "...", name, f"{similarity:.3f}")
-
-            command.console.print(table)
-            command.console.print(f"Found {len(duplicates)} potential duplicates")
-
-        except Exception as e:
-            command.console.print(f"[red]❌ Duplicate search failed: {e}[/red]")
-            logger.error(f"Duplicate search failed: {e}")
-            raise typer.Exit(1)
-
-    asyncio.run(_find_duplicates())
-
-
-# Register GraphRAG commands from the separate module
-app.command(name="expand-query")(kg_graphrag.expand_query)
-app.command(name="search")(kg_graphrag.search)
-app.command(name="explain-query")(kg_graphrag.explain_query)
-app.command(name="entity-summaries")(kg_graphrag.entity_summaries)
-app.command(name="find-clusters")(kg_graphrag.find_clusters)
 
 
 if __name__ == "__main__":

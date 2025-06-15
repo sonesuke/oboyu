@@ -1,7 +1,7 @@
 """Main CLI entry point for Oboyu.
 
-This module provides the main command-line interface for Oboyu,
-a Japanese-enhanced semantic search system for local documents.
+This module provides the simplified command-line interface for Oboyu,
+a Japanese-enhanced semantic search system with integrated GraphRAG functionality.
 """
 
 import os
@@ -16,12 +16,13 @@ import typer
 from rich.console import Console
 
 from oboyu import __version__
+from oboyu.cli.build_kg import app as build_kg_app
 from oboyu.cli.clear import clear
-from oboyu.cli.commands.kg import app as kg_app
 from oboyu.cli.common_options import ConfigOption, DatabasePathOption, VerboseOption
+from oboyu.cli.deduplicate import app as deduplicate_app
 from oboyu.cli.index import app as index_app
 from oboyu.cli.mcp import app as mcp_app
-from oboyu.cli.query import app as query_app
+from oboyu.cli.search import app as search_app
 from oboyu.cli.status import status
 from oboyu.common.config import ConfigManager
 from oboyu.common.paths import ensure_config_dirs
@@ -29,7 +30,7 @@ from oboyu.common.paths import ensure_config_dirs
 # Create Typer app
 app = typer.Typer(
     name="oboyu",
-    help="A Japanese-enhanced semantic search system for your local documents.",
+    help="A Japanese-enhanced semantic search system with integrated GraphRAG functionality.",
     add_completion=False,
     pretty_exceptions_enable=False,
     rich_markup_mode=None,
@@ -41,13 +42,14 @@ app = typer.Typer(
 # Create console for rich output
 console = Console()
 
-# Add subcommands
+# Main commands (simplified structure)
 app.add_typer(index_app, name="index", help="Index documents for search")
-app.add_typer(query_app, name="query", help="Search indexed documents")
-app.add_typer(mcp_app, name="mcp", help="Run an MCP server for AI assistant integration")
-app.add_typer(kg_app, name="kg", help="Knowledge graph operations and GraphRAG enhanced search")
+app.add_typer(search_app, name="search", help="Search documents with GraphRAG enhancement")
+app.add_typer(build_kg_app, name="build-kg", help="Build knowledge graph from indexed documents")
+app.add_typer(deduplicate_app, name="deduplicate", help="Deduplicate entities in knowledge graph")
+app.add_typer(mcp_app, name="mcp", help="Run MCP server for AI assistant integration")
 
-# Add top-level commands
+# Top-level commands
 app.command("clear")(clear)
 app.command("status")(status)
 
