@@ -31,7 +31,7 @@ entry: uv run mypy --incremental --cache-dir=.mypy_cache
 
 ### 3. Smart Test Runner
 
-Created `.claude/scripts/run-affected-tests.sh` that:
+Created `scripts/ci/run-affected-tests.sh` that:
 - Detects changed Python files
 - Maps source files to their test files
 - Only runs relevant tests
@@ -95,7 +95,7 @@ This ensures code quality while keeping local development fast.
 - Check if many type stubs need downloading
 
 ### Tests running when they shouldn't?
-- Check the test detection logic in `.claude/scripts/run-affected-tests.sh`
+- Check the test detection logic in `scripts/ci/run-affected-tests.sh`
 - Ensure test files follow naming convention: `test_*.py`
 
 ### Hooks not running?
@@ -122,6 +122,6 @@ The optimized configuration in `.pre-commit-config.yaml`:
 If issues arise, revert to the original configuration:
 ```bash
 git checkout main -- .pre-commit-config.yaml
-rm -rf .claude/scripts/run-affected-tests.sh
+rm -rf scripts/ci/run-affected-tests.sh
 pre-commit install
 ```
