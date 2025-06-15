@@ -28,9 +28,11 @@ def test_help_command() -> None:
     assert result.exit_code == 0
     assert "Usage:" in result.stdout
 
-    # Check for index and query subcommands
+    # Check for main commands in new structure
     assert "index" in result.stdout
-    assert "query" in result.stdout
+    assert "search" in result.stdout  # Changed from query to search
+    assert "build-kg" in result.stdout
+    assert "deduplicate" in result.stdout
 
     # Check for global database path option
     assert "--db-path" in result.stdout
@@ -49,12 +51,35 @@ def test_index_help() -> None:
     assert "--db-path" in result.stdout
 
 
-def test_query_help() -> None:
-    """Test the query help command."""
-    result = runner.invoke(app, ["query", "--help"])
+def test_search_help() -> None:
+    """Test the search help command."""
+    result = runner.invoke(app, ["search", "--help"])
     assert result.exit_code == 0
     assert "Usage:" in result.stdout
 
     # Check for important option terms (the exact format might vary)
     assert "mode" in result.stdout.lower()
     assert "--db-path" in result.stdout
+    assert "--no-graph" in result.stdout  # New option for disabling GraphRAG
+
+
+def test_build_kg_help() -> None:
+    """Test the build-kg help command."""
+    result = runner.invoke(app, ["build-kg", "--help"])
+    assert result.exit_code == 0
+    assert "Usage:" in result.stdout
+    
+    # Check for build-kg specific options
+    assert "--full" in result.stdout
+    assert "--batch-size" in result.stdout
+
+
+def test_deduplicate_help() -> None:
+    """Test the deduplicate help command."""
+    result = runner.invoke(app, ["deduplicate", "--help"])
+    assert result.exit_code == 0
+    assert "Usage:" in result.stdout
+    
+    # Check for deduplicate specific options
+    assert "--type" in result.stdout
+    assert "--similarity" in result.stdout
