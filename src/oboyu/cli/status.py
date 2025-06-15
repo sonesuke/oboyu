@@ -1,6 +1,6 @@
-"""Manage command implementation for Oboyu CLI.
+"""Status command implementation for Oboyu CLI.
 
-This module provides the command-line interface for managing the index database.
+This module provides the command-line interface for showing indexing status.
 """
 
 from pathlib import Path
@@ -12,15 +12,6 @@ from typing_extensions import Annotated
 from oboyu.cli.base import BaseCommand
 from oboyu.cli.common_options import ConfigOption
 from oboyu.cli.services.indexing_service import IndexingService
-
-app = typer.Typer(
-    help="Manage the index database",
-    pretty_exceptions_enable=False,
-    rich_markup_mode=None,
-    context_settings={
-        "allow_interspersed_args": True,
-    },
-)
 
 DirectoryOption = Annotated[
     List[Path],
@@ -34,50 +25,24 @@ DirectoryOption = Annotated[
 ]
 
 
-@app.command(name="clear")
-def clear(
-    ctx: typer.Context,
-    config: ConfigOption = None,
-    db_path: Optional[Path] = None,
-    force: bool = False,
-) -> None:
-    """Clear all data from the index database.
-
-    This command removes all indexed documents and their embeddings from the database
-    while preserving the database schema and structure.
-
-    [DEPRECATED] This command is deprecated. Use 'oboyu clear' instead.
-    """
-    base_command = BaseCommand(ctx)
-
-    # Show deprecation warning
-    base_command.console.print("[yellow]⚠️  Warning: 'oboyu manage clear' is deprecated. Use 'oboyu clear' instead.[/yellow]")
-    config_manager = base_command.get_config_manager()
-    indexing_service = IndexingService(config_manager, base_command.services.indexer_factory, base_command.services.console_manager)
-
-    # Get database path
-    resolved_db_path = indexing_service.get_database_path(db_path)
-    base_command.print_database_path(resolved_db_path)
-
-    # Confirm operation
-    if not base_command.confirm_database_operation("remove all indexed documents and search data from", force, resolved_db_path):
-        return
-
-    # Perform clear operation with progress tracking
-    with base_command.logger.live_display():
-        clear_op = base_command.logger.start_operation("Clearing index database...")
-        indexing_service.clear_index(db_path)
-        base_command.logger.complete_operation(clear_op)
-
-    base_command.console.print("\nIndex database cleared successfully!")
-
-
-@app.command(name="status")
 def status(
     ctx: typer.Context,
     directories: DirectoryOption,
     config: ConfigOption = None,
-    db_path: Optional[Path] = None,
+    db_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--db-path",
+            "-p",
+            help="Path to the database file (default: from config)",
+            exists=False,
+            file_okay=True,
+            dir_okay=False,
+            writable=True,
+            readable=True,
+            resolve_path=True,
+        ),
+    ] = None,
     detailed: Annotated[
         bool,
         typer.Option("--detailed", "-d", help="Show detailed file-by-file status"),
@@ -86,13 +51,8 @@ def status(
     """Show indexing status for specified directories.
 
     This command shows which files are indexed, modified, or new in the specified directories.
-
-    [DEPRECATED] This command is deprecated. Use 'oboyu status' instead.
     """
     base_command = BaseCommand(ctx)
-
-    # Show deprecation warning
-    base_command.console.print("[yellow]⚠️  Warning: 'oboyu manage status' is deprecated. Use 'oboyu status' instead.[/yellow]")
     config_manager = base_command.get_config_manager()
     indexing_service = IndexingService(config_manager, base_command.services.indexer_factory, base_command.services.console_manager)
 
@@ -136,32 +96,3 @@ def status(
                         base_command.console.print(f"    - {f}")
                     if len(diff_result.deleted_files) > 10:
                         base_command.console.print(f"    ... and {len(diff_result.deleted_files) - 10} more")
-
-
-@app.command(name="diff")
-def diff(
-    ctx: typer.Context,
-    directories: DirectoryOption,
-    config: ConfigOption = None,
-    db_path: Optional[Path] = None,
-    change_detection: Annotated[
-        Optional[str],
-        typer.Option(
-            "--change-detection",
-            help="Strategy for detecting changes: timestamp, hash, or smart (default: smart)",
-        ),
-    ] = None,
-) -> None:
-    """Show what would be updated if indexing were run now.
-
-    This is a dry-run that shows which files would be added, updated, or removed
-    without actually performing any indexing.
-
-    [DEPRECATED] This command has been removed. Use 'oboyu status --detailed' to see file status.
-    """
-    base_command = BaseCommand(ctx)
-
-    # Show deprecation warning and suggest alternative
-    base_command.console.print("[yellow]⚠️  Warning: 'oboyu manage diff' has been deprecated and removed.[/yellow]")
-    base_command.console.print("[yellow]   Use 'oboyu status --detailed' to see file-by-file status instead.[/yellow]")
-    return

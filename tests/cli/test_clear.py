@@ -40,7 +40,7 @@ def test_clear_command_force(mock_config_manager):
         ctx = {"config_manager": mock_config_manager, "config_data": {"indexer": {"db_path": str(db_path)}}}
 
         # Run the command with force option to bypass confirmation
-        result = runner.invoke(app, ["clear", "--force"], obj=ctx)
+        result = runner.invoke(app, ["clear-db", "--force"], obj=ctx)
 
         # Check the command succeeded
         assert result.exit_code == 0
@@ -66,7 +66,7 @@ def test_clear_command_confirmation_yes(mock_config_manager):
         ctx = {"config_manager": mock_config_manager, "config_data": {"indexer": {"db_path": str(db_path)}}}
 
         # Run the command with confirmation (simulate user entering 'y')
-        result = runner.invoke(app, ["clear"], input="y\n", obj=ctx)
+        result = runner.invoke(app, ["clear-db"], input="y\n", obj=ctx)
 
         # Check the command succeeded
         assert result.exit_code == 0
@@ -90,7 +90,7 @@ def test_clear_command_confirmation_no(mock_config_manager):
         ctx = {"config_manager": mock_config_manager, "config_data": {"indexer": {"db_path": str(db_path)}}}
 
         # Run the command with confirmation (simulate user entering 'n')
-        result = runner.invoke(app, ["clear"], input="n\n", obj=ctx)
+        result = runner.invoke(app, ["clear-db"], input="n\n", obj=ctx)
 
         # Check the command succeeded
         assert result.exit_code == 0
@@ -117,7 +117,7 @@ def test_clear_command_with_db_path(mock_config_manager):
         ctx = {"config_manager": mock_config_manager, "config_data": {}}
 
         # Run the command with db_path and force options
-        result = runner.invoke(app, ["clear", "--db-path", str(db_path), "--force"], obj=ctx)
+        result = runner.invoke(app, ["clear-db", "--db-path", str(db_path), "--force"], obj=ctx)
 
         # Check the command succeeded
         assert result.exit_code == 0
@@ -144,7 +144,7 @@ def test_clear_command_no_files():
             ctx = {"config_manager": mock_config_manager, "config_data": {}}
 
             # Run the command with force option
-            result = runner.invoke(app, ["clear", "--force"], obj=ctx)
+            result = runner.invoke(app, ["clear-db", "--force"], obj=ctx)
 
             # Check the command succeeded
             assert result.exit_code == 0
@@ -173,7 +173,7 @@ def test_clear_command_partial_files():
             ctx = {"config_manager": mock_config_manager, "config_data": {}}
 
             # Run the command with force option
-            result = runner.invoke(app, ["clear", "--force"], obj=ctx)
+            result = runner.invoke(app, ["clear-db", "--force"], obj=ctx)
 
             # Check the command succeeded
             assert result.exit_code == 0
