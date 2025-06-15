@@ -16,6 +16,7 @@ import typer
 from rich.console import Console
 
 from oboyu import __version__
+from oboyu.cli.benchmark import app as benchmark_app
 from oboyu.cli.build_kg import app as build_kg_app
 from oboyu.cli.clear import clear
 from oboyu.cli.common_options import ConfigOption, DatabasePathOption, VerboseOption
@@ -50,6 +51,7 @@ app.command("enrich")(enrich)
 app.add_typer(build_kg_app, name="build-kg", help="Build knowledge graph from indexed documents")
 app.add_typer(deduplicate_app, name="deduplicate", help="Deduplicate entities in knowledge graph")
 app.add_typer(mcp_app, name="mcp", help="Run MCP server for AI assistant integration")
+app.add_typer(benchmark_app, name="benchmark", help="Run performance benchmarks and generate reports")
 
 # Top-level commands
 app.command("clear")(clear)
