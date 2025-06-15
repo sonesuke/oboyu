@@ -83,8 +83,8 @@ pip install oboyu
 # Index your documents
 oboyu index ~/Documents
 
-# Search interactively
-oboyu query --interactive
+# Search your documents
+oboyu query "your search term"
 ```
 
 That's it! See our [Documentation](https://sonesuke.github.io/oboyu/) for complete guides and examples.
@@ -95,7 +95,7 @@ That's it! See our [Documentation](https://sonesuke.github.io/oboyu/) for comple
 - **Hybrid Search**: Combines semantic understanding with keyword matching for best results
 - **Multiple Modes**: Switch between semantic, keyword, or hybrid search modes
 - **Smart Reranking**: Built-in AI reranker improves result accuracy
-- **Interactive Mode**: Real-time search with command history and auto-suggestions
+- **Flexible Querying**: Command-line search with various output formats
 
 ### 📚 Document Support
 - **Rich Format Support**: PDF documents, plain text (.txt), Markdown (.md), HTML (.html), and source code files (.py, .java, etc.)
@@ -157,18 +157,18 @@ oboyu index ~/Documents/notes
 # Search your documents
 oboyu query "machine learning optimization techniques"
 
-# Interactive mode (recommended!)
-oboyu query --interactive
+# Get results in JSON format for processing
+oboyu query "machine learning" --format json
 ```
 
 ### Advanced Examples
 
 ```bash
 # Index only specific file types
-oboyu index ~/projects --include "*.md,*.txt"
+oboyu index ~/projects --include-patterns "*.md,*.txt"
 
-# Search with filters
-oboyu query "API design" --filter "docs/"
+# Search with different modes
+oboyu query "API design" --mode vector
 
 # Use semantic search mode
 oboyu query "concepts similar to dependency injection" --mode semantic
