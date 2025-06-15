@@ -19,7 +19,10 @@ Stop wasting time hunting through folders. Index once, search forever.
 oboyu index ~/Documents
 
 # Find what you need instantly  
-oboyu query --query "project deadline"
+oboyu search "project deadline"
+
+# Enrich CSV data with knowledge from your documents
+oboyu enrich companies.csv schema.json --output enriched.csv
 ```
 
 ### 🧠 **Smart Semantic Understanding**
