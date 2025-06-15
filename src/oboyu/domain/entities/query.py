@@ -19,9 +19,6 @@ class Query:
 
     def __post_init__(self) -> None:
         """Validate query consistency."""
-        if not self.text.strip():
-            raise ValueError("Query text cannot be empty")
-
         if self.top_k <= 0:
             raise ValueError("top_k must be positive")
 

@@ -26,20 +26,17 @@ class TestSearchRepositoryContracts(SearchRepositoryContract):
             # DuckDB implementation for integration testing
             # Note: This requires a real database service
             try:
-                from src.oboyu.indexer.storage.database_manager import DatabaseManager
                 from src.oboyu.indexer.storage.database_service import DatabaseService
 
-                # Create a temporary database
-                db_manager = DatabaseManager(str(temp_db_path))
-                await db_manager.initialize()
-
-                db_service = DatabaseService(db_manager)
+                # Create a temporary database service
+                db_service = DatabaseService(str(temp_db_path))
+                db_service.initialize()
                 repo = DuckDBSearchRepository(db_service)
 
                 yield repo
 
                 # Clean up
-                await db_manager.close()
+                db_service.close()
             except ImportError:
                 pytest.skip("DuckDB dependencies not available")
 
@@ -218,20 +215,17 @@ class TestDuckDBSearchRepositoryIntegration:
     async def duckdb_repository(self, temp_db_path):
         """Provide DuckDBSearchRepository for integration testing."""
         try:
-            from src.oboyu.indexer.storage.database_manager import DatabaseManager
             from src.oboyu.indexer.storage.database_service import DatabaseService
 
-            # Create a temporary database
-            db_manager = DatabaseManager(str(temp_db_path))
-            await db_manager.initialize()
-
-            db_service = DatabaseService(db_manager)
+            # Create a temporary database service
+            db_service = DatabaseService(str(temp_db_path))
+            db_service.initialize()
             repo = DuckDBSearchRepository(db_service)
 
             yield repo
 
             # Clean up
-            await db_manager.close()
+            db_service.close()
         except ImportError:
             pytest.skip("DuckDB dependencies not available")
 

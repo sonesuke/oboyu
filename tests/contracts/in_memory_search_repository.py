@@ -93,7 +93,7 @@ class InMemorySearchRepository(SearchRepository):
     async def find_by_bm25(self, query: Query) -> List[SearchResult]:
         """Find chunks using BM25 algorithm."""
         if not query.text.strip():
-            return []
+            raise ValueError("Query text cannot be empty")
 
         query_terms = self._tokenize(query.text.lower())
         if not query_terms:

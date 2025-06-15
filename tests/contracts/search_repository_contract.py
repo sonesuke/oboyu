@@ -159,8 +159,12 @@ class SearchRepositoryContract:
         # Store chunks first
         await repository.store_chunks(sample_chunks)
 
-        # Create embeddings for each chunk
-        embeddings = [(chunk.id, EmbeddingVector.create([0.1 * i, 0.2 * i, 0.3 * i])) for i, chunk in enumerate(sample_chunks, 1)]
+        # Create embeddings for each chunk (use different directions to avoid scalar multiples)
+        embeddings = [
+            (sample_chunks[0].id, EmbeddingVector.create([1.0, 0.0, 0.0])),
+            (sample_chunks[1].id, EmbeddingVector.create([0.0, 1.0, 0.0])),
+            (sample_chunks[2].id, EmbeddingVector.create([0.0, 0.0, 1.0])),
+        ]
 
         # Store all embeddings
         await repository.store_embeddings(embeddings)
