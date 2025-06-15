@@ -37,7 +37,7 @@ dependencies = [
     "mojimoji>=0.0.12", # Japanese character conversion (full-width/half-width)
     "neologdn>=0.5.2", # Advanced Japanese text normalization
     "typer>=0.16.0", # CLI framework
-    "rich>=14.0.0", # Rich terminal output formatting
+    "rich>=13.7.0,<14.0.0", # Rich terminal output formatting (compatible with instructor)
     "pyyaml>=6.0.2", # YAML configuration file handling
     "mcp[cli]>=1.9.2", # Model Context Protocol for AI assistant integration
     "gitignore-parser>=0.1.12", # Support for respecting .gitignore files
@@ -51,6 +51,9 @@ dependencies = [
     "pydantic>=2.11.5",
     "pymupdf4llm>=0.0.25",
     "cryptography>=45.0.4",
+    "llama-cpp-python>=0.3.9",
+    "huggingface_hub>=0.27.0",  # For downloading KG models
+    "instructor>=1.8.0",  # For structured JSON output with LLMs
 ]
 
 [project.scripts]
@@ -83,6 +86,7 @@ dev = [
     "mypy>=1.16.0",
     "pre-commit>=4.2.0",
     "pytest>=8.3.5",
+    "pytest-asyncio>=0.21.0",
     "pytest-cov>=6.1.1",
     "ruff>=0.11.12",
     "hatch-vcs>=0.3.0",
@@ -112,6 +116,8 @@ disable_error_code = ["import-untyped", "no-any-return", "attr-defined", "call-a
 testpaths = ["tests"]
 pythonpath = ["src"]
 python_files = ["test_*.py", "*_test.py"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "packaging: marks tests as packaging/installation related",
