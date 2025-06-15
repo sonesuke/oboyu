@@ -35,10 +35,21 @@ class DuckDBKGRepository(DuckDBKGRepositoryBase, KGRepository):
         try:
             self.connection.execute(
                 """
-                INSERT OR REPLACE INTO kg_entities
+                INSERT INTO kg_entities
                 (id, name, entity_type, definition, properties, chunk_id, canonical_name,
                  merged_from, merge_confidence, confidence, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    entity_type = EXCLUDED.entity_type,
+                    definition = EXCLUDED.definition,
+                    properties = EXCLUDED.properties,
+                    chunk_id = EXCLUDED.chunk_id,
+                    canonical_name = EXCLUDED.canonical_name,
+                    merged_from = EXCLUDED.merged_from,
+                    merge_confidence = EXCLUDED.merge_confidence,
+                    confidence = EXCLUDED.confidence,
+                    updated_at = EXCLUDED.updated_at
                 """,
                 (
                     entity.id,
@@ -85,10 +96,21 @@ class DuckDBKGRepository(DuckDBKGRepositoryBase, KGRepository):
 
             self.connection.executemany(
                 """
-                INSERT OR REPLACE INTO kg_entities
+                INSERT INTO kg_entities
                 (id, name, entity_type, definition, properties, chunk_id, canonical_name,
                  merged_from, merge_confidence, confidence, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    entity_type = EXCLUDED.entity_type,
+                    definition = EXCLUDED.definition,
+                    properties = EXCLUDED.properties,
+                    chunk_id = EXCLUDED.chunk_id,
+                    canonical_name = EXCLUDED.canonical_name,
+                    merged_from = EXCLUDED.merged_from,
+                    merge_confidence = EXCLUDED.merge_confidence,
+                    confidence = EXCLUDED.confidence,
+                    updated_at = EXCLUDED.updated_at
                 """,
                 data,
             )
@@ -102,10 +124,18 @@ class DuckDBKGRepository(DuckDBKGRepositoryBase, KGRepository):
         try:
             self.connection.execute(
                 """
-                INSERT OR REPLACE INTO kg_relations
+                INSERT INTO kg_relations
                 (id, source_id, target_id, relation_type, properties, chunk_id,
                  confidence, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (id) DO UPDATE SET
+                    source_id = EXCLUDED.source_id,
+                    target_id = EXCLUDED.target_id,
+                    relation_type = EXCLUDED.relation_type,
+                    properties = EXCLUDED.properties,
+                    chunk_id = EXCLUDED.chunk_id,
+                    confidence = EXCLUDED.confidence,
+                    updated_at = EXCLUDED.updated_at
                 """,
                 (
                     relation.id,
@@ -146,10 +176,18 @@ class DuckDBKGRepository(DuckDBKGRepositoryBase, KGRepository):
 
             self.connection.executemany(
                 """
-                INSERT OR REPLACE INTO kg_relations
+                INSERT INTO kg_relations
                 (id, source_id, target_id, relation_type, properties, chunk_id,
                  confidence, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (id) DO UPDATE SET
+                    source_id = EXCLUDED.source_id,
+                    target_id = EXCLUDED.target_id,
+                    relation_type = EXCLUDED.relation_type,
+                    properties = EXCLUDED.properties,
+                    chunk_id = EXCLUDED.chunk_id,
+                    confidence = EXCLUDED.confidence,
+                    updated_at = EXCLUDED.updated_at
                 """,
                 data,
             )

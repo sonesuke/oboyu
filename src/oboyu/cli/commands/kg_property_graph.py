@@ -9,12 +9,10 @@ import logging
 from typing import Optional
 
 import typer
-from rich.console import Console
 from rich.table import Table
 
 from oboyu.adapters.property_graph import DuckPGQPropertyGraphService
 from oboyu.cli.base import BaseCommand
-from oboyu.config.schema import IndexerConfigSchema
 
 app = typer.Typer(help="Property Graph operations")
 logger = logging.getLogger(__name__)
@@ -23,35 +21,47 @@ logger = logging.getLogger(__name__)
 class PropertyGraphCommand(BaseCommand):
     """Base class for Property Graph commands."""
 
-    def __init__(self) -> None:
+    def __init__(self, ctx: typer.Context) -> None:
         """Initialize property graph command."""
-        super().__init__()
-        self.console = Console()
+        super().__init__(ctx)
 
-    async def _get_property_graph_service(self, config: IndexerConfigSchema) -> DuckPGQPropertyGraphService:
-        """Get configured Property Graph service."""
-        if not config.kg_enabled:
-            raise typer.BadParameter("Knowledge Graph is not enabled. Set kg_enabled=true in config.")
+    async def _get_property_graph_service(self, config: dict) -> DuckPGQPropertyGraphService:
+        """Get configured Property Graph service with auto-initialization."""
+        # Auto-enable Property Graph on first use - no configuration required
+        self.console.print("🚀 Initializing Property Graph functionality...")
 
-        # Get database connection
-        database_manager = await self.get_database_manager()
-        connection = database_manager.get_connection()
+        # Get database connection through indexer
+        indexer_config = self.create_indexer_config()
+        indexer = self.create_indexer(indexer_config, show_progress=False, show_model_loading=False)
+
+        # Ensure database is initialized
+        if not indexer.database_service._is_initialized:
+            indexer.database_service.initialize()
+
+        connection = indexer.database_service.db_manager.get_connection()
 
         # Initialize property graph service
+        self.console.print("⚙️  Setting up DuckPGQ property graph engine...")
         pg_service = DuckPGQPropertyGraphService(connection)
+
+        self.console.print("[green]🎉 Property Graph system ready![/green]")
+
+        # Store the indexer reference for cleanup later
+        pg_service._indexer = indexer
 
         return pg_service
 
 
 @app.command()
-def init() -> None:
+def init(ctx: typer.Context) -> None:
     """Initialize DuckPGQ property graph for advanced graph queries."""
 
     async def _init() -> None:
-        command = PropertyGraphCommand()
+        command = PropertyGraphCommand(ctx)
         try:
-            config = await command.get_config()
-            pg_service = await command._get_property_graph_service(config.indexer)
+            config_manager = command.get_config_manager()
+            config_data = config_manager.get_section("indexer")
+            pg_service = await command._get_property_graph_service(config_data)
 
             command.console.print("🔧 Initializing DuckPGQ property graph...")
 
@@ -74,14 +84,15 @@ def init() -> None:
 
 
 @app.command()
-def stats() -> None:
+def stats(ctx: typer.Context) -> None:
     """Show property graph statistics and metrics."""
 
     async def _stats() -> None:
-        command = PropertyGraphCommand()
+        command = PropertyGraphCommand(ctx)
         try:
-            config = await command.get_config()
-            pg_service = await command._get_property_graph_service(config.indexer)
+            config_manager = command.get_config_manager()
+            config_data = config_manager.get_section("indexer")
+            pg_service = await command._get_property_graph_service(config_data)
 
             if not await pg_service.is_property_graph_available():
                 command.console.print("[yellow]⚠️ Property graph not available. Run 'graph init' first.[/yellow]")
@@ -134,6 +145,7 @@ def stats() -> None:
 
 @app.command()
 def find_path(
+    ctx: typer.Context,
     source: str = typer.Argument(..., help="Source entity ID or name"),
     target: str = typer.Argument(..., help="Target entity ID or name"),
     max_hops: int = typer.Option(6, "--max-hops", help="Maximum number of hops"),
@@ -141,10 +153,11 @@ def find_path(
     """Find shortest path between two entities in the knowledge graph."""
 
     async def _find_path() -> None:
-        command = PropertyGraphCommand()
+        command = PropertyGraphCommand(ctx)
         try:
-            config = await command.get_config()
-            pg_service = await command._get_property_graph_service(config.indexer)
+            config_manager = command.get_config_manager()
+            config_data = config_manager.get_section("indexer")
+            pg_service = await command._get_property_graph_service(config_data)
 
             if not await pg_service.is_property_graph_available():
                 command.console.print("[yellow]⚠️ Property graph not available. Run 'graph init' first.[/yellow]")
@@ -183,6 +196,7 @@ def find_path(
 
 @app.command()
 def centrality(
+    ctx: typer.Context,
     entity_type: Optional[str] = typer.Option(None, "--type", help="Filter by entity type"),
     centrality_type: str = typer.Option("degree", "--centrality", help="Centrality type (degree, betweenness)"),
     limit: int = typer.Option(20, "--limit", help="Number of results to show"),
@@ -190,10 +204,11 @@ def centrality(
     """Calculate and display entity centrality scores."""
 
     async def _centrality() -> None:
-        command = PropertyGraphCommand()
+        command = PropertyGraphCommand(ctx)
         try:
-            config = await command.get_config()
-            pg_service = await command._get_property_graph_service(config.indexer)
+            config_manager = command.get_config_manager()
+            config_data = config_manager.get_section("indexer")
+            pg_service = await command._get_property_graph_service(config_data)
 
             if not await pg_service.is_property_graph_available():
                 command.console.print("[yellow]⚠️ Property graph not available. Run 'graph init' first.[/yellow]")
@@ -233,16 +248,18 @@ def centrality(
 
 @app.command()
 def subgraph(
+    ctx: typer.Context,
     entity_id: str = typer.Argument(..., help="Central entity ID"),
     depth: int = typer.Option(2, "--depth", help="Subgraph depth"),
 ) -> None:
     """Extract and display subgraph around an entity."""
 
     async def _subgraph() -> None:
-        command = PropertyGraphCommand()
+        command = PropertyGraphCommand(ctx)
         try:
-            config = await command.get_config()
-            pg_service = await command._get_property_graph_service(config.indexer)
+            config_manager = command.get_config_manager()
+            config_data = config_manager.get_section("indexer")
+            pg_service = await command._get_property_graph_service(config_data)
 
             if not await pg_service.is_property_graph_available():
                 command.console.print("[yellow]⚠️ Property graph not available. Run 'graph init' first.[/yellow]")

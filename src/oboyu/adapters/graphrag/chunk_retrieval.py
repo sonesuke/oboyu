@@ -76,7 +76,7 @@ class ChunkRetrievalHelper:
             if chunk_ids:
                 placeholders = ",".join(["?" for _ in chunk_ids])
                 query = f"""
-                    SELECT id, content, metadata, vector_id, created_at
+                    SELECT id, content, metadata, created_at
                     FROM chunks
                     WHERE id IN ({placeholders})
                     ORDER BY created_at DESC
@@ -92,8 +92,7 @@ class ChunkRetrievalHelper:
                         "chunk_id": row[0],
                         "content": row[1],
                         "metadata": json.loads(row[2]) if row[2] else {},
-                        "vector_id": row[3],
-                        "created_at": row[4],
+                        "created_at": row[3],
                         "related_entities": [],
                         "related_relations": [],
                     }

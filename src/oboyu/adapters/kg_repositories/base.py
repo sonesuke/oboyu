@@ -32,8 +32,12 @@ class DuckDBKGRepositoryBase:
             merged_from=json.loads(row["merged_from"]) if row["merged_from"] else [],
             merge_confidence=row["merge_confidence"],
             confidence=row["confidence"],
-            created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else datetime.now(),
-            updated_at=datetime.fromisoformat(row["updated_at"]) if row["updated_at"] else datetime.now(),
+            created_at=datetime.fromisoformat(row["created_at"])
+            if isinstance(row["created_at"], str)
+            else (row["created_at"] if row["created_at"] else datetime.now()),
+            updated_at=datetime.fromisoformat(row["updated_at"])
+            if isinstance(row["updated_at"], str)
+            else (row["updated_at"] if row["updated_at"] else datetime.now()),
         )
 
     def _relation_from_row(self, row: Dict[str, Any]) -> Relation:
@@ -46,15 +50,21 @@ class DuckDBKGRepositoryBase:
             properties=json.loads(row["properties"]) if row["properties"] else {},
             chunk_id=row["chunk_id"],
             confidence=row["confidence"],
-            created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else datetime.now(),
-            updated_at=datetime.fromisoformat(row["updated_at"]) if row["updated_at"] else datetime.now(),
+            created_at=datetime.fromisoformat(row["created_at"])
+            if isinstance(row["created_at"], str)
+            else (row["created_at"] if row["created_at"] else datetime.now()),
+            updated_at=datetime.fromisoformat(row["updated_at"])
+            if isinstance(row["updated_at"], str)
+            else (row["updated_at"] if row["updated_at"] else datetime.now()),
         )
 
     def _processing_status_from_row(self, row: Dict[str, Any]) -> ProcessingStatus:
         """Convert database row to ProcessingStatus object."""
         return ProcessingStatus(
             chunk_id=row["chunk_id"],
-            processed_at=datetime.fromisoformat(row["processed_at"]) if row["processed_at"] else datetime.now(),
+            processed_at=datetime.fromisoformat(row["processed_at"])
+            if isinstance(row["processed_at"], str)
+            else (row["processed_at"] if row["processed_at"] else datetime.now()),
             processing_version=row["processing_version"],
             entity_count=row["entity_count"],
             relation_count=row["relation_count"],
@@ -62,8 +72,12 @@ class DuckDBKGRepositoryBase:
             model_used=row["model_used"],
             error_message=row["error_message"],
             status=row["status"],
-            created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else datetime.now(),
-            updated_at=datetime.fromisoformat(row["updated_at"]) if row["updated_at"] else datetime.now(),
+            created_at=datetime.fromisoformat(row["created_at"])
+            if isinstance(row["created_at"], str)
+            else (row["created_at"] if row["created_at"] else datetime.now()),
+            updated_at=datetime.fromisoformat(row["updated_at"])
+            if isinstance(row["updated_at"], str)
+            else (row["updated_at"] if row["updated_at"] else datetime.now()),
         )
 
     def _get_columns_safely(self, connection: DuckDBPyConnection, operation_name: str) -> List[str]:

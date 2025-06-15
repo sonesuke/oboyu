@@ -37,7 +37,7 @@ dependencies = [
     "mojimoji>=0.0.12", # Japanese character conversion (full-width/half-width)
     "neologdn>=0.5.2", # Advanced Japanese text normalization
     "typer>=0.16.0", # CLI framework
-    "rich>=14.0.0", # Rich terminal output formatting
+    "rich>=13.7.0,<14.0.0", # Rich terminal output formatting (compatible with instructor)
     "pyyaml>=6.0.2", # YAML configuration file handling
     "mcp[cli]>=1.9.2", # Model Context Protocol for AI assistant integration
     "gitignore-parser>=0.1.12", # Support for respecting .gitignore files
@@ -52,6 +52,8 @@ dependencies = [
     "pymupdf4llm>=0.0.25",
     "cryptography>=45.0.4",
     "llama-cpp-python>=0.3.9",
+    "huggingface_hub>=0.27.0",  # For downloading KG models
+    "instructor>=1.8.0",  # For structured JSON output with LLMs
 ]
 
 [project.scripts]

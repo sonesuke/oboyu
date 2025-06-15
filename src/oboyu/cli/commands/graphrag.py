@@ -8,7 +8,6 @@ import asyncio
 import logging
 
 import typer
-from rich.console import Console
 from rich.table import Table
 from sentence_transformers import SentenceTransformer
 
@@ -16,7 +15,6 @@ from oboyu.adapters.graphrag import OboyuGraphRAGService
 from oboyu.adapters.kg_repositories import DuckDBKGRepository
 from oboyu.adapters.property_graph import DuckPGQPropertyGraphService
 from oboyu.cli.base import BaseCommand
-from oboyu.config.schema import IndexerConfigSchema
 
 app = typer.Typer(help="GraphRAG operations")
 logger = logging.getLogger(__name__)
@@ -25,31 +23,41 @@ logger = logging.getLogger(__name__)
 class GraphRAGCommand(BaseCommand):
     """Base class for GraphRAG commands."""
 
-    def __init__(self) -> None:
+    def __init__(self, ctx: typer.Context) -> None:
         """Initialize GraphRAG command."""
-        super().__init__()
-        self.console = Console()
+        super().__init__(ctx)
 
-    async def _get_graphrag_service(self, config: IndexerConfigSchema) -> OboyuGraphRAGService:
-        """Get configured GraphRAG service."""
-        if not config.kg_enabled:
-            raise typer.BadParameter("Knowledge Graph is not enabled. Set kg_enabled=true in config.")
+    async def _get_graphrag_service(self, config: dict) -> OboyuGraphRAGService:
+        """Get configured GraphRAG service with auto-initialization."""
+        # Auto-enable GraphRAG on first use - no configuration required
+        self.console.print("🚀 Initializing GraphRAG functionality...")
 
-        # Get database connection
-        database_manager = await self.get_database_manager()
-        connection = database_manager.get_connection()
+        # Get database connection through indexer
+        indexer_config = self.create_indexer_config()
+        indexer = self.create_indexer(indexer_config, show_progress=False, show_model_loading=False)
+
+        # Ensure database is initialized
+        if not indexer.database_service._is_initialized:
+            indexer.database_service.initialize()
+
+        connection = indexer.database_service.db_manager.get_connection()
 
         # Initialize services
         kg_repository = DuckDBKGRepository(connection)
         property_graph_service = DuckPGQPropertyGraphService(connection)
 
         # Load embedding model
+        self.console.print("🤖 Loading embedding model for GraphRAG...")
         try:
-            embedding_model = SentenceTransformer(config.embedding_model)
+            embedding_model_name = config.get("embedding_model", "all-MiniLM-L6-v2")
+            embedding_model = SentenceTransformer(embedding_model_name)
+            self.console.print("✅ Embedding model loaded successfully!")
         except Exception as e:
+            self.console.print(f"[red]❌ Failed to load embedding model: {e}[/red]")
             raise typer.BadParameter(f"Failed to load embedding model: {e}")
 
         # Create GraphRAG service
+        self.console.print("⚙️  Initializing GraphRAG service...")
         graphrag_service = OboyuGraphRAGService(
             kg_repository=kg_repository,
             property_graph_service=property_graph_service,
@@ -57,11 +65,17 @@ class GraphRAGCommand(BaseCommand):
             database_connection=connection,
         )
 
+        self.console.print("[green]🎉 GraphRAG system ready![/green]")
+
+        # Store the indexer reference for cleanup later
+        graphrag_service._indexer = indexer
+
         return graphrag_service
 
 
 @app.command()
 def expand_query(
+    ctx: typer.Context,
     query: str = typer.Argument(..., help="Query to expand with knowledge graph entities"),
     max_entities: int = typer.Option(10, "--max-entities", help="Maximum entities to include"),
     similarity_threshold: float = typer.Option(0.7, "--similarity", help="Entity similarity threshold"),
@@ -70,10 +84,11 @@ def expand_query(
     """Expand a query with relevant entities from the knowledge graph."""
 
     async def _expand_query() -> None:
-        command = GraphRAGCommand()
+        command = GraphRAGCommand(ctx)
         try:
-            config = await command.get_config()
-            graphrag_service = await command._get_graphrag_service(config.indexer)
+            config_manager = command.get_config_manager()
+            config_data = config_manager.get_section("indexer")
+            graphrag_service = await command._get_graphrag_service(config_data)
 
             command.console.print(f"🔍 Expanding query: '{query}'")
 
@@ -122,6 +137,7 @@ def expand_query(
 
 @app.command()
 def search(
+    ctx: typer.Context,
     query: str = typer.Argument(..., help="Search query"),
     max_results: int = typer.Option(10, "--max-results", help="Maximum number of results"),
     use_graph: bool = typer.Option(True, "--use-graph", help="Use graph expansion"),
@@ -130,10 +146,11 @@ def search(
     """Perform GraphRAG-enhanced semantic search."""
 
     async def _search() -> None:
-        command = GraphRAGCommand()
+        command = GraphRAGCommand(ctx)
         try:
-            config = await command.get_config()
-            graphrag_service = await command._get_graphrag_service(config.indexer)
+            config_manager = command.get_config_manager()
+            config_data = config_manager.get_section("indexer")
+            graphrag_service = await command._get_graphrag_service(config_data)
 
             command.console.print(f"🔍 Performing GraphRAG search: '{query}'")
 
@@ -184,16 +201,18 @@ def search(
 
 @app.command()
 def explain_query(
+    ctx: typer.Context,
     query: str = typer.Argument(..., help="Query to explain"),
     max_entities: int = typer.Option(5, "--max-entities", help="Maximum entities for explanation"),
 ) -> None:
     """Generate explanation of how a query would be processed by GraphRAG."""
 
     async def _explain_query() -> None:
-        command = GraphRAGCommand()
+        command = GraphRAGCommand(ctx)
         try:
-            config = await command.get_config()
-            graphrag_service = await command._get_graphrag_service(config.indexer)
+            config_manager = command.get_config_manager()
+            config_data = config_manager.get_section("indexer")
+            graphrag_service = await command._get_graphrag_service(config_data)
 
             command.console.print(f"🔍 Analyzing query: '{query}'")
 
@@ -241,6 +260,7 @@ def explain_query(
 
 @app.command()
 def entity_summaries(
+    ctx: typer.Context,
     entity_names: str = typer.Argument(..., help="Comma-separated entity names"),
     include_relations: bool = typer.Option(True, "--include-relations", help="Include relation information"),
     max_length: int = typer.Option(200, "--max-length", help="Maximum summary length"),
@@ -248,10 +268,11 @@ def entity_summaries(
     """Generate natural language summaries for entities."""
 
     async def _entity_summaries() -> None:
-        command = GraphRAGCommand()
+        command = GraphRAGCommand(ctx)
         try:
-            config = await command.get_config()
-            graphrag_service = await command._get_graphrag_service(config.indexer)
+            config_manager = command.get_config_manager()
+            config_data = config_manager.get_section("indexer")
+            graphrag_service = await command._get_graphrag_service(config_data)
 
             names = [name.strip() for name in entity_names.split(",")]
             command.console.print(f"🔍 Generating summaries for: {', '.join(names)}")
@@ -294,6 +315,7 @@ def entity_summaries(
 
 @app.command()
 def find_clusters(
+    ctx: typer.Context,
     seed_entities: str = typer.Argument(..., help="Comma-separated seed entity names"),
     threshold: float = typer.Option(0.8, "--threshold", help="Clustering similarity threshold"),
     max_cluster_size: int = typer.Option(15, "--max-size", help="Maximum cluster size"),
@@ -301,10 +323,11 @@ def find_clusters(
     """Find clusters of related entities."""
 
     async def _find_clusters() -> None:
-        command = GraphRAGCommand()
+        command = GraphRAGCommand(ctx)
         try:
-            config = await command.get_config()
-            graphrag_service = await command._get_graphrag_service(config.indexer)
+            config_manager = command.get_config_manager()
+            config_data = config_manager.get_section("indexer")
+            graphrag_service = await command._get_graphrag_service(config_data)
 
             names = [name.strip() for name in seed_entities.split(",")]
             command.console.print(f"🔍 Finding clusters for: {', '.join(names)}")

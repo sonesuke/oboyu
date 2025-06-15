@@ -160,12 +160,27 @@ class KnowledgeGraphService:
                 except Exception as e:
                     logger.warning(f"Entity deduplication failed, proceeding without: {e}")
 
-            # Save entities and relations
+            # Save entities first, then relations (to ensure foreign key constraints)
             if high_confidence_entities:
                 await self.kg_repository.save_entities(high_confidence_entities)
+                logger.info(f"Saved {len(high_confidence_entities)} entities")
 
             if high_confidence_relations:
-                await self.kg_repository.save_relations(high_confidence_relations)
+                # Verify all referenced entities exist before saving relations
+                entity_ids = {e.id for e in high_confidence_entities}
+                valid_relations = []
+
+                for relation in high_confidence_relations:
+                    if relation.source_id in entity_ids and relation.target_id in entity_ids:
+                        valid_relations.append(relation)
+                    else:
+                        logger.warning(f"Skipping relation with missing entity IDs: {relation.source_id} -> {relation.target_id}")
+
+                if valid_relations:
+                    await self.kg_repository.save_relations(valid_relations)
+                    logger.info(f"Saved {len(valid_relations)} relations (skipped {len(high_confidence_relations) - len(valid_relations)})")
+                else:
+                    logger.info("No valid relations to save")
 
             # Create processing status
             status = ProcessingStatus(
@@ -287,13 +302,25 @@ class KnowledgeGraphService:
 
         """
         try:
-            if not self.extraction_service.is_model_loaded():
+            # Check if model is loaded
+            is_loaded = self.extraction_service.is_model_loaded()
+            logger.info(f"Model loaded status: {is_loaded}")
+
+            if not is_loaded:
                 logger.warning("Extraction model is not loaded")
                 return False
 
-            return await self.extraction_service.validate_extraction_schema()
+            # Check schema validation
+            logger.info("Starting schema validation...")
+            schema_valid = await self.extraction_service.validate_extraction_schema()
+            logger.info(f"Schema validation result: {schema_valid}")
+
+            return schema_valid
         except Exception as e:
             logger.error(f"Extraction service validation failed: {e}")
+            import traceback
+
+            logger.error(f"Validation traceback: {traceback.format_exc()}")
             return False
 
     async def deduplicate_all_entities(

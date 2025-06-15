@@ -27,6 +27,16 @@ class Entity:
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
 
+    def __hash__(self) -> int:
+        """Make Entity hashable for use in sets and dictionaries."""
+        return hash(self.id)
+
+    def __eq__(self, other: object) -> bool:
+        """Check equality based on entity ID."""
+        if not isinstance(other, Entity):
+            return False
+        return self.id == other.id
+
 
 @dataclass
 class Relation:
@@ -41,6 +51,16 @@ class Relation:
     confidence: float = 0.0
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
+
+    def __hash__(self) -> int:
+        """Make Relation hashable for use in sets and dictionaries."""
+        return hash(self.id)
+
+    def __eq__(self, other: object) -> bool:
+        """Check equality based on relation ID."""
+        if not isinstance(other, Relation):
+            return False
+        return self.id == other.id
 
 
 @dataclass
