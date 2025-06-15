@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 from typer.testing import CliRunner
 
-from oboyu.cli.enrich import app
+from oboyu.cli.main import app
 
 
 class TestEnrichCommand:
@@ -56,7 +56,7 @@ class TestEnrichCommand:
 
     def test_enrich_command_help(self):
         """Test that help displays correctly."""
-        result = self.runner.invoke(app, ["--help"])
+        result = self.runner.invoke(app, ["enrich", "--help"])
         assert result.exit_code == 0
         assert "Enrich CSV data using semantic search and GraphRAG" in result.stdout
 
@@ -68,6 +68,7 @@ class TestEnrichCommand:
                 json.dump(self.sample_schema, f)
             
             result = self.runner.invoke(app, [
+                "enrich",
                 str(Path(tmpdir) / "missing.csv"),
                 str(schema_file)
             ])
@@ -82,6 +83,7 @@ class TestEnrichCommand:
             self.sample_csv_data.to_csv(csv_file, index=False)
             
             result = self.runner.invoke(app, [
+                "enrich",
                 str(csv_file),
                 str(Path(tmpdir) / "missing.json")
             ])
@@ -100,7 +102,7 @@ class TestEnrichCommand:
             with open(schema_file, "w") as f:
                 json.dump(invalid_schema, f)
             
-            result = self.runner.invoke(app, [str(csv_file), str(schema_file)])
+            result = self.runner.invoke(app, ["enrich", str(csv_file), str(schema_file)])
             
             assert result.exit_code == 1
             assert "Invalid enrichment configuration" in result.stdout
@@ -118,7 +120,7 @@ class TestEnrichCommand:
             with open(schema_file, "w") as f:
                 json.dump(self.sample_schema, f)
             
-            result = self.runner.invoke(app, [str(csv_file), str(schema_file)])
+            result = self.runner.invoke(app, ["enrich", str(csv_file), str(schema_file)])
             
             assert result.exit_code == 0
             assert "Enrichment completed successfully" in result.stdout
@@ -144,7 +146,7 @@ class TestEnrichCommand:
             with patch('oboyu.cli.enrich._execute_enrichment') as mock_execute:
                 mock_execute.side_effect = Exception("CSV file missing required columns: {'company_name'}")
                 
-                result = self.runner.invoke(app, [str(csv_file), str(schema_file)])
+                result = self.runner.invoke(app, ["enrich", str(csv_file), str(schema_file)])
                 
                 assert result.exit_code == 1
                 assert "missing required columns" in result.stdout

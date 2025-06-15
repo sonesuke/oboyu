@@ -26,19 +26,11 @@ from oboyu.adapters.kg_repositories import DuckDBKGRepository
 from oboyu.adapters.property_graph import DuckPGQPropertyGraphService
 from oboyu.cli.base import BaseCommand
 
-# Create Typer app
-app = typer.Typer(
-    help="Enrich CSV data using semantic search and GraphRAG",
-    pretty_exceptions_enable=False,
-    rich_markup_mode=None,
-)
-
 # Create console for rich output
 console = Console()
 logger = logging.getLogger(__name__)
 
 
-@app.callback(invoke_without_command=True)
 def enrich(
     ctx: typer.Context,
     csv_file: Annotated[Path, typer.Argument(help="Input CSV file to enrich")],
