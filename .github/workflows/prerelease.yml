@@ -47,7 +47,60 @@ jobs:
 
   # Run comprehensive installation tests before prerelease
   installation-tests:
-    uses: ./.github/workflows/test-installation.yml
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.13']
+        install-method: ['source', 'wheel']
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git \
+            curl \
+            build-essential \
+            cmake \
+            pkg-config \
+            libfreetype6-dev \
+            libfontconfig1-dev \
+            libjpeg-dev \
+            libpng-dev \
+            zlib1g-dev \
+            libssl-dev \
+            python3-dev
+          sudo rm -rf /var/lib/apt/lists/*
+      
+      - name: Install from source
+        if: matrix.install-method == 'source'
+        run: |
+          python -m venv test-env
+          test-env/bin/pip install -e .
+          
+      - name: Install from wheel
+        if: matrix.install-method == 'wheel'
+        run: |
+          python -m venv test-env
+          test-env/bin/pip install build
+          test-env/bin/python -m build --wheel
+          test-env/bin/pip install dist/*.whl
+          
+      - name: Verify installation
+        run: |
+          test-env/bin/python -c "import oboyu; print(oboyu.__version__)"
+          test-env/bin/oboyu --help
+          
+      - name: Run basic functionality test
+        run: |
+          test-env/bin/oboyu version
     
   build:
     needs: [test, installation-tests]
