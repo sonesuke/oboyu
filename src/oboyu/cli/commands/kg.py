@@ -14,7 +14,7 @@ from rich.table import Table
 from sentence_transformers import SentenceTransformer
 
 from oboyu.adapters.entity_deduplication import EDCDeduplicationService
-from oboyu.adapters.kg_extraction import ELYZAKGExtractionService
+from oboyu.adapters.kg_extraction import LLMKGExtractionService
 from oboyu.adapters.kg_repositories import DuckDBKGRepository
 from oboyu.application.kg import KnowledgeGraphService
 from oboyu.cli.base import BaseCommand
@@ -65,7 +65,7 @@ class KGCommand(BaseCommand):
         # Initialize extraction service with progress indication
         self.console.print("🤖 Loading Knowledge Graph extraction model...")
         try:
-            extraction_service = ELYZAKGExtractionService(
+            extraction_service = LLMKGExtractionService(
                 model_path=kg_model_path,
                 temperature=config.get("kg_temperature", 0.1),
                 max_tokens=config.get("kg_max_tokens", 512),

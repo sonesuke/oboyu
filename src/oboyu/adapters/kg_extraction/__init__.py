@@ -1,5 +1,5 @@
 """Knowledge Graph extraction adapters."""
 
-from .elyza_llm_service import ELYZAKGExtractionService
+from .llm_kg_extraction_service import LLMKGExtractionService
 
-__all__ = ["ELYZAKGExtractionService"]
+__all__ = ["LLMKGExtractionService"]

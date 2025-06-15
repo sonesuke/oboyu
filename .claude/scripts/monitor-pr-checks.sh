@@ -11,7 +11,7 @@ usage() {
     echo "Example: $0 123"
     echo ""
     echo "This script will:"
-    echo "- Monitor PR checks every 30 seconds"
+    echo "- Monitor PR checks every 15 seconds"
     echo "- Auto-fix common CI/CD issues when detected"
     echo "- Auto-promote Draft PR to Ready when all checks pass"
     echo "- Continue monitoring until manually stopped (Ctrl+C)"
@@ -24,7 +24,7 @@ if [ $# -eq 0 ]; then
 fi
 
 PR_NUMBER=$1
-MONITOR_INTERVAL=30   # 30 seconds
+MONITOR_INTERVAL=15   # 15 seconds
 
 # Colors for output
 RED='\033[0;31m'
@@ -237,7 +237,7 @@ display_status() {
 # Function to monitor PR
 monitor_pr() {
     log "${BLUE}🚀 Starting automated monitoring for PR #$PR_NUMBER${NC}"
-    log "${BLUE}📝 Monitoring interval: ${MONITOR_INTERVAL}s (30 seconds)${NC}"
+    log "${BLUE}📝 Monitoring interval: ${MONITOR_INTERVAL}s (15 seconds)${NC}"
     log "${BLUE}🛑 Press Ctrl+C to stop monitoring${NC}"
     echo ""
     

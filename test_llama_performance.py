@@ -8,7 +8,7 @@ from llama_cpp import Llama
 
 
 def test_llama_performance() -> None:
-    """Test basic llama.cpp performance with the ELYZA model."""
+    """Test basic llama.cpp performance with Japanese LLM models."""
     # Try downloading Gemma 3 1B model directly
     from huggingface_hub import hf_hub_download
     from xdg_base_dirs import xdg_cache_home
@@ -17,18 +17,24 @@ def test_llama_performance() -> None:
     cache_base.mkdir(parents=True, exist_ok=True)
 
     try:
-        print("🔄 Downloading Gemma 3 1B model...")
+        print("🔄 Downloading TinySwallow 1.5B model...")
         model_path = Path(
-            hf_hub_download(repo_id="google/gemma-3-1b-it-qat-q4_0-gguf", filename="gemma-3-1b-it-q4_0.gguf", cache_dir=cache_base, local_files_only=False)
+            hf_hub_download(
+                repo_id="SakanaAI/TinySwallow-1.5B-Instruct-GGUF",
+                filename="tinyswallow-1.5b-instruct-q5_k_m.gguf",
+                cache_dir=cache_base,
+                local_files_only=False,
+            )
         )
         print(f"✅ Downloaded to: {model_path}")
     except Exception as e:
-        print(f"❌ Failed to download Gemma model: {e}")
-        print("🔄 Trying existing ELYZA model...")
+        print(f"❌ Failed to download TinySwallow model: {e}")
+        print("🔄 Trying existing models...")
 
-        # Fallback to ELYZA model
+        # Fallback to any available Japanese LLM model
         model_path = None
-        for model_dir in cache_base.glob("models--elyza--Llama-3-ELYZA-JP-8B-GGUF*"):
+        # Check for TinySwallow models
+        for model_dir in cache_base.glob("models--SakanaAI--TinySwallow-1.5B-Instruct-GGUF*"):
             snapshots_dir = model_dir / "snapshots"
             if snapshots_dir.exists():
                 for snapshot_dir in snapshots_dir.iterdir():
@@ -40,8 +46,22 @@ def test_llama_performance() -> None:
             if model_path:
                 break
 
+        # Check for ELYZA models as fallback
+        if not model_path:
+            for model_dir in cache_base.glob("models--elyza--Llama-3-ELYZA-JP-8B-GGUF*"):
+                snapshots_dir = model_dir / "snapshots"
+                if snapshots_dir.exists():
+                    for snapshot_dir in snapshots_dir.iterdir():
+                        for gguf_file in snapshot_dir.glob("*.gguf"):
+                            model_path = gguf_file
+                            break
+                        if model_path:
+                            break
+                if model_path:
+                    break
+
     if not model_path:
-        print("❌ ELYZA model not found in cache")
+        print("❌ No Japanese LLM models found in cache")
         return
 
     print(f"📁 Using model: {model_path}")

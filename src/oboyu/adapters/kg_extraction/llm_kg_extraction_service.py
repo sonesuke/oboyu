@@ -1,7 +1,7 @@
-"""ELYZA-japanese-Llama-2-7b-instruct implementation for KG extraction.
+"""Japanese LLM implementation for KG extraction.
 
 This module provides a concrete implementation of the KG extraction service
-using the ELYZA Japanese language model for local CPU-based inference.
+using Japanese language models for local CPU-based inference.
 """
 
 import asyncio
@@ -54,11 +54,12 @@ class StructuredKGExtraction(BaseModel):
     relations: List[ExtractedRelation] = Field(description="抽出されたリレーションのリスト", default_factory=list)
 
 
-class ELYZAKGExtractionService(KGExtractionService):
-    """ELYZA-based knowledge graph extraction service.
+class LLMKGExtractionService(KGExtractionService):
+    """Japanese LLM-based knowledge graph extraction service.
 
-    Uses ELYZA-japanese-Llama-2-7b-instruct model for local CPU inference
+    Uses Japanese language models for local CPU inference
     with Japanese language support and business-oriented entity/relation extraction.
+    Supports multiple models including TinySwallow and ELYZA variants.
     """
 
     def __init__(
@@ -71,10 +72,10 @@ class ELYZAKGExtractionService(KGExtractionService):
         max_tokens: int = 2048,
         verbose: bool = False,
     ) -> None:
-        """Initialize ELYZA KG extraction service.
+        """Initialize Japanese LLM KG extraction service.
 
         Args:
-            model_path: Path to ELYZA GGUF model file
+            model_path: Path to Japanese LLM GGUF model file
             n_ctx: Context window size
             n_threads: Number of CPU threads to use
             temperature: Sampling temperature (lower = more deterministic)
@@ -93,6 +94,7 @@ class ELYZAKGExtractionService(KGExtractionService):
         self._llm: Optional[Llama] = None
         self._model_loaded = False
         self._instructor_client = None
+        self._detected_model_name: Optional[str] = None
 
     def _ensure_model_loaded(self) -> None:
         """Ensure the LLM model is loaded."""
@@ -103,24 +105,19 @@ class ELYZAKGExtractionService(KGExtractionService):
                 try:
                     from huggingface_hub import hf_hub_download
 
-                    logger.info(f"Downloading ELYZA model from HuggingFace Hub: {self.model_path}")
+                    logger.info(f"Downloading Japanese LLM model from HuggingFace Hub: {self.model_path}")
 
                     # Set up cache directory following the same pattern as embeddings
                     kg_cache_dir = CACHE_BASE_DIR / "kg" / "models"
                     kg_cache_dir.mkdir(parents=True, exist_ok=True)
 
-                    # Try multiple common GGUF filenames
+                    # Try multiple common GGUF filenames for supported models
                     possible_filenames = [
                         "tinyswallow-1.5b-instruct-q5_k_m.gguf",  # TinySwallow primary
-                        "tinyswallow-1.5b-instruct-q8_0.gguf",  # Alternative quantization
+                        "tinyswallow-1.5b-instruct-q8_0.gguf",  # TinySwallow alternative quantization
+                        "Llama-3-ELYZA-JP-8B-q4_k_m.gguf",  # ELYZA model
                         "model.gguf",  # Generic model name
                         "pytorch_model.gguf",  # PyTorch export
-                        "Llama-3-ELYZA-JP-8B-q4_k_m.gguf",  # ELYZA fallback
-                        "qwen2-0_5b-instruct-q3_k_m.gguf",  # Qwen2 fallback
-                        "gemma-3-1b-it-q4_0.gguf",  # Gemma fallback
-                        "llama-2-7b-chat.q4_0.gguf",  # TheBloke format
-                        "ggml-model-q4_0.gguf",
-                        "model-q4_0.gguf",
                         f"{str(self.model_path).split('/')[-1].lower()}.gguf",
                     ]
 
@@ -327,7 +324,7 @@ JSON形式のみで回答してください:"""
                 entities=entities,
                 relations=relations,
                 confidence=overall_confidence,
-                model_used="TinySwallow-1.5B-Instruct",
+                model_used=self._get_model_name(),
             )
 
         except json.JSONDecodeError as e:
@@ -346,7 +343,7 @@ JSON形式のみで回答してください:"""
         entity_types: Optional[List[str]] = None,
         relation_types: Optional[List[str]] = None,
     ) -> KnowledgeGraphExtraction:
-        """Extract knowledge graph from text using ELYZA model."""
+        """Extract knowledge graph from text using Japanese LLM model."""
         start_time = time.time()
 
         try:
@@ -409,7 +406,7 @@ JSON形式のみで回答してください:"""
                 entities=entities,
                 relations=relations,
                 confidence=overall_confidence,
-                model_used="TinySwallow-1.5B-Instruct",
+                model_used=self._get_model_name(),
             )
 
             # Add processing time
@@ -447,7 +444,7 @@ JSON形式のみで回答してください:"""
                     chunk_id=chunk_id,
                     error_message=str(e),
                     confidence=0.0,
-                    model_used="TinySwallow-1.5B-Instruct",
+                    model_used=self._get_model_name(),
                 )
                 results.append(error_extraction)
 
@@ -480,3 +477,19 @@ JSON形式のみで回答してください:"""
         """Cleanup resources."""
         if self._llm is not None:
             del self._llm
+
+    def _get_model_name(self) -> str:
+        """Get the name of the currently loaded model."""
+        if self._detected_model_name:
+            return self._detected_model_name
+
+        # Try to detect model name from path
+        model_path_str = str(self.model_path).lower()
+        if "tinyswallow" in model_path_str:
+            self._detected_model_name = "TinySwallow-1.5B-Instruct"
+        elif "elyza" in model_path_str or "llama-3" in model_path_str:
+            self._detected_model_name = "Llama-3-ELYZA-JP-8B"
+        else:
+            self._detected_model_name = "Japanese-LLM-Unknown"
+
+        return self._detected_model_name
