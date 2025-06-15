@@ -239,7 +239,6 @@ These use proven defaults that work well for 99% of cases:
 ### Runtime-Only Options
 These are now CLI flags only (not in config files):
 - `show_scores` - Use `--show-scores` flag
-- `interactive` - Use `--interactive` flag  
 - `snippet_length` - Use `--snippet-length` flag
 - `language_filter` - Use `--language` flag
 
@@ -594,7 +593,6 @@ If you're upgrading from an older version with complex configuration:
 | `crawler.timeout` | Hard-coded | 30 seconds |
 | `crawler.max_file_size` | Hard-coded | 10MB |
 | `query.show_scores` | Runtime flag | `--show-scores` |
-| `query.interactive` | Runtime flag | `--interactive` |
 
 ## Troubleshooting
 

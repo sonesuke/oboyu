@@ -64,15 +64,6 @@ ConfigOption = Annotated[
     ),
 ]
 
-# Interactive mode option
-InteractiveOption = Annotated[
-    bool,
-    typer.Option(
-        "--interactive",
-        "-i",
-        help="Start interactive mode for continuous operations",
-    ),
-]
 
 # Top-K results option for search commands
 TopKOption = Annotated[

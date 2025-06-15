@@ -14,7 +14,6 @@ This document describes the available command-line interface (CLI) commands for 
 | `oboyu index manage diff` | Preview indexing changes | `--change-detection` |
 | `oboyu index manage clear` | Clear index data | `--force` |
 | `oboyu query <text>` | Search indexed documents | `--mode`, `--top-k`, `--rerank` |
-| `oboyu query --interactive` | Interactive search session | `--mode`, `--rerank` |
 
 ### Common Workflows
 
@@ -27,8 +26,6 @@ oboyu query --query "database connection" --top-k 10
 oboyu index ~/documents --cleanup-deleted
 oboyu index manage status ~/documents --detailed
 
-# Interactive exploration with reranking
-oboyu query --interactive --rerank --mode hybrid
 ```
 
 ## Global Options
@@ -273,11 +270,6 @@ oboyu query --query "search term" --no-rerank
 # Get detailed explanation of results
 oboyu query --query "search term" --explain
 
-# Start interactive search session
-oboyu query --interactive
-
-# Interactive mode with specific settings
-oboyu query --interactive --mode hybrid --rerank
 ```
 
 Options:
@@ -287,7 +279,6 @@ Options:
 - `--format`: Output format (text, json) - default: text
 - `--db-path`: Path to database file
 - `--rerank/--no-rerank`: Enable or disable reranking of search results - default: enabled
-- `--interactive`: Start interactive search session for continuous queries
 
 #### Query Examples
 
@@ -323,146 +314,6 @@ oboyu query --query "authentication flow" --mode vector
 # Use hybrid search for balanced semantic and keyword matching
 oboyu query --query "database optimization techniques" --mode hybrid
 ```
-
-#### Interactive Mode
-
-The interactive mode provides a powerful REPL (Read-Eval-Print Loop) interface for performing multiple searches without reloading models and database. This is particularly beneficial when using rerankers, which have significant initialization overhead.
-
-**Key Features:**
-- **Model Persistence**: Models stay loaded between queries for faster subsequent searches
-- **Command History**: Previous queries are saved and can be recalled with arrow keys
-- **Auto-Suggestions**: Tab completion and history-based suggestions
-- **Real-time Configuration**: Change search settings without restarting
-- **Session State**: Settings persist throughout the session
-- **Rich Output**: Colorized results and status information
-
-**Starting Interactive Mode:**
-
-```bash
-# Basic interactive mode
-oboyu query --interactive
-
-# Interactive mode with reranker pre-loaded
-oboyu query --interactive --rerank
-
-# Interactive mode with custom settings
-oboyu query --interactive --mode hybrid --top-k 10
-```
-
-**Interactive Commands:**
-
-All interactive commands start with `/` to distinguish them from search queries.
-
-| Command | Description | Example | Notes |
-|---------|-------------|---------|-------|
-| `<query>` | Search for documents | `machine learning algorithms` | Any text without `/` prefix |
-| `/help` | Show available commands | `/help` | Displays command reference |
-| `/exit`, `/quit`, `/q` | Exit interactive mode | `/exit` | Graceful shutdown |
-| `/mode <mode>` | Change search mode | `/mode vector` | Options: vector, bm25, hybrid |
-| `/topk <number>` | Change number of results | `/topk 10` | Must be positive integer |
-| `/top-k <number>` | Alias for topk | `/top-k 15` | Same as `/topk` |
-| `/rerank on/off` | Toggle reranker | `/rerank on` | Enable or disable reranking |
-| `/settings` | Show current settings | `/settings` | Display all current configuration |
-| `/clear` | Clear screen | `/clear` | Unix-style screen clearing |
-| `/stats` | Show index statistics | `/stats` | Database and index information |
-
-**Example Interactive Session:**
-
-```bash
-$ oboyu query --interactive --rerank
-
-🔍 Oboyu Interactive Search
-📊 Mode: hybrid | Top-K: 5 | RRF-K: 60 | Reranker: enabled
-
-✅ Ready for search!
-Type your search query (or '/help' for commands, '/exit' to quit):
-
-> machine learning algorithms
-🔍 Searching...
-📊 Found 3 results in 0.12 seconds
-
-• Deep Learning Fundamentals (Score: 0.89)
-  This chapter covers the basic principles of deep learning, including neural networks,
-  backpropagation, and optimization algorithms used in machine learning...
-  Source: /docs/ml-guide.md (en)
-
-• Algorithm Comparison Study (Score: 0.84)
-  A comprehensive comparison of supervised learning algorithms including decision trees,
-  random forests, support vector machines, and neural networks...
-  Source: /research/algorithms.txt (en)
-
-• 機械学習アルゴリズムの概要 (Score: 0.78)
-  機械学習の主要なアルゴリズムについて説明します。線形回帰、ロジスティック回帰、
-  ランダムフォレスト、ニューラルネットワークなど...
-  Source: /docs/ml-overview-ja.md (ja)
-
-> /mode vector
-✅ Search mode changed to: vector
-
-> /topk 10
-✅ Top-K changed to: 10
-
-> /weights 0.9 0.1
-✅ Weights changed to: Vector=0.9, BM25=0.1
-
-> neural networks
-🔍 Searching...
-📊 Found 7 results in 0.08 seconds
-
-[More results with vector-focused search...]
-
-> /rerank off
-✅ Reranker disabled
-
-> /settings
-
-Current Settings:
-- Mode: vector
-- Top-K: 10
-- Vector weight: 0.9
-- BM25 weight: 0.1
-- Reranker: disabled
-- Database: /home/user/.oboyu/index.db
-
-> /stats
-
-Index Statistics:
-- Total documents: 1,247
-- Total chunks: 8,934
-- Unique files: 1,247
-- Database size: 89.32 MB
-
-> /exit
-👋 Goodbye!
-```
-
-**Performance Benefits:**
-
-Interactive mode provides significant performance advantages:
-
-- **Model Loading**: Embedding models are loaded once at startup (typically 2-5 seconds)
-- **Reranker Warmup**: Reranker models are pre-loaded and warmed up (typically 3-8 seconds)
-- **Database Connection**: Database stays connected and indexed for faster queries
-- **Query Speed**: Subsequent queries run 5-10x faster than CLI mode
-- **Memory Efficiency**: Models stay in memory, avoiding repeated loading
-
-**Tips for Interactive Mode:**
-
-1. **Use Tab Completion**: Press Tab to see available commands and complete partially typed commands
-2. **Command History**: Use ↑/↓ arrow keys to recall previous queries
-3. **Quick Exits**: Use Ctrl+D or Ctrl+C as alternative exit methods
-4. **Screen Management**: Use `/clear` to clean up the display during long sessions
-5. **Settings Monitoring**: Use `/settings` regularly to verify your current configuration
-6. **Performance Monitoring**: Use `/stats` to monitor index growth and database size
-
-**When to Use Interactive Mode:**
-
-- **Exploratory Search**: When you need to try multiple related queries
-- **Research Sessions**: Extended periods of document searching
-- **Reranker Usage**: When reranker accuracy is needed for multiple queries
-- **Parameter Tuning**: Testing different search modes and RRF parameters
-- **Large Datasets**: When model loading time becomes significant
-- **Iterative Refinement**: Progressively refining search queries
 
 ## Health Monitoring Commands
 
@@ -830,7 +681,7 @@ Add to your shell configuration:
 # Quick search functions
 alias todos='oboyu query --query "TODO|FIXME" --mode bm25 --top-k 50'
 alias errors='oboyu query --query "error|exception|traceback" --rerank'
-alias recent='oboyu query --interactive --mode hybrid'
+alias recent='oboyu query --mode hybrid --top-k 10'
 
 # Project-specific search
 function search_project() {

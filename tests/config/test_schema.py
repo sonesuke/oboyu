@@ -130,7 +130,6 @@ class TestQueryConfigSchema:
         assert config.rerank is True
         assert config.rerank_model == "cl-nagoya/ruri-reranker-small"
         assert config.show_scores is False
-        assert config.interactive is False
 
     def test_from_dict(self):
         """Test creating from dictionary."""
@@ -150,11 +149,10 @@ class TestQueryConfigSchema:
 
     def test_to_dict(self):
         """Test converting to dictionary."""
-        config = QueryConfigSchema(top_k=15, interactive=True)
+        config = QueryConfigSchema(top_k=15)
         data = config.to_dict()
 
         assert data["top_k"] == 15
-        assert data["interactive"] is True
         assert data["rerank"] is True  # Default value
 
 

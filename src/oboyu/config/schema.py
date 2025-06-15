@@ -165,7 +165,6 @@ class QueryConfigSchema(BaseModel):
     rerank: bool = Field(default=True, description="Enable reranking of search results")
     rerank_model: str = Field(default="cl-nagoya/ruri-reranker-small", description="Reranker model name", pattern=r"^[\w\-./]+[\w\-/]+$")
     show_scores: bool = Field(default=False, description="Show relevance scores in output")
-    interactive: bool = Field(default=False, description="Enable interactive mode")
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "QueryConfigSchema":

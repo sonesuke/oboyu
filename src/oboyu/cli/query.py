@@ -18,7 +18,6 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from oboyu.cli.base import BaseCommand
 from oboyu.cli.commands.query import QueryCommand
-from oboyu.cli.interactive_session import InteractiveQuerySession
 from oboyu.common.types import SearchResult
 
 # Create Typer app
@@ -51,7 +50,6 @@ def query(
     rrf_k: Optional[int] = None,
     db_path: Optional[Path] = None,
     rerank: Optional[bool] = None,
-    interactive: bool = False,
 ) -> None:
     """Search indexed documents.
 
@@ -60,12 +58,9 @@ def query(
     # Create base command for common functionality
     base_command = BaseCommand(ctx)
 
-    # Check if interactive mode requested
-    if interactive:
-        if query is not None:
-            base_command.console.print("⚠️  Warning: Query argument ignored in interactive mode", style="yellow")
-    elif query is None:
-        base_command.console.print("❌ Error: Query argument is required (or use --interactive)", style="red")
+    # Validate query argument
+    if query is None:
+        base_command.console.print("❌ Error: Query argument is required", style="red")
         raise typer.Exit(1)
 
     # Get configuration manager and query service
@@ -73,55 +68,21 @@ def query(
     query_service = QueryCommand(config_manager)
 
     try:
-        if interactive:
-            # Get query configuration for interactive session
-            query_config = query_service.get_query_config(top_k, rrf_k, rerank)
-            database_path = query_service.get_database_path(db_path)
+        # Execute single query using service
+        # At this point, query is guaranteed to be non-None due to validation above
+        assert query is not None, "Query should be validated as non-None by this point"
 
-            # Get indexer configuration and create indexer with proper config for interactive session
-            indexer_config = config_manager.get_section("indexer")
+        result = query_service.execute_query_with_context(
+            query=query,
+            mode=mode,
+            top_k=top_k,
+            rrf_k=rrf_k,
+            db_path=db_path,
+            rerank=rerank,
+        )
 
-            from oboyu.indexer.config.indexer_config import IndexerConfig
-            from oboyu.retriever.retriever import Retriever
-
-            config = IndexerConfig()
-            config.db_path = Path(database_path)
-
-            # Apply configuration from file
-            if indexer_config.get("use_reranker", False):
-                assert config.search is not None, "SearchConfig should be initialized"
-                assert config.model is not None, "ModelConfig should be initialized"
-                config.search.use_reranker = True
-                config.model.use_reranker = True
-
-            # Initialize retriever with proper configuration
-            retriever = Retriever(config)
-
-            # Start interactive session
-            session_config = {
-                "mode": mode,
-                "top_k": query_config.get("top_k", 10),
-                "rrf_k": query_config.get("rrf_k", 60),
-                "rerank": query_config.get("use_reranker", False),
-            }
-            session = InteractiveQuerySession(retriever, session_config, base_command.console)
-            session.run()
-        else:
-            # Execute single query using service
-            # At this point, query is guaranteed to be non-None due to validation above
-            assert query is not None, "Query should be validated as non-None by this point"
-
-            result = query_service.execute_query_with_context(
-                query=query,
-                mode=mode,
-                top_k=top_k,
-                rrf_k=rrf_k,
-                db_path=db_path,
-                rerank=rerank,
-            )
-
-            # Display results
-            _display_results(base_command.console, result.results, result.elapsed_time, result.mode, explain, format, result.reranker_used)
+        # Display results
+        _display_results(base_command.console, result.results, result.elapsed_time, result.mode, explain, format, result.reranker_used)
 
     except Exception as e:
         base_command.console.print(f"❌ Search failed: {e}", style="red")
