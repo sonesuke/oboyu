@@ -13,37 +13,37 @@ Master the art of searching with these proven patterns and techniques. From basi
 ### Basic Keywords
 ```bash
 # Single keyword
-oboyu query --query "budget"
+oboyu search "budget"
 
 # Multiple keywords (OR logic)
-oboyu query --query "budget finance accounting"
+oboyu search "budget finance accounting"
 
 # All keywords required (AND logic)
-oboyu query --query "+budget +2024 +approved"
+oboyu search "+budget +2024 +approved"
 ```
 
 ### Phrase Search
 ```bash
 # Exact phrase
-oboyu query --query '"project deadline march 15"'
+oboyu search '"project deadline march 15"'
 
 # Partial phrase with wildcards
-oboyu query --query '"project deadline *"'
+oboyu search '"project deadline *"'
 ```
 
 ### Boolean Operators
 ```bash
 # AND operator
-oboyu query --query "python AND tutorial"
+oboyu search "python AND tutorial"
 
 # OR operator  
-oboyu query --query "python OR java OR javascript"
+oboyu search "python OR java OR javascript"
 
 # NOT operator
-oboyu query --query "python NOT beginner"
+oboyu search "python NOT beginner"
 
 # Complex boolean
-oboyu query --query "(python OR java) AND tutorial NOT video"
+oboyu search "(python OR java) AND tutorial NOT video"
 ```
 
 ## Semantic Search Patterns
@@ -51,37 +51,37 @@ oboyu query --query "(python OR java) AND tutorial NOT video"
 ### Concept-Based Search
 ```bash
 # Find documents about a concept
-oboyu query --query "documents explaining customer churn" --mode vector
+oboyu search "documents explaining customer churn" --mode vector
 
 # Find similar documents
-oboyu query --query "similar to our Q3 financial report" --mode vector
+oboyu search "similar to our Q3 financial report" --mode vector
 
 # Abstract concepts
-oboyu query --query "strategies for improving team morale" --mode vector
+oboyu search "strategies for improving team morale" --mode vector
 ```
 
 ### Question-Based Search
 ```bash
 # Direct questions
-oboyu query --query "what is our remote work policy?" --mode vector
+oboyu search "what is our remote work policy?" --mode vector
 
 # How-to queries
-oboyu query --query "how to configure database connections" --mode vector
+oboyu search "how to configure database connections" --mode vector
 
 # Why queries
-oboyu query --query "why did sales drop in December?" --mode vector
+oboyu search "why did sales drop in December?" --mode vector
 ```
 
 ### Context-Aware Search
 ```bash
 # Find related documents
-oboyu query --query "documents related to the Johnson account" --mode vector
+oboyu search "documents related to the Johnson account" --mode vector
 
 # Find follow-ups
-oboyu query --query "follow-up actions from product launch meeting" --mode vector
+oboyu search "follow-up actions from product launch meeting" --mode vector
 
 # Find prerequisites
-oboyu query --query "what should I read before the strategy meeting?" --mode vector
+oboyu search "what should I read before the strategy meeting?" --mode vector
 ```
 
 ## Hybrid Search Patterns
@@ -89,19 +89,19 @@ oboyu query --query "what should I read before the strategy meeting?" --mode vec
 ### Balanced Search
 ```bash
 # Combine precision and recall
-oboyu query --query "machine learning python tutorial" --mode hybrid
+oboyu search "machine learning python tutorial" --mode hybrid
 
 # Technical + conceptual
-oboyu query --query "REST API best practices security" --mode hybrid
+oboyu search "REST API best practices security" --mode hybrid
 ```
 
 ### Weighted Search
 ```bash
 # Emphasize keywords
-oboyu query --query "error 404 nginx" --mode hybrid
+oboyu search "error 404 nginx" --mode hybrid
 
 # Emphasize semantics
-oboyu query --query "improving code quality" --mode hybrid
+oboyu search "improving code quality" --mode hybrid
 ```
 
 ## Pattern Search Examples
@@ -109,37 +109,37 @@ oboyu query --query "improving code quality" --mode hybrid
 ### Finding Patterns in Text
 ```bash
 # Email patterns
-oboyu query --query "[a-zA-Z]+@company\.com"
+oboyu search "[a-zA-Z]+@company\.com"
 
 # Date patterns
-oboyu query --query "\d{4}-\d{2}-\d{2}"
+oboyu search "\d{4}-\d{2}-\d{2}"
 
 # Version numbers
-oboyu query --query "v\d+\.\d+\.\d+"
+oboyu search "v\d+\.\d+\.\d+"
 ```
 
 ### Code Patterns
 ```bash
 # Function definitions
-oboyu query --query "def \w+\(.*\):"
+oboyu search "def \w+\(.*\):"
 
 # Import statements
-oboyu query --query "^import|^from .* import"
+oboyu search "^import|^from .* import"
 
 # TODO comments
-oboyu query --query "//\s*TODO:|#\s*TODO:"
+oboyu search "//\s*TODO:|#\s*TODO:"
 ```
 
 ### Document Structure Patterns
 ```bash
 # Markdown headers
-oboyu query --query "^#{1,6}\s+.*Security"
+oboyu search "^#{1,6}\s+.*Security"
 
 # List items
-oboyu query --query "^\s*[-*]\s+.*requirement"
+oboyu search "^\s*[-*]\s+.*requirement"
 
 # Numbered items
-oboyu query --query "^\s*\d+\.\s+.*step"
+oboyu search "^\s*\d+\.\s+.*step"
 ```
 
 ## Advanced Search Techniques
@@ -147,40 +147,40 @@ oboyu query --query "^\s*\d+\.\s+.*step"
 ### Proximity Search
 ```bash
 # Words near each other
-oboyu query --query "project NEAR/5 deadline"
+oboyu search "project NEAR/5 deadline"
 
 # Same paragraph
-oboyu query --query "budget SAME_PARA approval"
+oboyu search "budget SAME_PARA approval"
 
 # Same sentence
-oboyu query --query "meeting SAME_SENT cancelled"
+oboyu search "meeting SAME_SENT cancelled"
 ```
 
 ### Fuzzy Search
 ```bash
 # Spelling variations
-oboyu query --query "organization~" # Also finds: organisation
+oboyu search "organization~" # Also finds: organisation
 
 # Typo tolerance
-oboyu query --query "recieve~2" # Finds: receive
+oboyu search "recieve~2" # Finds: receive
 
 # Sound-alike (phonetic)
-oboyu query --query "smith~phonetic" # Finds: Schmidt, Smythe
+oboyu search "smith~phonetic" # Finds: Schmidt, Smythe
 ```
 
 ### Field-Specific Search
 ```bash
 # Search in title/filename
-oboyu query --query "title:report"
+oboyu search "title:report"
 
 # Search in path
-oboyu query --query "path:projects/alpha"
+oboyu search "path:projects/alpha"
 
 # Search by author (if metadata available)
-oboyu query --query "author:john"
+oboyu search "author:john"
 
 # Search by date
-oboyu query --query "modified:2024-01-*"
+oboyu search "modified:2024-01-*"
 ```
 
 ## Search Patterns by Use Case
@@ -188,37 +188,37 @@ oboyu query --query "modified:2024-01-*"
 ### Meeting Notes Patterns
 ```bash
 # Action items
-oboyu query --query "action:|assigned:|TODO:|@"
+oboyu search "action:|assigned:|TODO:|@"
 
 # Decisions made
-oboyu query --query "decided:|agreed:|approved:" --mode vector
+oboyu search "decided:|agreed:|approved:" --mode vector
 
 # Attendees
-oboyu query --query "attendees:|present:|participants:"
+oboyu search "attendees:|present:|participants:"
 ```
 
 ### Project Documentation
 ```bash
 # Requirements
-oboyu query --query "must|shall|should|requirement"
+oboyu search "must|shall|should|requirement"
 
 # Technical specifications
-oboyu query --query "spec:|specification:|interface:|API:"
+oboyu search "spec:|specification:|interface:|API:"
 
 # Diagrams and figures
-oboyu query --query "figure|diagram|chart|graph" --mode vector
+oboyu search "figure|diagram|chart|graph" --mode vector
 ```
 
 ### Research Papers
 ```bash
 # Citations
-oboyu query --query "\[\d+\]|\(\w+,\s*\d{4}\)"
+oboyu search "\[\d+\]|\(\w+,\s*\d{4}\)"
 
 # Abstract sections
-oboyu query --query "abstract:|summary:"
+oboyu search "abstract:|summary:"
 
 # Conclusions
-oboyu query --query "conclusion:|in conclusion|we conclude" --mode vector
+oboyu search "conclusion:|in conclusion|we conclude" --mode vector
 ```
 
 ## Language-Specific Patterns
@@ -226,28 +226,28 @@ oboyu query --query "conclusion:|in conclusion|we conclude" --mode vector
 ### Japanese Search Patterns
 ```bash
 # Hiragana only
-oboyu query --query "[ぁ-ん]+"
+oboyu search "[ぁ-ん]+"
 
 # Katakana only
-oboyu query --query "[ァ-ヴ]+"
+oboyu search "[ァ-ヴ]+"
 
 # Kanji compounds
-oboyu query --query "[一-龥]{2,}"
+oboyu search "[一-龥]{2,}"
 
 # Mixed Japanese/English
-oboyu query --query "プロジェクト.*deadline"
+oboyu search "プロジェクト.*deadline"
 ```
 
 ### Multi-language Patterns
 ```bash
 # Documents in specific language
-oboyu query --query "lang:ja 会議"
+oboyu search "lang:ja 会議"
 
 # Mixed language documents
-oboyu query --query "meeting 会議" --mode hybrid
+oboyu search "meeting 会議" --mode hybrid
 
 # Romanized Japanese
-oboyu query --query "kaigi OR 会議"
+oboyu search "kaigi OR 会議"
 ```
 
 ## Performance Search Patterns
@@ -255,25 +255,25 @@ oboyu query --query "kaigi OR 会議"
 ### Optimized Searches
 ```bash
 # Limit scope early
-oboyu query --query "error"
+oboyu search "error"
 
 # Use specific index
-oboyu query --query "configuration" --db-path ~/indexes/technical-docs.db
+oboyu search "configuration" --db-path ~/indexes/technical-docs.db
 
 # Combine filters
-oboyu query --query "critical"
+oboyu search "critical"
 ```
 
 ### Batch Search Patterns
 ```bash
 # Multiple related searches
 for term in "error" "warning" "critical"; do
-    oboyu query --query "$term" > "${term}-results.txt"
+    oboyu search "$term" > "${term}-results.txt"
 done
 
 # Progressive refinement
-oboyu query --query "project" > all-projects.txt
-oboyu query --query "project alpha" > alpha-specific.txt
+oboyu search "project" > all-projects.txt
+oboyu search "project alpha" > alpha-specific.txt
 ```
 
 ## Search Pattern Templates
@@ -281,37 +281,37 @@ oboyu query --query "project alpha" > alpha-specific.txt
 ### Daily Standup Template
 ```bash
 # What I did yesterday
-oboyu query --query "completed|done|finished"
+oboyu search "completed|done|finished"
 
 # What I'm doing today  
-oboyu query --query "TODO|planned|scheduled"
+oboyu search "TODO|planned|scheduled"
 
 # Blockers
-oboyu query --query "blocked|issue|problem" --mode vector
+oboyu search "blocked|issue|problem" --mode vector
 ```
 
 ### Code Review Template
 ```bash
 # Find recent changes
-oboyu query --query "modified|updated|changed"
+oboyu search "modified|updated|changed"
 
 # Security concerns
-oboyu query --query "password|secret|key|token"
+oboyu search "password|secret|key|token"
 
 # TODO items
-oboyu query --query "TODO|FIXME|HACK|XXX"
+oboyu search "TODO|FIXME|HACK|XXX"
 ```
 
 ### Research Template
 ```bash
 # Find methodology
-oboyu query --query "method|methodology|approach"
+oboyu search "method|methodology|approach"
 
 # Find results
-oboyu query --query "results|findings|outcomes"
+oboyu search "results|findings|outcomes"
 
 # Find limitations
-oboyu query --query "limitation|caveat|assumption"
+oboyu search "limitation|caveat|assumption"
 ```
 
 ## Combining Patterns
@@ -319,13 +319,13 @@ oboyu query --query "limitation|caveat|assumption"
 ### Complex Queries
 ```bash
 # Financial + Date + Format
-oboyu query --query "(revenue OR profit) AND 2024"
+oboyu search "(revenue OR profit) AND 2024"
 
 # Technical + Semantic + Scope
-oboyu query --query "database optimization techniques" --mode hybrid
+oboyu search "database optimization techniques" --mode hybrid
 
 # Multi-pattern search
-oboyu query --query '(TODO|FIXME) AND "high priority"'
+oboyu search '(TODO|FIXME) AND "high priority"'
 ```
 
 ## Search Pattern Best Practices
@@ -341,13 +341,13 @@ oboyu query --query '(TODO|FIXME) AND "high priority"'
 ### Pattern Testing
 ```bash
 # Test with small result set
-oboyu query --query "your pattern" --top-k 5
+oboyu search "your pattern" --top-k 5
 
 # Explain query interpretation
-oboyu query --query "complex query"
+oboyu search "complex query"
 
 # Debug regex patterns
-oboyu query --query "pattern"
+oboyu search "pattern"
 ```
 
 ## Next Steps

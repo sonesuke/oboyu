@@ -21,13 +21,13 @@ Oboyu fully supports PDF document indexing and search. Text content is automatic
 ### Basic PDF Search
 ```bash
 # Search all indexed PDF files
-oboyu query --query "annual report"
+oboyu search "annual report"
 
 # Find PDFs with specific content
-oboyu query --query "financial statement 2024" --mode hybrid
+oboyu search "financial statement 2024" --mode hybrid
 
 # Search for content across multiple pages
-oboyu query --query "conclusion recommendations"
+oboyu search "conclusion recommendations"
 ```
 
 ### PDF Indexing
@@ -42,25 +42,25 @@ oboyu index ~/Documents --include "*.pdf,*.txt,*.md"
 ### PDF-Specific Examples
 ```bash
 # Find research papers
-oboyu query --query "machine learning neural networks"
+oboyu search "machine learning neural networks"
 
 # Find forms and applications
-oboyu query --query "application form"
+oboyu search "application form"
 
 # Find presentations converted to PDF
-oboyu query --query "slide deck presentation"
+oboyu search "slide deck presentation"
 
 # Search PDF metadata
-oboyu query --query "author:Smith" --mode vector
+oboyu search "author:Smith" --mode vector
 ```
 
 ### Japanese PDF Support
 ```bash
 # Search Japanese PDFs
-oboyu query --query "機械学習"
+oboyu search "機械学習"
 
 # Mixed language search
-oboyu query --query "machine learning 機械学習" --mode hybrid
+oboyu search "machine learning 機械学習" --mode hybrid
 ```
 
 ### Performance Tips for PDFs
@@ -76,34 +76,34 @@ Markdown is perfect for notes, documentation, and technical writing.
 ### Basic Markdown Search
 ```bash
 # Search only markdown files
-oboyu query --query "TODO"
+oboyu search "TODO"
 
 # Find markdown with specific headers
-oboyu query --query "## Installation"
+oboyu search "## Installation"
 ```
 
 ### Markdown Structure Search
 ```bash
 # Find files with code blocks
-oboyu query --query "```python"
+oboyu search "```python"
 
 # Find files with links
-oboyu query --query "[link]("
+oboyu search "[link]("
 
 # Find files with images
-oboyu query --query "![image]"
+oboyu search "![image]"
 ```
 
 ### Common Markdown Workflows
 ```bash
 # Find all README files
-oboyu query --query "*" --db-path ~/indexes/example.db
+oboyu search "*" --db-path ~/indexes/example.db
 
 # Find documentation files
-oboyu query --query "documentation"
+oboyu search "documentation"
 
 # Find blog posts
-oboyu query --query "date:"
+oboyu search "date:"
 ```
 
 ## Office Documents
@@ -111,37 +111,37 @@ oboyu query --query "date:"
 ### Microsoft Word (.docx)
 ```bash
 # Search Word documents
-oboyu query --query "contract"
+oboyu search "contract"
 
 # Find templates
-oboyu query --query "template"
+oboyu search "template"
 
 # Find track changes comments
-oboyu query --query "comment:" --mode vector
+oboyu search "comment:" --mode vector
 ```
 
 ### Excel Files (.xlsx)
 ```bash
 # Search spreadsheets
-oboyu query --query "budget"
+oboyu search "budget"
 
 # Find files with specific data
-oboyu query --query "Q4 revenue"
+oboyu search "Q4 revenue"
 
 # Find formulas (if extracted)
-oboyu query --query "SUM(A1:"
+oboyu search "SUM(A1:"
 ```
 
 ### PowerPoint (.pptx)
 ```bash
 # Search presentations
-oboyu query --query "roadmap"
+oboyu search "roadmap"
 
 # Find slide titles
-oboyu query --query "Agenda"
+oboyu search "Agenda"
 
 # Find speaker notes
-oboyu query --query "note:" --mode vector
+oboyu search "note:" --mode vector
 ```
 
 ## Plain Text Files
@@ -151,25 +151,25 @@ Simple but powerful for logs, notes, and data files.
 ### Basic Text Search
 ```bash
 # Search text files
-oboyu query --query "error"
+oboyu search "error"
 
 # Search log files
-oboyu query --query "ERROR"
+oboyu search "ERROR"
 
 # Search configuration files
-oboyu query --query "port"
+oboyu search "port"
 ```
 
 ### Structured Text Files
 ```bash
 # Search CSV files
-oboyu query --query "customer_id"
+oboyu search "customer_id"
 
 # Search JSON files
-oboyu query --query '"api_key"'
+oboyu search '"api_key"'
 
 # Search XML files
-oboyu query --query "<configuration>"
+oboyu search "<configuration>"
 ```
 
 ## Code Files
@@ -179,25 +179,25 @@ Oboyu can search through source code effectively.
 ### Language-Specific Search
 ```bash
 # Python files
-oboyu query --query "def process_data"
+oboyu search "def process_data"
 
 # JavaScript files
-oboyu query --query "async function"
+oboyu search "async function"
 
 # Java files
-oboyu query --query "public class"
+oboyu search "public class"
 ```
 
 ### Code Pattern Search
 ```bash
 # Find imports
-oboyu query --query "import pandas"
+oboyu search "import pandas"
 
 # Find function definitions
-oboyu query --query "function.*export"
+oboyu search "function.*export"
 
 # Find TODO comments
-oboyu query --query "TODO:|FIXME:"
+oboyu search "TODO:|FIXME:"
 ```
 
 ## Email Files
@@ -207,13 +207,13 @@ If you export emails to files:
 ### Email Search Patterns
 ```bash
 # Search email files
-oboyu query --query "meeting invitation"
+oboyu search "meeting invitation"
 
 # Find emails from specific sender
-oboyu query --query "From: boss@company.com"
+oboyu search "From: boss@company.com"
 
 # Find emails with attachments
-oboyu query --query "attachment" --mode vector
+oboyu search "attachment" --mode vector
 ```
 
 ## Web Documents
@@ -221,13 +221,13 @@ oboyu query --query "attachment" --mode vector
 ### HTML Files
 ```bash
 # Search HTML content
-oboyu query --query "contact form"
+oboyu search "contact form"
 
 # Find specific tags
-oboyu query --query "<form"
+oboyu search "<form"
 
 # Find meta descriptions
-oboyu query --query 'meta name="description"'
+oboyu search 'meta name="description"'
 ```
 
 ## Mixed Format Workflows
@@ -236,20 +236,20 @@ oboyu query --query 'meta name="description"'
 When projects have multiple file types:
 ```bash
 # Search across all documentation
-oboyu query --query "API endpoint"
+oboyu search "API endpoint"
 
 # Find all files about a feature
-oboyu query --query "user authentication" --mode vector
+oboyu search "user authentication" --mode vector
 ```
 
 ### Research Collection
 For mixed academic materials:
 ```bash
 # Search papers and notes
-oboyu query --query "hypothesis testing"
+oboyu search "hypothesis testing"
 
 # Find citations
-oboyu query --query "et al. 2024"
+oboyu search "et al. 2024"
 ```
 
 ## Format-Specific Tips
@@ -260,7 +260,7 @@ oboyu query --query "et al. 2024"
 oboyu index ~/large-docs --chunk-size 1000
 
 # Search with context
-oboyu query --query "conclusion"
+oboyu search "conclusion"
 ```
 
 ### Compressed Archives
@@ -269,16 +269,16 @@ oboyu query --query "conclusion"
 oboyu index ~/Documents --extract-archives
 
 # Search within extracted content
-oboyu query --query "readme"
+oboyu search "readme"
 ```
 
 ### Binary Files with Metadata
 ```bash
 # Search image metadata
-oboyu query --query "Canon EOS"
+oboyu search "Canon EOS"
 
 # Search audio file tags
-oboyu query --query "Beatles"
+oboyu search "Beatles"
 ```
 
 ## Best Practices by Format

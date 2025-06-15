@@ -84,7 +84,7 @@ pip install oboyu
 oboyu index ~/Documents
 
 # Search your documents
-oboyu query "your search term"
+oboyu search "your search term"
 ```
 
 That's it! See our [Documentation](https://sonesuke.github.io/oboyu/) for complete guides and examples.
@@ -155,10 +155,10 @@ pip install -e .
 oboyu index ~/Documents/notes
 
 # Search your documents
-oboyu query "machine learning optimization techniques"
+oboyu search "machine learning optimization techniques"
 
 # Get results in JSON format for processing
-oboyu query "machine learning" --format json
+oboyu search "machine learning" --format json
 ```
 
 ### Advanced Examples
@@ -168,13 +168,13 @@ oboyu query "machine learning" --format json
 oboyu index ~/projects --include-patterns "*.md,*.txt"
 
 # Search with different modes
-oboyu query "API design" --mode vector
+oboyu search "API design" --mode vector
 
 # Use semantic search mode
-oboyu query "concepts similar to dependency injection" --mode semantic
+oboyu search "concepts similar to dependency injection" --mode semantic
 
 # Enable reranking for better accuracy
-oboyu query "complex technical topic" --rerank
+oboyu search "complex technical topic" --rerank
 ```
 
 ### MCP Server for AI Assistants
@@ -219,28 +219,28 @@ See our [MCP Integration Guide](https://sonesuke.github.io/oboyu/integration/mcp
 Index and search through research notes and references:
 ```bash
 oboyu index ~/research --include "*.md,*.txt"
-oboyu query "transformer architecture improvements"
+oboyu search "transformer architecture improvements"
 ```
 
 ### 💻 Code Documentation
 Search through project documentation and code comments:
 ```bash
 oboyu index ~/projects/myapp --include "*.md,*.py"
-oboyu query "authentication implementation"
+oboyu search "authentication implementation"
 ```
 
 ### 📝 Personal Knowledge Base
 Organize and search your notes and documents:
 ```bash
 oboyu index ~/Documents/notes
-oboyu query "meeting notes from last week"
+oboyu search "meeting notes from last week"
 ```
 
 ### 🌏 Multilingual Documents
 Perfect for mixed Japanese and English content:
 ```bash
 oboyu index ~/Documents/bilingual
-oboyu query "プロジェクト管理 best practices"
+oboyu search "プロジェクト管理 best practices"
 ```
 
 ## Testing
