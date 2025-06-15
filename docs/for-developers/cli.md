@@ -8,27 +8,19 @@ This document describes the available command-line interface (CLI) commands for 
 |---------|-------------|----------------|
 | `oboyu version` | Display version information | - |
 | `oboyu mcp` | Start MCP server for AI integration | `--transport`, `--port` |
-| `oboyu clear-db` | Clear database files | `--force` |
 | `oboyu clear` | Clear index data | `--force` |
 | `oboyu status <path>` | Show indexing status | `--detailed` |
 | `oboyu index <path>` | Index documents | `--force`, `--chunk-size`, `--include-patterns` |
-| `oboyu query` | Search indexed documents | `--query`, `--mode`, `--top-k`, `--rerank` |
-| `oboyu kg build` | Build knowledge graph | `--full`, `--batch-size` |
-| `oboyu kg stats` | Show KG statistics | - |
-| `oboyu kg search <query>` | GraphRAG-enhanced search | `--max-results`, `--use-graph` |
-| `oboyu kg expand-query <query>` | Expand query with entities | `--max-entities`, `--similarity` |
-| `oboyu kg deduplicate` | Remove duplicate entities | `--type`, `--similarity` |
-| `oboyu kg find-duplicates <name>` | Find potential duplicates | `--type`, `--limit` |
-| `oboyu kg explain-query <query>` | Generate query explanation | `--max-entities` |
-| `oboyu kg entity-summaries <names>` | Generate entity summaries | `--include-relations`, `--max-length` |
-| `oboyu kg find-clusters <seeds>` | Find entity clusters | `--threshold`, `--max-size` |
+| `oboyu search <query>` | Search documents with GraphRAG enhancement | `--mode`, `--top-k`, `--no-graph`, `--rerank` |
+| `oboyu build-kg` | Build knowledge graph from indexed documents | `--full`, `--batch-size` |
+| `oboyu deduplicate` | Deduplicate entities in knowledge graph | `--type`, `--similarity` |
 
 ### Common Workflows
 
 ```bash
 # Quick start: Index a codebase and search
 oboyu index ~/projects/myapp --include-patterns "*.py,*.js"
-oboyu query --query "database connection" --top-k 10
+oboyu search "database connection" --top-k 10
 
 # Incremental updates with cleanup
 oboyu index ~/documents --cleanup-deleted
@@ -214,24 +206,6 @@ Options:
 - `--force`, `-f`: Force clearing without confirmation
 - `--db-path`: Path to database file to clear
 
-### `oboyu clear-db`
-
-Clear all data from the index database by completely removing the database files.
-
-```bash
-# Clear database files with confirmation prompt
-oboyu clear-db
-
-# Force clear without confirmation
-oboyu clear-db --force
-
-# Clear specific database files
-oboyu clear-db --db-path custom.db
-```
-
-Options:
-- `--force`, `-f`: Force clearing without confirmation
-- `--db-path`: Path to database file to clear
 
 ### `oboyu status`
 
@@ -256,22 +230,22 @@ Options:
 
 Oboyu provides powerful knowledge graph operations for enhanced search capabilities through GraphRAG (Graph Retrieval-Augmented Generation).
 
-### `oboyu kg build`
+### `oboyu build-kg`
 
 Build knowledge graph from existing indexed chunks.
 
 ```bash
 # Build knowledge graph incrementally
-oboyu kg build
+oboyu build-kg
 
 # Force rebuild entire knowledge graph
-oboyu kg build --full
+oboyu build-kg --full
 
 # Build with custom batch size
-oboyu kg build --batch-size 100
+oboyu build-kg --batch-size 100
 
 # Build limited number of chunks
-oboyu kg build --limit 1000
+oboyu build-kg --limit 1000
 ```
 
 Options:
@@ -279,77 +253,22 @@ Options:
 - `--batch-size INTEGER`: Processing batch size for chunks
 - `--limit INTEGER`: Limit number of chunks to process
 
-### `oboyu kg stats`
-
-Show knowledge graph statistics and health information.
-
-```bash
-# Show basic knowledge graph statistics
-oboyu kg stats
-```
-
-### `oboyu kg search`
-
-Perform GraphRAG-enhanced semantic search using the knowledge graph.
-
-```bash
-# Basic GraphRAG search
-oboyu kg search "machine learning algorithms"
-
-# Search with more results
-oboyu kg search "database optimization" --max-results 20
-
-# Search without graph expansion
-oboyu kg search "python functions" --use-graph false
-
-# Search without reranking
-oboyu kg search "error handling" --rerank false
-```
-
-Options:
-- `--max-results INTEGER`: Maximum number of results (default: 10)
-- `--use-graph`: Use graph expansion for enhanced results (default: True)
-- `--rerank`: Rerank results with graph centrality (default: True)
-
-### `oboyu kg expand-query`
-
-Expand a query with relevant entities from the knowledge graph.
-
-```bash
-# Basic query expansion
-oboyu kg expand-query "neural networks"
-
-# Expand with more entities
-oboyu kg expand-query "data processing" --max-entities 20
-
-# Expand with higher similarity threshold
-oboyu kg expand-query "web frameworks" --similarity 0.8
-
-# Expand with deeper entity relationships
-oboyu kg expand-query "authentication" --depth 2
-```
-
-Options:
-- `--max-entities INTEGER`: Maximum entities to include (default: 10)
-- `--similarity FLOAT`: Entity similarity threshold (default: 0.7)
-- `--depth INTEGER`: Entity expansion depth (default: 1)
-
-### `oboyu kg deduplicate`
+### `oboyu deduplicate`
 
 Remove duplicate entities from the knowledge graph.
 
 ```bash
 # Deduplicate all entities
-oboyu kg deduplicate
+oboyu deduplicate
 
 # Deduplicate specific entity type
-oboyu kg deduplicate --type "PERSON"
+oboyu deduplicate --type "PERSON"
 
 # Custom similarity thresholds
-oboyu kg deduplicate --similarity 0.9 --verification 0.85
+oboyu deduplicate --similarity 0.9 --verification 0.85
 
 # Custom batch size for large datasets
-oboyu kg deduplicate --batch-size 200
+oboyu deduplicate --batch-size 200
 ```
 
 Options:
@@ -357,44 +276,6 @@ Options:
 - `--similarity FLOAT`: Vector similarity threshold (default: 0.85)
 - `--verification FLOAT`: LLM verification threshold (default: 0.8)
 - `--batch-size INTEGER`: Processing batch size (default: 100)
-
-### `oboyu kg find-duplicates`
-
-Find potential duplicate entities for a given name.
-
-```bash
-# Find duplicates for a specific entity
-oboyu kg find-duplicates "John Smith"
-
-# Filter by entity type
-oboyu kg find-duplicates "Apple" --type "ORGANIZATION"
-
-# Adjust similarity threshold
-oboyu kg find-duplicates "Python" --similarity 0.9
-
-# Limit number of results
-oboyu kg find-duplicates "machine learning" --limit 5
-```
-
-Options:
-- `--type`: Entity type filter
-- `--similarity FLOAT`: Minimum similarity threshold (default: 0.85)
-- `--limit INTEGER`: Maximum number of results (default: 10)
-
-### Other Knowledge Graph Commands
-
-Additional knowledge graph management commands:
-
-```bash
-# Generate explanations for queries
-oboyu kg explain-query "search term"
-
-# Generate entity summaries (comma-separated names)
-oboyu kg entity-summaries "entity1,entity2"
-
-# Find entity clusters (comma-separated seed entities)
-oboyu kg find-clusters "seed1,seed2"
-```
 
 ## Manage Commands
 
@@ -435,76 +316,100 @@ oboyu manage diff /path/to/docs
 - Use `oboyu clear` instead of `oboyu manage clear`
 - Use `oboyu status` instead of `oboyu manage status`
 
-### `oboyu query`
+## Search Commands
 
-Search indexed documents.
+### `oboyu search`
+
+Search indexed documents with GraphRAG enhancement enabled by default.
 
 ```bash
-# Basic query
-oboyu query --query "search term"
+# Basic GraphRAG search (recommended)
+oboyu search "machine learning algorithms"
+
+# Search without GraphRAG enhancement
+oboyu search "search term" --no-graph
 
 # Specify search mode
-oboyu query --query "search term" --mode vector
+oboyu search "search term" --mode vector
 
 # Get more results
-oboyu query --query "search term" --top-k 10
+oboyu search "search term" --top-k 10
 
 # Use hybrid search (automatically uses RRF algorithm)
-oboyu query --query "search term" --mode hybrid
+oboyu search "search term" --mode hybrid
 
 # Enable reranking for better accuracy
-oboyu query --query "search term" --rerank
+oboyu search "search term" --rerank
 
 # Disable reranking for faster results
-oboyu query --query "search term" --no-rerank
+oboyu search "search term" --no-rerank
+
+# Show query expansion details
+oboyu search "search term" --expand
 
 # Get detailed explanation of results
-oboyu query --query "search term" --explain
+oboyu search "search term" --explain
 
+# JSON output for scripting
+oboyu search "search term" --format json
 ```
 
 Options:
 - `--mode`: Search mode (vector, bm25, hybrid) - default: hybrid
-- `--top-k`: Number of results to return - default: 5
-- `--explain/--no-explain`: Show detailed explanation of results - default: no-explain
+- `--top-k`: Number of results to return - default: 10
+- `--no-graph`: Disable GraphRAG enhancement (use traditional search only)
+- `--expand`: Show query expansion details with related entities
+- `--explain`: Show detailed explanation of results processing
+- `--rerank/--no-rerank`: Enable or disable reranking of search results
 - `--format`: Output format (text, json) - default: text
 - `--rrf-k`: RRF ranking parameter for hybrid search
 - `--db-path`: Path to database file
-- `--rerank/--no-rerank`: Enable or disable reranking of search results
 
-#### Query Examples
+#### Search Examples
 
-**Search for function definitions in code:**
+**GraphRAG-enhanced search (default behavior):**
+```bash
+# Search with knowledge graph enhancement
+oboyu search "machine learning algorithms"
+
+# Search with query expansion details
+oboyu search "neural networks" --expand
+
+# Search with detailed processing explanation
+oboyu search "database optimization" --explain
+```
+
+**Traditional search (GraphRAG disabled):**
 ```bash
 # Find function definitions with specific names
-oboyu query --query "def process_data" --mode bm25 --top-k 20
+oboyu search "def process_data" --no-graph --mode bm25 --top-k 20
 
 # Search for class implementations
-oboyu query --query "class DatabaseConnection" --explain
+oboyu search "class DatabaseConnection" --no-graph --explain
 ```
 
 **Multi-language search with reranking:**
 ```bash
 # Search across English and Japanese content
-oboyu query --query "machine learning 機械学習" --rerank --top-k 10
+oboyu search "machine learning 機械学習" --rerank --top-k 10
 ```
 
 **Export results for processing:**
 ```bash
 # Get JSON output for scripting
-oboyu query --query "error handling" --format json | jq '.results[].file_path'
+oboyu search "error handling" --format json | jq '.results[].file_path'
 
 # Save results to file
-oboyu query --query "TODO" --top-k 50 --format json > todos.json
+oboyu search "TODO" --top-k 50 --format json > todos.json
 ```
 
 **Fine-tuned hybrid search:**
 ```bash
 # Use semantic search for concept-based queries
-oboyu query --query "authentication flow" --mode vector
+oboyu search "authentication flow" --mode vector
 
 # Use hybrid search for balanced semantic and keyword matching
-oboyu query --query "database optimization techniques" --mode hybrid
+oboyu search "database optimization techniques" --mode hybrid
 ```
 
 
@@ -547,7 +452,7 @@ else
 fi
 
 # Search with error handling
-oboyu query --query "important document" --format json > results.json
+oboyu search "important document" --format json > results.json
 if [ $? -eq 0 ]; then
     echo "Found $(jq '.total' results.json) results"
 else
@@ -613,7 +518,7 @@ After setting up completion, test it:
 # Type and press TAB
 oboyu <TAB>
 oboyu index --<TAB>
-oboyu query --mode <TAB>
+oboyu search --mode <TAB>
 ```
 
 ## Troubleshooting
@@ -644,7 +549,7 @@ oboyu index ~/docs --db-path ~/alternative.db
 rm -rf ~/.cache/huggingface/hub/*oboyu*
 
 # Retry with verbose output
-oboyu query --query "test" --verbose
+oboyu search "test" --verbose
 
 # Use a different model
 oboyu index ~/docs --embedding-model sentence-transformers/all-MiniLM-L6-v2
@@ -731,13 +636,13 @@ Add to your shell configuration:
 
 ```bash
 # Quick search functions
-alias todos='oboyu query --query "TODO|FIXME" --mode bm25 --top-k 50'
-alias errors='oboyu query --query "error|exception|traceback" --rerank'
-alias recent='oboyu query --mode hybrid --top-k 10'
+alias todos='oboyu search "TODO|FIXME" --no-graph --mode bm25 --top-k 50'
+alias errors='oboyu search "error|exception|traceback" --rerank'
+alias recent='oboyu search "recent changes" --mode hybrid --top-k 10'
 
 # Project-specific search
 function search_project() {
-    oboyu query --query "$1" --db-path ~/projects/${2:-current}.db
+    oboyu search "$1" --db-path ~/projects/${2:-current}.db
 }
 ```
 
@@ -745,12 +650,12 @@ function search_project() {
 
 ```bash
 # Find and open files in editor
-oboyu query --query "$1" --format json | \
+oboyu search "$1" --format json | \
     jq -r '.results[0].file_path' | \
     xargs code
 
 # Search and preview with bat
-oboyu query --query "$1" --format json | \
+oboyu search "$1" --format json | \
     jq -r '.results[].file_path' | \
     xargs bat --paging=never
 ```
@@ -759,9 +664,9 @@ oboyu query --query "$1" --format json | \
 
 ```bash
 # Benchmark different search modes
-time oboyu query --query "database connection" --mode vector --no-rerank
-time oboyu query --query "database connection" --mode bm25 --no-rerank
-time oboyu query --query "database connection" --mode hybrid --rerank
+time oboyu search "database connection" --no-graph --mode vector --no-rerank
+time oboyu search "database connection" --no-graph --mode bm25 --no-rerank
+time oboyu search "database connection" --mode hybrid --rerank
 
 # Profile indexing performance
 time oboyu index ~/large-codebase --force
@@ -776,11 +681,11 @@ export WORK_DB=~/.oboyu/work.db
 export PERSONAL_DB=~/.oboyu/personal.db
 
 # Work searches
-alias work-search='oboyu query --db-path $WORK_DB'
+alias work-search='oboyu search --db-path $WORK_DB'
 alias work-index='oboyu index --db-path $WORK_DB'
 
 # Personal searches
-alias personal-search='oboyu query --db-path $PERSONAL_DB'
+alias personal-search='oboyu search --db-path $PERSONAL_DB'
 alias personal-index='oboyu index --db-path $PERSONAL_DB'
 ```
 
@@ -826,7 +731,7 @@ search_and_process() {
     local query=$1
     local results_file="/tmp/oboyu-results-$$.json"
     
-    if oboyu query --query "$query" --format json --top-k 20 > "$results_file"; then
+    if oboyu search "$query" --format json --top-k 20 > "$results_file"; then
         # Process results with jq
         jq -r '.results[] | "\(.score)\t\(.file_path)"' "$results_file" | \
         while IFS=$'\t' read -r score path; do
@@ -897,10 +802,10 @@ jobs:
       - name: Run quality checks
         run: |
           # Search for TODOs
-          oboyu query --query "TODO" --format json > todos.json
+          oboyu search "TODO" --format json > todos.json
           
           # Check for security issues
-          oboyu query --query "password|secret|api_key" --format json > security-check.json
+          oboyu search "password|secret|api_key" --format json > security-check.json
           
           # Generate report
           python scripts/analyze_search_results.py
@@ -995,7 +900,7 @@ def check_index_health(db_path):
     test_queries = ["test", "function", "class"]
     for query in test_queries:
         output, code = run_oboyu_command([
-            "query", query,
+            "search", query,
             "--db-path", db_path,
             "--format", "json",
             "--top-k", "1"
