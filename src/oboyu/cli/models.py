@@ -35,7 +35,6 @@ class SearchRequest(BaseModel):
     rerank: bool = Field(default=True, description="Enable reranking")
     explain: bool = Field(default=False, description="Show explanation")
     format: OutputFormat = Field(default=OutputFormat.TEXT, description="Output format")
-    interactive: bool = Field(default=False, description="Interactive mode")
 
     @field_validator("query")
     @classmethod
