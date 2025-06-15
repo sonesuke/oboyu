@@ -210,8 +210,8 @@ jobs:
                 "labels": ["test"]
               }
             ],
-            "template": "# Changelog\n\n${{CHANGELOG}}\n\n**Full Changelog**: ${{RELEASE_DIFF}}\n",
-            "pr_template": "- ${{TITLE}} (#${{NUMBER}})",
+            "template": "# Changelog\n\n{{CHANGELOG}}\n\n**Full Changelog**: {{RELEASE_DIFF}}\n",
+            "pr_template": "- {{TITLE}} (#{{NUMBER}})",
             "empty_template": "No changes.",
             "sort": "ASC",
             "max_pull_requests": 100,
