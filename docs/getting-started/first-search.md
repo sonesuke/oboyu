@@ -13,7 +13,7 @@ Now that you've created an index, let's explore how to search your documents eff
 The simplest search is just a few keywords:
 
 ```bash
-oboyu query --query "project deadline"
+oboyu search "project deadline"
 ```
 
 Oboyu will return the most relevant documents containing information about project deadlines.
@@ -49,44 +49,44 @@ Oboyu offers three search modes to match your needs:
 ### 1. Hybrid Search (Default)
 Combines keyword and semantic search for best results:
 ```bash
-oboyu query --query "quarterly revenue analysis"
+oboyu search "quarterly revenue analysis"
 ```
 
 ### 2. Vector Search
 Understands meaning and context using semantic embeddings:
 ```bash
-oboyu query --query "documents about financial planning" --mode vector
+oboyu search "documents about financial planning" --mode vector
 ```
 
 ### 3. BM25 Search
 Fast, traditional keyword matching:
 ```bash
-oboyu query --query "budget report 2024" --mode bm25
+oboyu search "budget report 2024" --mode bm25
 ```
 
 ## Refining Your Search
 
 ### Limit Number of Results
 ```bash
-oboyu query --query "meeting notes" --top-k 5
+oboyu search "meeting notes" --top-k 5
 ```
 
 ### Enable Reranking
 Improve search quality with neural reranking:
 ```bash
-oboyu query --query "architecture design" --rerank
+oboyu search "architecture design" --rerank
 ```
 
 ### Get Detailed Explanations
 See why documents matched your query:
 ```bash
-oboyu query --query "configuration" --explain
+oboyu search "configuration" --explain
 ```
 
 ### Output as JSON
 Get structured results for automation:
 ```bash
-oboyu query --query "status update" --format json
+oboyu search "status update" --format json
 ```
 
 ## Search Examples by Use Case
@@ -94,28 +94,28 @@ oboyu query --query "status update" --format json
 ### Finding Meeting Notes
 ```bash
 # Meeting about specific topic
-oboyu query --query "budget discussion"
+oboyu search "budget discussion"
 
 # All meetings with specific person using semantic search
-oboyu query --query "meeting with Sarah" --mode vector
+oboyu search "meeting with Sarah" --mode vector
 ```
 
 ### Searching Technical Documentation
 ```bash
 # Find API documentation
-oboyu query --query "REST API authentication"
+oboyu search "REST API authentication"
 
 # Find configuration examples with reranking
-oboyu query --query "database connection config" --rerank
+oboyu search "database connection config" --rerank
 ```
 
 ### Research and Academic Papers
 ```bash
 # Find papers on specific topic with limited results
-oboyu query --query "machine learning optimization" --top-k 10
+oboyu search "machine learning optimization" --top-k 10
 
 # Find recent research using hybrid search
-oboyu query --query "neural networks 2024" --mode hybrid
+oboyu search "neural networks 2024" --mode hybrid
 ```
 
 ## Advanced Search Techniques
@@ -123,13 +123,13 @@ oboyu query --query "neural networks 2024" --mode hybrid
 ### Phrase Search
 Use quotes for exact phrases:
 ```bash
-oboyu query --query '"project deadline march 15"'
+oboyu search '"project deadline march 15"'
 ```
 
 ### Combining Terms
 Use natural language:
 ```bash
-oboyu query --query "emails about contract renewal from legal department"
+oboyu search "emails about contract renewal from legal department"
 ```
 
 ## Interactive Search Mode
@@ -137,7 +137,7 @@ oboyu query --query "emails about contract renewal from legal department"
 For exploratory searching, use interactive mode:
 
 ```bash
-oboyu query --interactive
+oboyu search --interactive
 ```
 
 This opens a search session where you can:
@@ -170,13 +170,13 @@ Oboyu excels at Japanese text search:
 
 ```bash
 # Search in Japanese
-oboyu query --query "会議議事録"
+oboyu search "会議議事録"
 
 # Mixed language search
-oboyu query --query "プロジェクト deadline"
+oboyu search "プロジェクト deadline"
 
 # Vector search understands context
-oboyu query --query "来週の予定について" --mode vector
+oboyu search "来週の予定について" --mode vector
 ```
 
 ## Search Performance Tips
@@ -188,13 +188,13 @@ Try: `"Q4 financial report"`
 ### 2. Leverage Vector Search
 For conceptual searches:
 ```bash
-oboyu query --query "documents explaining our pricing strategy" --mode vector
+oboyu search "documents explaining our pricing strategy" --mode vector
 ```
 
 ### 3. Use Available Options
 Improve your search with available options:
 ```bash
-oboyu query --query "api documentation" --rerank --top-k 10
+oboyu search "api documentation" --rerank --top-k 10
 ```
 
 ## Understanding Relevance Scores
@@ -210,13 +210,13 @@ Oboyu assigns relevance scores (0.0 to 1.0):
 ### Custom Database Path
 Search a specific database:
 ```bash
-oboyu query --query "documents" --db-path /path/to/custom.db
+oboyu search "documents" --db-path /path/to/custom.db
 ```
 
 ### Fine-tune Hybrid Search
 Adjust the RRF (Reciprocal Rank Fusion) parameter:
 ```bash
-oboyu query --query "documents" --rrf-k 30
+oboyu search "documents" --rrf-k 30
 ```
 
 ## Troubleshooting Search Issues
@@ -240,13 +240,13 @@ oboyu query --query "documents" --rrf-k 30
 
 1. **Start Broad, Then Narrow**
    ```bash
-   oboyu query --query "project"  # Too broad
-   oboyu query --query "project alpha milestone 2"  # Better
+   oboyu search "project"  # Too broad
+   oboyu search "project alpha milestone 2"  # Better
    ```
 
 2. **Use Natural Language**
    ```bash
-   oboyu query --query "emails about the new product launch"
+   oboyu search "emails about the new product launch"
    ```
 
 3. **Combine Search Modes**
@@ -255,7 +255,7 @@ oboyu query --query "documents" --rrf-k 30
 4. **Regular Index Updates**
    Keep your search results current:
    ```bash
-   oboyu manage diff && oboyu query --query "latest reports"
+   oboyu manage diff && oboyu search "latest reports"
    ```
 
 ## Next Steps

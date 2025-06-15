@@ -70,7 +70,7 @@ oboyu index ~/Documents/work-docs --db-path ~/my-indexes/work.db
 
 Later, search using this specific database:
 ```bash
-oboyu query --query "meeting notes" --db-path ~/my-indexes/work.db
+oboyu search "meeting notes" --db-path ~/my-indexes/work.db
 ```
 
 ### Index Specific File Types
@@ -104,7 +104,7 @@ This tells you:
 
 You can now search your documents:
 ```bash
-oboyu query --query "your search terms"
+oboyu search "your search terms"
 ```
 
 ## Best Practices for Indexing
