@@ -8,11 +8,10 @@ This document describes the available command-line interface (CLI) commands for 
 |---------|-------------|----------------|
 | `oboyu version` | Display version information | - |
 | `oboyu mcp` | Start MCP server for AI integration | `--transport`, `--port` |
-| `oboyu clear` | Clear index database | `--force` |
+| `oboyu clear-db` | Clear database files | `--force` |
+| `oboyu clear` | Clear index data | `--force` |
+| `oboyu status <path>` | Show indexing status | `--detailed` |
 | `oboyu index <path>` | Index documents | `--force`, `--chunk-size`, `--include-patterns` |
-| `oboyu index manage status` | Show indexing status | `--detailed` |
-| `oboyu index manage diff` | Preview indexing changes | `--change-detection` |
-| `oboyu index manage clear` | Clear index data | `--force` |
 | `oboyu query <text>` | Search indexed documents | `--mode`, `--top-k`, `--rerank` |
 | `oboyu query --interactive` | Interactive search session | `--mode`, `--rerank` |
 
@@ -25,7 +24,7 @@ oboyu query --query "database connection" --top-k 10
 
 # Incremental updates with cleanup
 oboyu index ~/documents --cleanup-deleted
-oboyu index manage status ~/documents --detailed
+oboyu status ~/documents --detailed
 
 # Interactive exploration with reranking
 oboyu query --interactive --rerank --mode hybrid
@@ -190,62 +189,70 @@ oboyu index ~/work/project1 ~/work/project2 ~/personal/blog \
 
 ## Index Management Commands
 
-### `oboyu index manage clear`
+### `oboyu clear`
 
-Clear all data from the index database (alternative to `oboyu clear`).
+Clear all data from the index database while preserving the database schema and structure.
 
 ```bash
 # Clear with confirmation prompt
-oboyu index manage clear
+oboyu clear
 
 # Force clear without confirmation
-oboyu index manage clear --force
+oboyu clear --force
 
 # Clear specific database
-oboyu index manage clear --db-path custom.db
+oboyu clear --db-path custom.db
 ```
 
 Options:
 - `--force`, `-f`: Force clearing without confirmation
 - `--db-path`: Path to database file to clear
 
-### `oboyu index manage status`
+### `oboyu clear-db`
+
+Clear all data from the index database by completely removing the database files.
+
+```bash
+# Clear database files with confirmation prompt
+oboyu clear-db
+
+# Force clear without confirmation
+oboyu clear-db --force
+
+# Clear specific database files
+oboyu clear-db --db-path custom.db
+```
+
+Options:
+- `--force`, `-f`: Force clearing without confirmation
+- `--db-path`: Path to database file to clear
+
+### `oboyu status`
 
 Show indexing status for specified directories.
 
 ```bash
 # Show basic status for directories
-oboyu index manage status /path/to/docs
+oboyu status /path/to/docs
 
 # Show detailed file-by-file status
-oboyu index manage status /path/to/docs --detailed
+oboyu status /path/to/docs --detailed
 
 # Check status with custom database
-oboyu index manage status /path/to/docs --db-path custom.db
+oboyu status /path/to/docs --db-path custom.db
 ```
 
 Options:
 - `--detailed`, `-d`: Show detailed file-by-file status
 - `--db-path`: Path to database file
 
-### `oboyu index manage diff`
+### Deprecated Commands
 
-Show what would be updated if indexing were run now (dry-run).
+The following commands are deprecated and will be removed in a future version:
 
-```bash
-# Show what would change
-oboyu index manage diff /path/to/docs
-
-# Use specific change detection strategy
-oboyu index manage diff /path/to/docs --change-detection hash
-
-# Check diff with custom database
-oboyu index manage diff /path/to/docs --db-path custom.db
-```
-
-Options:
-- `--change-detection`: Strategy for detecting changes (timestamp, hash, smart) - default: smart
-- `--db-path`: Path to database file
+- `oboyu manage clear` → Use `oboyu clear` instead
+- `oboyu manage status` → Use `oboyu status` instead
+- `oboyu manage diff` → Use `oboyu status --detailed` instead
 
 ### `oboyu query`
 
@@ -787,7 +794,7 @@ oboyu index ~/docs
 **Solution:**
 ```bash
 # Check what would be updated
-oboyu index manage diff ~/docs
+oboyu status ~/docs --detailed
 
 # Use hash-based detection for accuracy
 oboyu index ~/docs --change-detection hash
@@ -1079,7 +1086,7 @@ def check_index_health(db_path):
     """Check index health and statistics"""
     # Get index status
     output, code = run_oboyu_command([
-        "index", "manage", "status", ".", 
+        "status", ".", 
         "--db-path", db_path,
         "--detailed"
     ])

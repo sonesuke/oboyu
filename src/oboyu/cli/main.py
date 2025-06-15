@@ -17,6 +17,7 @@ from rich.console import Console
 from typing_extensions import Annotated
 
 from oboyu import __version__
+from oboyu.cli.clear import clear
 from oboyu.cli.commands.graphrag import app as graphrag_app
 from oboyu.cli.commands.kg import app as kg_app
 from oboyu.cli.commands.kg_property_graph import app as kg_graph_app
@@ -26,6 +27,7 @@ from oboyu.cli.index import app as index_app
 from oboyu.cli.manage import app as manage_app
 from oboyu.cli.mcp import app as mcp_app
 from oboyu.cli.query import app as query_app
+from oboyu.cli.status import status
 from oboyu.common.config import ConfigManager
 from oboyu.common.paths import ensure_config_dirs
 
@@ -53,6 +55,10 @@ app.add_typer(mcp_app, name="mcp", help="Run an MCP server for AI assistant inte
 app.add_typer(kg_app, name="kg", help="Knowledge graph operations")
 app.add_typer(kg_graph_app, name="graph", help="Property graph queries and analytics")
 app.add_typer(graphrag_app, name="graphrag", help="GraphRAG enhanced search and retrieval")
+
+# Add top-level commands
+app.command("clear")(clear)
+app.command("status")(status)
 
 
 @app.callback()
@@ -87,8 +93,8 @@ def version() -> None:
     console.print(f"Oboyu version: {__version__}")
 
 
-@app.command()
-def clear(
+@app.command(name="clear-db")
+def clear_db(
     ctx: typer.Context,
     db_path: DatabasePathOption = None,
     force: Annotated[
