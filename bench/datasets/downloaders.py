@@ -199,7 +199,7 @@ class HuggingFaceDownloader(DatasetDownloader):
         # This is a generic converter - specific datasets may need custom processing
         return self._convert_huggingface_dataset(dataset)
     
-    def _convert_huggingface_dataset(self, hf_dataset) -> EvaluationDataset:
+    def _convert_huggingface_dataset(self, hf_dataset: Any) -> EvaluationDataset:
         """Convert HuggingFace dataset to our format."""
         # This is a placeholder - would need specific implementation for each dataset
         logger.warning("Generic HuggingFace dataset conversion not implemented")

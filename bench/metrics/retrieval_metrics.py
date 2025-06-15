@@ -6,7 +6,7 @@ precision@k, recall@k, NDCG@k, MRR, hit rate, and F1@k.
 
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Set, Union
+from typing import Dict, List, Set, Union, Optional
 
 
 @dataclass
@@ -94,7 +94,7 @@ def calculate_ndcg_at_k(
     retrieved_docs: List[str],
     relevant_docs: Set[str],
     k: int,
-    relevance_scores: Dict[str, float] = None,
+    relevance_scores: Optional[Dict[str, float]] = None,
 ) -> float:
     """Calculate Normalized Discounted Cumulative Gain at k.
     

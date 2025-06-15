@@ -94,8 +94,6 @@ def calculate_japanese_effectiveness(
     if len(japanese_queries) == 0:
         return 0.0
     
-    scores = []
-    
     # 1. Character encoding detection effectiveness
     encoding_score = _evaluate_encoding_handling(japanese_documents)
     
