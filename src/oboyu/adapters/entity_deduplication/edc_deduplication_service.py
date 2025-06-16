@@ -13,6 +13,7 @@ import jaconv
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
+from oboyu.application.services.entity_embedding_service import EntityEmbeddingService
 from oboyu.domain.models.knowledge_graph import Entity
 from oboyu.ports.services.entity_deduplication_service import DeduplicationError, EntityDeduplicationService
 from oboyu.ports.services.kg_extraction_service import KGExtractionService
@@ -33,20 +34,26 @@ class EDCDeduplicationService(EntityDeduplicationService):
         llm_service: KGExtractionService,
         similarity_threshold: float = 0.85,
         verification_threshold: float = 0.8,
+        entity_embedding_service: Optional[EntityEmbeddingService] = None,
+        use_precomputed_embeddings: bool = True,
     ) -> None:
         """Initialize EDC deduplication service.
 
         Args:
-            embedding_model: Sentence transformer for vector similarity
+            embedding_model: Sentence transformer for vector similarity (fallback)
             llm_service: LLM service for definition generation and verification
             similarity_threshold: Default vector similarity threshold
             verification_threshold: Default LLM verification threshold
+            entity_embedding_service: Service for pre-computed embeddings
+            use_precomputed_embeddings: Whether to use pre-computed embeddings when available
 
         """
         self.embedding_model = embedding_model
         self.llm_service = llm_service
         self.similarity_threshold = similarity_threshold
         self.verification_threshold = verification_threshold
+        self.entity_embedding_service = entity_embedding_service
+        self.use_precomputed_embeddings = use_precomputed_embeddings
         self._entity_cache: Dict[str, np.ndarray] = {}
 
     async def generate_entity_definition(self, entity: Entity, context: Optional[str] = None) -> str:
@@ -155,12 +162,40 @@ class EDCDeduplicationService(EntityDeduplicationService):
             raise DeduplicationError(f"Similarity search failed: {e}", entity.id)
 
     async def _get_entity_embedding(self, entity: Entity, normalized_name: str) -> np.ndarray:
-        """Get or compute entity embedding with caching."""
+        """Get or compute entity embedding with caching and pre-computed embedding support."""
         cache_key = f"{entity.id}:{normalized_name}"
 
+        # Check memory cache first
         if cache_key in self._entity_cache:
             return self._entity_cache[cache_key]
 
+        # Try to use pre-computed embeddings if available and enabled
+        if (self.use_precomputed_embeddings and 
+            self.entity_embedding_service and 
+            entity.embedding is not None):
+            
+            logger.debug(f"Using pre-computed embedding for entity {entity.id}")
+            embedding = np.array(entity.embedding, dtype=np.float32)
+            
+            # Normalize embedding (ensure it's unit vector)
+            norm = np.linalg.norm(embedding)
+            if norm > 0:
+                embedding = embedding / norm
+            
+            # Cache the result
+            self._entity_cache[cache_key] = embedding
+            return embedding
+
+        # Fall back to dynamic computation
+        logger.debug(f"Computing dynamic embedding for entity {entity.id}")
+        embedding = await self._compute_dynamic_embedding(entity, normalized_name)
+        
+        # Cache the result
+        self._entity_cache[cache_key] = embedding
+        return embedding
+
+    async def _compute_dynamic_embedding(self, entity: Entity, normalized_name: str) -> np.ndarray:
+        """Compute embedding dynamically using the sentence transformer."""
         # Create entity description for embedding
         description = self._create_entity_description(entity, normalized_name)
 
@@ -169,12 +204,9 @@ class EDCDeduplicationService(EntityDeduplicationService):
 
         # Convert to numpy array if needed
         if not isinstance(embedding_result, np.ndarray):
-            embedding = np.array(embedding_result)
+            embedding = np.array(embedding_result, dtype=np.float32)
         else:
-            embedding = embedding_result
-
-        # Cache the result
-        self._entity_cache[cache_key] = embedding
+            embedding = embedding_result.astype(np.float32)
 
         return embedding
 
@@ -379,6 +411,10 @@ JSON形式のみで回答してください:"""
         logger.info(f"Starting deduplication of {len(entities)} entities")
 
         try:
+            # Pre-compute embeddings for entities that don't have them
+            if self.use_precomputed_embeddings and self.entity_embedding_service:
+                await self._ensure_embeddings_computed(entities)
+
             # Track processed entities and merges
             processed_ids = set()
             canonical_entities = []
@@ -447,3 +483,59 @@ JSON形式のみで回答してください:"""
         except Exception as e:
             logger.warning(f"Name normalization failed for '{name}': {e}")
             return name  # Return original on error
+
+    async def _ensure_embeddings_computed(self, entities: List[Entity]) -> None:
+        """Ensure all entities have pre-computed embeddings available."""
+        if not self.entity_embedding_service:
+            return
+
+        # Find entities without embeddings
+        entities_without_embeddings = [
+            entity for entity in entities 
+            if entity.embedding is None
+        ]
+
+        if not entities_without_embeddings:
+            logger.debug("All entities already have pre-computed embeddings")
+            return
+
+        logger.info(f"Computing embeddings for {len(entities_without_embeddings)} entities without pre-computed embeddings")
+
+        try:
+            # Use batch computation for efficiency
+            computed_count = await self.entity_embedding_service.batch_compute_embeddings(
+                entities_without_embeddings,
+                skip_existing=False  # Force computation since we filtered above
+            )
+            
+            logger.info(f"Successfully computed {computed_count} embeddings")
+
+        except Exception as e:
+            logger.warning(f"Failed to compute some embeddings, will fall back to dynamic computation: {e}")
+
+    async def get_embedding_statistics(self) -> Dict[str, Any]:
+        """Get statistics about embedding usage in the service."""
+        if not self.entity_embedding_service:
+            return {
+                "embedding_service_available": False,
+                "use_precomputed_embeddings": self.use_precomputed_embeddings,
+                "cache_size": len(self._entity_cache),
+            }
+
+        try:
+            stats = await self.entity_embedding_service.get_embedding_statistics()
+            stats.update({
+                "embedding_service_available": True,
+                "use_precomputed_embeddings": self.use_precomputed_embeddings,
+                "cache_size": len(self._entity_cache),
+                "fallback_model": str(self.embedding_model) if hasattr(self.embedding_model, '__str__') else type(self.embedding_model).__name__,
+            })
+            return stats
+        except Exception as e:
+            logger.error(f"Failed to get embedding statistics: {e}")
+            return {
+                "embedding_service_available": True,
+                "use_precomputed_embeddings": self.use_precomputed_embeddings,
+                "cache_size": len(self._entity_cache),
+                "error": str(e),
+            }

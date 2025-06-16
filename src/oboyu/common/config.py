@@ -23,6 +23,16 @@ QUERY_ENGINE_DEFAULTS = {
     "interactive": False,
 }
 
+KG_DEFAULTS = {
+    "embedding": {
+        "auto_compute": True,
+        "batch_size": 100,
+        "update_stale_after_days": 30,
+        "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+        "use_precomputed_embeddings": True,
+    },
+}
+
 T = TypeVar("T", CrawlerConfigSchema, IndexerConfigSchema, QueryConfigSchema)
 
 
@@ -56,6 +66,7 @@ class ConfigManager:
             "crawler": crawler_defaults.copy() if isinstance(crawler_defaults, dict) else {},
             "indexer": indexer_defaults.copy() if isinstance(indexer_defaults, dict) else {},
             "query": QUERY_ENGINE_DEFAULTS.copy(),
+            "kg": KG_DEFAULTS.copy(),
         }
 
     def load_config(self) -> Dict[str, Any]:

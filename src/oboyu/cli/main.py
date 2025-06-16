@@ -20,6 +20,7 @@ from oboyu.cli.build_kg import app as build_kg_app
 from oboyu.cli.clear import clear
 from oboyu.cli.common_options import ConfigOption, DatabasePathOption, VerboseOption
 from oboyu.cli.deduplicate import app as deduplicate_app
+from oboyu.cli.embeddings import app as embeddings_app
 from oboyu.cli.enrich import enrich
 from oboyu.cli.index import app as index_app
 from oboyu.cli.mcp import app as mcp_app
@@ -49,6 +50,7 @@ app.add_typer(search_app, name="search", help="Search documents with GraphRAG en
 app.command("enrich")(enrich)
 app.add_typer(build_kg_app, name="build-kg", help="Build knowledge graph from indexed documents")
 app.add_typer(deduplicate_app, name="deduplicate", help="Deduplicate entities in knowledge graph")
+app.add_typer(embeddings_app, name="embeddings", help="Manage entity embeddings for enhanced EDC performance")
 app.add_typer(mcp_app, name="mcp", help="Run MCP server for AI assistant integration")
 
 # Top-level commands
