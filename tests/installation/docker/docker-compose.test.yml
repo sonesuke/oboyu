@@ -24,8 +24,6 @@ services:
       - ../../../test-results:/home/testuser/test-results
     environment:
       - TEST_NAME=pip-wheel
-    depends_on:
-      - build-wheel
 
   # Test pip editable installation
   test-pip-editable:
@@ -53,20 +51,6 @@ services:
     environment:
       - TEST_NAME=uv
 
-  # Build wheel for testing
-  build-wheel:
-    image: python:3.13-slim
-    container_name: oboyu-build-wheel
-    working_dir: /app
-    volumes:
-      - ../../../:/app
-    command: |
-      bash -c "
-        apt-get update && apt-get install -y git &&
-        pip install --upgrade pip build &&
-        python -m build --wheel &&
-        echo 'Wheel built successfully'
-      "
 
   # Run all tests
   test-runner:
@@ -86,7 +70,7 @@ services:
     command: |
       bash -c "
         echo 'Running all installation tests...' &&
-        python /home/testuser/tests/installation/scripts/validate_installations.py | tee /home/testuser/test-results/all-tests.log
+        python /home/testuser/validate_installations.py | tee /home/testuser/test-results/all-tests.log
       "
 
   # Test installation from Test PyPI (simulated)

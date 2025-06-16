@@ -1215,7 +1215,7 @@ requires-dist = [
     { name = "pymupdf4llm", specifier = ">=0.0.25" },
     { name = "python-frontmatter", specifier = ">=1.1.0" },
     { name = "pyyaml", specifier = ">=6.0.2" },
-    { name = "rich", specifier = ">=13.7.0,<14.0.0" },
+    { name = "rich", specifier = ">=13.7.0,<15.0.0" },
     { name = "sentence-transformers", specifier = ">=4.1.0" },
     { name = "sentencepiece", specifier = ">=0.2.0" },
     { name = "torch", specifier = ">=2.7.0" },
