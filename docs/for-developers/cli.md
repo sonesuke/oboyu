@@ -2,19 +2,21 @@
 
 This document describes the available command-line interface (CLI) commands for Oboyu.
 
+**Main CLI Description:** A Japanese-enhanced semantic search system with integrated GraphRAG functionality.
+
 ## Quick Command Reference
 
 | Command | Description | Common Options |
 |---------|-------------|----------------|
 | `oboyu version` | Display version information | - |
-| `oboyu mcp` | Start MCP server for AI integration | `--transport`, `--port` |
-| `oboyu clear` | Clear index data | `--force` |
-| `oboyu status <path>` | Show indexing status | `--detailed` |
-| `oboyu index <path>` | Index documents | `--force`, `--chunk-size`, `--include-patterns` |
-| `oboyu search <query>` | Search documents with GraphRAG enhancement | `--mode`, `--top-k`, `--no-graph`, `--rerank` |
-| `oboyu enrich <csv> <schema>` | Enrich CSV data with knowledge base information | `--batch-size`, `--confidence`, `--output` |
-| `oboyu build-kg` | Build knowledge graph from indexed documents | `--full`, `--batch-size` |
-| `oboyu deduplicate` | Deduplicate entities in knowledge graph | `--type`, `--similarity` |
+| `oboyu mcp` | Run MCP server for AI assistant integration | `--transport`, `--port`, `--verbose`, `--debug` |
+| `oboyu clear` | Clear all data from index database while preserving schema | `--force` |
+| `oboyu status [path]` | Show unified index and knowledge graph status | `--detailed`, `--kg` |
+| `oboyu index <path>` | Index documents for search | `--force`, `--chunk-size`, `--include-patterns` |
+| `oboyu search <query>` | Search documents with GraphRAG enhancement | `--mode`, `--top-k`, `--no-graph`, `--no-rerank` |
+| `oboyu enrich <csv> <schema>` | Enrich CSV data using semantic search and GraphRAG | `--batch-size`, `--confidence`, `--output` |
+| `oboyu build-kg` | Build knowledge graph from indexed documents | `--full`, `--batch-size`, `--limit` |
+| `oboyu deduplicate` | Deduplicate entities in knowledge graph | `--type`, `--similarity`, `--verification` |
 
 ### Common Workflows
 
@@ -34,10 +36,10 @@ oboyu enrich companies.csv enrichment-schema.json --output enriched.csv
 
 ## Global Options
 
-The following options are available for all commands:
+The following options are available for most commands:
 
 - `--config`, `-c`: Path to configuration file (see [Configuration Guide](../reference/configuration.md))
-- `--db-path`: Path to database file
+- `--db-path`: Path to database file (env var: OBOYU_DB_PATH)
 - `--verbose`, `-v`: Enable verbose output
 
 **Note:** If you're upgrading from an older version, see the [Configuration Migration Guide](immutable-configuration-migration.md) for information about the new immutable configuration system.
@@ -54,43 +56,38 @@ oboyu version
 
 ### `oboyu mcp`
 
-Run an MCP (Model Context Protocol) server for AI assistant integration.
+Run MCP server for AI assistant integration.
+
+**Usage:** `oboyu mcp [OPTIONS]`
 
 ```bash
 # Start MCP server with stdio transport (default)
 oboyu mcp
-
-# Start with specific transport
-oboyu mcp --transport stdio
-
-# Start with HTTP transport on specific port
-oboyu mcp --transport streamable-http --port 8000
-
-# Start with SSE transport
-oboyu mcp --transport sse --port 8001
 
 # Start with custom database path and verbose output
 oboyu mcp --db-path /path/to/custom.db --verbose
 
 # Start with debug mode for development
 oboyu mcp --verbose --debug
+
+# Start with specific transport and port
+oboyu mcp --transport stdio --port 8000
 ```
 
-Options:
-- `--transport`, `-t`: Transport mechanism (stdio, sse, streamable-http) - default: stdio
-- `--port`, `-p`: Port number for HTTP or SSE transport (required for non-stdio transports)
-- `--db-path`: Path to database file - default: ~/.oboyu/index.db
-- `--verbose`, `-v`: Enable verbose output
-- `--debug`, `-d`: Enable debug mode with additional logging
-
-**Transport Types:**
-- `stdio`: Standard input/output communication (for direct AI assistant integration)
-- `sse`: Server-Sent Events over HTTP (for web-based integrations)
-- `streamable-http`: HTTP with streaming support (for network-based integrations)
+**Options:**
+- `--db-path PATH`: Path to database file
+- `--verbose/--no-verbose`: Enable verbose output (default: no-verbose)
+- `--debug/--no-debug`: Enable debug mode (default: no-debug)
+- `--transport TEXT`: Transport mechanism (default: stdio)
+- `--port INTEGER`: Port number
 
 ### `oboyu clear`
 
 Clear all data from the index database while preserving the database schema and structure.
+
+**Usage:** `oboyu clear [OPTIONS]`
+
+This command clears the index database, removing all indexed file metadata and content. Unlike the clear-db command which deletes the database files entirely, this command preserves the database structure and only removes the data within it.
 
 ```bash
 # Clear with confirmation prompt
@@ -103,13 +100,19 @@ oboyu clear --force
 oboyu clear --db-path custom.db
 ```
 
-Options:
-- `--force`, `-f`: Force operation without confirmation
-- `--db-path`: Path to database file to clear
+**Options:**
+- `--config`, `-c`: Path to configuration file
+- `--db-path`, `-d FILE`: Path to the database file (default: from config)
+- `--force`, `-f`: Skip confirmation prompt
 
 ### `oboyu index`
 
 Index documents for search.
+
+**Usage:** `oboyu index [OPTIONS] DIRECTORIES...`
+
+**Arguments:**
+- `DIRECTORIES...`: Directories to index (required)
 
 ```bash
 # Index a single directory
@@ -127,7 +130,6 @@ oboyu index /path/to/documents --force
 # Index with custom chunking settings
 oboyu index /path/to/documents --chunk-size 2048 --chunk-overlap 512
 
-
 # Index with change detection strategy
 oboyu index /path/to/documents --change-detection hash
 
@@ -138,18 +140,19 @@ oboyu index /path/to/documents --cleanup-deleted
 oboyu index /path/to/documents --quiet-progress
 ```
 
-Options:
+**Options:**
+- `--config`, `-c`: Path to configuration file
 - `--recursive/--no-recursive`: Process directories recursively (default: recursive)
-- `--include-patterns`: File patterns to include (e.g., `*.txt,*.md`)
-- `--exclude-patterns`: File patterns to exclude (e.g., `*/node_modules/*`)
-- `--max-depth`: Maximum recursion depth
-- `--force`, `-f`: Force re-index of all documents (disable incremental indexing)
-- `--encoding-detection/--no-encoding-detection`: Enable/disable automatic encoding detection (default: enabled)
-- `--chunk-size`: Chunk size in characters (default: 1024)
-- `--chunk-overlap`: Chunk overlap in characters (default: 256)
-- `--embedding-model`: Embedding model to use (default: cl-nagoya/ruri-v3-30m)
-- `--db-path`: Path to database file
-- `--change-detection`: Strategy for detecting changes (timestamp, hash, smart) - default: smart
+- `--include-patterns TEXT`: File patterns to include
+- `--exclude-patterns TEXT`: File patterns to exclude
+- `--max-depth INTEGER`: Maximum recursion depth
+- `--force/--no-force`: Force re-index of all documents (default: no-force)
+- `--encoding-detection/--no-encoding-detection`: Enable/disable automatic encoding detection (default: encoding-detection)
+- `--chunk-size INTEGER`: Chunk size in characters
+- `--chunk-overlap INTEGER`: Chunk overlap in characters
+- `--embedding-model TEXT`: Embedding model to use
+- `--db-path PATH`: Path to database file
+- `--change-detection TEXT`: Strategy for detecting changes: timestamp, hash, or smart (default: smart)
 - `--cleanup-deleted/--no-cleanup-deleted`: Remove deleted files from index during incremental update
 - `--verify-integrity`: Verify file integrity using content hashes (slower but more accurate)
 - `--quiet-progress`, `-q`: Minimal progress output to avoid screen flickering
@@ -191,50 +194,56 @@ oboyu index ~/work/project1 ~/work/project2 ~/personal/blog \
 
 ## Index Management Commands
 
-### `oboyu clear`
-
-Clear all data from the index database while preserving the database schema and structure.
-
-```bash
-# Clear with confirmation prompt
-oboyu clear
-
-# Force clear without confirmation
-oboyu clear --force
-
-# Clear specific database
-oboyu clear --db-path custom.db
-```
-
-Options:
-- `--force`, `-f`: Force clearing without confirmation
-- `--db-path`: Path to database file to clear
-
 
 ### `oboyu status`
 
-Show indexing status for specified directories.
+Show unified index and knowledge graph status.
+
+**Usage:** `oboyu status [OPTIONS] [DIRECTORIES]...`
+
+This command shows indexing status for directories (if provided) and overall statistics including knowledge graph information.
+
+**Arguments:**
+- `[DIRECTORIES]...`: Directories to check status for (optional - shows overall stats if not provided)
 
 ```bash
-# Show basic status for directories
-oboyu status /path/to/docs
+# Show overall stats
+oboyu status
+
+# Show status for specific directory
+oboyu status ~/documents
 
 # Show detailed file-by-file status
-oboyu status /path/to/docs --detailed
+oboyu status ~/docs --detailed
+
+# Show only index stats, skip KG
+oboyu status --no-kg
 
 # Check status with custom database
 oboyu status /path/to/docs --db-path custom.db
 ```
 
-Options:
+**Options:**
+- `--config`, `-c`: Path to configuration file
+- `--db-path`, `-p FILE`: Path to the database file (default: from config)
 - `--detailed`, `-d`: Show detailed file-by-file status
-- `--db-path`: Path to database file
+- `--kg`: Show knowledge graph statistics (default: True)
 
 ## Data Enrichment Commands
 
 ### `oboyu enrich`
 
-Enrich CSV data with information from your indexed knowledge base using semantic search and GraphRAG. This command processes CSV files according to configurable schemas and supports multiple extraction strategies.
+Enrich CSV data using semantic search and GraphRAG capabilities.
+
+**Usage:** `oboyu enrich [OPTIONS] CSV_FILE SCHEMA_FILE`
+
+This command takes a CSV file and a JSON schema configuration to automatically populate additional columns with relevant information from the indexed knowledge base.
+
+The enrichment process leverages Oboyu's hybrid search (vector + BM25) and GraphRAG functionality to find relevant information and extract specific data points.
+
+**Arguments:**
+- `CSV_FILE`: Input CSV file to enrich (required)
+- `SCHEMA_FILE`: JSON schema file defining enrichment configuration (required)
 
 ```bash
 # Basic enrichment
@@ -259,15 +268,13 @@ oboyu enrich data.csv config.json --no-graph
 oboyu enrich data.csv config.json --db-path custom.db
 ```
 
-Options:
-- `csv_file`: Input CSV file path (required)
-- `schema_file`: JSON schema configuration file (required)
-- `--output PATH`: Output CSV file path (auto-generated if not specified)
+**Options:**
+- `--output`, `-o PATH`: Output CSV file path
 - `--batch-size INTEGER`: Processing batch size (default: 10)
 - `--max-results INTEGER`: Maximum search results per query (default: 5)
-- `--confidence FLOAT`: Confidence threshold for results (default: 0.5)
+- `--confidence FLOAT`: Minimum confidence threshold (default: 0.5)
 - `--no-graph`: Disable GraphRAG enhancement
-- `--db-path PATH`: Custom database file path
+- `--db-path`, `-p PATH`: Path to database file
 
 #### Schema Configuration
 
@@ -380,7 +387,9 @@ Oboyu provides powerful knowledge graph operations for enhanced search capabilit
 
 ### `oboyu build-kg`
 
-Build knowledge graph from existing indexed chunks.
+Build knowledge graph from indexed documents.
+
+**Usage:** `oboyu build-kg [OPTIONS]`
 
 ```bash
 # Build knowledge graph incrementally
@@ -396,14 +405,16 @@ oboyu build-kg --batch-size 100
 oboyu build-kg --limit 1000
 ```
 
-Options:
-- `--full`: Rebuild entire knowledge graph from scratch
-- `--batch-size INTEGER`: Processing batch size for chunks
+**Options:**
+- `--full`: Rebuild entire knowledge graph
+- `--batch-size INTEGER`: Processing batch size
 - `--limit INTEGER`: Limit number of chunks to process
 
 ### `oboyu deduplicate`
 
-Remove duplicate entities from the knowledge graph.
+Deduplicate entities in knowledge graph.
+
+**Usage:** `oboyu deduplicate [OPTIONS]`
 
 ```bash
 # Deduplicate all entities
@@ -417,103 +428,27 @@ oboyu deduplicate --similarity 0.9 --verification 0.85
 
 # Custom batch size for large datasets
 oboyu deduplicate --batch-size 200
+
+# Show potential duplicates for analysis
+oboyu deduplicate --show-duplicates --entity-name "specific entity" --limit 5
 ```
 
-Options:
-- `--type`: Entity type to deduplicate (all if not specified)
+**Options:**
+- `--type TEXT`: Entity type to deduplicate (all if not specified)
 - `--similarity FLOAT`: Vector similarity threshold (default: 0.85)
 - `--verification FLOAT`: LLM verification threshold (default: 0.8)
 - `--batch-size INTEGER`: Processing batch size (default: 100)
+- `--show-duplicates`: Show potential duplicate entities for analysis
+- `--entity-name TEXT`: Specific entity name to find duplicates for (when --show-duplicates is used)
+- `--limit INTEGER`: Maximum number of duplicate results to show (default: 10)
 
-## Manage Commands
+## Legacy Commands
 
-### `oboyu manage clear`
-
-Clear all data from the index database.
-
-```bash
-# Clear with confirmation prompt
-oboyu manage clear
-
-# Force clear without confirmation
-oboyu manage clear --force
-```
-
-### `oboyu manage status`
-
-Show indexing status for specified directories.
-
-```bash
-# Show basic status for directories
-oboyu manage status /path/to/docs
-
-# Show detailed file-by-file status
-oboyu manage status /path/to/docs --detailed
-```
-
-### `oboyu manage diff`
-
-Show what would be updated if indexing were run now.
-
-```bash
-# Show diff for directories
-oboyu manage diff /path/to/docs
-```
-
-**Note:** The manage commands are still available, but the top-level equivalents are preferred:
+**Note:** Some legacy `manage` commands may still be available, but the top-level equivalents are preferred:
 - Use `oboyu clear` instead of `oboyu manage clear`
 - Use `oboyu status` instead of `oboyu manage status`
 
-## Search Commands
-
-### `oboyu search`
-
-Search indexed documents with GraphRAG enhancement enabled by default.
-
-```bash
-# Basic GraphRAG search (recommended)
-oboyu search "machine learning algorithms"
-
-# Search without GraphRAG enhancement
-oboyu search "search term" --no-graph
-
-# Specify search mode
-oboyu search "search term" --mode vector
-
-# Get more results
-oboyu search "search term" --top-k 10
-
-# Use hybrid search (automatically uses RRF algorithm)
-oboyu search "search term" --mode hybrid
-
-# Enable reranking for better accuracy
-oboyu search "search term" --rerank
-
-# Disable reranking for faster results
-oboyu search "search term" --no-rerank
-
-# Show query expansion details
-oboyu search "search term" --expand
-
-# Get detailed explanation of results
-oboyu search "search term" --explain
-
-# JSON output for scripting
-oboyu search "search term" --format json
-```
-
-Options:
-- `--mode`: Search mode (vector, bm25, hybrid) - default: hybrid
-- `--top-k`: Number of results to return - default: 10
-- `--no-graph`: Disable GraphRAG enhancement (use traditional search only)
-- `--expand`: Show query expansion details with related entities
-- `--explain`: Show detailed explanation of results processing
-- `--rerank/--no-rerank`: Enable or disable reranking of search results
-- `--format`: Output format (text, json) - default: text
-- `--rrf-k`: RRF ranking parameter for hybrid search
-- `--db-path`: Path to database file
-
-#### Search Examples
+## Search Examples
 
 **GraphRAG-enhanced search (default behavior):**
 ```bash
@@ -539,7 +474,7 @@ oboyu search "class DatabaseConnection" --no-graph --explain
 **Multi-language search with reranking:**
 ```bash
 # Search across English and Japanese content
-oboyu search "machine learning 機械学習" --rerank --top-k 10
+oboyu search "machine learning 機械学習" --top-k 10
 ```
 
 **Export results for processing:**

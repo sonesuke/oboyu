@@ -310,15 +310,15 @@ oboyu search "presentation" --db-path ~/indexes/gdrive.db
 ### 1. Index Regularly
 Set up a cron job:
 ```bash
-# Add to crontab
-0 */4 * * * oboyu index ~/Documents --update
+# Add to crontab - use --cleanup-deleted for incremental updates
+0 */4 * * * oboyu index ~/Documents --cleanup-deleted
 ```
 
-### 2. Use Watch Mode
-Monitor for new documents:
+### 2. Regular Updates
+Update your index periodically:
 ```bash
-# Watch for new files and index automatically
-oboyu index ~/Documents --watch
+# Incremental update with cleanup of deleted files
+oboyu index ~/Documents --cleanup-deleted
 ```
 
 ### 3. Search History Analysis
@@ -360,7 +360,7 @@ A productive day with Oboyu:
 - [ ] Morning: Check updates with `oboyu search "update"`
 - [ ] Before meetings: Find relevant docs with project search
 - [ ] During work: Use quick searches for instant access
-- [ ] End of day: Update index with `oboyu index --update`
+- [ ] End of day: Update index with `oboyu index ~/Documents --cleanup-deleted`
 - [ ] Weekly: Review search patterns and optimize
 
 ## Next Steps
