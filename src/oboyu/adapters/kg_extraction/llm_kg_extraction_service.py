@@ -11,15 +11,12 @@ import time
 from pathlib import Path
 from typing import List, Optional
 
-import instructor
 import jaconv
 from llama_cpp import Llama
 from pydantic import BaseModel, Field
 
 from oboyu.common.paths import CACHE_BASE_DIR
 from oboyu.domain.models.knowledge_graph import (
-    ENTITY_TYPES,
-    RELATION_TYPES,
     Entity,
     KnowledgeGraphExtraction,
     Relation,
@@ -93,7 +90,6 @@ class LLMKGExtractionService(KGExtractionService):
         self.verbose = verbose
         self._llm: Optional[Llama] = None
         self._model_loaded = False
-        self._instructor_client = None
         self._detected_model_name: Optional[str] = None
 
     def _ensure_model_loaded(self) -> None:
@@ -160,9 +156,6 @@ class LLMKGExtractionService(KGExtractionService):
                 )
                 self._model_loaded = True
 
-                # Set up instructor client for structured output
-                self._instructor_client = instructor.patch(create=self._llm.create_chat_completion_openai_v1, mode=instructor.Mode.JSON_SCHEMA)
-
                 logger.info("KG extraction model loaded successfully")
             except Exception as e:
                 raise ExtractionError(f"Failed to load KG extraction model: {e}")
@@ -175,64 +168,8 @@ class LLMKGExtractionService(KGExtractionService):
         text = jaconv.kata2hira(text)
         return text.strip()
 
-    def _create_extraction_prompt(
-        self,
-        text: str,
-        entity_types: Optional[List[str]] = None,
-        relation_types: Optional[List[str]] = None,
-    ) -> str:
-        """Create prompt for knowledge graph extraction."""
-        # Use default types if not specified
-        if entity_types is None:
-            entity_types = list(ENTITY_TYPES.keys())
-        if relation_types is None:
-            relation_types = list(RELATION_TYPES.keys())
-
-        entity_examples = ", ".join(entity_types[:10])  # Limit for prompt size
-        relation_examples = ", ".join(relation_types[:15])  # Limit for prompt size
-
-        prompt = f"""あなたは知識グラフ抽出の専門家です。以下のテキストから構造化された知識グラフを抽出してください。
-
-テキスト:
-{text}
-
-抽出ルール:
-1. エンティティタイプ: {entity_examples}
-2. リレーションタイプ: {relation_examples}
-3. 明確に記載されている事実のみを抽出
-4. 推測や解釈は含めない
-5. 信頼度スコア(0.0-1.0)を各要素に付与
-
-出力形式（JSON）:
-{{
-  "entities": [
-    {{
-      "name": "エンティティ名",
-      "entity_type": "PERSON|COMPANY|ORGANIZATION|PRODUCT|LOCATION|EVENT|POSITION|TECHNOLOGY|CONCEPT|DATE",
-      "definition": "エンティティの定義・説明",
-      "confidence": 0.95
-    }}
-  ],
-  "relations": [
-    {{
-      "source": "ソースエンティティ名",
-      "target": "ターゲットエンティティ名",
-      "relation_type": "WORKS_AT|CEO_OF|LOCATED_IN|etc",
-      "confidence": 0.9
-    }}
-  ]
-}}
-
-JSON形式のみで回答してください:"""
-
-        return prompt
-
-    def _extract_structured_kg(self, text: str, chunk_id: str) -> StructuredKGExtraction:
-        """Extract knowledge graph using instructor for structured output."""
-        # Normalize Japanese text
-        normalized_text = self._normalize_japanese_text(text)
-
-        # Create system prompt
+    def _create_kg_extraction_prompts(self, normalized_text: str) -> tuple[str, str]:
+        """Create system and user prompts for KG extraction."""
         system_prompt = """あなたは知識グラフ抽出の専門家です。
 以下のテキストから構造化された知識グラフを抽出してください。
 
@@ -241,20 +178,79 @@ JSON形式のみで回答してください:"""
 2. 推測や解釈は含めない
 3. エンティティタイプ: PERSON, COMPANY, ORGANIZATION, PRODUCT, LOCATION, EVENT, POSITION, TECHNOLOGY, CONCEPT, DATE
 4. リレーションタイプ: WORKS_AT, CEO_OF, LOCATED_IN, MEMBER_OF, PARENT_COMPANY, SUBSIDIARY, PARTNER_WITH等
-5. 信頼度スコア(0.0-1.0)を各要素に付与"""
+5. 信頼度スコア(0.0-1.0)を各要素に付与
+
+指定されたJSONスキーマに厳密に従ってください。"""
 
         user_prompt = f"テキスト: {normalized_text}"
+        return system_prompt, user_prompt
 
-        # Use instructor for structured output
-        extraction = self._instructor_client(
+    def _extract_response_content(self, response: object, chunk_id: str) -> str:
+        """Extract content from llama.cpp response with type safety."""
+        # Handle response type checking
+        if hasattr(response, "__iter__") and not isinstance(response, dict):
+            raise ExtractionError("Streaming response not supported for structured extraction", chunk_id)
+
+        # Type-safe response handling
+        try:
+            if isinstance(response, dict) and "choices" in response:
+                choices = response["choices"]
+                if choices and isinstance(choices, list):
+                    first_choice = choices[0]
+                    if isinstance(first_choice, dict) and "message" in first_choice:
+                        message = first_choice["message"]
+                        if isinstance(message, dict) and "content" in message:
+                            response_content = message["content"]
+                        else:
+                            raise ExtractionError("Invalid message structure in response", chunk_id)
+                    else:
+                        raise ExtractionError("Invalid choice structure in response", chunk_id)
+                else:
+                    raise ExtractionError("No choices in response", chunk_id)
+            else:
+                raise ExtractionError("Invalid response structure", chunk_id)
+        except (KeyError, IndexError, TypeError) as e:
+            raise ExtractionError(f"Failed to extract content from response: {e}", chunk_id)
+
+        if not isinstance(response_content, str):
+            raise ExtractionError("Invalid response content type", chunk_id)
+
+        return response_content
+
+    def _extract_structured_kg(self, text: str, chunk_id: str) -> StructuredKGExtraction:
+        """Extract knowledge graph using native llama.cpp JSON schema support."""
+        # Normalize Japanese text
+        normalized_text = self._normalize_japanese_text(text)
+
+        # Create prompts
+        system_prompt, user_prompt = self._create_kg_extraction_prompts(normalized_text)
+
+        # Use native llama.cpp JSON schema support
+        if self._llm is None:
+            raise ExtractionError("LLM model not loaded", chunk_id)
+
+        response = self._llm.create_chat_completion(
             messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
-            response_model=StructuredKGExtraction,
+            response_format={"type": "json_object", "schema": StructuredKGExtraction.model_json_schema()},
             max_tokens=min(self.max_tokens, 512),
             temperature=self.temperature,
             top_p=self.top_p,
         )
 
-        return extraction
+        # Extract and validate response content
+        response_content = self._extract_response_content(response, chunk_id)
+
+        try:
+            # Parse the JSON content
+            response_data = json.loads(response_content)
+            # Validate and convert to Pydantic model
+            extraction = StructuredKGExtraction.model_validate(response_data)
+            return extraction
+        except (json.JSONDecodeError, ValueError, KeyError) as e:
+            logger.error(f"Failed to parse native JSON schema response: {e}")
+            logger.error(f"Raw response: {response_content}")
+            # Fallback to empty extraction with error details
+            return StructuredKGExtraction(entities=[], relations=[])
 
     def _parse_llm_response(self, response: str, chunk_id: str) -> KnowledgeGraphExtraction:
         """Parse LLM JSON response into KnowledgeGraphExtraction."""
@@ -351,10 +347,8 @@ JSON形式のみで回答してください:"""
 
             logger.debug(f"Starting structured KG extraction for chunk {chunk_id}")
 
-            # Use structured extraction with instructor
+            # Use structured extraction with native JSON schema
             loop = asyncio.get_event_loop()
-            if self._instructor_client is None:
-                raise ExtractionError("Instructor client not initialized", chunk_id)
 
             try:
                 structured_extraction = await asyncio.wait_for(
