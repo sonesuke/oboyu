@@ -81,14 +81,21 @@ jobs:
         run: |
           pip install build
           python -m build --wheel
+          ls -la dist/  # Verify wheel exists
           
       - name: Build and test Docker environments
         run: |
+          # Ensure dist directory exists for Docker context
+          mkdir -p dist || true
+          
+          # Build all services first
           docker-compose -f tests/installation/docker/docker-compose.test.yml build
-          docker-compose -f tests/installation/docker/docker-compose.test.yml up --exit-code-from test-pip-source test-pip-source
-          docker-compose -f tests/installation/docker/docker-compose.test.yml up --exit-code-from test-pip-wheel test-pip-wheel
-          docker-compose -f tests/installation/docker/docker-compose.test.yml up --exit-code-from test-pip-editable test-pip-editable
-          docker-compose -f tests/installation/docker/docker-compose.test.yml up --exit-code-from test-uv test-uv
+          
+          # Run tests sequentially with proper error handling
+          docker-compose -f tests/installation/docker/docker-compose.test.yml up --exit-code-from test-pip-source test-pip-source || exit 1
+          docker-compose -f tests/installation/docker/docker-compose.test.yml up --exit-code-from test-pip-wheel test-pip-wheel || exit 1
+          docker-compose -f tests/installation/docker/docker-compose.test.yml up --exit-code-from test-pip-editable test-pip-editable || exit 1
+          docker-compose -f tests/installation/docker/docker-compose.test.yml up --exit-code-from test-uv test-uv || exit 1
           
   test-installation-validation:
     runs-on: ubuntu-latest

@@ -22,8 +22,16 @@ RUN apt-get update && apt-get install -y \
 RUN useradd -m -s /bin/bash testuser
 WORKDIR /home/testuser
 
+# Base stage with PyTorch pre-installed to save disk space
+FROM base as base-with-torch
+
+# Install PyTorch CPU-only once in base image
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch && \
+    rm -rf /root/.cache/pip
+
 # Stage 1: Test pip installation from source
-FROM base as test-pip-source
+FROM base-with-torch as test-pip-source
 
 # Copy the entire project
 COPY --chown=testuser:testuser . /home/testuser/oboyu/
@@ -31,23 +39,21 @@ COPY --chown=testuser:testuser . /home/testuser/oboyu/
 USER testuser
 
 # Create fresh virtual environment and test installation with disk space optimization
-RUN python -m venv /home/testuser/venv-source
-RUN . /home/testuser/venv-source/bin/activate && pip install --upgrade pip
-RUN . /home/testuser/venv-source/bin/activate && \
-    pip install --index-url https://download.pytorch.org/whl/cpu torch && \
-    pip cache purge
+RUN python -m venv /home/testuser/venv-source --system-site-packages
+RUN . /home/testuser/venv-source/bin/activate && pip install --no-cache-dir --upgrade pip
 RUN . /home/testuser/venv-source/bin/activate && \
     cd /home/testuser/oboyu && \
-    pip install . && \
-    pip cache purge
+    pip install --no-cache-dir . && \
+    rm -rf /root/.cache/pip /home/testuser/.cache/pip
 
-# Test the installation
-RUN . /home/testuser/venv-source/bin/activate && \
+# Test the installation with error handling
+RUN set -e && \
+    . /home/testuser/venv-source/bin/activate && \
     python -c "import oboyu; print('Source installation successful')" && \
-    oboyu --help
+    oboyu --help || (echo "Source installation test failed" && exit 1)
 
 # Stage 2: Test pip installation from wheel
-FROM base as test-pip-wheel
+FROM base-with-torch as test-pip-wheel
 
 # Copy only the built wheel (will be created by build script)
 COPY --chown=testuser:testuser dist/*.whl /home/testuser/dist/
@@ -55,22 +61,20 @@ COPY --chown=testuser:testuser dist/*.whl /home/testuser/dist/
 USER testuser
 
 # Create fresh virtual environment and test wheel installation with disk space optimization
-RUN python -m venv /home/testuser/venv-wheel
-RUN . /home/testuser/venv-wheel/bin/activate && pip install --upgrade pip
+RUN python -m venv /home/testuser/venv-wheel --system-site-packages
+RUN . /home/testuser/venv-wheel/bin/activate && pip install --no-cache-dir --upgrade pip
 RUN . /home/testuser/venv-wheel/bin/activate && \
-    pip install --index-url https://download.pytorch.org/whl/cpu torch && \
-    pip cache purge
-RUN . /home/testuser/venv-wheel/bin/activate && \
-    pip install /home/testuser/dist/*.whl && \
-    pip cache purge
+    pip install --no-cache-dir /home/testuser/dist/*.whl && \
+    rm -rf /root/.cache/pip /home/testuser/.cache/pip
 
-# Test the installation
-RUN . /home/testuser/venv-wheel/bin/activate && \
+# Test the installation with error handling
+RUN set -e && \
+    . /home/testuser/venv-wheel/bin/activate && \
     python -c "import oboyu; print('Wheel installation successful')" && \
-    oboyu --help
+    oboyu --help || (echo "Wheel installation test failed" && exit 1)
 
 # Stage 3: Test pip editable installation
-FROM base as test-pip-editable
+FROM base-with-torch as test-pip-editable
 
 # Copy the entire project
 COPY --chown=testuser:testuser . /home/testuser/oboyu/
@@ -78,51 +82,45 @@ COPY --chown=testuser:testuser . /home/testuser/oboyu/
 USER testuser
 
 # Create fresh virtual environment and test editable installation with disk space optimization
-RUN python -m venv /home/testuser/venv-editable
-RUN . /home/testuser/venv-editable/bin/activate && pip install --upgrade pip
-RUN . /home/testuser/venv-editable/bin/activate && \
-    pip install --index-url https://download.pytorch.org/whl/cpu torch && \
-    pip cache purge
+RUN python -m venv /home/testuser/venv-editable --system-site-packages
+RUN . /home/testuser/venv-editable/bin/activate && pip install --no-cache-dir --upgrade pip
 RUN . /home/testuser/venv-editable/bin/activate && \
     cd /home/testuser/oboyu && \
-    pip install -e . && \
-    pip cache purge
+    pip install --no-cache-dir -e . && \
+    rm -rf /root/.cache/pip /home/testuser/.cache/pip
 
-# Test the installation
-RUN . /home/testuser/venv-editable/bin/activate && \
+# Test the installation with error handling
+RUN set -e && \
+    . /home/testuser/venv-editable/bin/activate && \
     python -c "import oboyu; print('Editable installation successful')" && \
-    oboyu --help
+    oboyu --help || (echo "Editable installation test failed" && exit 1)
 
 # Stage 4: Test pip installation with UV
-FROM base as test-uv
+FROM base-with-torch as test-uv
 
-# Install UV
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:$PATH"
+# Install UV system-wide for all users
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    cp /root/.local/bin/uv /usr/local/bin/uv && \
+    chmod +x /usr/local/bin/uv
 
 # Copy the entire project
 COPY --chown=testuser:testuser . /home/testuser/oboyu/
 
 USER testuser
-ENV PATH="/home/testuser/.local/bin:$PATH"
-
-# Install UV for user
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Test UV installation with disk space optimization
 WORKDIR /home/testuser/oboyu
-RUN uv venv
+RUN uv venv --system-site-packages
 
 # Install with optimizations to reduce disk usage
-# Use CPU-only PyTorch to reduce size and clear cache after each step
-RUN uv pip install --index-url https://download.pytorch.org/whl/cpu torch && \
-    rm -rf /home/testuser/.cache/uv
-RUN uv pip install . && \
+# PyTorch is already available from base-with-torch stage
+RUN uv pip install --no-cache . && \
     rm -rf /home/testuser/.cache/uv
 
-# Test using virtual environment Python directly
-RUN .venv/bin/python -c "import oboyu; print('UV installation successful')"
-RUN .venv/bin/python -m oboyu --help
+# Test using virtual environment Python directly with error handling
+RUN set -e && \
+    .venv/bin/python -c "import oboyu; print('UV installation successful')" && \
+    .venv/bin/python -m oboyu --help || (echo "UV installation test failed" && exit 1)
 
 # Final stage: Run all tests
 FROM base as test-runner
@@ -131,13 +129,13 @@ FROM base as test-runner
 COPY --from=test-pip-source /home/testuser/venv-source /home/testuser/venv-source
 COPY --from=test-pip-wheel /home/testuser/venv-wheel /home/testuser/venv-wheel
 COPY --from=test-pip-editable /home/testuser/venv-editable /home/testuser/venv-editable
-COPY --from=test-uv /home/testuser/oboyu/.venv /home/testuser/.venv
+COPY --from=test-uv /home/testuser/oboyu/.venv /home/testuser/oboyu/.venv
 
 # Add test validation script
-COPY --chown=testuser:testuser validate_installations.py /home/testuser/validate_installations.py
+COPY --chown=testuser:testuser tests/installation/docker/validate_installations.py /home/testuser/validate_installations.py
 
 USER testuser
 RUN chmod +x /home/testuser/validate_installations.py
 
 # Default command runs the validation script
-CMD ["/home/testuser/validate_installations.py"]
+CMD ["python3", "/home/testuser/validate_installations.py"]
