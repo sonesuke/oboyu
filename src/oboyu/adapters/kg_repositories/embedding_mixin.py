@@ -11,12 +11,12 @@ from typing import Any, Dict, List
 from oboyu.domain.models.knowledge_graph import Entity
 from oboyu.ports.repositories.kg_repository import RepositoryError
 
-from .base import DuckDBKGRepositoryBase
+# Base imports removed to avoid MRO conflicts
 
 logger = logging.getLogger(__name__)
 
 
-class EmbeddingRepositoryMixin(DuckDBKGRepositoryBase):
+class EmbeddingRepositoryMixin:
     """Mixin providing embedding-related repository operations."""
 
     async def find_entities_with_stale_embeddings(self, cutoff_date: datetime, embedding_model: str) -> List[Entity]:

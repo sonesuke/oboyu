@@ -11,12 +11,12 @@ from typing import List
 from oboyu.domain.models.knowledge_graph import Entity
 from oboyu.ports.repositories.kg_repository import RepositoryError
 
-from .base import DuckDBKGRepositoryBase
+# Base imports removed to avoid MRO conflicts
 
 logger = logging.getLogger(__name__)
 
 
-class CRUDRepositoryMixin(DuckDBKGRepositoryBase):
+class CRUDRepositoryMixin:
     """Mixin providing basic CRUD operations."""
 
     async def update_entity(self, entity: Entity) -> None:

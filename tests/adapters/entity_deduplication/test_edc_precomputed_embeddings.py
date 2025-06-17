@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from oboyu.adapters.entity_deduplication.edc_deduplication_service import EDCDeduplicationService
+from oboyu.adapters.entity_deduplication.edc_utils import EDCUtils
 from oboyu.application.services.entity_embedding_service import EntityEmbeddingService
 from oboyu.domain.models.knowledge_graph import Entity
 
@@ -236,7 +237,7 @@ class TestEDCPrecomputedEmbeddings:
         assert "テスト会社" in call_args
         assert "COMPANY" in call_args
         assert "テスト用の会社" in call_args
-        assert "industry:technology" in call_args
+        assert "industry: technology" in call_args
 
     async def test_embedding_normalization(self, edc_service_with_precomputed):
         """Test that pre-computed embeddings are properly normalized."""
@@ -276,9 +277,9 @@ class TestEDCPrecomputedEmbeddings:
         embedding3 = np.array([0.0, 1.0, 0.0], dtype=np.float32)
         
         # Identical vectors should have similarity 1.0
-        similarity1 = edc_service_with_precomputed._compute_cosine_similarity(embedding1, embedding2)
+        similarity1 = EDCUtils.compute_cosine_similarity(embedding1, embedding2)
         assert abs(similarity1 - 1.0) < 1e-6
         
         # Orthogonal vectors should have similarity 0.0
-        similarity2 = edc_service_with_precomputed._compute_cosine_similarity(embedding1, embedding3)
+        similarity2 = EDCUtils.compute_cosine_similarity(embedding1, embedding3)
         assert abs(similarity2 - 0.0) < 1e-6
