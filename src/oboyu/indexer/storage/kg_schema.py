@@ -41,6 +41,9 @@ class KnowledgeGraphSchema:
                     merged_from JSON,                    -- Array of entity IDs merged into this one
                     merge_confidence REAL,               -- Confidence score for entity merging
                     confidence REAL NOT NULL,            -- Extraction confidence score
+                    embedding FLOAT[],                   -- Pre-computed entity embedding vector
+                    embedding_model VARCHAR,             -- Model used to generate embedding
+                    embedding_updated_at TIMESTAMP,     -- When embedding was last computed
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (chunk_id) REFERENCES chunks (id)
@@ -52,6 +55,7 @@ class KnowledgeGraphSchema:
                 "CREATE INDEX IF NOT EXISTS idx_kg_entities_chunk ON kg_entities(chunk_id)",
                 "CREATE INDEX IF NOT EXISTS idx_kg_entities_canonical ON kg_entities(canonical_name)",
                 "CREATE INDEX IF NOT EXISTS idx_kg_entities_confidence ON kg_entities(confidence)",
+                "CREATE INDEX IF NOT EXISTS idx_kg_entities_embedding_model ON kg_entities(embedding_model)",
             ],
             dependencies=["chunks"],
         )

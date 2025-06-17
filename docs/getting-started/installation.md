@@ -81,7 +81,7 @@ pip install oboyu
 After installation, verify that Oboyu is working correctly:
 
 ```bash
-oboyu --version
+oboyu version
 ```
 
 You should see the version number displayed.

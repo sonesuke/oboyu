@@ -24,6 +24,9 @@ class Entity:
     merged_from: List[str] = field(default_factory=list)
     merge_confidence: Optional[float] = None
     confidence: float = 0.0
+    embedding: Optional[List[float]] = None
+    embedding_model: Optional[str] = None
+    embedding_updated_at: Optional[datetime] = None
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
 

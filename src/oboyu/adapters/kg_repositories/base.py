@@ -21,6 +21,14 @@ class DuckDBKGRepositoryBase:
 
     def _entity_from_row(self, row: Dict[str, Any]) -> Entity:
         """Convert database row to Entity object."""
+        # Handle embedding updated timestamp
+        embedding_updated_at = None
+        if row.get("embedding_updated_at"):
+            if isinstance(row["embedding_updated_at"], str):
+                embedding_updated_at = datetime.fromisoformat(row["embedding_updated_at"])
+            else:
+                embedding_updated_at = row["embedding_updated_at"]
+
         return Entity(
             id=row["id"],
             name=row["name"],
@@ -32,6 +40,9 @@ class DuckDBKGRepositoryBase:
             merged_from=json.loads(row["merged_from"]) if row["merged_from"] else [],
             merge_confidence=row["merge_confidence"],
             confidence=row["confidence"],
+            embedding=row.get("embedding"),
+            embedding_model=row.get("embedding_model"),
+            embedding_updated_at=embedding_updated_at,
             created_at=datetime.fromisoformat(row["created_at"])
             if isinstance(row["created_at"], str)
             else (row["created_at"] if row["created_at"] else datetime.now()),

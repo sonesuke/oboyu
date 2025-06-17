@@ -14,11 +14,13 @@ from oboyu.domain.models.knowledge_graph import Entity, ProcessingStatus, Relati
 from oboyu.ports.repositories.kg_repository import KGRepository, RepositoryError
 
 from .base import DuckDBKGRepositoryBase
+from .crud_mixin import CRUDRepositoryMixin
+from .embedding_mixin import EmbeddingRepositoryMixin
 
 logger = logging.getLogger(__name__)
 
 
-class DuckDBKGRepository(DuckDBKGRepositoryBase, KGRepository):
+class DuckDBKGRepository(DuckDBKGRepositoryBase, CRUDRepositoryMixin, EmbeddingRepositoryMixin, KGRepository):
     """DuckDB-based implementation of knowledge graph repository."""
 
     def __init__(self, connection: DuckDBPyConnection) -> None:
@@ -37,8 +39,9 @@ class DuckDBKGRepository(DuckDBKGRepositoryBase, KGRepository):
                 """
                 INSERT INTO kg_entities
                 (id, name, entity_type, definition, properties, chunk_id, canonical_name,
-                 merged_from, merge_confidence, confidence, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 merged_from, merge_confidence, confidence, embedding, embedding_model,
+                 embedding_updated_at, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     name = EXCLUDED.name,
                     entity_type = EXCLUDED.entity_type,
@@ -49,6 +52,9 @@ class DuckDBKGRepository(DuckDBKGRepositoryBase, KGRepository):
                     merged_from = EXCLUDED.merged_from,
                     merge_confidence = EXCLUDED.merge_confidence,
                     confidence = EXCLUDED.confidence,
+                    embedding = EXCLUDED.embedding,
+                    embedding_model = EXCLUDED.embedding_model,
+                    embedding_updated_at = EXCLUDED.embedding_updated_at,
                     updated_at = EXCLUDED.updated_at
                 """,
                 (
@@ -62,6 +68,9 @@ class DuckDBKGRepository(DuckDBKGRepositoryBase, KGRepository):
                     json.dumps(entity.merged_from),
                     entity.merge_confidence,
                     entity.confidence,
+                    entity.embedding,
+                    entity.embedding_model,
+                    entity.embedding_updated_at.isoformat() if entity.embedding_updated_at else None,
                     entity.created_at.isoformat(),
                     entity.updated_at.isoformat(),
                 ),
@@ -88,6 +97,9 @@ class DuckDBKGRepository(DuckDBKGRepositoryBase, KGRepository):
                     json.dumps(entity.merged_from),
                     entity.merge_confidence,
                     entity.confidence,
+                    entity.embedding,
+                    entity.embedding_model,
+                    entity.embedding_updated_at.isoformat() if entity.embedding_updated_at else None,
                     entity.created_at.isoformat(),
                     entity.updated_at.isoformat(),
                 )
@@ -98,8 +110,9 @@ class DuckDBKGRepository(DuckDBKGRepositoryBase, KGRepository):
                 """
                 INSERT INTO kg_entities
                 (id, name, entity_type, definition, properties, chunk_id, canonical_name,
-                 merged_from, merge_confidence, confidence, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 merged_from, merge_confidence, confidence, embedding, embedding_model,
+                 embedding_updated_at, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     name = EXCLUDED.name,
                     entity_type = EXCLUDED.entity_type,
@@ -110,6 +123,9 @@ class DuckDBKGRepository(DuckDBKGRepositoryBase, KGRepository):
                     merged_from = EXCLUDED.merged_from,
                     merge_confidence = EXCLUDED.merge_confidence,
                     confidence = EXCLUDED.confidence,
+                    embedding = EXCLUDED.embedding,
+                    embedding_model = EXCLUDED.embedding_model,
+                    embedding_updated_at = EXCLUDED.embedding_updated_at,
                     updated_at = EXCLUDED.updated_at
                 """,
                 data,

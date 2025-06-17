@@ -5,7 +5,8 @@ knowledge graph entities and relations, following the hexagonal architecture pat
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from oboyu.domain.models.knowledge_graph import Entity, ProcessingStatus, Relation
 
@@ -264,6 +265,85 @@ class KGRepository(ABC):
 
         Raises:
             RepositoryError: If count operation fails
+
+        """
+
+    @abstractmethod
+    async def update_entity(self, entity: Entity) -> None:
+        """Update an existing entity.
+
+        Args:
+            entity: Entity to update
+
+        Raises:
+            RepositoryError: If update operation fails
+
+        """
+
+    @abstractmethod
+    async def batch_update_entities(self, entities: List[Entity]) -> None:
+        """Update multiple entities in batch.
+
+        Args:
+            entities: List of entities to update
+
+        Raises:
+            RepositoryError: If batch update operation fails
+
+        """
+
+    @abstractmethod
+    async def find_entities_by_type(self, entity_type: str) -> List[Entity]:
+        """Find all entities of a specific type.
+
+        Args:
+            entity_type: Type of entities to find
+
+        Returns:
+            List of entities of the specified type
+
+        Raises:
+            RepositoryError: If search operation fails
+
+        """
+
+    @abstractmethod
+    async def get_all_entities(self) -> List[Entity]:
+        """Get all entities in the knowledge graph.
+
+        Returns:
+            List of all entities
+
+        Raises:
+            RepositoryError: If retrieval operation fails
+
+        """
+
+    @abstractmethod
+    async def find_entities_with_stale_embeddings(self, cutoff_date: datetime, embedding_model: str) -> List[Entity]:
+        """Find entities with embeddings older than cutoff date or different model.
+
+        Args:
+            cutoff_date: Cutoff date for staleness
+            embedding_model: Expected embedding model
+
+        Returns:
+            List of entities with stale embeddings
+
+        Raises:
+            RepositoryError: If search operation fails
+
+        """
+
+    @abstractmethod
+    async def get_embedding_statistics(self) -> Dict[str, Any]:
+        """Get statistics about entity embeddings.
+
+        Returns:
+            Dictionary with embedding statistics
+
+        Raises:
+            RepositoryError: If statistics operation fails
 
         """
 

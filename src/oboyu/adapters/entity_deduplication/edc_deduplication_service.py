@@ -13,9 +13,12 @@ import jaconv
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
+from oboyu.application.services.entity_embedding_service import EntityEmbeddingService
 from oboyu.domain.models.knowledge_graph import Entity
 from oboyu.ports.services.entity_deduplication_service import DeduplicationError, EntityDeduplicationService
 from oboyu.ports.services.kg_extraction_service import KGExtractionService
+
+from .edc_utils import EDCUtils
 
 logger = logging.getLogger(__name__)
 
@@ -33,20 +36,26 @@ class EDCDeduplicationService(EntityDeduplicationService):
         llm_service: KGExtractionService,
         similarity_threshold: float = 0.85,
         verification_threshold: float = 0.8,
+        entity_embedding_service: Optional[EntityEmbeddingService] = None,
+        use_precomputed_embeddings: bool = True,
     ) -> None:
         """Initialize EDC deduplication service.
 
         Args:
-            embedding_model: Sentence transformer for vector similarity
+            embedding_model: Sentence transformer for vector similarity (fallback)
             llm_service: LLM service for definition generation and verification
             similarity_threshold: Default vector similarity threshold
             verification_threshold: Default LLM verification threshold
+            entity_embedding_service: Service for pre-computed embeddings
+            use_precomputed_embeddings: Whether to use pre-computed embeddings when available
 
         """
         self.embedding_model = embedding_model
         self.llm_service = llm_service
         self.similarity_threshold = similarity_threshold
         self.verification_threshold = verification_threshold
+        self.entity_embedding_service = entity_embedding_service
+        self.use_precomputed_embeddings = use_precomputed_embeddings
         self._entity_cache: Dict[str, np.ndarray] = {}
 
     async def generate_entity_definition(self, entity: Entity, context: Optional[str] = None) -> str:
@@ -125,7 +134,7 @@ class EDCDeduplicationService(EntityDeduplicationService):
 
                 try:
                     # Check entity type compatibility
-                    if not self._are_types_compatible(entity.entity_type, candidate.entity_type):
+                    if not EDCUtils.are_types_compatible(entity.entity_type, candidate.entity_type):
                         continue
 
                     # Normalize candidate name
@@ -155,66 +164,50 @@ class EDCDeduplicationService(EntityDeduplicationService):
             raise DeduplicationError(f"Similarity search failed: {e}", entity.id)
 
     async def _get_entity_embedding(self, entity: Entity, normalized_name: str) -> np.ndarray:
-        """Get or compute entity embedding with caching."""
+        """Get or compute entity embedding with caching and pre-computed embedding support."""
         cache_key = f"{entity.id}:{normalized_name}"
 
+        # Check memory cache first
         if cache_key in self._entity_cache:
             return self._entity_cache[cache_key]
 
+        # Try to use pre-computed embeddings if available and enabled
+        if self.use_precomputed_embeddings and self.entity_embedding_service and entity.embedding is not None:
+            logger.debug(f"Using pre-computed embedding for entity {entity.id}")
+            embedding = np.array(entity.embedding, dtype=np.float32)
+
+            # Normalize embedding (ensure it's unit vector)
+            norm = np.linalg.norm(embedding)
+            if norm > 0:
+                embedding = embedding / norm
+
+            # Cache the result
+            self._entity_cache[cache_key] = embedding
+            return embedding
+
+        # Fall back to dynamic computation
+        logger.debug(f"Computing dynamic embedding for entity {entity.id}")
+        embedding = await self._compute_dynamic_embedding(entity, normalized_name)
+
+        # Cache the result
+        self._entity_cache[cache_key] = embedding
+        return embedding
+
+    async def _compute_dynamic_embedding(self, entity: Entity, normalized_name: str) -> np.ndarray:
+        """Compute embedding dynamically using the sentence transformer."""
         # Create entity description for embedding
-        description = self._create_entity_description(entity, normalized_name)
+        description = EDCUtils.create_entity_description(entity, normalized_name)
 
         # Compute embedding
         embedding_result = self.embedding_model.encode(description, normalize_embeddings=True)
 
         # Convert to numpy array if needed
         if not isinstance(embedding_result, np.ndarray):
-            embedding = np.array(embedding_result)
+            embedding = np.array(embedding_result, dtype=np.float32)
         else:
-            embedding = embedding_result
-
-        # Cache the result
-        self._entity_cache[cache_key] = embedding
+            embedding = embedding_result.astype(np.float32)
 
         return embedding
-
-    def _create_entity_description(self, entity: Entity, normalized_name: str) -> str:
-        """Create entity description for embedding generation."""
-        parts = [normalized_name, entity.entity_type]
-
-        if entity.definition:
-            parts.append(entity.definition)
-
-        if entity.properties:
-            # Add key properties to description
-            for key, value in entity.properties.items():
-                if isinstance(value, str) and len(value) < 100:
-                    parts.append(f"{key}:{value}")
-
-        return " ".join(parts)
-
-    def _compute_cosine_similarity(self, embedding1: np.ndarray, embedding2: np.ndarray) -> float:
-        """Compute cosine similarity between two embeddings."""
-        return float(np.dot(embedding1, embedding2))
-
-    def _are_types_compatible(self, type1: str, type2: str) -> bool:
-        """Check if two entity types are compatible for merging."""
-        # Exact match
-        if type1 == type2:
-            return True
-
-        # Compatible type mappings for Japanese business entities
-        compatible_groups = [
-            {"COMPANY", "ORGANIZATION"},  # Companies and organizations can be similar
-            {"PERSON", "EMPLOYEE"},  # People and employees
-            {"PRODUCT", "SERVICE"},  # Products and services
-        ]
-
-        for group in compatible_groups:
-            if type1 in group and type2 in group:
-                return True
-
-        return False
 
     async def verify_entity_merge(
         self,
@@ -258,7 +251,7 @@ class EDCDeduplicationService(EntityDeduplicationService):
 JSON形式のみで回答してください:"""
 
             # For now, use heuristic-based verification since LLM integration is complex
-            should_merge, confidence = self._heuristic_verification(entity1, entity2, similarity_score)
+            should_merge, confidence = EDCUtils.heuristic_verification(entity1, entity2, similarity_score)
 
             logger.debug(f"Merge verification for {entity1.name} vs {entity2.name}: {should_merge} (confidence: {confidence:.3f})")
             return should_merge, confidence
@@ -267,39 +260,6 @@ JSON形式のみで回答してください:"""
             logger.error(f"Failed to verify merge for {entity1.name} vs {entity2.name}: {e}")
             # Conservative approach: don't merge on error
             return False, 0.0
-
-    def _heuristic_verification(self, entity1: Entity, entity2: Entity, similarity_score: float) -> Tuple[bool, float]:
-        """Heuristic-based merge verification."""
-        # Normalize names for comparison
-        name1 = self._normalize_for_comparison(entity1.name)
-        name2 = self._normalize_for_comparison(entity2.name)
-
-        # Exact match after normalization
-        if name1 == name2:
-            return True, 0.95
-
-        # Check if one is substring of the other (e.g., "トヨタ" vs "トヨタ自動車")
-        if name1 in name2 or name2 in name1:
-            min_length = min(len(name1), len(name2))
-            if min_length >= 3:  # Avoid matching very short strings
-                return True, 0.9
-
-        # High similarity with compatible types
-        if similarity_score >= 0.9 and self._are_types_compatible(entity1.entity_type, entity2.entity_type):
-            return True, 0.85
-
-        # Medium similarity with exact type match
-        if similarity_score >= 0.85 and entity1.entity_type == entity2.entity_type:
-            return True, 0.8
-
-        return False, similarity_score * 0.5
-
-    def _normalize_for_comparison(self, name: str) -> str:
-        """Normalize name for comparison."""
-        # Convert to hiragana and remove spaces/punctuation
-        normalized = jaconv.kata2hira(name.lower())
-        normalized = re.sub(r"[^\w]", "", normalized)
-        return normalized
 
     async def canonicalize_entity(
         self,
@@ -319,10 +279,10 @@ JSON形式のみで回答してください:"""
 
             # Merge information from all entities
             canonical_entity = Entity(
-                name=self._choose_canonical_name(entities_to_merge),
+                name=EDCUtils.choose_canonical_name(entities_to_merge),
                 entity_type=base_entity.entity_type,
-                definition=self._merge_definitions(entities_to_merge),
-                properties=self._merge_properties(entities_to_merge),
+                definition=EDCUtils.merge_definitions(entities_to_merge),
+                properties=EDCUtils.merge_properties(entities_to_merge),
                 chunk_id=base_entity.chunk_id,  # Keep original chunk reference
                 canonical_name=base_entity.name,  # Mark as canonical
                 merged_from=[e.id for e in entities_to_merge if e.id != base_entity.id],
@@ -337,35 +297,6 @@ JSON形式のみで回答してください:"""
             logger.error(f"Failed to canonicalize entities: {e}")
             raise DeduplicationError(f"Canonicalization failed: {e}")
 
-    def _choose_canonical_name(self, entities: List[Entity]) -> str:
-        """Choose the most appropriate canonical name."""
-        # Prefer the longest name (often more complete)
-        return max(entities, key=lambda e: len(e.name)).name
-
-    def _merge_definitions(self, entities: List[Entity]) -> Optional[str]:
-        """Merge definitions from multiple entities."""
-        definitions = [e.definition for e in entities if e.definition]
-        if not definitions:
-            return None
-
-        # Use the longest definition
-        return max(definitions, key=len)
-
-    def _merge_properties(self, entities: List[Entity]) -> Dict[str, Any]:
-        """Merge properties from multiple entities."""
-        merged_properties = {}
-
-        for entity in entities:
-            if entity.properties:
-                for key, value in entity.properties.items():
-                    if key not in merged_properties:
-                        merged_properties[key] = value
-                    elif isinstance(value, list) and isinstance(merged_properties[key], list):
-                        # Merge lists and remove duplicates
-                        merged_properties[key] = list(set(merged_properties[key] + value))
-
-        return merged_properties
-
     async def deduplicate_entities(
         self,
         entities: List[Entity],
@@ -379,6 +310,10 @@ JSON形式のみで回答してください:"""
         logger.info(f"Starting deduplication of {len(entities)} entities")
 
         try:
+            # Pre-compute embeddings for entities that don't have them
+            if self.use_precomputed_embeddings and self.entity_embedding_service:
+                await self._ensure_embeddings_computed(entities)
+
             # Track processed entities and merges
             processed_ids = set()
             canonical_entities = []
@@ -447,3 +382,58 @@ JSON形式のみで回答してください:"""
         except Exception as e:
             logger.warning(f"Name normalization failed for '{name}': {e}")
             return name  # Return original on error
+
+    async def _ensure_embeddings_computed(self, entities: List[Entity]) -> None:
+        """Ensure all entities have pre-computed embeddings available."""
+        if not self.entity_embedding_service:
+            return
+
+        # Find entities without embeddings
+        entities_without_embeddings = [entity for entity in entities if entity.embedding is None]
+
+        if not entities_without_embeddings:
+            logger.debug("All entities already have pre-computed embeddings")
+            return
+
+        logger.info(f"Computing embeddings for {len(entities_without_embeddings)} entities without pre-computed embeddings")
+
+        try:
+            # Use batch computation for efficiency
+            computed_count = await self.entity_embedding_service.batch_compute_embeddings(
+                entities_without_embeddings,
+                skip_existing=False,  # Force computation since we filtered above
+            )
+
+            logger.info(f"Successfully computed {computed_count} embeddings")
+
+        except Exception as e:
+            logger.warning(f"Failed to compute some embeddings, will fall back to dynamic computation: {e}")
+
+    async def get_embedding_statistics(self) -> Dict[str, Any]:
+        """Get statistics about embedding usage in the service."""
+        if not self.entity_embedding_service:
+            return {
+                "embedding_service_available": False,
+                "use_precomputed_embeddings": self.use_precomputed_embeddings,
+                "cache_size": len(self._entity_cache),
+            }
+
+        try:
+            stats = await self.entity_embedding_service.get_embedding_statistics()
+            stats.update(
+                {
+                    "embedding_service_available": True,
+                    "use_precomputed_embeddings": self.use_precomputed_embeddings,
+                    "cache_size": len(self._entity_cache),
+                    "fallback_model": str(self.embedding_model) if hasattr(self.embedding_model, "__str__") else type(self.embedding_model).__name__,
+                }
+            )
+            return stats
+        except Exception as e:
+            logger.error(f"Failed to get embedding statistics: {e}")
+            return {
+                "embedding_service_available": True,
+                "use_precomputed_embeddings": self.use_precomputed_embeddings,
+                "cache_size": len(self._entity_cache),
+                "error": str(e),
+            }
