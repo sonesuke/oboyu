@@ -14,8 +14,8 @@ Oboyu is an experimental knowledge intelligence system designed to help you expl
 | **AI & Embeddings** | [HuggingFace](./huggingface.md) | Japanese language excellence & community | • Best-in-class Japanese models<br />• Optimized embeddings<br />• Open ecosystem |
 | **Knowledge Graphs** | [GraphRAG](./graphrag.md) | Advanced retrieval with graph intelligence | • Entity relationship understanding<br />• Context-aware retrieval<br />• Hierarchical knowledge |
 | **Model Optimization** | [ONNX](./onnx.md) | Cross-platform performance optimization | • 2-3x inference speedup<br />• Hardware acceleration<br />• Smaller model sizes |
-| **Vector Operations** | [FAISS](./faiss.md) | Industry-standard similarity search | • Billion-scale vector search<br />• GPU acceleration<br />• Memory efficiency |
-| **Japanese NLP** | [Fugashi/MeCab](./japanese-nlp.md) | Gold standard for Japanese tokenization | • Accurate morphological analysis<br />• Rich linguistic features<br />• Fast processing |
+| **Vector Operations** | FAISS | Industry-standard similarity search | • Billion-scale vector search<br />• GPU acceleration<br />• Memory efficiency |
+| **Japanese NLP** | Fugashi/MeCab | Gold standard for Japanese tokenization | • Accurate morphological analysis<br />• Rich linguistic features<br />• Fast processing |
 
 ## 🚀 Performance Highlights
 
