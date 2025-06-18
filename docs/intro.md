@@ -182,7 +182,7 @@ This documentation is organized around practical usage:
 - **[Real-world Scenarios](use-cases/technical-docs)**: Domain-specific examples
 - **[Configuration](reference/configuration)**: Optimize for your needs
 - **[Integration](integration-automation/mcp-integration)**: Connect with other tools
-- **[Reference](for-developers/cli)**: Complete command reference
+- **[Architecture](for-developers/architecture-intro)**: How Oboyu works internally
 
 ## Community & Support
 

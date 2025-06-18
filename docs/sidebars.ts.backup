@@ -80,27 +80,9 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '🔧 For Contributors',
+      label: '💻 Developers/Contributors',
       collapsed: true,
       items: [
-        'for-developers/contributors-intro',
-        'for-developers/quickstart',
-        'for-developers/pre-commit-optimization',
-        'for-developers/ci-cd-optimization',
-        'for-developers/release-process',
-        'for-developers/e2e_display_testing',
-        'for-developers/installation-testing',
-        'for-developers/installation-testing-readme',
-        'for-developers/installation-troubleshooting',
-        'for-developers/immutable-configuration-migration',
-      ],
-    },
-    {
-      type: 'category',
-      label: '🏗️ Architecture & Internals',
-      collapsed: true,
-      items: [
-        'for-developers/architecture-intro',
         {
           type: 'category',
           label: 'Architecture',
@@ -120,11 +102,26 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
-          label: 'Advanced Topics',
+          label: 'Development',
           items: [
+            'for-developers/quickstart',
             'for-developers/cli',
             'for-developers/reranker',
             'for-developers/japanese',
+            'for-developers/e2e_display_testing',
+            'for-developers/pre-commit-optimization',
+            'for-developers/ci-cd-optimization',
+            'for-developers/release-process',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Testing & Installation',
+          items: [
+            'for-developers/installation-testing',
+            'for-developers/installation-testing-readme',
+            'for-developers/installation-troubleshooting',
+            'for-developers/immutable-configuration-migration',
           ],
         },
       ],
