@@ -41,4 +41,7 @@ website/.docusaurus/
 website/.cache-loader/
 website/node_modules/
 
+# Git worktree directories
+.worktree/
+
 e2e_display_report.md
