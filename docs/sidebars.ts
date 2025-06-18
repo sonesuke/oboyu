@@ -41,6 +41,19 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: '🛠️ Technology Stack',
+      collapsed: false,
+      items: [
+        'technology-stack/index',
+        'technology-stack/duckdb',
+        'technology-stack/huggingface',
+        'technology-stack/graphrag',
+        'technology-stack/onnx',
+        'technology-stack/decision-framework',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Use Cases',
       collapsed: false,
       items: [
