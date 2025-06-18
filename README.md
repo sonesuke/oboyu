@@ -293,6 +293,19 @@ See our [MCP Integration Guide](https://sonesuke.github.io/oboyu/integration/mcp
 
 **[📖 View Full Documentation →](https://sonesuke.github.io/oboyu/)**
 
+## 🛠️ Technology Stack
+
+Learn about the cutting-edge technologies that power Oboyu's intelligence:
+
+- **[📚 Technology Stack Overview](docs/technology-stack/index.md)** - Complete stack architecture and philosophy
+- **[🗄️ DuckDB: The Analytics Engine](docs/technology-stack/duckdb.md)** - Why DuckDB powers our knowledge intelligence
+- **[🤖 HuggingFace: Japanese AI Excellence](docs/technology-stack/huggingface.md)** - Specialized Japanese language models and embeddings
+- **[🔗 GraphRAG: Beyond Simple RAG](docs/technology-stack/graphrag.md)** - Graph-enhanced retrieval and knowledge understanding
+- **[⚡ ONNX: Optimization Without Compromise](docs/technology-stack/onnx.md)** - 3x faster inference with maintained quality
+- **[⚖️ Our Decision Framework](docs/technology-stack/decision-framework.md)** - How we evaluate and choose technologies
+
+We believe in transparency and sharing our technical journey. These deep-dives include performance benchmarks, implementation insights, and honest assessments of alternatives.
+
 ## Common Use Cases
 
 ### 🏢 Enterprise Knowledge Management
